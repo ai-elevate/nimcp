@@ -25,28 +25,10 @@
 
 #include "gpu/ternary/nimcp_ternary_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "TERNARY_GPU"
-
-//=============================================================================
-// CUDA Error Checking
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 //=============================================================================
 // Kernel Configuration
@@ -843,7 +825,7 @@ bool nimcp_ternary_quantize(
             src_data, (uint8_t*)dst->data, numel, threshold);
     }
 
-    CUDA_CHECK(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
     return true;
 }
 
@@ -965,7 +947,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemv(
             (const uint8_t*)A->data, x_data, y_data, M, N);
     }
 
-    CUDA_CHECK_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
     return y;
 }
 
@@ -1011,7 +993,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm(
         (const int8_t*)A->data, B_data, C_data,
         M, K, N, cfg.alpha, cfg.beta);
 
-    CUDA_CHECK_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
     return C;
 }
 
@@ -1049,7 +1031,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm_batched(
         (const int8_t*)A->data, B_data, C_data,
         M, K, N, batch);
 
-    CUDA_CHECK_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
     return C;
 }
 
@@ -1086,7 +1068,7 @@ bool nimcp_ternary_mul(
         (int8_t*)C->data,
         A->numel);
 
-    CUDA_CHECK(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
     return true;
 }
 
@@ -1111,7 +1093,7 @@ bool nimcp_ternary_gate(
     ternary_gate_kernel<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
         (const int8_t*)gate->data, in_data, out_data, numel);
 
-    CUDA_CHECK(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
     return true;
 }
 
@@ -1136,7 +1118,7 @@ bool nimcp_ternary_mask(
     ternary_mask_kernel<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
         (const int8_t*)mask->data, in_data, out_data, numel);
 
-    CUDA_CHECK(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
     return true;
 }
 

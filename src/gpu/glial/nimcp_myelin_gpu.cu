@@ -38,28 +38,10 @@
 #include "gpu/glial/nimcp_myelin_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "MYELIN_GPU"
-
-//=============================================================================
-// CUDA Helper Macros
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -1234,7 +1216,7 @@ extern "C" void myelin_gpu_destroy(myelin_gpu_context_t* ctx) {
 
 extern "C" bool myelin_gpu_synchronize(myelin_gpu_context_t* ctx) {
     if (!ctx) return false;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1304,17 +1286,17 @@ extern "C" bool myelin_gpu_upload_axon_properties(
     ctx->n_axons = n_axons;
 
     // Upload axon diameters
-    CUDA_CHECK(cudaMemcpyAsync(ctx->axon_diameters->data, axon_diameters,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->axon_diameters->data, axon_diameters,
                                n_axons * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
     // Upload internode lengths
     size_t internode_bytes = n_axons * ctx->n_internodes * sizeof(float);
-    CUDA_CHECK(cudaMemcpyAsync(ctx->internode_lengths->data, internode_lengths,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->internode_lengths->data, internode_lengths,
                                internode_bytes,
                                cudaMemcpyHostToDevice, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1333,17 +1315,17 @@ extern "C" bool myelin_gpu_upload_lamellae(
         h_lamellae_f[i] = (float)lamellae[i];
     }
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->num_lamellae->data, h_lamellae_f,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->num_lamellae->data, h_lamellae_f,
                                total * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
     // Also copy to fractional for plasticity tracking
-    CUDA_CHECK(cudaMemcpyAsync(ctx->lamellae_fractional->data, h_lamellae_f,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->lamellae_fractional->data, h_lamellae_f,
                                total * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
     free(h_lamellae_f);
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1354,11 +1336,11 @@ extern "C" bool myelin_gpu_upload_integrity(
     if (!ctx || !integrity) return false;
 
     size_t total = ctx->n_axons * ctx->n_internodes;
-    CUDA_CHECK(cudaMemcpyAsync(ctx->integrity->data, integrity,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->integrity->data, integrity,
                                total * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1368,7 +1350,7 @@ extern "C" bool myelin_gpu_download_velocities(
 ) {
     if (!ctx || !velocities) return false;
 
-    CUDA_CHECK(cudaMemcpy(velocities, ctx->conduction_velocities->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(velocities, ctx->conduction_velocities->data,
                           ctx->n_axons * sizeof(float),
                           cudaMemcpyDeviceToHost));
     return true;
@@ -1389,7 +1371,7 @@ extern "C" bool myelin_gpu_compute_g_ratios(myelin_gpu_context_t* ctx) {
 
     ctx->kernel_launches++;
     ctx->g_ratio_computations++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1410,7 +1392,7 @@ extern "C" bool myelin_gpu_compute_cable_params(myelin_gpu_context_t* ctx) {
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1448,7 +1430,7 @@ extern "C" bool myelin_gpu_compute_velocities(myelin_gpu_context_t* ctx) {
 
     ctx->kernel_launches += 2;
     ctx->velocity_computations++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1475,7 +1457,7 @@ extern "C" bool myelin_gpu_apply_plasticity(
 
     ctx->kernel_launches++;
     ctx->plasticity_updates++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1492,7 +1474,7 @@ extern "C" bool myelin_gpu_commit_lamellae(myelin_gpu_context_t* ctx) {
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1510,7 +1492,7 @@ extern "C" bool myelin_gpu_compute_block_probabilities(myelin_gpu_context_t* ctx
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1528,7 +1510,7 @@ extern "C" bool myelin_gpu_apply_blocks(myelin_gpu_context_t* ctx, uint64_t seed
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1555,7 +1537,7 @@ extern "C" bool myelin_gpu_compute_g_efficiency(
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1577,7 +1559,7 @@ extern "C" bool myelin_gpu_compute_attenuation(
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1602,7 +1584,7 @@ extern "C" bool myelin_gpu_compute_segment_velocities(myelin_gpu_context_t* ctx)
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1635,7 +1617,7 @@ extern "C" bool myelin_gpu_compute_total_delays(
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1658,7 +1640,7 @@ extern "C" bool myelin_gpu_update_activity_ema(
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1695,7 +1677,7 @@ extern "C" bool myelin_gpu_apply_damage(
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1713,7 +1695,7 @@ extern "C" bool myelin_gpu_apply_repair(myelin_gpu_context_t* ctx, float repair_
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -1731,7 +1713,7 @@ extern "C" bool myelin_gpu_apply_decay(myelin_gpu_context_t* ctx, float decay_ra
     );
 
     ctx->kernel_launches++;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 

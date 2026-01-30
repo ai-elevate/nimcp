@@ -29,36 +29,20 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/knowledge/nimcp_knowledge_graph_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "KNOWLEDGE_GPU"
 
 //=============================================================================
-// CUDA Error Checking
+// CUDA Error Checking - Using immune-integrated macros
 //=============================================================================
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
+// Map legacy macros to immune-integrated versions
+#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
+#define CUDA_CHECK_NULL(call) NIMCP_CUDA_CHECK_IMMUNE_NULL(call)
+// CUDA_CHECK_VOID uses warning only since void functions can't propagate errors
+#define CUDA_CHECK_VOID(call) NIMCP_CUDA_CHECK_WARN(call)
 
 //=============================================================================
 // Kernel Configuration

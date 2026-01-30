@@ -32,28 +32,10 @@
 #include "gpu/tensor/nimcp_amp_autocast.h"
 #include "gpu/tensor/nimcp_tensor_fp16.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "AMP_AUTOCAST"
-
-//=============================================================================
-// CUDA Error Checking
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define CUBLAS_CHECK(call) do { \
     cublasStatus_t status = call; \

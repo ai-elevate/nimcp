@@ -281,6 +281,13 @@ extern "C" {
     NIMCP_CUDA_CHECK_IMMUNE_LAST(); \
 } while(0)
 
+/**
+ * @brief Alias for NIMCP_CUDA_CHECK_IMMUNE (returns bool)
+ *
+ * Use in functions explicitly returning bool.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE_BOOL(call) NIMCP_CUDA_CHECK_IMMUNE(call)
+
 #else // !NIMCP_ENABLE_CUDA
 
 // No-op macros when CUDA is disabled
@@ -289,6 +296,7 @@ extern "C" {
 #define NIMCP_CUDA_CHECK_IMMUNE_ERROR(call) (NIMCP_ERROR_GPU)
 #define NIMCP_CUDA_CHECK_IMMUNE_LAST() ((void)0)
 #define NIMCP_CUDA_CHECK_IMMUNE_GOTO(call, label) ((void)0)
+#define NIMCP_CUDA_CHECK_IMMUNE_BOOL(call) ((void)0)
 #define NIMCP_CUDA_SYNC_CHECK_IMMUNE() ((void)0)
 
 #endif // NIMCP_ENABLE_CUDA

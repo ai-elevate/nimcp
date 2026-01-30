@@ -35,24 +35,10 @@
 #include "gpu/cognitive/nimcp_broca_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "BROCA_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -542,7 +528,7 @@ extern "C" void broca_gpu_destroy(broca_gpu_context_t* ctx) {
 
 extern "C" bool broca_gpu_synchronize(broca_gpu_context_t* ctx) {
     if (!ctx) return false;
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -561,7 +547,7 @@ extern "C" bool broca_gpu_upload_lexicon(
         return false;
     }
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_lexicon, entries,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_lexicon, entries,
                                count * sizeof(broca_gpu_lexical_entry_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -598,7 +584,7 @@ extern "C" bool broca_gpu_batch_lexical_lookup(
     }
 
     // Upload word IDs
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
                                count * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -610,11 +596,11 @@ extern "C" bool broca_gpu_batch_lexical_lookup(
     );
 
     // Download results
-    CUDA_CHECK(cudaMemcpyAsync(results, ctx->d_temp_results,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(results, ctx->d_temp_results,
                                count * sizeof(broca_gpu_lookup_result_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     ctx->stats.lexical_lookups += count;
     return true;
@@ -632,7 +618,7 @@ extern "C" bool broca_gpu_update_activations(
 
     uint32_t* d_boost_ids = NULL;
     if (word_ids && count > 0) {
-        CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
                                    count * sizeof(uint32_t),
                                    cudaMemcpyHostToDevice, ctx->stream));
         d_boost_ids = ctx->d_temp_word_ids;
@@ -644,7 +630,7 @@ extern "C" bool broca_gpu_update_activations(
         boost_amount, decay_rate
     );
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -661,7 +647,7 @@ extern "C" bool broca_gpu_find_top_activated(
 
     *actual_count = (top_n < ctx->lexicon_size) ? top_n : ctx->lexicon_size;
 
-    CUDA_CHECK(cudaMemcpy(results, ctx->d_lexicon,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(results, ctx->d_lexicon,
                           *actual_count * sizeof(broca_gpu_lexical_entry_t),
                           cudaMemcpyDeviceToHost));
 
@@ -692,7 +678,7 @@ extern "C" bool broca_gpu_encode_phonemes(
     }
 
     // Upload word IDs
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_word_ids, word_ids,
                                word_count * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -714,10 +700,10 @@ extern "C" bool broca_gpu_encode_phonemes(
 
     // Download boundaries to get total count
     uint32_t* h_boundaries = (uint32_t*)malloc(word_count * sizeof(uint32_t));
-    CUDA_CHECK(cudaMemcpyAsync(h_boundaries, ctx->d_temp_boundaries,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(h_boundaries, ctx->d_temp_boundaries,
                                word_count * sizeof(uint32_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     uint32_t total_phonemes = h_boundaries[word_count - 1];
     if (total_phonemes > buffer_size) {
@@ -727,7 +713,7 @@ extern "C" bool broca_gpu_encode_phonemes(
     }
 
     // Download phonemes
-    CUDA_CHECK(cudaMemcpy(phoneme_buffer, ctx->d_temp_phonemes,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(phoneme_buffer, ctx->d_temp_phonemes,
                           total_phonemes * sizeof(uint8_t),
                           cudaMemcpyDeviceToHost));
 
@@ -752,7 +738,7 @@ extern "C" bool broca_gpu_apply_coarticulation(
     if (!ctx || !phonemes || phoneme_count == 0) return false;
 
     // Upload phonemes
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_phonemes, phonemes,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_phonemes, phonemes,
                                phoneme_count * sizeof(uint8_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -762,11 +748,11 @@ extern "C" bool broca_gpu_apply_coarticulation(
     );
 
     // Download results
-    CUDA_CHECK(cudaMemcpyAsync(phonemes, ctx->d_temp_phonemes,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(phonemes, ctx->d_temp_phonemes,
                                phoneme_count * sizeof(uint8_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -796,7 +782,7 @@ extern "C" bool broca_gpu_generate_motor_commands(
     }
 
     // Upload phonemes
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_phonemes, phonemes,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_phonemes, phonemes,
                                phoneme_count * sizeof(uint8_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -809,11 +795,11 @@ extern "C" bool broca_gpu_generate_motor_commands(
     );
 
     // Download commands
-    CUDA_CHECK(cudaMemcpyAsync(commands, ctx->d_temp_commands,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(commands, ctx->d_temp_commands,
                                total_commands * sizeof(broca_gpu_motor_command_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     *command_count = total_commands;
     ctx->stats.motor_commands += total_commands;
@@ -829,7 +815,7 @@ extern "C" bool broca_gpu_adjust_timing(
     if (!ctx || !commands || command_count == 0) return false;
 
     // Upload commands
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_temp_commands, commands,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_temp_commands, commands,
                                command_count * sizeof(broca_gpu_motor_command_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -839,11 +825,11 @@ extern "C" bool broca_gpu_adjust_timing(
     );
 
     // Download results
-    CUDA_CHECK(cudaMemcpyAsync(commands, ctx->d_temp_commands,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(commands, ctx->d_temp_commands,
                                command_count * sizeof(broca_gpu_motor_command_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 
@@ -869,11 +855,11 @@ extern "C" bool broca_gpu_wm_push(
 
         if (keep > 0) {
             // Shift remaining entries to the start
-            CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_word_ids,
+            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_word_ids,
                                        ctx->d_wm_word_ids + shift,
                                        keep * sizeof(uint32_t),
                                        cudaMemcpyDeviceToDevice, ctx->stream));
-            CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_activations,
+            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_activations,
                                        ctx->d_wm_activations + shift,
                                        keep * sizeof(float),
                                        cudaMemcpyDeviceToDevice, ctx->stream));
@@ -886,7 +872,7 @@ extern "C" bool broca_gpu_wm_push(
     uint32_t copy_count = (count > available) ? available : count;
 
     // Upload word IDs
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_word_ids + ctx->wm_count, word_ids,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_word_ids + ctx->wm_count, word_ids,
                                copy_count * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -895,12 +881,12 @@ extern "C" bool broca_gpu_wm_push(
     for (uint32_t i = 0; i < copy_count; i++) {
         h_activations[i] = initial_activation;
     }
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count, h_activations,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count, h_activations,
                                copy_count * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
     free(h_activations);
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     ctx->wm_count += copy_count;
     ctx->stats.wm_operations++;
@@ -918,12 +904,12 @@ extern "C" bool broca_gpu_wm_get_contents(
 
     *actual_count = (ctx->wm_count < max_count) ? ctx->wm_count : max_count;
 
-    CUDA_CHECK(cudaMemcpy(word_ids, ctx->d_wm_word_ids,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(word_ids, ctx->d_wm_word_ids,
                           *actual_count * sizeof(uint32_t),
                           cudaMemcpyDeviceToHost));
 
     if (activations) {
-        CUDA_CHECK(cudaMemcpy(activations, ctx->d_wm_activations,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(activations, ctx->d_wm_activations,
                               *actual_count * sizeof(float),
                               cudaMemcpyDeviceToHost));
     }
@@ -943,7 +929,7 @@ extern "C" bool broca_gpu_wm_apply_decay(
         ctx->d_wm_activations, ctx->wm_count, decay_factor
     );
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     return true;
 }
 

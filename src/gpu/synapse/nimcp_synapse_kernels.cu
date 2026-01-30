@@ -28,32 +28,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/synapse/nimcp_synapse_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SYNAPSE_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -449,7 +427,7 @@ bool nimcp_gpu_synapse_transmit(
             state->n_synapses);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -495,7 +473,7 @@ bool nimcp_gpu_synapse_accumulate_psc(
         (float*)state->psc->data,
         state->n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -585,7 +563,7 @@ bool nimcp_gpu_vesicle_update_release_prob(
         state->params.dt,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -673,7 +651,7 @@ bool nimcp_gpu_vesicle_release(
         dt,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -712,7 +690,7 @@ bool nimcp_gpu_vesicle_get_efficacy(
         (float*)efficacy->data,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -787,7 +765,7 @@ bool nimcp_gpu_receptor_update_binding(
         dt,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -833,7 +811,7 @@ bool nimcp_gpu_receptor_update_desensitization(
         dt,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -876,7 +854,7 @@ bool nimcp_gpu_receptor_compute_conductance(
         state->params.max_conductance,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -968,7 +946,7 @@ bool nimcp_gpu_receptor_compute_current(
         n_synapses,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1025,7 +1003,7 @@ bool nimcp_gpu_nmda_mg_block(
         mg_concentration,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1100,7 +1078,7 @@ bool nimcp_gpu_neurotransmitter_diffusion(
         dt,
         n_synapses);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

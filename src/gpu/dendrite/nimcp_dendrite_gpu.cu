@@ -37,24 +37,10 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "DENDRITE_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -670,7 +656,7 @@ extern "C" void dendrite_gpu_destroy(dendrite_gpu_context_t* ctx) {
 
 extern "C" bool dendrite_gpu_synchronize(dendrite_gpu_context_t* ctx) {
     if (!ctx) return false;
-    CUDA_CHECK(cudaStreamSynchronize((cudaStream_t)ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize((cudaStream_t)ctx->stream));
     return true;
 }
 
@@ -728,19 +714,19 @@ extern "C" bool dendrite_gpu_upload_segments(
     }
 
     // Upload to GPU tensors
-    CUDA_CHECK(cudaMemcpy(ctx->segment_voltages->data, h_voltages,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_voltages->data, h_voltages,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->segment_lengths->data, h_lengths,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_lengths->data, h_lengths,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->segment_diameters->data, h_diameters,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_diameters->data, h_diameters,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->segment_distances->data, h_distances,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_distances->data, h_distances,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->segment_parents->data, h_parents,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_parents->data, h_parents,
                           total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->segment_active->data, h_active,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_active->data, h_active,
                           total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->cable_params->data, h_cable,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->cable_params->data, h_cable,
                           num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice));
 
     ctx->num_dendrites = num_dendrites;
@@ -791,15 +777,15 @@ extern "C" bool dendrite_gpu_upload_spines(
     }
 
     // Upload to GPU
-    CUDA_CHECK(cudaMemcpy(ctx->calcium_levels->data, h_calcium,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->calcium_levels->data, h_calcium,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->spine_weights->data, h_weights,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->spine_weights->data, h_weights,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->spine_segments->data, h_segments,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->spine_segments->data, h_segments,
                           total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->pre_traces->data, h_pre,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->pre_traces->data, h_pre,
                           total * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(ctx->post_traces->data, h_post,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->post_traces->data, h_post,
                           total * sizeof(float), cudaMemcpyHostToDevice));
 
     ctx->num_spines = spines_per_dendrite;
@@ -829,7 +815,7 @@ extern "C" bool dendrite_gpu_upload_cable_params(
         h_cable[d * 3 + 2] = ra[d];
     }
 
-    CUDA_CHECK(cudaMemcpy(ctx->cable_params->data, h_cable,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->cable_params->data, h_cable,
                           num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice));
 
     free(h_cable);
@@ -846,7 +832,7 @@ extern "C" bool dendrite_gpu_download_voltages(
 ) {
     if (!ctx || !voltages) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_segments;
-    CUDA_CHECK(cudaMemcpy(voltages, ctx->segment_voltages->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(voltages, ctx->segment_voltages->data,
                           total * sizeof(float), cudaMemcpyDeviceToHost));
     return true;
 }
@@ -857,7 +843,7 @@ extern "C" bool dendrite_gpu_download_calcium(
 ) {
     if (!ctx || !calcium) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_spines;
-    CUDA_CHECK(cudaMemcpy(calcium, ctx->calcium_levels->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(calcium, ctx->calcium_levels->data,
                           total * sizeof(float), cudaMemcpyDeviceToHost));
     return true;
 }
@@ -868,7 +854,7 @@ extern "C" bool dendrite_gpu_download_weights(
 ) {
     if (!ctx || !weights) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_spines;
-    CUDA_CHECK(cudaMemcpy(weights, ctx->spine_weights->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(weights, ctx->spine_weights->data,
                           total * sizeof(float), cudaMemcpyDeviceToHost));
     return true;
 }
@@ -879,7 +865,7 @@ extern "C" bool dendrite_gpu_download_nmda_states(
 ) {
     if (!ctx || !nmda_states) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_segments;
-    CUDA_CHECK(cudaMemcpy(nmda_states, ctx->nmda_states->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(nmda_states, ctx->nmda_states->data,
                           total * sizeof(float), cudaMemcpyDeviceToHost));
     return true;
 }
@@ -906,7 +892,7 @@ extern "C" bool dendrite_gpu_integrate(
         dt_ms
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     ctx->integrate_calls++;
     return true;
 }
@@ -934,7 +920,7 @@ extern "C" bool dendrite_gpu_update_calcium(
         ctx->config.calcium_decay_tau_ms
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     ctx->calcium_updates++;
     return true;
 }
@@ -956,7 +942,7 @@ extern "C" bool dendrite_gpu_detect_nmda_spikes(
         ctx->config.nmda_threshold_mv
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     ctx->nmda_detections++;
     return true;
 }
@@ -974,8 +960,8 @@ extern "C" bool dendrite_gpu_apply_stdp(
 
     // Upload events to GPU
     dendrite_gpu_stdp_event_t* d_events;
-    CUDA_CHECK(cudaMalloc(&d_events, num_events * sizeof(dendrite_gpu_stdp_event_t)));
-    CUDA_CHECK(cudaMemcpyAsync(d_events, events,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_events, num_events * sizeof(dendrite_gpu_stdp_event_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_events, events,
                                num_events * sizeof(dendrite_gpu_stdp_event_t),
                                cudaMemcpyHostToDevice, stream));
 
@@ -993,8 +979,8 @@ extern "C" bool dendrite_gpu_apply_stdp(
         timestamp
     );
 
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaFree(d_events));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_events));
 
     ctx->stdp_updates++;
     return true;
@@ -1021,7 +1007,7 @@ extern "C" bool dendrite_gpu_propagate_bap(
         dt_ms
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1044,7 +1030,7 @@ extern "C" bool dendrite_gpu_compute_axial_currents(
         ctx->num_segments
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1066,17 +1052,17 @@ extern "C" bool dendrite_gpu_inject_currents(
     uint32_t* d_dendrite_indices;
     float* d_currents;
 
-    CUDA_CHECK(cudaMalloc(&d_spine_indices, num_inputs * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_dendrite_indices, num_inputs * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_currents, num_inputs * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spine_indices, num_inputs * sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_dendrite_indices, num_inputs * sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_currents, num_inputs * sizeof(float)));
 
-    CUDA_CHECK(cudaMemcpyAsync(d_spine_indices, spine_indices,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_spine_indices, spine_indices,
                                num_inputs * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK(cudaMemcpyAsync(d_dendrite_indices, dendrite_indices,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_dendrite_indices, dendrite_indices,
                                num_inputs * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK(cudaMemcpyAsync(d_currents, currents,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_currents, currents,
                                num_inputs * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
 
@@ -1090,11 +1076,11 @@ extern "C" bool dendrite_gpu_inject_currents(
         ctx->num_spines
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
-    CUDA_CHECK(cudaFree(d_spine_indices));
-    CUDA_CHECK(cudaFree(d_dendrite_indices));
-    CUDA_CHECK(cudaFree(d_currents));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_spine_indices));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_dendrite_indices));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_currents));
 
     return true;
 }
@@ -1119,7 +1105,7 @@ extern "C" bool dendrite_gpu_decay_traces(
         ctx->config.stdp_tau_minus_ms
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

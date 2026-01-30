@@ -639,6 +639,7 @@ bool network_mpi_init(void)
             return true;
         }
         LOG_ERROR("MPI_Init failed with error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "MPI initialization failed with error %d", result);
         return false;
     }
     return true;  // Already initialized

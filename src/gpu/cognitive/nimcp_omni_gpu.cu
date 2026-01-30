@@ -28,30 +28,14 @@
 
 #include "gpu/cognitive/nimcp_omni_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "OMNI_GPU"
 
 /* ============================================================================
  * CUDA Error Checking Macros
  * ============================================================================ */
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, \
-                  cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, \
-                  cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define CUDA_CHECK_INT(call, ret_val) do { \
     cudaError_t err = call; \
@@ -852,7 +836,7 @@ bool nimcp_omni_gpu_predict(
         batch_size, in_dim, out_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -922,7 +906,7 @@ bool nimcp_omni_gpu_predict_precision(
         batch_size, in_dim, out_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1039,7 +1023,7 @@ bool nimcp_omni_gpu_hopfield_retrieve(
     float beta = state->hopfield->beta;
 
     /* Copy query to working buffer */
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         state->hopfield->output->data,
         query->data,
         pattern_dim * sizeof(float),
@@ -1079,7 +1063,7 @@ bool nimcp_omni_gpu_hopfield_retrieve(
     }
 
     /* Copy result to output */
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         output->data,
         state->hopfield->output->data,
         pattern_dim * sizeof(float),
@@ -1097,8 +1081,8 @@ bool nimcp_omni_gpu_hopfield_energy(
     if (!nimcp_omni_gpu_is_valid(state) || !pattern || !energy) return false;
 
     float* d_energy;
-    CUDA_CHECK(cudaMalloc(&d_energy, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_energy, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_energy, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_energy, 0, sizeof(float)));
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     size_t shared_mem = BLOCK_SIZE * sizeof(float);
@@ -1112,7 +1096,7 @@ bool nimcp_omni_gpu_hopfield_energy(
         state->hopfield->beta
     );
 
-    CUDA_CHECK(cudaMemcpy(energy, d_energy, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(energy, d_energy, sizeof(float), cudaMemcpyDeviceToHost));
     cudaFree(d_energy);
 
     return true;
@@ -1202,7 +1186,7 @@ bool nimcp_omni_gpu_hierarchy_compute_errors(nimcp_omni_gpu_state_t* state)
         );
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1227,7 +1211,7 @@ bool nimcp_omni_gpu_hierarchy_update_states(
         );
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1254,7 +1238,7 @@ bool nimcp_omni_gpu_hierarchy_update_precision(nimcp_omni_gpu_state_t* state)
         );
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1265,8 +1249,8 @@ bool nimcp_omni_gpu_hierarchy_free_energy(
     if (!nimcp_omni_gpu_is_valid(state) || !free_energy) return false;
 
     float* d_total_fe;
-    CUDA_CHECK(cudaMalloc(&d_total_fe, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_total_fe, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_total_fe, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_total_fe, 0, sizeof(float)));
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     size_t shared_mem = BLOCK_SIZE * sizeof(float);
@@ -1284,7 +1268,7 @@ bool nimcp_omni_gpu_hierarchy_free_energy(
         );
     }
 
-    CUDA_CHECK(cudaMemcpy(free_energy, d_total_fe, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(free_energy, d_total_fe, sizeof(float), cudaMemcpyDeviceToHost));
     cudaFree(d_total_fe);
 
     return true;
@@ -1391,7 +1375,7 @@ bool nimcp_omni_gpu_replay_forward_sweep(
         state->replay->state_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1417,7 +1401,7 @@ bool nimcp_omni_gpu_replay_backward_sweep(
         state->replay->state_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1436,8 +1420,8 @@ bool nimcp_omni_gpu_compute_free_energy(
     }
 
     float* d_fe;
-    CUDA_CHECK(cudaMalloc(&d_fe, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_fe, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_fe, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_fe, 0, sizeof(float)));
 
     uint32_t dim = prediction_error->dims[0];
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
@@ -1452,7 +1436,7 @@ bool nimcp_omni_gpu_compute_free_energy(
         dim
     );
 
-    CUDA_CHECK(cudaMemcpy(total_fe, d_fe, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(total_fe, d_fe, sizeof(float), cudaMemcpyDeviceToHost));
     cudaFree(d_fe);
 
     return true;
@@ -1480,7 +1464,7 @@ bool nimcp_omni_gpu_compute_fe_gradient(
         dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

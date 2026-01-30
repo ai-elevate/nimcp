@@ -25,15 +25,8 @@
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 #include "utils/logging/nimcp_logging.h"
-
-/* Include CUDA error checking macros inline to avoid path issues */
-#define QMC_CUDA_CHECK(call) do { \
-    cudaError_t _err = (call); \
-    if (_err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(_err)); \
-        return false; \
-    } \
-} while(0)
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "QMC_GPU"
 

@@ -22,16 +22,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/quantum/nimcp_quantum_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "QUANTUM_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -298,7 +292,7 @@ bool nimcp_quantum_state_hadamard_all(
         state->n_states,
         norm_factor);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -321,7 +315,7 @@ bool nimcp_quantum_apply_gate(
         gate_real[1][0], gate_imag[1][0], gate_real[1][1], gate_imag[1][1],
         state->n_states);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -338,7 +332,7 @@ bool nimcp_quantum_compute_probabilities(
         (float*)probabilities->data,
         state->n_states);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -352,7 +346,7 @@ bool nimcp_quantum_measure(
 
     // Compute probabilities
     float* d_probs;
-    CUDA_CHECK(cudaMalloc(&d_probs, state->n_states * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_probs, state->n_states * sizeof(float)));
 
     kernel_compute_probabilities<<<GRID_SIZE(state->n_states), BLOCK_SIZE>>>(
         (const float*)state->amplitudes_real->data,
@@ -362,7 +356,7 @@ bool nimcp_quantum_measure(
 
     // Copy probabilities to host for sampling
     float* h_probs = (float*)malloc(state->n_states * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_probs, d_probs, state->n_states * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_probs, d_probs, state->n_states * sizeof(float), cudaMemcpyDeviceToHost));
 
     // Generate random number and sample
     float r = (float)rand() / (float)RAND_MAX;
@@ -393,7 +387,7 @@ bool nimcp_quantum_measure(
 
     // Set measured state amplitude to 1
     float one = 1.0f;
-    CUDA_CHECK(cudaMemcpy((float*)state->amplitudes_real->data + result, &one, sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy((float*)state->amplitudes_real->data + result, &one, sizeof(float), cudaMemcpyHostToDevice));
 
     cudaFree(d_probs);
     free(h_probs);
@@ -482,8 +476,8 @@ bool nimcp_grover_oracle(
 
     // Copy marked states to GPU
     uint32_t* d_marked;
-    CUDA_CHECK(cudaMalloc(&d_marked, n_marked * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemcpy(d_marked, marked_states, n_marked * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_marked, n_marked * sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_marked, marked_states, n_marked * sizeof(uint32_t), cudaMemcpyHostToDevice));
 
     kernel_grover_oracle<<<GRID_SIZE(state->n_states), BLOCK_SIZE>>>(
         (float*)state->amplitudes_real->data,
@@ -491,7 +485,7 @@ bool nimcp_grover_oracle(
         d_marked, n_marked,
         state->n_states);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     cudaFree(d_marked);
 
     return true;
@@ -506,10 +500,10 @@ bool nimcp_grover_diffusion(
     // Compute mean amplitude
     float* d_mean_real;
     float* d_mean_imag;
-    CUDA_CHECK(cudaMalloc(&d_mean_real, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_mean_imag, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_mean_real, 0, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_mean_imag, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean_real, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean_imag, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_mean_real, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_mean_imag, 0, sizeof(float)));
 
     kernel_compute_mean<<<GRID_SIZE(state->n_states), BLOCK_SIZE, 2 * BLOCK_SIZE * sizeof(float)>>>(
         (const float*)state->amplitudes_real->data,
@@ -518,8 +512,8 @@ bool nimcp_grover_diffusion(
         state->n_states);
 
     float h_mean_real, h_mean_imag;
-    CUDA_CHECK(cudaMemcpy(&h_mean_real, d_mean_real, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_mean_imag, d_mean_imag, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_mean_real, d_mean_real, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_mean_imag, d_mean_imag, sizeof(float), cudaMemcpyDeviceToHost));
 
     h_mean_real /= (float)state->n_states;
     h_mean_imag /= (float)state->n_states;
@@ -531,7 +525,7 @@ bool nimcp_grover_diffusion(
         h_mean_real, h_mean_imag,
         state->n_states);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     cudaFree(d_mean_real);
     cudaFree(d_mean_imag);
@@ -771,10 +765,10 @@ bool nimcp_ising_model_set_params(
 {
     if (!ctx || !model || !J || !h) return false;
 
-    CUDA_CHECK(cudaMemcpy(model->J->data, J,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(model->J->data, J,
                           model->n_spins * model->n_spins * sizeof(float),
                           cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(model->h->data, h,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(model->h->data, h,
                           model->n_spins * sizeof(float),
                           cudaMemcpyHostToDevice));
 
@@ -844,7 +838,7 @@ bool nimcp_annealing_step(
         d_rng_states,
         model->n_spins);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -944,7 +938,7 @@ bool nimcp_vqc_init_params(
         h_params[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;  // Small random values
     }
 
-    CUDA_CHECK(cudaMemcpy(params->data, h_params, n_params * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(params->data, h_params, n_params * sizeof(float), cudaMemcpyHostToDevice));
     free(h_params);
 
     return true;
@@ -959,7 +953,7 @@ bool nimcp_vqc_apply_layer(
 
     // Copy parameters to host for gate construction
     float* h_params = (float*)malloc(state->n_qubits * 3 * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_params, params->data, state->n_qubits * 3 * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_params, params->data, state->n_qubits * 3 * sizeof(float), cudaMemcpyDeviceToHost));
 
     // Apply Rx, Ry, Rz to each qubit
     for (uint32_t q = 0; q < state->n_qubits; q++) {
@@ -1019,7 +1013,7 @@ bool nimcp_vqc_parameter_shift_gradient(
     LOG_WARN("Parameter shift gradient not fully implemented - returning zeros");
 
     // Zero out gradients for now
-    CUDA_CHECK(cudaMemset(gradients->data, 0, gradients->numel * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(gradients->data, 0, gradients->numel * sizeof(float)));
 
     return true;
 }

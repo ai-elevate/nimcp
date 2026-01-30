@@ -20,16 +20,10 @@
 
 #include "gpu/reasoning/nimcp_reasoning_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "REASONING_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -207,7 +201,7 @@ bool nimcp_gpu_logic_evaluate(
         params->fuzzy_or_type,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -283,7 +277,7 @@ bool nimcp_gpu_logic_propagate(
             params->fuzzy_or_type,
             n);
 
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -355,7 +349,7 @@ bool nimcp_gpu_fuzzy_logic(
         params->fuzzy_or_type,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -454,7 +448,7 @@ bool nimcp_gpu_rule_match(
         wm->n_facts,
         rules->pattern_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -520,7 +514,7 @@ bool nimcp_gpu_rule_fire(
         wm->n_facts,
         wm->fact_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -617,7 +611,7 @@ bool nimcp_gpu_rule_learning(
         learning_rate,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -636,7 +630,7 @@ bool nimcp_gpu_csp_init(
     }
 
     // Copy initial domains
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         state->domains->data,
         initial_domains->data,
         initial_domains->numel * sizeof(float),
@@ -715,11 +709,11 @@ bool nimcp_gpu_csp_arc_consistency(
     }
 
     bool* d_changed;
-    CUDA_CHECK(cudaMalloc(&d_changed, sizeof(bool)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_changed, sizeof(bool)));
 
     for (int iter = 0; iter < params->max_iterations; iter++) {
         bool h_changed = false;
-        CUDA_CHECK(cudaMemcpy(d_changed, &h_changed, sizeof(bool), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_changed, &h_changed, sizeof(bool), cudaMemcpyHostToDevice));
 
         dim3 grid(state->n_variables);
         dim3 block(state->domain_size);
@@ -732,14 +726,14 @@ bool nimcp_gpu_csp_arc_consistency(
             state->domain_size,
             d_changed);
 
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
-        CUDA_CHECK(cudaMemcpy(&h_changed, d_changed, sizeof(bool), cudaMemcpyDeviceToHost));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_changed, d_changed, sizeof(bool), cudaMemcpyDeviceToHost));
 
         if (!h_changed) break;
     }
 
-    CUDA_CHECK(cudaFree(d_changed));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_changed));
     return true;
 }
 
@@ -790,7 +784,7 @@ bool nimcp_gpu_csp_check_constraints(
     }
 
     // Reset violations count
-    CUDA_CHECK(cudaMemset(n_violations->data, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(n_violations->data, 0, sizeof(float)));
 
     dim3 grid(state->n_variables);
     dim3 block(state->n_variables);
@@ -802,7 +796,7 @@ bool nimcp_gpu_csp_check_constraints(
         state->n_variables,
         state->domain_size);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -932,7 +926,7 @@ bool nimcp_gpu_analogy_structural_similarity(
         state->target_size,
         feature_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1014,7 +1008,7 @@ bool nimcp_gpu_analogy_transfer(
         state->target_size,
         inf_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1104,7 +1098,7 @@ bool nimcp_gpu_causal_propagate(
         params->noise_level,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1153,7 +1147,7 @@ bool nimcp_gpu_causal_intervene(
         intervention_value,
         state->n_nodes);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Propagate effects
     for (int i = 0; i < params->max_path_length; i++) {
@@ -1183,7 +1177,7 @@ bool nimcp_gpu_causal_counterfactual(
     // 3. Prediction: propagate with noise
 
     // Copy factual values
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         state->node_values->data,
         factual_values->data,
         state->n_nodes * sizeof(float),
@@ -1193,7 +1187,7 @@ bool nimcp_gpu_causal_counterfactual(
     nimcp_gpu_causal_intervene(ctx, state, intervention_node, counterfactual_value, params);
 
     // Copy result
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         counterfactual_outcome->data,
         state->node_values->data,
         state->n_nodes * sizeof(float),
@@ -1219,7 +1213,7 @@ bool nimcp_gpu_causal_identify_effect(
     // Full version would use backdoor/frontdoor adjustment
 
     float* h_weights = (float*)malloc(state->n_nodes * state->n_nodes * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
         h_weights,
         state->edge_weights->data,
         state->n_nodes * state->n_nodes * sizeof(float),

@@ -1481,6 +1481,7 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
         case NIMCP_BACKEND_CUDA:
             if (!g_cuda_backend.initialized) {
                 LOG_ERROR("Cannot switch to CUDA backend - not available");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA backend switch failed - not available");
                 return false;
             }
             g_active_backend = &g_cuda_backend;
@@ -1489,6 +1490,7 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
         case NIMCP_BACKEND_ROCM:
             if (!g_rocm_backend.initialized) {
                 LOG_ERROR("Cannot switch to ROCm backend - not available");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "ROCm backend switch failed - not available");
                 return false;
             }
             g_active_backend = &g_rocm_backend;
@@ -1497,6 +1499,7 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
         case NIMCP_BACKEND_OPENCL:
             if (!g_opencl_backend.initialized) {
                 LOG_ERROR("Cannot switch to OpenCL backend - not available");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "OpenCL backend switch failed - not available");
                 return false;
             }
             g_active_backend = &g_opencl_backend;
@@ -1521,6 +1524,7 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
 
         default:
             LOG_ERROR("Unknown backend type: %d", type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Unknown GPU backend type: %d", type);
             return false;
     }
 

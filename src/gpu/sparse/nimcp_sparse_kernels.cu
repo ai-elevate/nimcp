@@ -33,28 +33,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/sparse/nimcp_sparse_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SPARSE_GPU"
-
-//=============================================================================
-// CUDA/cuSPARSE Error Checking
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_PTR(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define CUSPARSE_CHECK(call) do { \
     cusparseStatus_t status = call; \
@@ -613,8 +595,8 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
 
     // Count non-zeros
     int* d_nnz_count;
-    CUDA_CHECK_PTR(cudaMalloc(&d_nnz_count, sizeof(int)));
-    CUDA_CHECK_PTR(cudaMemset(d_nnz_count, 0, sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_nnz_count, sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemset(d_nnz_count, 0, sizeof(int)));
 
     int grid = GRID_SIZE(total);
     grid = min(grid, 256);
@@ -622,7 +604,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
         (const float*)dense->data, d_nnz_count, threshold, total);
 
     int nnz;
-    CUDA_CHECK_PTR(cudaMemcpy(&nnz, d_nnz_count, sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(&nnz, d_nnz_count, sizeof(int), cudaMemcpyDeviceToHost));
     cudaFree(d_nnz_count);
 
     if (nnz == 0) {
@@ -648,10 +630,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     int* d_col_indices;
     int* d_nnz_counter;
 
-    CUDA_CHECK_PTR(cudaMalloc(&d_values, nnz * sizeof(float)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_nnz_counter, sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_values, nnz * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_nnz_counter, sizeof(int)));
     cudaMemset(d_nnz_counter, 0, sizeof(int));
 
     // Extract COO data
@@ -696,7 +678,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     else if (format == SPARSE_FORMAT_CSR) {
         // Convert COO to CSR
         int* d_row_ptrs;
-        CUDA_CHECK_PTR(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
 
         // Use cuSPARSE for COO to CSR conversion
         size_t bufferSize = 0;
@@ -729,7 +711,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
         sparse->format = SPARSE_FORMAT_CSR;
 
         int* d_row_ptrs;
-        CUDA_CHECK_PTR(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
 
         cusparseXcoo2csr(ctx->cusparse_handle,
             d_row_indices, nnz, rows,
@@ -783,9 +765,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
     int* d_row_indices;
     int* d_col_indices;
 
-    CUDA_CHECK_PTR(cudaMalloc(&d_values, nnz * sizeof(float)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_values, nnz * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
 
     cudaMemcpy(d_values, values, nnz * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_row_indices, row_idx, nnz * sizeof(int), cudaMemcpyHostToDevice);
@@ -807,7 +789,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
     else if (target_format == SPARSE_FORMAT_CSR) {
         // Convert to CSR
         int* d_row_ptrs;
-        CUDA_CHECK_PTR(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
 
         // Sort COO by row first
         thrust::device_ptr<int> row_ptr(d_row_indices);
@@ -871,9 +853,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_csr(
     sparse->owns_data = true;
 
     // Allocate and copy CSR data to device
-    CUDA_CHECK_PTR(cudaMalloc(&sparse->data.csr.values, nnz * sizeof(float)));
-    CUDA_CHECK_PTR(cudaMalloc(&sparse->data.csr.col_indices, nnz * sizeof(int)));
-    CUDA_CHECK_PTR(cudaMalloc(&sparse->data.csr.row_ptrs, (rows + 1) * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.values, nnz * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.col_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.row_ptrs, (rows + 1) * sizeof(int)));
 
     cudaMemcpy(sparse->data.csr.values, values, nnz * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(sparse->data.csr.col_indices, col_indices, nnz * sizeof(int), cudaMemcpyHostToDevice);
@@ -1491,7 +1473,7 @@ bool nimcp_sparse_attention(
         (float*)output->data,
         batch, heads, seq_len, head_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1518,7 +1500,7 @@ bool nimcp_sparse_apply_mask(
         mask->data.csr.col_indices,
         rows, cols);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1544,7 +1526,7 @@ bool nimcp_sparse_grad_accumulate(
         (float*)dense_grad->data,
         rows, cols);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1958,9 +1940,9 @@ bool nimcp_sparse_to_host_csr(
     int nnz = tensor->data.csr.nnz;
     int rows = tensor->data.csr.rows;
 
-    CUDA_CHECK(cudaMemcpy(values, tensor->data.csr.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(col_indices, tensor->data.csr.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(row_ptrs, tensor->data.csr.row_ptrs, (rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(values, tensor->data.csr.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(col_indices, tensor->data.csr.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(row_ptrs, tensor->data.csr.row_ptrs, (rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
 
     return true;
 }
@@ -1976,9 +1958,9 @@ bool nimcp_sparse_to_host_coo(
 
     int nnz = tensor->data.coo.nnz;
 
-    CUDA_CHECK(cudaMemcpy(values, tensor->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(row_indices, tensor->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(col_indices, tensor->data.coo.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(values, tensor->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(row_indices, tensor->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(col_indices, tensor->data.coo.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
 
     return true;
 }

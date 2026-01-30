@@ -19,13 +19,20 @@
 #include "gpu/backend/nimcp_kernel_backend.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 
+// Use immune-integrated CUDA check for kernel error checks (logs to immune, returns error code)
 #define CUDA_CHECK_KERNEL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
+                __FILE__, __LINE__, #call, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA kernel error: %s - %s", #call, _err_str); \
         return NIMCP_KERNEL_ERROR_DEVICE; \
     } \
 } while(0)

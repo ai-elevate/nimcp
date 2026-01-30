@@ -39,28 +39,15 @@
 
 #include "gpu/inference/nimcp_int8_inference.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 //-----------------------------------------------------------------------------
-// Helper Macros
+// Helper Macros - Using immune-integrated versions
 //-----------------------------------------------------------------------------
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = (call); \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, \
-                  cudaGetErrorString(err)); \
-        return -1; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_BOOL(call) do { \
-    cudaError_t err = (call); \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, \
-                  cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
+#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
+#define CUDA_CHECK_BOOL(call) NIMCP_CUDA_CHECK_IMMUNE_BOOL(call)
 
 //-----------------------------------------------------------------------------
 // Device Helper Functions

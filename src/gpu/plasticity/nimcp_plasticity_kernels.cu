@@ -29,24 +29,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/plasticity/nimcp_plasticity_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "PLASTICITY_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -212,7 +198,7 @@ bool nimcp_gpu_stdp_update_traces(
         params->tau_minus,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -307,7 +293,7 @@ bool nimcp_gpu_stdp_apply(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -403,7 +389,7 @@ bool nimcp_gpu_stdp_apply_modulated(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -486,7 +472,7 @@ bool nimcp_gpu_triplet_stdp_update_traces(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -582,7 +568,7 @@ bool nimcp_gpu_triplet_stdp_apply(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -697,7 +683,7 @@ bool nimcp_gpu_bcm_update_threshold(
         params->max_threshold,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -761,7 +747,7 @@ bool nimcp_gpu_bcm_apply(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -826,7 +812,7 @@ bool nimcp_gpu_bcm_apply_modulated(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -927,7 +913,7 @@ bool nimcp_gpu_homeostatic_update_rates(
         params->rate_tau,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -984,7 +970,7 @@ bool nimcp_gpu_homeostatic_compute_scaling(
         params->max_scale,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1039,7 +1025,7 @@ bool nimcp_gpu_homeostatic_apply_scaling(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1096,7 +1082,7 @@ bool nimcp_gpu_intrinsic_plasticity_update(
         params->max_threshold,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1199,7 +1185,7 @@ bool nimcp_gpu_stp_update(
         p->tau_F,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1251,7 +1237,7 @@ bool nimcp_gpu_stp_process_spikes(
         state->params.U,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1290,7 +1276,7 @@ bool nimcp_gpu_stp_get_modulation(
         (float*)modulation->data,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1332,7 +1318,7 @@ bool nimcp_gpu_stp_apply(
         (float*)effective_weights->data,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1453,7 +1439,7 @@ bool nimcp_gpu_calcium_update(
         p->buffer_capacity,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1523,7 +1509,7 @@ bool nimcp_gpu_calcium_nmda_influx(
         p->max_conc,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1588,7 +1574,7 @@ bool nimcp_gpu_calcium_compute_learning_rate(
         p->omega_power,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1643,7 +1629,7 @@ bool nimcp_gpu_calcium_apply_plasticity(
         n_pre,
         n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1697,7 +1683,7 @@ bool nimcp_gpu_calcium_mg_block(
         (float*)mg_block->data,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1760,7 +1746,7 @@ bool nimcp_gpu_calcium_get_regime(
         params->threshold_sat,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

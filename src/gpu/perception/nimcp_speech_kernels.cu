@@ -20,16 +20,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SPEECH_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 
@@ -89,7 +83,7 @@ bool nimcp_gpu_pitch_detect(
 
     // Compute autocorrelation
     float* d_autocorr;
-    CUDA_CHECK(cudaMalloc(&d_autocorr, max_lag * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_autocorr, max_lag * sizeof(float)));
 
     kernel_autocorrelation<<<(max_lag + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_autocorr, signal_len, max_lag);
@@ -101,7 +95,7 @@ bool nimcp_gpu_pitch_detect(
         1, max_lag, min_lag, max_lag);
 
     cudaFree(d_autocorr);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -146,7 +140,7 @@ bool nimcp_gpu_vad(
 
     // Compute frame energy
     float* d_energy;
-    CUDA_CHECK(cudaMalloc(&d_energy, n_frames * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_energy, n_frames * sizeof(float)));
 
     kernel_frame_energy<<<(n_frames + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_energy, n_frames, frame_len, hop_len);
@@ -156,7 +150,7 @@ bool nimcp_gpu_vad(
         d_energy, (float*)vad->data, n_frames, threshold);
 
     cudaFree(d_energy);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -840,14 +834,14 @@ bool nimcp_gpu_formant_extract(
 
     // Apply pre-emphasis
     float* d_preemph;
-    CUDA_CHECK(cudaMalloc(&d_preemph, signal_len * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_preemph, signal_len * sizeof(float)));
 
     kernel_preemphasis<<<(signal_len + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_preemph, signal_len, 0.97f);
 
     // Compute LPC autocorrelation
     float* d_autocorr;
-    CUDA_CHECK(cudaMalloc(&d_autocorr, (lpc_order + 1) * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_autocorr, (lpc_order + 1) * sizeof(float)));
 
     kernel_lpc_autocorr<<<1, lpc_order + 1>>>(d_preemph, d_autocorr, signal_len, lpc_order);
 
@@ -855,9 +849,9 @@ bool nimcp_gpu_formant_extract(
     float* d_lpc;
     float* d_reflection;
     float* d_error;
-    CUDA_CHECK(cudaMalloc(&d_lpc, lpc_order * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_reflection, lpc_order * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_error, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_lpc, lpc_order * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_reflection, lpc_order * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_error, sizeof(float)));
 
     // Run Levinson-Durbin (single frame for now)
     kernel_levinson_durbin_single<<<1, 1>>>(
@@ -868,14 +862,14 @@ bool nimcp_gpu_formant_extract(
     float* d_roots_imag;
     float* d_freqs;
     float* d_bandwidths;
-    CUDA_CHECK(cudaMalloc(&d_roots_real, lpc_order * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_roots_imag, lpc_order * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_freqs, n_formants * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_bandwidths, n_formants * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_roots_real, lpc_order * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_roots_imag, lpc_order * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_freqs, n_formants * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_bandwidths, n_formants * sizeof(float)));
 
     // Build companion matrix and find roots via Durand-Kerner method
     float* d_companion;
-    CUDA_CHECK(cudaMalloc(&d_companion, lpc_order * lpc_order * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_companion, lpc_order * lpc_order * sizeof(float)));
     kernel_build_companion_matrix_single<<<1, lpc_order>>>(d_lpc, d_companion, lpc_order);
     kernel_durand_kerner_roots<<<1, lpc_order>>>(d_lpc, d_roots_real, d_roots_imag, lpc_order, 100);
 
@@ -896,7 +890,7 @@ bool nimcp_gpu_formant_extract(
     cudaFree(d_bandwidths);
     cudaFree(d_companion);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -944,7 +938,7 @@ bool nimcp_gpu_delta_features(
         (const float*)features->data, (float*)delta->data,
         n_frames, n_features, context);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

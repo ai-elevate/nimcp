@@ -16,6 +16,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #include <string.h>
 #include <math.h>
@@ -37,23 +39,6 @@
 #define GPU_BLOCK_SIZE 16
 #define MAX_FEATURES_PER_AREA 256
 #define FEATURE_THRESHOLD 0.1f
-
-/*=============================================================================
- * HELPER MACROS
- *===========================================================================*/
-
-#ifdef NIMCP_ENABLE_CUDA
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = (call); \
-    if (err != cudaSuccess) { \
-        LOG_ERROR(OCCIPITAL_GPU_LOG_MODULE, "CUDA error: %s at %s:%d", \
-                  cudaGetErrorString(err), __FILE__, __LINE__); \
-        return false; \
-    } \
-} while(0)
-#else
-#define CUDA_CHECK(call) (void)0
-#endif
 
 /*=============================================================================
  * INTERNAL HELPERS

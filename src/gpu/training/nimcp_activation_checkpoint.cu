@@ -23,24 +23,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/training/nimcp_activation_checkpoint.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "ACTIVATION_CKPT"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 //=============================================================================
 // Internal Helper Functions

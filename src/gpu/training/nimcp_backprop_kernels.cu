@@ -21,24 +21,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/training/nimcp_training_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "BACKPROP_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUBLAS_CHECK(call) do { \
-    cublasStatus_t status = call; \
-    if (status != CUBLAS_STATUS_SUCCESS) { \
-        LOG_ERROR("cuBLAS error: %d", status); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -72,7 +58,7 @@ bool nimcp_gpu_backward_linear(
     // grad_input = grad_output @ weight
     // (batch, in_features) = (batch, out_features) @ (out_features, in_features)
     if (grad_input) {
-        CUBLAS_CHECK(cublasSgemm(handle,
+        NIMCP_CUBLAS_CHECK_IMMUNE(cublasSgemm(handle,
             CUBLAS_OP_N, CUBLAS_OP_N,
             in_features, batch, out_features,
             &alpha,
@@ -85,7 +71,7 @@ bool nimcp_gpu_backward_linear(
     // grad_weight = grad_output^T @ x
     // (out_features, in_features) = (out_features, batch) @ (batch, in_features)
     if (grad_weight) {
-        CUBLAS_CHECK(cublasSgemm(handle,
+        NIMCP_CUBLAS_CHECK_IMMUNE(cublasSgemm(handle,
             CUBLAS_OP_N, CUBLAS_OP_T,
             in_features, out_features, batch,
             &alpha,
@@ -100,15 +86,15 @@ bool nimcp_gpu_backward_linear(
         // Sum across batch dimension
         // Use cublas gemv with ones vector
         float* ones;
-        CUDA_CHECK(cudaMalloc(&ones, batch * sizeof(float)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&ones, batch * sizeof(float)));
 
         // Fill with ones
         float one = 1.0f;
         for (int i = 0; i < batch; i++) {
-            CUDA_CHECK(cudaMemcpy(ones + i, &one, sizeof(float), cudaMemcpyHostToDevice));
+            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ones + i, &one, sizeof(float), cudaMemcpyHostToDevice));
         }
 
-        CUBLAS_CHECK(cublasSgemv(handle,
+        NIMCP_CUBLAS_CHECK_IMMUNE(cublasSgemv(handle,
             CUBLAS_OP_T,
             batch, out_features,
             &alpha,
@@ -147,7 +133,7 @@ bool nimcp_gpu_backward_relu(
     kernel_backward_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const float*)x->data, (const float*)grad_output->data,
         (float*)grad_input->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -172,7 +158,7 @@ bool nimcp_gpu_backward_sigmoid(
     kernel_backward_sigmoid<<<GRID_SIZE(output->numel), BLOCK_SIZE>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, output->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -197,7 +183,7 @@ bool nimcp_gpu_backward_tanh(
     kernel_backward_tanh<<<GRID_SIZE(output->numel), BLOCK_SIZE>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, output->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -236,7 +222,7 @@ bool nimcp_gpu_backward_gelu(
     kernel_backward_gelu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const float*)x->data, (const float*)grad_output->data,
         (float*)grad_input->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -301,7 +287,7 @@ bool nimcp_gpu_backward_softmax(
     kernel_backward_softmax<<<batch_size, BLOCK_SIZE>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, batch_size, num_classes);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -405,7 +391,7 @@ bool nimcp_gpu_backward_batchnorm(
         grad_gamma ? (float*)grad_gamma->data : NULL,
         grad_beta ? (float*)grad_beta->data : NULL,
         eps, batch_size, features);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -460,7 +446,7 @@ bool nimcp_gpu_backward_dropout(
     kernel_backward_dropout<<<GRID_SIZE(mask->numel), BLOCK_SIZE>>>(
         (const float*)mask->data, (const float*)grad_output->data,
         (float*)grad_input->data, scale, mask->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

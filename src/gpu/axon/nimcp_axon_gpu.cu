@@ -37,24 +37,10 @@
 #include "gpu/axon/nimcp_axon_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "AXON_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -589,7 +575,7 @@ extern "C" void axon_gpu_destroy(axon_gpu_context_t* ctx) {
 
 extern "C" bool axon_gpu_synchronize(axon_gpu_context_t* ctx) {
     if (!ctx) return false;
-    CUDA_CHECK(cudaStreamSynchronize((cudaStream_t)ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize((cudaStream_t)ctx->stream));
     return true;
 }
 
@@ -686,17 +672,17 @@ extern "C" bool axon_gpu_upload_properties(
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     // Upload diameters
-    CUDA_CHECK(cudaMemcpyAsync(ctx->diameters->data, diameters,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->diameters->data, diameters,
                                num_axons * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
 
     // Upload lengths
-    CUDA_CHECK(cudaMemcpyAsync(ctx->lengths->data, lengths,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->lengths->data, lengths,
                                num_axons * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
 
     // Upload myelination [num_axons * num_segments]
-    CUDA_CHECK(cudaMemcpyAsync(ctx->myelination->data, myelination,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->myelination->data, myelination,
                                num_axons * ctx->num_segments * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
 
@@ -708,12 +694,12 @@ extern "C" bool axon_gpu_upload_properties(
             seg_lengths_host[a * ctx->num_segments + s] = seg_len;
         }
     }
-    CUDA_CHECK(cudaMemcpyAsync(ctx->seg_lengths->data, seg_lengths_host,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->seg_lengths->data, seg_lengths_host,
                                num_axons * ctx->num_segments * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
     free(seg_lengths_host);
 
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
 
     // Update velocities based on new properties
     return axon_gpu_update_velocities(ctx);
@@ -730,15 +716,15 @@ extern "C" bool axon_gpu_upload_connectivity(
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->source_neurons->data, source_neurons,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->source_neurons->data, source_neurons,
                                num_axons * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, stream));
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->target_synapses->data, target_synapses,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->target_synapses->data, target_synapses,
                                num_axons * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, stream));
 
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
     return true;
 }
 
@@ -782,15 +768,15 @@ extern "C" bool axon_gpu_initiate_spikes(
 
     // Upload indices
     uint32_t* d_indices;
-    CUDA_CHECK(cudaMallocAsync(&d_indices, count * sizeof(uint32_t), stream));
-    CUDA_CHECK(cudaMemcpyAsync(d_indices, axon_indices, count * sizeof(uint32_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_indices, count * sizeof(uint32_t), stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_indices, axon_indices, count * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, stream));
 
     // Upload amplitudes if provided
     float* d_amplitudes = NULL;
     if (amplitudes) {
-        CUDA_CHECK(cudaMallocAsync(&d_amplitudes, count * sizeof(float), stream));
-        CUDA_CHECK(cudaMemcpyAsync(d_amplitudes, amplitudes, count * sizeof(float),
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_amplitudes, count * sizeof(float), stream));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_amplitudes, amplitudes, count * sizeof(float),
                                    cudaMemcpyHostToDevice, stream));
     }
 
@@ -810,9 +796,9 @@ extern "C" bool axon_gpu_initiate_spikes(
     );
 
     // Cleanup
-    CUDA_CHECK(cudaFreeAsync(d_indices, stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_indices, stream));
     if (d_amplitudes) {
-        CUDA_CHECK(cudaFreeAsync(d_amplitudes, stream));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_amplitudes, stream));
     }
 
     ctx->total_spikes += count;
@@ -833,9 +819,9 @@ extern "C" bool axon_gpu_check_arrivals(
     // Allocate device memory for results
     uint32_t* d_arrived;
     uint32_t* d_counter;
-    CUDA_CHECK(cudaMallocAsync(&d_arrived, max_arrivals * sizeof(uint32_t), stream));
-    CUDA_CHECK(cudaMallocAsync(&d_counter, sizeof(uint32_t), stream));
-    CUDA_CHECK(cudaMemsetAsync(d_counter, 0, sizeof(uint32_t), stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_arrived, max_arrivals * sizeof(uint32_t), stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_counter, sizeof(uint32_t), stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(d_counter, 0, sizeof(uint32_t), stream));
 
     kernel_check_arrivals<<<GRID_SIZE(ctx->num_axons), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->signals->data,
@@ -850,18 +836,18 @@ extern "C" bool axon_gpu_check_arrivals(
     );
 
     // Download results
-    CUDA_CHECK(cudaMemcpyAsync(arrival_count, d_counter, sizeof(uint32_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(arrival_count, d_counter, sizeof(uint32_t),
                                cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
 
     if (*arrival_count > 0) {
         uint32_t copy_count = (*arrival_count > max_arrivals) ? max_arrivals : *arrival_count;
-        CUDA_CHECK(cudaMemcpy(arrived_indices, d_arrived, copy_count * sizeof(uint32_t),
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(arrived_indices, d_arrived, copy_count * sizeof(uint32_t),
                               cudaMemcpyDeviceToHost));
     }
 
-    CUDA_CHECK(cudaFreeAsync(d_arrived, stream));
-    CUDA_CHECK(cudaFreeAsync(d_counter, stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_arrived, stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_counter, stream));
 
     return true;
 }
@@ -936,7 +922,7 @@ extern "C" bool axon_gpu_update_myelination(
     // Update myelination on host side and re-upload
     // (For simplicity - could be optimized with a kernel)
     float* h_myelination = (float*)malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_myelination, ctx->myelination->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_myelination, ctx->myelination->data,
                           ctx->num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost));
 
@@ -958,7 +944,7 @@ extern "C" bool axon_gpu_update_myelination(
         }
     }
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->myelination->data, h_myelination,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->myelination->data, h_myelination,
                                ctx->num_axons * ctx->num_segments * sizeof(float),
                                cudaMemcpyHostToDevice, stream));
     free(h_myelination);
@@ -999,7 +985,7 @@ extern "C" bool axon_gpu_get_available(
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     uint8_t* d_available;
-    CUDA_CHECK(cudaMallocAsync(&d_available, num_axons * sizeof(uint8_t), stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_available, num_axons * sizeof(uint8_t), stream));
 
     kernel_get_available<<<GRID_SIZE(num_axons), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->refractory->data,
@@ -1007,10 +993,10 @@ extern "C" bool axon_gpu_get_available(
         num_axons
     );
 
-    CUDA_CHECK(cudaMemcpyAsync(available, d_available, num_axons * sizeof(uint8_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(available, d_available, num_axons * sizeof(uint8_t),
                                cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
-    CUDA_CHECK(cudaFreeAsync(d_available, stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_available, stream));
 
     return true;
 }
@@ -1086,7 +1072,7 @@ extern "C" bool axon_gpu_get_velocities(
     if (!ctx || !velocities) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    CUDA_CHECK(cudaMemcpy(velocities, ctx->velocities->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(velocities, ctx->velocities->data,
                           num_axons * sizeof(float), cudaMemcpyDeviceToHost));
     return true;
 }
@@ -1101,7 +1087,7 @@ extern "C" bool axon_gpu_get_delays(
 
     // Calculate total delay from segment delays (last segment cumulative)
     float* h_seg_delays = (float*)malloc(num_axons * ctx->num_segments * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_seg_delays, ctx->seg_delays->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_seg_delays, ctx->seg_delays->data,
                           num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost));
 
@@ -1121,7 +1107,7 @@ extern "C" bool axon_gpu_get_myelination(
     if (!ctx || !myelination) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    CUDA_CHECK(cudaMemcpy(myelination, ctx->myelination->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(myelination, ctx->myelination->data,
                           num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost));
     return true;
@@ -1135,7 +1121,7 @@ extern "C" bool axon_gpu_get_signals(
     if (!ctx || !signals) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    CUDA_CHECK(cudaMemcpy(signals, ctx->signals->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(signals, ctx->signals->data,
                           num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost));
     return true;

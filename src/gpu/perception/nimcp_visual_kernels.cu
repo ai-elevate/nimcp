@@ -20,16 +20,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "VISUAL_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 16
 
@@ -111,7 +105,7 @@ bool nimcp_gpu_gabor_filterbank(
 
     // Create Gabor filter bank
     float* d_filters;
-    CUDA_CHECK(cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)));
 
     dim3 filter_block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 filter_grid((kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -134,7 +128,7 @@ bool nimcp_gpu_gabor_filterbank(
         batch, height, width, n_orientations, kernel_size);
 
     cudaFree(d_filters);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -898,8 +892,8 @@ bool nimcp_gpu_sobel_edge_detect(
     float* d_grad_y = NULL;
 
     if (direction) {
-        CUDA_CHECK(cudaMalloc(&d_grad_x, height * width * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&d_grad_y, height * width * sizeof(float)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_grad_x, height * width * sizeof(float)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_grad_y, height * width * sizeof(float)));
     }
 
     kernel_sobel_edge<<<grid, block>>>(
@@ -916,7 +910,7 @@ bool nimcp_gpu_sobel_edge_detect(
     if (d_grad_x) cudaFree(d_grad_x);
     if (d_grad_y) cudaFree(d_grad_y);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -964,9 +958,9 @@ bool nimcp_gpu_optical_flow_lk(
     // Allocate gradient buffers
     float *d_Ix, *d_Iy, *d_It;
     size_t size = height * width * sizeof(float);
-    CUDA_CHECK(cudaMalloc(&d_Ix, size));
-    CUDA_CHECK(cudaMalloc(&d_Iy, size));
-    CUDA_CHECK(cudaMalloc(&d_It, size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_Ix, size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_Iy, size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_It, size));
 
     dim3 block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -983,7 +977,7 @@ bool nimcp_gpu_optical_flow_lk(
     cudaFree(d_Iy);
     cudaFree(d_It);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1036,7 +1030,7 @@ bool nimcp_gpu_color_opponent(
         (float*)yb->data, (float*)luminance->data,
         height, width);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

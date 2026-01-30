@@ -29,36 +29,10 @@
 
 #include "gpu/swarm/nimcp_swarm_memory_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SWARM_MEMORY_GPU"
-
-//=============================================================================
-// CUDA Error Checking Macros
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -1736,7 +1710,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store(
         (int)buf->action_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Update sum-tree if PER enabled
     if (buf->use_per && buf->sum_tree) {
@@ -1746,7 +1720,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store(
             buf->max_priority,
             (int)buf->capacity
         );
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     // Update indices
@@ -1800,7 +1774,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store_batch(
         (int)buf->action_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Update indices
     buf->write_idx = (buf->write_idx + batch_size) % buf->capacity;
@@ -1864,7 +1838,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             (int)batch_size,
             (int)buf->capacity
         );
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     } else {
         // Uniform random sampling
         int* host_indices = (int*)malloc(batch_size * sizeof(int));
@@ -1923,7 +1897,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
         (int)batch_size
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Compute IS weights for PER
     if (buf->use_per) {
@@ -1942,7 +1916,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             (int)buf->current_size,
             (int)batch_size
         );
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         // Find max weight for normalization
         float max_weight = 1.0f;  // Simplified - in production use reduction kernel
@@ -1952,7 +1926,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             max_weight,
             (int)batch_size
         );
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     } else {
         // Uniform weights
         nimcp_gpu_ones(mem->ctx, batch->weights);
@@ -1992,7 +1966,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_priorities(
         (int)batch_size,
         (int)buf->capacity
     );
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Rebuild sum-tree to propagate changes
     int tree_size = 2 * buf->capacity - 1;
@@ -2002,7 +1976,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_priorities(
         (float*)buf->sum_tree->data,
         tree_size
     );
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Update max priority
     float max_td = 0.0f;  // Would need reduction kernel for accuracy
@@ -2047,7 +2021,7 @@ extern "C" bool nimcp_swarm_memory_gpu_consolidate(
                 mem->consolidation_params.min_strength,
                 (int)n
             );
-            CUDA_CHECK(cudaGetLastError());
+            NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         }
     }
 
@@ -2076,7 +2050,7 @@ extern "C" bool nimcp_swarm_memory_gpu_decay(
         (int)n
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2107,7 +2081,7 @@ extern "C" bool nimcp_swarm_memory_gpu_selective_consolidate(
         (int)memory_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2137,7 +2111,7 @@ extern "C" bool nimcp_swarm_memory_gpu_hippocampal_compress(
         (int)compressed_len
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2169,7 +2143,7 @@ extern "C" bool nimcp_swarm_memory_gpu_systems_consolidation(
         (int)batch_size
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2272,7 +2246,7 @@ extern "C" bool nimcp_swarm_memory_gpu_aggregate_memories(
         memory_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2297,7 +2271,7 @@ extern "C" bool nimcp_swarm_memory_gpu_federated_average(
         knowledge_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2324,7 +2298,7 @@ extern "C" bool nimcp_swarm_memory_gpu_broadcast(
         memory_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2351,7 +2325,7 @@ extern "C" bool nimcp_swarm_memory_gpu_conflict_resolution(
         memory_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2406,7 +2380,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store_episode(
         (int)max_len
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Update episode length
     float len_f = (float)episode_len;
@@ -2448,7 +2422,7 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_similarity(
         (int)state_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2479,7 +2453,7 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_replay(
         (int)state_dim
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2506,7 +2480,7 @@ extern "C" bool nimcp_swarm_memory_gpu_build_sum_tree(
         (const float*)priorities->data,
         (int)capacity
     );
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Build internal nodes level by level (bottom-up)
     int tree_size = 2 * capacity - 1;
@@ -2520,7 +2494,7 @@ extern "C" bool nimcp_swarm_memory_gpu_build_sum_tree(
             level_start,
             level_size
         );
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         if (level_start == 0) break;
         level_size = (level_start + 1) / 2;
@@ -2548,7 +2522,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_sum_tree(
         (int)capacity
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -2575,7 +2549,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample_sum_tree(
         (int)capacity
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

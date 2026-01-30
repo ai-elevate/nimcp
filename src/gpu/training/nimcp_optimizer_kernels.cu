@@ -21,16 +21,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/training/nimcp_training_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "OPTIMIZER_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -187,7 +181,7 @@ bool nimcp_gpu_optim_sgd(
             state->lr, state->weight_decay, n);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     state->t++;
     return true;
 }
@@ -248,7 +242,7 @@ bool nimcp_gpu_optim_adam(
         state->lr, state->beta1, state->beta2, state->eps,
         state->weight_decay, state->t, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -306,7 +300,7 @@ bool nimcp_gpu_optim_adamw(
         state->lr, state->beta1, state->beta2, state->eps,
         state->weight_decay, state->t, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -353,7 +347,7 @@ bool nimcp_gpu_optim_rmsprop(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->beta2, state->eps, state->weight_decay, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     state->t++;
     return true;
 }
@@ -400,7 +394,7 @@ bool nimcp_gpu_optim_adagrad(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->eps, state->weight_decay, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     state->t++;
     return true;
 }

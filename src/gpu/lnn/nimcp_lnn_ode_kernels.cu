@@ -24,24 +24,10 @@
 #include "gpu/lnn/nimcp_lnn_ode_gpu.h"
 #include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "LNN_ODE_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -167,7 +153,7 @@ bool nimcp_gpu_lnn_euler_step_batched(
         (float*)batch_state->x->data,  // In-place update
         dt, batch_size, n_neurons);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     batch_state->current_time += dt;
 
     return true;
@@ -252,7 +238,7 @@ bool nimcp_gpu_lnn_compute_ltc_derivative_batched(
         batch_size, n_neurons, n_inputs,
         (int)activation);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -333,7 +319,7 @@ bool nimcp_gpu_lnn_update_tau_batched(
         tau_min, tau_max,
         batch_size, n_neurons, n_inputs);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -404,46 +390,46 @@ bool nimcp_gpu_lnn_rk4_step_batched(
     nimcp_gpu_tensor_t* x_temp = cache->x_temp;
 
     // Save original state
-    CUDA_CHECK(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
                           n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k1 = f(t, x)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // x_temp = x + 0.5 * dt * k1
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k1->data,
         0.5f * dt, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k2 = f(t + dt/2, x + dt/2 * k1)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // x_temp = x + 0.5 * dt * k2
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k2->data,
         0.5f * dt, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k3 = f(t + dt/2, x + dt/2 * k2)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // x_temp = x + dt * k3
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k3->data,
         dt, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k4 = f(t + dt, x + dt * k3)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // x_new = x + (dt/6) * (k1 + 2*k2 + 2*k3 + k4)
     kernel_rk4_combine_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -452,7 +438,7 @@ bool nimcp_gpu_lnn_rk4_step_batched(
         (const float*)k3->data, (const float*)k4->data,
         dt, (float*)batch_state->x->data, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     batch_state->current_time += dt;
 
     return true;
@@ -620,7 +606,7 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     nimcp_gpu_tensor_t* x_temp = cache->x_temp;
 
     // Save original state
-    CUDA_CHECK(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
                           n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // DOPRI5 coefficients (Butcher tableau)
@@ -634,16 +620,16 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     // k1 = f(t, x)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k2 = f(t + c2*dt, x + dt*a21*k1)
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k1->data,
         dt * a21, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k3 = f(t + c3*dt, x + dt*(a31*k1 + a32*k2))
     // x_temp = x + dt*(a31*k1 + a32*k2)
@@ -653,10 +639,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)x_temp->data, (const float*)k2->data,
         dt * a32, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k4 = f(t + c4*dt, x + dt*(a41*k1 + a42*k2 + a43*k3))
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -668,10 +654,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)x_temp->data, (const float*)k3->data,
         dt * a43, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k5 = f(t + c5*dt, x + dt*(a51*k1 + a52*k2 + a53*k3 + a54*k4))
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -686,10 +672,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)x_temp->data, (const float*)k4->data,
         dt * a54, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k5->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k5->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // k6 = f(t + dt, x + dt*(a61*k1 + a62*k2 + a63*k3 + a64*k4 + a65*k5))
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -707,10 +693,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)x_temp->data, (const float*)k5->data,
         dt * a65, (float*)x_temp->data, n);
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k6->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k6->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // Compute 5th order solution
     kernel_dopri5_solution_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -720,10 +706,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
         dt, (float*)x_temp->data, n);
 
     // k7 = f(t + dt, x_5th) for FSAL
-    CUDA_CHECK(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    CUDA_CHECK(cudaMemcpy(k7->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(k7->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
 
     // Compute error estimate
     kernel_dopri5_error_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -733,7 +719,7 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
 
     // Compute max error per sample
     float* d_max_error;
-    CUDA_CHECK(cudaMalloc(&d_max_error, batch_size * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_max_error, batch_size * sizeof(float)));
 
     kernel_max_error_per_sample<<<batch_size, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)batch_state->error->data, d_max_error, batch_size, n_neurons);
@@ -750,7 +736,7 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     }
 
     cudaFree(d_max_error);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     batch_state->current_time += dt;
 
     return true;
@@ -939,7 +925,7 @@ bool nimcp_gpu_lnn_reservoir_init(
 
     // TODO: Rescale to target spectral radius (requires power iteration)
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     LOG_DEBUG("Initialized reservoir with %u neurons, sparsity %.2f", reservoir_size, sparsity);
 
     return true;
@@ -1011,7 +997,7 @@ bool nimcp_gpu_lnn_reservoir_step(
         (const float*)reservoir->leaking_rate->data,
         batch_size, reservoir_size, n_inputs);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Compute output if requested: y = W_out * x
     if (output && reservoir->W_output) {
@@ -1179,7 +1165,7 @@ bool nimcp_gpu_lnn_apply_wiring_batched(
         (float*)output->data,
         batch_size, n_neurons);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1387,7 +1373,7 @@ bool nimcp_gpu_lnn_compute_spectral_radius(
     nimcp_gpu_tensor_destroy(v);
     nimcp_gpu_tensor_destroy(v_new);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1494,7 +1480,7 @@ bool nimcp_lnn_ode_batch_state_reset(
     nimcp_gpu_zeros(ctx, state->error);
     state->current_time = 0.0f;
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1631,13 +1617,13 @@ bool nimcp_gpu_lnn_check_stability(
     uint32_t* d_has_inf;
     float* d_max_abs;
 
-    CUDA_CHECK(cudaMalloc(&d_has_nan, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_has_inf, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_max_abs, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_has_nan, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_has_inf, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_max_abs, sizeof(float)));
 
-    CUDA_CHECK(cudaMemset(d_has_nan, 0, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemset(d_has_inf, 0, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemset(d_max_abs, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_has_nan, 0, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_has_inf, 0, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_max_abs, 0, sizeof(float)));
 
     kernel_check_numerical_issues<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)batch_state->x->data, d_has_nan, d_has_inf, d_max_abs, n);
@@ -1645,9 +1631,9 @@ bool nimcp_gpu_lnn_check_stability(
     uint32_t h_has_nan, h_has_inf;
     float h_max_abs;
 
-    CUDA_CHECK(cudaMemcpy(&h_has_nan, d_has_nan, sizeof(uint32_t), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_has_inf, d_has_inf, sizeof(uint32_t), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_max_abs, d_max_abs, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_has_nan, d_has_nan, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_has_inf, d_has_inf, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_max_abs, d_max_abs, sizeof(float), cudaMemcpyDeviceToHost));
 
     *has_nan = (h_has_nan > 0);
     *has_inf = (h_has_inf > 0);
@@ -1657,7 +1643,7 @@ bool nimcp_gpu_lnn_check_stability(
     cudaFree(d_has_inf);
     cudaFree(d_max_abs);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1727,26 +1713,26 @@ bool nimcp_gpu_lnn_compute_state_stats(
     float* d_min;
     float* d_max;
 
-    CUDA_CHECK(cudaMalloc(&d_sum, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_sum_sq, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_min, sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_max, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sum_sq, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_min, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_max, sizeof(float)));
 
-    CUDA_CHECK(cudaMemset(d_sum, 0, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_sum_sq, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_sum_sq, 0, sizeof(float)));
     float init_min = FLT_MAX, init_max = -FLT_MAX;
-    CUDA_CHECK(cudaMemcpy(d_min, &init_min, sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_max, &init_max, sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_min, &init_min, sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_max, &init_max, sizeof(float), cudaMemcpyHostToDevice));
 
     size_t shared_mem = 4 * BLOCK_SIZE * sizeof(float);
     kernel_compute_stats_phase1<<<GRID_SIZE(n), BLOCK_SIZE, shared_mem>>>(
         (const float*)batch_state->x->data, d_sum, d_sum_sq, d_min, d_max, n);
 
     float h_sum, h_sum_sq, h_min, h_max;
-    CUDA_CHECK(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_sum_sq, d_sum_sq, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_sum_sq, d_sum_sq, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost));
 
     *mean = h_sum / (float)n;
     float variance = (h_sum_sq / (float)n) - (*mean * *mean);
@@ -1759,7 +1745,7 @@ bool nimcp_gpu_lnn_compute_state_stats(
     cudaFree(d_min);
     cudaFree(d_max);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

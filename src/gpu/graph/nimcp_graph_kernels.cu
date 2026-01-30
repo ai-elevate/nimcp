@@ -22,37 +22,17 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/graph/nimcp_graph_gpu.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 //=============================================================================
-// CUDA Error Checking
+// CUDA Error Checking - Using immune-integrated macros
 //=============================================================================
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "[NIMCP Graph GPU] CUDA error at %s:%d: %s\n", \
-                __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_ERR(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "[NIMCP Graph GPU] CUDA error at %s:%d: %s\n", \
-                __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NIMCP_ERROR_GPU; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_PTR(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "[NIMCP Graph GPU] CUDA error at %s:%d: %s\n", \
-                __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
+// Map legacy macros to immune-integrated versions
+#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
+#define CUDA_CHECK_ERR(call) NIMCP_CUDA_CHECK_IMMUNE_ERROR(call)
+#define CUDA_CHECK_PTR(call) NIMCP_CUDA_CHECK_IMMUNE_NULL(call)
 
 //=============================================================================
 // Kernel Configuration

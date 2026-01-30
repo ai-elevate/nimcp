@@ -27,24 +27,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/cognitive/nimcp_jepa_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "JEPA_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -697,8 +683,8 @@ bool nimcp_jepa_gpu_predictor_upload_weights(
     size_t weight_bytes = layer->in_dim * layer->out_dim * sizeof(float);
     size_t bias_bytes = layer->out_dim * sizeof(float);
 
-    CUDA_CHECK(cudaMemcpy(layer->weights->data, weights, weight_bytes, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(layer->bias->data, bias, bias_bytes, cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(layer->weights->data, weights, weight_bytes, cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(layer->bias->data, bias, bias_bytes, cudaMemcpyHostToDevice));
 
     return true;
 }
@@ -717,8 +703,8 @@ bool nimcp_jepa_gpu_predictor_download_weights(
     size_t weight_bytes = layer->in_dim * layer->out_dim * sizeof(float);
     size_t bias_bytes = layer->out_dim * sizeof(float);
 
-    CUDA_CHECK(cudaMemcpy(weights, layer->weights->data, weight_bytes, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(bias, layer->bias->data, bias_bytes, cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(weights, layer->weights->data, weight_bytes, cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(bias, layer->bias->data, bias_bytes, cudaMemcpyDeviceToHost));
 
     return true;
 }
@@ -797,7 +783,7 @@ bool nimcp_jepa_gpu_forward_conditioned(
         first_layer->out_dim,
         first_layer->activation);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Continue with remaining layers
     const nimcp_gpu_tensor_t* current_input = predictor->activations[0];
@@ -819,7 +805,7 @@ bool nimcp_jepa_gpu_forward_conditioned(
             layer->out_dim,
             layer->activation);
 
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         current_input = output;
     }
 
@@ -918,7 +904,7 @@ bool nimcp_jepa_gpu_inverse_infer(
         inverse->state_dim,
         inverse->action_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -946,7 +932,7 @@ bool nimcp_jepa_gpu_apply_mask(
         broadcast,
         dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -972,7 +958,7 @@ bool nimcp_jepa_gpu_generate_block_mask(
         mask_ratio,
         seed);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -992,7 +978,7 @@ bool nimcp_jepa_gpu_apply_soft_mask(
         (const float*)weights->data,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1013,7 +999,7 @@ bool nimcp_jepa_gpu_compute_loss(
     int num_blocks = GRID_SIZE(n);
 
     float* d_partial_sums;
-    CUDA_CHECK(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
 
     kernel_jepa_mse_loss<<<num_blocks, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)prediction->data,
@@ -1022,11 +1008,11 @@ bool nimcp_jepa_gpu_compute_loss(
         d_partial_sums,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Reduce partial sums on host
     float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
 
     double total = 0.0;
     for (int i = 0; i < num_blocks; i++) {
@@ -1053,7 +1039,7 @@ bool nimcp_jepa_gpu_compute_precision_loss(
     int num_blocks = GRID_SIZE(n);
 
     float* d_partial_sums;
-    CUDA_CHECK(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
 
     kernel_jepa_precision_loss<<<num_blocks, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)prediction->data,
@@ -1062,10 +1048,10 @@ bool nimcp_jepa_gpu_compute_precision_loss(
         d_partial_sums,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
 
     double total = 0.0;
     for (int i = 0; i < num_blocks; i++) {
@@ -1107,7 +1093,7 @@ bool nimcp_jepa_gpu_backward(
                 (const float*)pre_act->data,
                 n,
                 layer->activation);
-            CUDA_CHECK(cudaGetLastError());
+            NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
             current_grad = pre_act;
         }
 
@@ -1121,7 +1107,7 @@ bool nimcp_jepa_gpu_backward(
             batch_size,
             layer->in_dim,
             layer->out_dim);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         // Compute input gradient for next layer
         if (i > 0 || grad_input) {
@@ -1136,7 +1122,7 @@ bool nimcp_jepa_gpu_backward(
                     batch_size,
                     layer->in_dim,
                     layer->out_dim);
-                CUDA_CHECK(cudaGetLastError());
+                NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
                 current_grad = next_grad;
             }
         }
@@ -1163,7 +1149,7 @@ bool nimcp_jepa_gpu_update_weights(
             learning_rate,
             weight_decay,
             weight_n);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         // Update biases (no weight decay)
         kernel_jepa_weight_update<<<GRID_SIZE(layer->out_dim), BLOCK_SIZE>>>(
@@ -1172,7 +1158,7 @@ bool nimcp_jepa_gpu_update_weights(
             learning_rate,
             0.0f,
             layer->out_dim);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         // Zero gradients
         nimcp_gpu_zeros(predictor->ctx, layer->grad_w);
@@ -1212,7 +1198,7 @@ bool nimcp_jepa_gpu_upload_latent(
     if (!ctx || !cpu_data || !gpu_latent) return false;
 
     size_t n = (gpu_latent->numel < num_elements) ? gpu_latent->numel : num_elements;
-    CUDA_CHECK(cudaMemcpy(gpu_latent->data, cpu_data, n * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(gpu_latent->data, cpu_data, n * sizeof(float), cudaMemcpyHostToDevice));
     return true;
 }
 

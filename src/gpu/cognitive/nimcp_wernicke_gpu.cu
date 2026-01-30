@@ -37,24 +37,10 @@
 #include "gpu/cognitive/nimcp_wernicke_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "WERNICKE_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
@@ -659,7 +645,7 @@ extern "C" bool wernicke_gpu_upload_phoneme_embeddings(
     }
 
     size_t size = num_phonemes * embed_dim * sizeof(float);
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_phoneme_embeddings, embeddings, size,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_phoneme_embeddings, embeddings, size,
                                cudaMemcpyHostToDevice, ctx->stream));
 
     ctx->num_phonemes = num_phonemes;
@@ -690,15 +676,15 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
     float* d_spectral;
-    CUDA_CHECK(cudaMalloc(&d_spectral, frames_size));
-    CUDA_CHECK(cudaMemcpyAsync(d_spectral, frames, frames_size,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectral, frames_size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_spectral, frames, frames_size,
                                cudaMemcpyHostToDevice, ctx->stream));
 
     // Allocate outputs
     uint8_t* d_phoneme_ids;
     float* d_confidences;
-    CUDA_CHECK(cudaMalloc(&d_phoneme_ids, num_frames * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_confidences, num_frames * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_phoneme_ids, num_frames * sizeof(uint8_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_confidences, num_frames * sizeof(float)));
 
     // Compute similarities
     dim3 grid(num_frames, 1, 1);
@@ -734,11 +720,11 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     uint8_t* h_phoneme_ids = (uint8_t*)malloc(num_frames);
     float* h_confidences = (float*)malloc(num_frames * sizeof(float));
 
-    CUDA_CHECK(cudaMemcpyAsync(h_phoneme_ids, d_phoneme_ids, num_frames,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(h_phoneme_ids, d_phoneme_ids, num_frames,
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaMemcpyAsync(h_confidences, d_confidences, num_frames * sizeof(float),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(h_confidences, d_confidences, num_frames * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     // Populate results
     for (uint32_t i = 0; i < num_frames; i++) {
@@ -772,8 +758,8 @@ extern "C" bool wernicke_gpu_compute_posteriors(
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
     float* d_spectral;
-    CUDA_CHECK(cudaMalloc(&d_spectral, frames_size));
-    CUDA_CHECK(cudaMemcpyAsync(d_spectral, frames, frames_size,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectral, frames_size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_spectral, frames, frames_size,
                                cudaMemcpyHostToDevice, ctx->stream));
 
     // Compute similarities
@@ -799,9 +785,9 @@ extern "C" bool wernicke_gpu_compute_posteriors(
 
     // Copy back
     size_t post_size = num_frames * ctx->num_phonemes * sizeof(float);
-    CUDA_CHECK(cudaMemcpyAsync(posteriors, ctx->d_temp_posteriors, post_size,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(posteriors, ctx->d_temp_posteriors, post_size,
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     cudaFree(d_spectral);
 
@@ -824,7 +810,7 @@ extern "C" bool wernicke_gpu_upload_lexicon(
     }
 
     size_t size = count * sizeof(wernicke_gpu_lexical_entry_t);
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_lexicon, entries, size,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_lexicon, entries, size,
                                cudaMemcpyHostToDevice, ctx->stream));
 
     ctx->lexicon_size = count;
@@ -887,9 +873,9 @@ extern "C" bool wernicke_gpu_recognize_words(
     // Find recognized words
     wernicke_gpu_word_candidate_t* d_candidates;
     uint32_t* d_count;
-    CUDA_CHECK(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)));
-    CUDA_CHECK(cudaMalloc(&d_count, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_count, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream));
 
     kernel_check_recognition<<<GRID_SIZE(ctx->lexicon_size), BLOCK_SIZE, 0, ctx->stream>>>(
         ctx->d_lexicon,
@@ -902,18 +888,18 @@ extern "C" bool wernicke_gpu_recognize_words(
     );
 
     // Copy results
-    CUDA_CHECK(cudaMemcpyAsync(num_candidates, d_count, sizeof(uint32_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(num_candidates, d_count, sizeof(uint32_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     uint32_t actual_count = *num_candidates;
     if (actual_count > max_candidates) actual_count = max_candidates;
 
     if (actual_count > 0) {
-        CUDA_CHECK(cudaMemcpyAsync(candidates, d_candidates,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(candidates, d_candidates,
                                    actual_count * sizeof(wernicke_gpu_word_candidate_t),
                                    cudaMemcpyDeviceToHost, ctx->stream));
-        CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     }
 
     cudaFree(d_candidates);
@@ -974,9 +960,9 @@ extern "C" bool wernicke_gpu_get_cohort(
     // Get current cohort members (partial matches count too)
     wernicke_gpu_word_candidate_t* d_candidates;
     uint32_t* d_count;
-    CUDA_CHECK(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)));
-    CUDA_CHECK(cudaMalloc(&d_count, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_count, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream));
 
     kernel_check_recognition<<<GRID_SIZE(ctx->lexicon_size), BLOCK_SIZE, 0, ctx->stream>>>(
         ctx->d_lexicon,
@@ -988,19 +974,19 @@ extern "C" bool wernicke_gpu_get_cohort(
         max_candidates
     );
 
-    CUDA_CHECK(cudaMemcpyAsync(num_candidates, d_count, sizeof(uint32_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(num_candidates, d_count, sizeof(uint32_t),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     uint32_t actual = *num_candidates;
     if (actual > max_candidates) actual = max_candidates;
     *num_candidates = actual;
 
     if (actual > 0) {
-        CUDA_CHECK(cudaMemcpyAsync(candidates, d_candidates,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(candidates, d_candidates,
                                    actual * sizeof(wernicke_gpu_word_candidate_t),
                                    cudaMemcpyDeviceToHost, ctx->stream));
-        CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
     }
 
     cudaFree(d_candidates);
@@ -1012,9 +998,9 @@ extern "C" bool wernicke_gpu_get_cohort(
 extern "C" bool wernicke_gpu_reset_cohort(wernicke_gpu_context_t* ctx) {
     if (!ctx) return false;
 
-    CUDA_CHECK(cudaMemsetAsync(ctx->d_cohort_activations, 0,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(ctx->d_cohort_activations, 0,
                                ctx->lexicon_size * sizeof(float), ctx->stream));
-    CUDA_CHECK(cudaMemsetAsync(ctx->d_cohort_matched, 0,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(ctx->d_cohort_matched, 0,
                                ctx->lexicon_size * sizeof(uint8_t), ctx->stream));
     ctx->cohort_phoneme_pos = 0;
 
@@ -1052,18 +1038,18 @@ extern "C" bool wernicke_gpu_upload_semantic_network(
         if (ctx->d_adjacency_weights) cudaFree(ctx->d_adjacency_weights);
 
         size_t adj_size = num_concepts * max_neighbors;
-        CUDA_CHECK(cudaMalloc(&ctx->d_adjacency_matrix, adj_size * sizeof(uint32_t)));
-        CUDA_CHECK(cudaMalloc(&ctx->d_adjacency_weights, adj_size * sizeof(float)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&ctx->d_adjacency_matrix, adj_size * sizeof(uint32_t)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&ctx->d_adjacency_weights, adj_size * sizeof(float)));
         ctx->max_neighbors = max_neighbors;
     }
 
     // Upload if provided
     if (adjacency_matrix && weights) {
         size_t adj_size = num_concepts * max_neighbors;
-        CUDA_CHECK(cudaMemcpyAsync(ctx->d_adjacency_matrix, adjacency_matrix,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_adjacency_matrix, adjacency_matrix,
                                    adj_size * sizeof(uint32_t),
                                    cudaMemcpyHostToDevice, ctx->stream));
-        CUDA_CHECK(cudaMemcpyAsync(ctx->d_adjacency_weights, weights,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_adjacency_weights, weights,
                                    adj_size * sizeof(float),
                                    cudaMemcpyHostToDevice, ctx->stream));
     }
@@ -1092,11 +1078,11 @@ extern "C" bool wernicke_gpu_spread_activation(
     // Upload seeds
     uint32_t* d_seeds;
     float* d_seed_acts;
-    CUDA_CHECK(cudaMalloc(&d_seeds, num_seeds * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_seed_acts, num_seeds * sizeof(float)));
-    CUDA_CHECK(cudaMemcpyAsync(d_seeds, seed_concepts, num_seeds * sizeof(uint32_t),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_seeds, num_seeds * sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_seed_acts, num_seeds * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_seeds, seed_concepts, num_seeds * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, ctx->stream));
-    CUDA_CHECK(cudaMemcpyAsync(d_seed_acts, seed_activations, num_seeds * sizeof(float),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_seed_acts, seed_activations, num_seeds * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
     // Initialize activations
@@ -1110,7 +1096,7 @@ extern "C" bool wernicke_gpu_spread_activation(
 
     // Allocate second buffer for ping-pong
     float* d_new_activations;
-    CUDA_CHECK(cudaMalloc(&d_new_activations, ctx->num_concepts * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_new_activations, ctx->num_concepts * sizeof(float)));
 
     // Spreading iterations
     float* current = ctx->d_concept_activations;
@@ -1135,9 +1121,9 @@ extern "C" bool wernicke_gpu_spread_activation(
 
     // Copy final activations to host and sort
     float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
-    CUDA_CHECK(cudaMemcpyAsync(h_activations, current, ctx->num_concepts * sizeof(float),
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(h_activations, current, ctx->num_concepts * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     // Find top activated (simple CPU sort for now)
     typedef struct { uint32_t id; float activation; } act_pair_t;
@@ -1198,10 +1184,10 @@ extern "C" bool wernicke_gpu_get_top_activated(
 
     // Copy activations to host
     float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
-    CUDA_CHECK(cudaMemcpyAsync(h_activations, ctx->d_concept_activations,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(h_activations, ctx->d_concept_activations,
                                ctx->num_concepts * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream));
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     // Find top-k
     typedef struct { uint32_t id; float activation; } act_pair_t;
@@ -1286,7 +1272,7 @@ extern "C" bool wernicke_gpu_wm_push(
 
     if (to_push == 0) return true;  // WM full
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_phonemes + ctx->wm_count,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_phonemes + ctx->wm_count,
                                phonemes, to_push,
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -1294,7 +1280,7 @@ extern "C" bool wernicke_gpu_wm_push(
     float* h_ones = (float*)malloc(to_push * sizeof(float));
     for (uint32_t i = 0; i < to_push; i++) h_ones[i] = 1.0f;
 
-    CUDA_CHECK(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count,
                                h_ones, to_push * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream));
 
@@ -1319,16 +1305,16 @@ extern "C" bool wernicke_gpu_wm_get_contents(
 
     if (to_get == 0) return true;
 
-    CUDA_CHECK(cudaMemcpyAsync(phonemes, ctx->d_wm_phonemes, to_get,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(phonemes, ctx->d_wm_phonemes, to_get,
                                cudaMemcpyDeviceToHost, ctx->stream));
 
     if (activations) {
-        CUDA_CHECK(cudaMemcpyAsync(activations, ctx->d_wm_activations,
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(activations, ctx->d_wm_activations,
                                    to_get * sizeof(float),
                                    cudaMemcpyDeviceToHost, ctx->stream));
     }
 
-    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
 
     return true;
 }
@@ -1354,7 +1340,7 @@ extern "C" bool wernicke_gpu_wm_apply_decay(
     if (!ctx || ctx->wm_count == 0) return true;
 
     uint8_t* d_remove;
-    CUDA_CHECK(cudaMalloc(&d_remove, ctx->wm_count * sizeof(uint8_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_remove, ctx->wm_count * sizeof(uint8_t)));
 
     kernel_wm_decay<<<GRID_SIZE(ctx->wm_count), BLOCK_SIZE, 0, ctx->stream>>>(
         ctx->d_wm_activations,

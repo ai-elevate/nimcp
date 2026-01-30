@@ -21,16 +21,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/snn/nimcp_snn_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SNN_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -187,7 +181,7 @@ bool nimcp_gpu_lif_forward(
             p->dt, p->hard_reset, n);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -275,7 +269,7 @@ bool nimcp_gpu_surrogate_gradient(
         (const float*)v->data, v_thresh, (float*)grad->data,
         (int)surrogate_type, beta, v->numel);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -331,7 +325,7 @@ bool nimcp_gpu_lif_backward(
         (const float*)grad_output->data, (float*)grad_input->data,
         (int)surrogate_type, beta, state->v->numel);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -432,7 +426,7 @@ bool nimcp_gpu_izhikevich_forward(
         (float*)state->spikes->data, (const float*)input->data,
         p->a, p->b, p->c, p->d, p->v_thresh, p->dt, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -536,7 +530,7 @@ bool nimcp_gpu_adex_forward(
         p->tau_mem, p->tau_w, p->v_thresh, p->v_reset, p->v_rest,
         p->v_rheo, p->delta_T, p->a, p->b, p->dt, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -575,7 +569,7 @@ bool nimcp_gpu_spike_propagate(
         (const float*)spikes->data, (const float*)weights->data,
         (float*)output->data, n_pre, n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -626,7 +620,7 @@ bool nimcp_gpu_spike_propagate_sparse(
         (const float*)weights->data, (float*)output->data,
         n_pre, n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     cudaFree(d_indices);
     return true;
 }
@@ -655,7 +649,7 @@ bool nimcp_gpu_eligibility_trace_update(
     kernel_eligibility_trace_update<<<GRID_SIZE(trace->numel), BLOCK_SIZE>>>(
         (float*)trace->data, (const float*)spikes->data, decay, trace->numel);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -716,7 +710,7 @@ bool nimcp_gpu_stdp_pair(
         params->A_plus, params->A_minus, params->w_max, params->w_min,
         n_pre, n_post);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -965,7 +959,7 @@ bool nimcp_gpu_stdp_triplet(
         A2_plus, A2_minus, A3_plus, A3_minus,
         params->w_min, params->w_max, learning_rate);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1009,7 +1003,7 @@ bool nimcp_gpu_triplet_stdp_full(
         params->A3_plus, params->A3_minus,
         params->w_min, params->w_max, learning_rate);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Step 2: Update presynaptic traces
     kernel_update_presynaptic_traces<<<GRID_SIZE(n_pre), BLOCK_SIZE>>>(
@@ -1017,7 +1011,7 @@ bool nimcp_gpu_triplet_stdp_full(
         (const float*)pre_spikes->data, n_pre,
         params->tau_plus, params->tau_x, dt);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Step 3: Update postsynaptic traces
     kernel_update_postsynaptic_traces<<<GRID_SIZE(n_post), BLOCK_SIZE>>>(
@@ -1025,7 +1019,7 @@ bool nimcp_gpu_triplet_stdp_full(
         (const float*)post_spikes->data, n_post,
         params->tau_minus, params->tau_y, dt);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     return true;
 }
@@ -1399,7 +1393,7 @@ bool nimcp_gpu_snn_reset_state(
     kernel_reset_state<<<GRID_SIZE(v->numel), BLOCK_SIZE>>>(
         (float*)v->data, v_rest, v->numel);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1443,14 +1437,14 @@ bool nimcp_gpu_spike_count(
     if (!ctx || !spikes || !count) return false;
 
     uint32_t* d_count;
-    CUDA_CHECK(cudaMalloc(&d_count, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemset(d_count, 0, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_count, sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_count, 0, sizeof(uint32_t)));
 
     int grid = GRID_SIZE(spikes->numel);
     grid = grid > 256 ? 256 : grid;
     kernel_spike_count<<<grid, BLOCK_SIZE>>>((const float*)spikes->data, d_count, spikes->numel);
 
-    CUDA_CHECK(cudaMemcpy(count, d_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(count, d_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
     cudaFree(d_count);
 
     return true;

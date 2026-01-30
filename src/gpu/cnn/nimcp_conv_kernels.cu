@@ -20,16 +20,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/cnn/nimcp_cnn_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "CNN_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 16
 #define WARP_SIZE 32
@@ -116,7 +110,7 @@ bool nimcp_gpu_conv2d_forward(
         params->pad_h, params->pad_w, params->dilation_h, params->dilation_w,
         params->groups);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -299,7 +293,7 @@ bool nimcp_gpu_im2col(
     kernel_im2col<<<grid_size, block_size>>>(
         input, col, C, H, W, kH, kW, sH, sW, pH, pW, outH, outW);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -321,7 +315,7 @@ bool nimcp_gpu_col2im(
     kernel_col2im<<<grid_size, block_size>>>(
         col, input_grad, C, H, W, kH, kW, sH, sW, pH, pW, outH, outW);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -439,7 +433,7 @@ int nimcp_conv2d_backward(
     // Compute bias gradient: sum over N and spatial dimensions
     kernel_conv2d_bias_grad<<<C_out, 256>>>(
         output_grad, bwd_ctx->d_bias_grad, N, C_out, spatial_out);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // For each sample in batch
     for (int n = 0; n < N; n++) {
@@ -460,7 +454,7 @@ int nimcp_conv2d_backward(
         kernel_conv2d_weight_grad<<<wg_blocks, 256>>>(
             bwd_ctx->d_col_buffer, grad_out_n,
             bwd_ctx->d_weight_grad, C_out, col_size, spatial_out);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
         // 3. Input gradient: col_grad = W^T @ grad_out
         //    Then col2im to get input gradient
@@ -614,7 +608,7 @@ bool nimcp_gpu_conv1d_forward(
         bias ? (const float*)bias->data : NULL, (float*)output->data,
         N, C_in, L_in, C_out, L_out, kernel_size, stride, padding, dilation);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -679,7 +673,7 @@ bool nimcp_gpu_depthwise_conv2d(
         N, C, H_in, W_in, H_out, W_out,
         kH, kW, params->stride_h, params->stride_w, params->pad_h, params->pad_w);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -749,7 +743,7 @@ bool nimcp_gpu_maxpool2d(
         params->kernel_h, params->kernel_w, params->stride_h, params->stride_w,
         params->pad_h, params->pad_w);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -808,7 +802,7 @@ bool nimcp_gpu_avgpool2d(
         params->kernel_h, params->kernel_w, params->stride_h, params->stride_w,
         params->pad_h, params->pad_w);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -843,7 +837,7 @@ bool nimcp_gpu_global_avgpool(
     kernel_global_avgpool<<<grid, block>>>(
         (const float*)input->data, (float*)output->data, N, C, HW);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -950,7 +944,7 @@ bool nimcp_gpu_batchnorm2d_forward(
         running_var ? (float*)running_var->data : NULL,
         N, C, HW, momentum, eps, training);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1260,7 +1254,7 @@ bool nimcp_gpu_layernorm_forward(
         NULL, NULL,  // Don't cache mean/var
         batch_size, normalized_size, eps);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1591,7 +1585,7 @@ bool nimcp_gpu_instancenorm_forward(
         NULL, NULL,  // Don't cache mean/var
         N, C, HW, eps, affine);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

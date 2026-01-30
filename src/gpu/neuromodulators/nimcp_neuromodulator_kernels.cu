@@ -28,24 +28,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/neuromodulators/nimcp_neuromodulator_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "NEUROMODULATOR_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -191,7 +177,7 @@ bool nimcp_gpu_dopamine_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -250,7 +236,7 @@ bool nimcp_gpu_dopamine_compute_rpe(
         params->phasic_amplitude,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -307,7 +293,7 @@ bool nimcp_gpu_dopamine_receptor_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -368,7 +354,7 @@ bool nimcp_gpu_dopamine_modulate_plasticity(
         learning_rate,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -448,7 +434,7 @@ bool nimcp_gpu_serotonin_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -503,7 +489,7 @@ bool nimcp_gpu_serotonin_receptor_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -562,7 +548,7 @@ bool nimcp_gpu_serotonin_modulate_behavior(
         params->baseline,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -641,7 +627,7 @@ bool nimcp_gpu_acetylcholine_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -715,7 +701,7 @@ bool nimcp_gpu_acetylcholine_receptor_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -773,7 +759,7 @@ bool nimcp_gpu_acetylcholine_compute_attention(
         params->baseline,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -820,7 +806,7 @@ bool nimcp_gpu_acetylcholine_modulate_learning(
         max_modulation,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -901,7 +887,7 @@ bool nimcp_gpu_norepinephrine_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -962,7 +948,7 @@ bool nimcp_gpu_norepinephrine_receptor_update(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1034,7 +1020,7 @@ bool nimcp_gpu_norepinephrine_compute_arousal(
         params->stress_gain,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1086,7 +1072,7 @@ bool nimcp_gpu_norepinephrine_modulate_gain(
         gain_sensitivity,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1172,7 +1158,7 @@ bool nimcp_gpu_neuromod_interactions(
     // For now, apply interactions in-place to concentration effects
     // In a full implementation, this would update the interaction matrix
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1288,7 +1274,7 @@ bool nimcp_gpu_neuromod_apply_combined(
         (const float*)system->norepinephrine->concentration->data,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1353,7 +1339,7 @@ bool nimcp_gpu_vesicle_dynamics(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1413,7 +1399,7 @@ bool nimcp_gpu_receptor_kinetics(
         dt,
         n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

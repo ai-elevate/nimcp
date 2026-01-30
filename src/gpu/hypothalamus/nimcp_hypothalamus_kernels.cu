@@ -22,6 +22,8 @@
 /* Include headers outside CUDA check for types to be available */
 #include "gpu/hypothalamus/nimcp_hypothalamus_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -33,14 +35,6 @@
 #include <float.h>
 
 #define LOG_MODULE "HYPOTHALAMUS_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        nimcp_log(LOG_LEVEL_ERROR, "CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE NIMCP_HYPO_GPU_BLOCK_SIZE
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -496,7 +490,7 @@ bool nimcp_hypo_gpu_capability(int* major, int* minor)
     if (!nimcp_hypo_gpu_available()) return false;
 
     cudaDeviceProp prop;
-    CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetDeviceProperties(&prop, 0));
 
     if (major) *major = prop.major;
     if (minor) *minor = prop.minor;
@@ -539,7 +533,7 @@ bool nimcp_hypo_gpu_drive_integrate(
             break;
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -562,7 +556,7 @@ bool nimcp_hypo_gpu_compute_urgency(
         urgency_ptr, levels, setpoints_ptr, NULL, arousal,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -584,7 +578,7 @@ bool nimcp_hypo_gpu_compute_deviation(
         deviation_ptr, levels, setpoints_ptr,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -626,7 +620,7 @@ bool nimcp_hypo_gpu_compute_reward(
             break;
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -647,7 +641,7 @@ bool nimcp_hypo_gpu_compute_rpe(
 
     kernel_compute_rpe<<<grid, BLOCK_SIZE>>>(rpe_ptr, actual_ptr, expected_ptr, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -668,7 +662,7 @@ bool nimcp_hypo_gpu_find_priority(
         priority_ptr, max_ptr, urgency_ptr,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -700,7 +694,7 @@ bool nimcp_hypo_gpu_controller_update(
         cfg.integral_limit, cfg.output_min, cfg.output_max,
         dt, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

@@ -31,28 +31,10 @@
 
 #include "gpu/topology/nimcp_topology_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "TOPOLOGY_GPU"
-
-//=============================================================================
-// CUDA Error Checking
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_PTR(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
 
 //=============================================================================
 // Kernel Configuration
@@ -1036,11 +1018,11 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_from_dense(
 
     // Copy adjacency to device
     size_t size = (size_t)num_nodes * num_nodes * sizeof(float);
-    CUDA_CHECK_PTR(cudaMemcpy(graph->adjacency->data, adjacency, size, cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(graph->adjacency->data, adjacency, size, cudaMemcpyHostToDevice));
 
     // Count edges
     int* d_degree;
-    CUDA_CHECK_PTR(cudaMalloc(&d_degree, num_nodes * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_degree, num_nodes * sizeof(int)));
 
     kernel_compute_degree_dense<<<GRID_SIZE(num_nodes), BLOCK_SIZE>>>(
         (float*)graph->adjacency->data, d_degree, num_nodes, 0.0f);
@@ -1077,7 +1059,7 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_from_csr(
         nimcp_graph_gpu_destroy(graph);
         return NULL;
     }
-    CUDA_CHECK_PTR(cudaMemcpy(graph->row_ptrs->data, row_ptrs,
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(graph->row_ptrs->data, row_ptrs,
                               (num_nodes + 1) * sizeof(int), cudaMemcpyHostToDevice));
 
     // Allocate and copy column indices
@@ -1087,7 +1069,7 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_from_csr(
         nimcp_graph_gpu_destroy(graph);
         return NULL;
     }
-    CUDA_CHECK_PTR(cudaMemcpy(graph->col_indices->data, col_indices,
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(graph->col_indices->data, col_indices,
                               num_edges * sizeof(int), cudaMemcpyHostToDevice));
 
     // Copy weights if provided
@@ -1097,7 +1079,7 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_from_csr(
             nimcp_graph_gpu_destroy(graph);
             return NULL;
         }
-        CUDA_CHECK_PTR(cudaMemcpy(graph->edge_weights->data, weights,
+        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(graph->edge_weights->data, weights,
                                   num_edges * sizeof(float), cudaMemcpyHostToDevice));
     }
 
@@ -1150,7 +1132,7 @@ bool nimcp_topology_compute_degree(
             0.0f);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1171,7 +1153,7 @@ bool nimcp_topology_compute_weighted_degree(
         (float*)weighted_degree_out->data,
         graph->num_nodes);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1189,8 +1171,8 @@ bool nimcp_topology_compute_clustering(
     // Allocate temporary arrays
     int* d_triangles;
     int* d_degree;
-    CUDA_CHECK(cudaMalloc(&d_triangles, n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_degree, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_triangles, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_degree, n * sizeof(int)));
 
     // Compute degrees
     kernel_compute_degree_csr<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1209,7 +1191,7 @@ bool nimcp_topology_compute_clustering(
     cudaFree(d_triangles);
     cudaFree(d_degree);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1231,9 +1213,9 @@ bool nimcp_topology_compute_pagerank(
     float* d_old_rank;
     int* d_out_degree;
     float* d_diff;
-    CUDA_CHECK(cudaMalloc(&d_old_rank, n * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_out_degree, n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_diff, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_old_rank, n * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_out_degree, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_diff, sizeof(float)));
 
     // Initialize PageRank
     float init_val = 1.0f / n;
@@ -1276,7 +1258,7 @@ bool nimcp_topology_compute_pagerank(
     cudaFree(d_out_degree);
     cudaFree(d_diff);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1310,9 +1292,9 @@ bool nimcp_shortest_path_bfs(
     int* d_frontier;
     int* d_next_frontier;
     int* d_frontier_size;
-    CUDA_CHECK(cudaMalloc(&d_frontier, n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_next_frontier, n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_frontier_size, sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_frontier, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_next_frontier, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_frontier_size, sizeof(int)));
 
     // Initialize distances
     kernel_bfs_init<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1360,7 +1342,7 @@ bool nimcp_shortest_path_bfs(
     cudaFree(d_next_frontier);
     cudaFree(d_frontier_size);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1410,7 +1392,7 @@ bool nimcp_shortest_path_floyd_warshall(
         [] __device__ (float d) { return d > 0.0f && d < INF_DISTANCE; });
     result->avg_path_length = (count > 0) ? sum / count : 0.0f;
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1444,9 +1426,9 @@ nimcp_community_result_gpu_t* nimcp_community_detect_louvain(
     int* d_degree;
     float* d_community_weights;
     int* d_changed;
-    CUDA_CHECK_PTR(cudaMalloc(&d_degree, n * sizeof(int)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_community_weights, n * sizeof(float)));
-    CUDA_CHECK_PTR(cudaMalloc(&d_changed, sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_degree, n * sizeof(int)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_community_weights, n * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_changed, sizeof(int)));
 
     // Compute degrees
     kernel_compute_degree_csr<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1710,7 +1692,7 @@ bool nimcp_graph_gpu_symmetrize(nimcp_graph_gpu_t* graph)
     kernel_symmetrize<<<grid, block>>>(
         (float*)graph->adjacency->data, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1721,7 +1703,7 @@ bool nimcp_graph_gpu_remove_self_loops(nimcp_graph_gpu_t* graph)
     kernel_remove_self_loops<<<GRID_SIZE(graph->num_nodes), BLOCK_SIZE>>>(
         (float*)graph->adjacency->data, graph->num_nodes);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1778,7 +1760,7 @@ bool nimcp_graph_gpu_to_csr(nimcp_graph_gpu_t* graph, float threshold)
 
     cudaFree(d_row_counts);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 

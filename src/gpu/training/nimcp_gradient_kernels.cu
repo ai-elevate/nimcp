@@ -22,16 +22,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/training/nimcp_training_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "GRADIENT_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -104,8 +98,8 @@ bool nimcp_gpu_loss_mse(
 
     // Allocate device memory for loss sum
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     // Compute forward loss
     int grid = GRID_SIZE(n);
@@ -115,7 +109,7 @@ bool nimcp_gpu_loss_mse(
 
     // Copy result back
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -126,7 +120,7 @@ bool nimcp_gpu_loss_mse(
         kernel_mse_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -185,8 +179,8 @@ bool nimcp_gpu_loss_mae(
 
     size_t n = pred->numel;
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -194,7 +188,7 @@ bool nimcp_gpu_loss_mae(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -204,7 +198,7 @@ bool nimcp_gpu_loss_mae(
         kernel_mae_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -328,15 +322,15 @@ bool nimcp_gpu_loss_cross_entropy(
     size_t batch_size = logits->numel / num_classes;
 
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE>>>(
         (const float*)logits->data, (const float*)target->data,
         d_loss_sum, batch_size, num_classes);
 
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
 
     if (reduction == 1) {  // mean
         *loss = loss_sum / (float)batch_size;
@@ -353,7 +347,7 @@ bool nimcp_gpu_loss_cross_entropy(
         kernel_cross_entropy_backward<<<batch_size, BLOCK_SIZE>>>(
             (const float*)logits->data, (const float*)target->data,
             (float*)grad->data, batch_size, num_classes, scale);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -411,8 +405,8 @@ bool nimcp_gpu_loss_bce(
 
     size_t n = pred->numel;
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -420,7 +414,7 @@ bool nimcp_gpu_loss_bce(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -430,7 +424,7 @@ bool nimcp_gpu_loss_bce(
         kernel_bce_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -482,8 +476,8 @@ bool nimcp_gpu_loss_focal(
 
     size_t n = pred->numel;
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -492,7 +486,7 @@ bool nimcp_gpu_loss_focal(
         d_loss_sum, alpha, gamma, n);
 
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -567,8 +561,8 @@ bool nimcp_gpu_loss_huber(
 
     size_t n = pred->numel;
     float* d_loss_sum;
-    CUDA_CHECK(cudaMalloc(&d_loss_sum, sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -576,7 +570,7 @@ bool nimcp_gpu_loss_huber(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, delta, n);
 
     float loss_sum;
-    CUDA_CHECK(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -586,7 +580,7 @@ bool nimcp_gpu_loss_huber(
         kernel_huber_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, delta, scale, n);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     }
 
     return true;
@@ -613,7 +607,7 @@ bool nimcp_gpu_gradient_accumulate(
 
     kernel_gradient_accumulate<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (const float*)grad->data, (float*)accum->data, grad->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -634,7 +628,7 @@ bool nimcp_gpu_gradient_scale(
 
     kernel_gradient_scale<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (float*)grad->data, scale, grad->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -687,7 +681,7 @@ bool nimcp_gpu_gradient_clip_value(
 
     kernel_gradient_clip_value<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (float*)grad->data, clip_value, grad->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -696,7 +690,7 @@ bool nimcp_gpu_gradient_zero(
     nimcp_gpu_tensor_t* grad)
 {
     if (!ctx || !grad) return false;
-    CUDA_CHECK(cudaMemset(grad->data, 0, grad->numel * grad->elem_size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(grad->data, 0, grad->numel * grad->elem_size));
     return true;
 }
 

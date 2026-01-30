@@ -30,24 +30,18 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/memory/nimcp_memory_consolidation_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "MEMORY_GPU"
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
+//-----------------------------------------------------------------------------
+// Helper Macros - Using immune-integrated versions
+//-----------------------------------------------------------------------------
 
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
+#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE_BOOL(call)
+// CUDA_CHECK_VOID uses warning only since void functions can't propagate errors
+#define CUDA_CHECK_VOID(call) NIMCP_CUDA_CHECK_WARN(call)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)

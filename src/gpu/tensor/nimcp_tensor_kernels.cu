@@ -23,20 +23,10 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "TENSOR_GPU"
-
-//=============================================================================
-// CUDA Error Checking
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define CUBLAS_CHECK(call) do { \
     cublasStatus_t status = call; \
@@ -185,7 +175,7 @@ bool nimcp_gpu_tensor_to_host(const nimcp_gpu_tensor_t* tensor, void* host_data)
     }
 
     size_t data_size = tensor->numel * tensor->elem_size;
-    CUDA_CHECK(cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost));
     return true;
 }
 
@@ -419,7 +409,7 @@ bool nimcp_gpu_add(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     }
     kernel_add<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -430,7 +420,7 @@ bool nimcp_gpu_sub(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (a->numel != b->numel || a->numel != out->numel) return false;
     kernel_sub<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -441,7 +431,7 @@ bool nimcp_gpu_mul(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (a->numel != b->numel || a->numel != out->numel) return false;
     kernel_mul<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -452,7 +442,7 @@ bool nimcp_gpu_div(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (a->numel != b->numel || a->numel != out->numel) return false;
     kernel_div<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -462,7 +452,7 @@ bool nimcp_gpu_add_scalar(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !out) return false;
     kernel_add_scalar<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, scalar, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -472,7 +462,7 @@ bool nimcp_gpu_mul_scalar(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !out) return false;
     kernel_mul_scalar<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, scalar, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -538,7 +528,7 @@ bool nimcp_gpu_relu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp
 {
     if (!ctx || !x || !out) return false;
     kernel_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -548,7 +538,7 @@ bool nimcp_gpu_leaky_relu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
     if (!ctx || !x || !out) return false;
     kernel_leaky_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const float*)x->data, (float*)out->data, alpha, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -556,7 +546,7 @@ bool nimcp_gpu_sigmoid(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, ni
 {
     if (!ctx || !x || !out) return false;
     kernel_sigmoid<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -564,7 +554,7 @@ bool nimcp_gpu_tanh(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp
 {
     if (!ctx || !x || !out) return false;
     kernel_tanh_activation<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -572,7 +562,7 @@ bool nimcp_gpu_gelu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp
 {
     if (!ctx || !x || !out) return false;
     kernel_gelu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -580,7 +570,7 @@ bool nimcp_gpu_silu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp
 {
     if (!ctx || !x || !out) return false;
     kernel_silu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -649,7 +639,7 @@ bool nimcp_gpu_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, ni
     size_t batch_size = x->numel / dim_size;
 
     kernel_softmax_1d<<<batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -710,7 +700,7 @@ bool nimcp_gpu_log_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x
     size_t batch_size = x->numel / dim_size;
 
     kernel_log_softmax_1d<<<batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -770,7 +760,7 @@ bool nimcp_gpu_exp(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_
 {
     if (!ctx || !x || !out) return false;
     kernel_exp<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -778,7 +768,7 @@ bool nimcp_gpu_log(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_
 {
     if (!ctx || !x || !out) return false;
     kernel_log<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -786,7 +776,7 @@ bool nimcp_gpu_sqrt(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp
 {
     if (!ctx || !x || !out) return false;
     kernel_sqrt<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -794,7 +784,7 @@ bool nimcp_gpu_pow(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, float 
 {
     if (!ctx || !x || !out) return false;
     kernel_pow<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, exponent, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -802,7 +792,7 @@ bool nimcp_gpu_abs(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_
 {
     if (!ctx || !x || !out) return false;
     kernel_abs<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -812,7 +802,7 @@ bool nimcp_gpu_clamp(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
     if (!ctx || !x || !out) return false;
     kernel_clamp<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const float*)x->data, min_val, max_val, (float*)out->data, x->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1456,11 +1446,11 @@ bool nimcp_gpu_sum(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     // Full reduction (all elements)
     if (axis < 0) {
-        CUDA_CHECK(cudaMemset(out->data, 0, sizeof(float)));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(out->data, 0, sizeof(float)));
         int grid = (x->numel + BLOCK_SIZE - 1) / BLOCK_SIZE;
         grid = grid > 256 ? 256 : grid;  // Limit grid size
         kernel_reduce_sum<<<grid, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         return true;
     }
 
@@ -1480,7 +1470,7 @@ bool nimcp_gpu_mean(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
         if (!nimcp_gpu_sum(ctx, x, out, axis, keepdims)) return false;
         float scale = 1.0f / (float)x->numel;
         kernel_mul_scalar<<<1, 1>>>((const float*)out->data, scale, (float*)out->data, 1);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         return true;
     }
 
@@ -1497,11 +1487,11 @@ bool nimcp_gpu_max(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     if (axis < 0) {
         float init = -FLT_MAX;
-        CUDA_CHECK(cudaMemcpy(out->data, &init, sizeof(float), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(out->data, &init, sizeof(float), cudaMemcpyHostToDevice));
         int grid = (x->numel + BLOCK_SIZE - 1) / BLOCK_SIZE;
         grid = grid > 256 ? 256 : grid;
         kernel_reduce_max<<<grid, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         return true;
     }
 
@@ -1518,11 +1508,11 @@ bool nimcp_gpu_min(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     if (axis < 0) {
         float init = FLT_MAX;
-        CUDA_CHECK(cudaMemcpy(out->data, &init, sizeof(float), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(out->data, &init, sizeof(float), cudaMemcpyHostToDevice));
         int grid = (x->numel + BLOCK_SIZE - 1) / BLOCK_SIZE;
         grid = grid > 256 ? 256 : grid;
         kernel_reduce_min<<<grid, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, x->numel);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         return true;
     }
 
@@ -1577,7 +1567,7 @@ bool nimcp_gpu_argmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     if (axis < 0) {
         kernel_argmax<<<1, BLOCK_SIZE>>>((const float*)x->data, (int64_t*)out->data, x->numel);
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         return true;
     }
 
@@ -1637,7 +1627,7 @@ bool nimcp_gpu_std(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 {
     if (!nimcp_gpu_var(ctx, x, out, axis, keepdims, unbiased)) return false;
     kernel_sqrt<<<1, 1>>>((const float*)out->data, (float*)out->data, 1);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1757,7 +1747,7 @@ bool nimcp_gpu_eq(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !b || !out) return false;
     kernel_eq<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1767,7 +1757,7 @@ bool nimcp_gpu_gt(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !b || !out) return false;
     kernel_gt<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1777,7 +1767,7 @@ bool nimcp_gpu_lt(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !b || !out) return false;
     kernel_lt<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1787,7 +1777,7 @@ bool nimcp_gpu_ge(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !b || !out) return false;
     kernel_ge<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1797,7 +1787,7 @@ bool nimcp_gpu_le(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
     if (!ctx || !a || !b || !out) return false;
     kernel_le<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1807,7 +1797,7 @@ bool nimcp_gpu_where(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* cond,
     if (!ctx || !cond || !a || !b || !out) return false;
     kernel_where<<<GRID_SIZE(a->numel), BLOCK_SIZE>>>(
         (const float*)cond->data, (const float*)a->data, (const float*)b->data, (float*)out->data, a->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1827,14 +1817,14 @@ bool nimcp_gpu_fill(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* tensor, float 
 {
     if (!ctx || !tensor) return false;
     kernel_fill<<<GRID_SIZE(tensor->numel), BLOCK_SIZE>>>((float*)tensor->data, value, tensor->numel);
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
 bool nimcp_gpu_zeros(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* tensor)
 {
     if (!ctx || !tensor) return false;
-    CUDA_CHECK(cudaMemset(tensor->data, 0, tensor->numel * tensor->elem_size));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(tensor->data, 0, tensor->numel * tensor->elem_size));
     return true;
 }
 
@@ -1847,7 +1837,7 @@ bool nimcp_gpu_copy(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* src, nim
 {
     if (!ctx || !src || !dst) return false;
     if (src->numel != dst->numel) return false;
-    CUDA_CHECK(cudaMemcpy(dst->data, src->data, src->numel * src->elem_size, cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(dst->data, src->data, src->numel * src->elem_size, cudaMemcpyDeviceToDevice));
     return true;
 }
 

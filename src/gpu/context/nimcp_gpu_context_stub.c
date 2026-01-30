@@ -74,6 +74,8 @@ bool nimcp_gpu_context_is_valid(const nimcp_gpu_context_t* ctx) {
 
 int nimcp_gpu_context_set_device(nimcp_gpu_context_t* ctx) {
     (void)ctx;
+    // Present to immune if called in production (indicates missing CUDA)
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "GPU context set_device called but CUDA not available");
     return -1; // No GPU
 }
 

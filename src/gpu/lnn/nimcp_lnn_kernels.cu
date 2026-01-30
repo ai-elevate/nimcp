@@ -23,16 +23,10 @@
 #include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "LNN_GPU"
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
@@ -160,7 +154,7 @@ bool nimcp_gpu_lnn_euler_step(
     kernel_clamp_state<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (float*)x_new->data, x->numel, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -231,7 +225,7 @@ bool nimcp_gpu_lnn_update_tau(
         layer->n_neurons,
         layer->n_inputs);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -365,7 +359,7 @@ bool nimcp_gpu_lnn_compute_derivative(
             (int)layer->activation);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -469,7 +463,7 @@ bool nimcp_gpu_lnn_rk4_step(
     kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Cleanup
     nimcp_gpu_tensor_destroy(k1);
@@ -540,7 +534,7 @@ bool nimcp_gpu_lnn_heun_step(
     kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     nimcp_gpu_tensor_destroy(k1);
     nimcp_gpu_tensor_destroy(k2);
@@ -819,7 +813,7 @@ bool nimcp_gpu_lnn_dopri5_step(
     kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Cleanup
     nimcp_gpu_tensor_destroy(k1);
@@ -919,7 +913,7 @@ bool nimcp_gpu_sparse_matvec(
         n_rows,
         alpha);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1087,21 +1081,21 @@ bool nimcp_gpu_sparse_add(
 
     // Phase 1: Count nnz per row for C
     uint32_t* d_C_row_nnz;
-    CUDA_CHECK(cudaMalloc(&d_C_row_nnz, n_rows * sizeof(uint32_t)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_C_row_nnz, n_rows * sizeof(uint32_t)));
 
     kernel_sparse_add_count_nnz<<<GRID_SIZE(n_rows), BLOCK_SIZE>>>(
         (const uint32_t*)A_row_ptr->data, (const uint32_t*)A_col_idx->data,
         (const uint32_t*)B_row_ptr->data, (const uint32_t*)B_col_idx->data,
         d_C_row_nnz, n_rows);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Phase 2: Compute row pointers via prefix sum
     // Simple sequential prefix sum on CPU for now (can be parallelized)
     uint32_t* h_C_row_nnz = (uint32_t*)malloc(n_rows * sizeof(uint32_t));
     uint32_t* h_C_row_ptr = (uint32_t*)malloc((n_rows + 1) * sizeof(uint32_t));
 
-    CUDA_CHECK(cudaMemcpy(h_C_row_nnz, d_C_row_nnz, n_rows * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_C_row_nnz, d_C_row_nnz, n_rows * sizeof(uint32_t), cudaMemcpyDeviceToHost));
 
     h_C_row_ptr[0] = 0;
     for (uint32_t i = 0; i < n_rows; i++) {
@@ -1111,7 +1105,7 @@ bool nimcp_gpu_sparse_add(
     uint32_t total_nnz = h_C_row_ptr[n_rows];
 
     // Copy row pointers to GPU
-    CUDA_CHECK(cudaMemcpy(C_row_ptr->data, h_C_row_ptr, (n_rows + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(C_row_ptr->data, h_C_row_ptr, (n_rows + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice));
 
     // Resize C_col_idx and C_values if needed (caller must ensure sufficient space)
 
@@ -1124,7 +1118,7 @@ bool nimcp_gpu_sparse_add(
         (const uint32_t*)C_row_ptr->data, (uint32_t*)C_col_idx->data, (float*)C_values->data,
         n_rows, alpha, beta);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
 
     // Cleanup
     cudaFree(d_C_row_nnz);
@@ -1147,7 +1141,7 @@ bool nimcp_gpu_lnn_adjoint_init(
     if (!ctx || !layer || !grad_output || !adjoint) return false;
 
     // Initialize adjoint: lambda(T) = dL/dx(T)
-    CUDA_CHECK(cudaMemcpy(adjoint->data, grad_output->data,
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(adjoint->data, grad_output->data,
                           layer->n_neurons * sizeof(float), cudaMemcpyDeviceToDevice));
     return true;
 }
@@ -1207,7 +1201,7 @@ bool nimcp_gpu_lnn_adjoint_step(
         (const float*)adjoint->data, (const float*)d_lambda->data,
         -dt, (float*)adjoint->data, n);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     nimcp_gpu_tensor_destroy(d_lambda);
 
     return true;

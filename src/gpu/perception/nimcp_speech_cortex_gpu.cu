@@ -45,36 +45,10 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #define LOG_MODULE "SPEECH_CORTEX_GPU"
-
-//=============================================================================
-// CUDA Error Checking Macros
-//=============================================================================
-
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return false; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_NULL(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return NULL; \
-    } \
-} while(0)
-
-#define CUDA_CHECK_VOID(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        LOG_ERROR("CUDA error at %s:%d: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        return; \
-    } \
-} while(0)
 
 #define CUFFT_CHECK(call) do { \
     cufftResult result = call; \
@@ -1319,7 +1293,7 @@ extern "C" void nimcp_speech_gpu_destroy(nimcp_speech_gpu_state_t* state) {
 
 extern "C" bool nimcp_speech_gpu_synchronize(nimcp_speech_gpu_state_t* state) {
     if (!state || !state->ctx) return false;
-    CUDA_CHECK(cudaDeviceSynchronize());
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
     return true;
 }
 
@@ -1374,7 +1348,7 @@ extern "C" nimcp_gpu_tensor_t* nimcp_speech_gpu_compute_spectrogram(
 
     // Allocate complex FFT output
     cufftComplex* d_fft_out;
-    CUDA_CHECK_NULL(cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)));
+    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)));
 
     // Execute batched FFT
     cufftHandle batch_plan;
@@ -2277,7 +2251,7 @@ extern "C" bool nimcp_speech_gpu_apply_cmn(
 
     // Allocate mean vector
     float* d_mean;
-    CUDA_CHECK(cudaMalloc(&d_mean, feature_dim * sizeof(float)));
+    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean, feature_dim * sizeof(float)));
 
     // Compute mean
     kernel_compute_mean<<<GRID_SIZE(feature_dim), BLOCK_SIZE>>>(
