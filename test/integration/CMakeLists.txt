@@ -71,3 +71,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/CMakeLists.txt)
     add_subdirectory(core)
 endif()
 
+# =============================================================================
+# Statistics Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
+    message(STATUS "Adding Statistics Integration tests...")
+    add_subdirectory(statistics)
+endif()
+

@@ -342,6 +342,69 @@ float shannon_kl_divergence(
     const shannon_distribution_t* q
 );
 
+/**
+ * @brief Compute Jensen-Shannon divergence (symmetric KL)
+ *
+ * WHAT: JSD(P||Q) = 0.5 × D_KL(P||M) + 0.5 × D_KL(Q||M) where M = 0.5(P+Q)
+ * WHY:  Symmetric, bounded measure of distribution difference
+ * HOW:  Average of KL divergences to mixture
+ *
+ * INTERPRETATION:
+ * - JSD(P||Q) = 0 → P and Q are identical
+ * - JSD(P||Q) ≤ 1 bit (bounded unlike KL)
+ * - JSD(P||Q) = JSD(Q||P) (symmetric)
+ *
+ * COMPLEXITY: O(N)
+ */
+float shannon_js_divergence(
+    const shannon_distribution_t* p,
+    const shannon_distribution_t* q
+);
+
+/**
+ * @brief Compute cross-entropy H(P,Q)
+ *
+ * WHAT: H(P,Q) = -Σ p(x) log₂ q(x)
+ * WHY:  Loss function for classification, relates to KL divergence
+ * HOW:  Expected code length using Q to encode P
+ *
+ * INTERPRETATION:
+ * - H(P,Q) = H(P) + D_KL(P||Q)
+ * - Minimizing cross-entropy = minimizing KL divergence
+ * - Common loss function in neural network training
+ *
+ * @param p True distribution
+ * @param q Predicted/model distribution
+ * @return Cross-entropy in bits
+ *
+ * COMPLEXITY: O(N)
+ */
+float shannon_cross_entropy(
+    const shannon_distribution_t* p,
+    const shannon_distribution_t* q
+);
+
+/**
+ * @brief Compute Shannon entropy in natural units (nats)
+ *
+ * WHAT: H(X) = -Σ p(x) ln(p(x))
+ * WHY:  Natural unit preferred in neural networks (gradient-friendly)
+ * HOW:  Use natural log instead of log base 2
+ *
+ * CONVERSION: H_nats = H_bits × ln(2) ≈ H_bits × 0.693
+ *
+ * @param distribution Probability distribution
+ * @return Entropy in nats (natural units)
+ *
+ * COMPLEXITY: O(N)
+ */
+float shannon_entropy_nats(const shannon_distribution_t* distribution);
+
+/**
+ * @brief Convenience: compute entropy in nats from array
+ */
+float shannon_entropy_nats_array(const float* probabilities, uint32_t num_states);
+
 //=============================================================================
 // Synapse-Level Shannon Analysis
 //=============================================================================

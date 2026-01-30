@@ -1980,6 +1980,154 @@ NIMCP_EXPORT double nimcp_stats_log_binomial_coef(uint32_t n, uint32_t k);
  */
 NIMCP_EXPORT const char* nimcp_stats_error_string(nimcp_stats_result_t result);
 
+//=============================================================================
+// Shannon Module Integration
+//=============================================================================
+/**
+ * @defgroup stats_shannon Shannon Information Theory Integration
+ * @brief Bridge functions connecting statistics module with Shannon module
+ *
+ * WHAT: Unified interface for information-theoretic computations
+ * WHY:  Leverage specialized Shannon implementations for neural network analysis
+ * HOW:  Wrapper functions and type converters for cross-module compatibility
+ *
+ * The Shannon module (information/nimcp_shannon.h) provides neural-network-specific
+ * information theory (synapse analysis, bottleneck detection, channel capacity).
+ * These bridge functions enable seamless integration between general statistical
+ * analysis and specialized neural information processing.
+ *
+ * @{
+ */
+
+/**
+ * @brief Shannon channel capacity (Shannon-Hartley theorem)
+ * @param bandwidth Channel bandwidth in Hz
+ * @param snr Signal-to-noise ratio (linear, not dB)
+ * @return Channel capacity in bits/second
+ *
+ * C = B × log₂(1 + SNR)
+ *
+ * EXAMPLE:
+ * - bandwidth=100Hz, SNR=10 → C ≈ 346 bits/s
+ * - bandwidth=100Hz, SNR=100 → C ≈ 665 bits/s
+ *
+ * NOTE: This wraps shannon_channel_capacity() when Shannon module is available,
+ * otherwise provides standalone implementation.
+ */
+NIMCP_EXPORT float nimcp_stats_channel_capacity(float bandwidth, float snr);
+
+/**
+ * @brief Convert SNR from dB to linear scale
+ * @param snr_db SNR in decibels
+ * @return Linear SNR
+ *
+ * SNR_linear = 10^(SNR_dB / 10)
+ */
+NIMCP_EXPORT float nimcp_stats_snr_from_db(float snr_db);
+
+/**
+ * @brief Convert SNR from linear to dB scale
+ * @param snr Linear SNR
+ * @return SNR in decibels
+ *
+ * SNR_dB = 10 × log₁₀(SNR_linear)
+ */
+NIMCP_EXPORT float nimcp_stats_snr_to_db(float snr);
+
+/**
+ * @brief Variation of information (metric version of MI)
+ * @param joint_prob Joint probability table
+ * @param n_x Number of X outcomes
+ * @param n_y Number of Y outcomes
+ * @return VI = H(X,Y) - I(X;Y) = H(X|Y) + H(Y|X)
+ *
+ * Properties:
+ * - VI(X,Y) = 0 iff X = Y (identical)
+ * - VI(X,Y) = VI(Y,X) (symmetric)
+ * - Satisfies triangle inequality (true metric)
+ */
+NIMCP_EXPORT float nimcp_stats_variation_of_information(
+    const float* joint_prob,
+    uint32_t n_x,
+    uint32_t n_y
+);
+
+/**
+ * @brief Transfer entropy T(X→Y) - directional information flow
+ * @param x Source time series
+ * @param y Target time series
+ * @param n Length of time series
+ * @param k History length (embedding dimension)
+ * @param n_bins Number of bins for discretization
+ * @return Transfer entropy in bits
+ *
+ * Measures how much knowing past of X reduces uncertainty about Y's future
+ * beyond what past of Y already tells us.
+ *
+ * T(X→Y) = H(Y_t | Y_past) - H(Y_t | Y_past, X_past)
+ */
+NIMCP_EXPORT float nimcp_stats_transfer_entropy(
+    const float* x,
+    const float* y,
+    uint32_t n,
+    uint32_t k,
+    uint32_t n_bins
+);
+
+/**
+ * @brief Effective information (causal emergence measure)
+ * @param tpm Transition probability matrix (n_states × n_states)
+ * @param n_states Number of states
+ * @return EI = determinism + degeneracy (bits)
+ *
+ * Measures how much a system's causal structure generates information.
+ * High EI indicates strong causal relationships.
+ */
+NIMCP_EXPORT float nimcp_stats_effective_information(
+    const float* tpm,
+    uint32_t n_states
+);
+
+/**
+ * @brief Information integration (simplified Phi measure)
+ * @param cov_matrix Covariance matrix (n_vars × n_vars)
+ * @param n_vars Number of variables
+ * @return Phi approximation using mutual information
+ *
+ * Simplified measure of integrated information based on
+ * how much the whole system's information exceeds its parts.
+ */
+NIMCP_EXPORT float nimcp_stats_information_integration(
+    const float* cov_matrix,
+    uint32_t n_vars
+);
+
+/**
+ * @brief Compute information bottleneck for feature compression
+ * @param joint_xy Joint distribution P(X,Y) (n_x × n_y)
+ * @param n_x Number of X states
+ * @param n_y Number of Y states
+ * @param n_t Target compressed states
+ * @param beta Trade-off parameter (larger = preserve more MI)
+ * @param q_t_given_x Output: P(T|X) compression mapping (n_x × n_t)
+ * @param max_iter Maximum iterations
+ * @return Final I(T;Y) / I(X;Y) compression ratio
+ *
+ * Finds optimal compression T of X that preserves information about Y.
+ * Uses the Blahut-Arimoto algorithm variant.
+ */
+NIMCP_EXPORT float nimcp_stats_information_bottleneck(
+    const float* joint_xy,
+    uint32_t n_x,
+    uint32_t n_y,
+    uint32_t n_t,
+    float beta,
+    float* q_t_given_x,
+    uint32_t max_iter
+);
+
+/** @} */ // end of stats_shannon group
+
 #ifdef __cplusplus
 }
 #endif

@@ -31,3 +31,10 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/fault_tolerance/CMakeLists.txt)
     add_subdirectory(fault_tolerance)
 endif()
 
+# =============================================================================
+# Statistics Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
+    message(STATUS "Adding Statistics Regression tests...")
+    add_subdirectory(statistics)
+endif()

@@ -1004,6 +1004,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/math")
     add_subdirectory(integration/utils/math)
 endif()
 
+# Utils Statistics Tests (Statistical and probability methods)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/statistics")
+    message(STATUS "Adding utils statistics unit tests...")
+    add_subdirectory(unit/utils/statistics)
+endif()
+
 # Utils Signal Processing Tests (Phase 0.5: Band-pass filtering for PAC)
 # ============================================================================
 
@@ -2092,6 +2100,19 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/utils/fuzzy")
     message(STATUS "Adding fuzzy logic E2E tests...")
     add_subdirectory(e2e/utils/fuzzy)
+endif()
+
+# ============================================================================
+# Statistics Module Tests (Shannon Integration)
+# ============================================================================
+# WHAT: Unit, integration, regression, and E2E tests for statistics module
+# WHY:  Statistics module provides probability distributions, hypothesis testing,
+#       and Shannon information theory integration
+# HOW:  Tests verify numerical accuracy, Shannon integration, and edge cases
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/statistics")
+    message(STATUS "Adding statistics regression tests...")
+    add_subdirectory(regression/statistics)
 endif()
 
 # ============================================================================

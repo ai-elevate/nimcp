@@ -343,6 +343,109 @@ float shannon_kl_divergence(
     return divergence;
 }
 
+float shannon_js_divergence(
+    const shannon_distribution_t* p,
+    const shannon_distribution_t* q)
+{
+    if (!p || !q || !p->probabilities || !q->probabilities) {
+        return 0.0F;
+    }
+
+    if (p->num_states != q->num_states) {
+        return 0.0F;
+    }
+
+    uint32_t n = p->num_states;
+
+    // Create mixture distribution M = 0.5(P + Q)
+    shannon_distribution_t m;
+    m.num_states = n;
+    m.probabilities = (float*)malloc(n * sizeof(float));
+    if (!m.probabilities) {
+        return 0.0F;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        m.probabilities[i] = 0.5F * (p->probabilities[i] + q->probabilities[i]);
+    }
+    m.total_probability = 1.0F;
+
+    // JSD = 0.5 * D_KL(P||M) + 0.5 * D_KL(Q||M)
+    float jsd = 0.5F * shannon_kl_divergence(p, &m) +
+                0.5F * shannon_kl_divergence(q, &m);
+
+    free(m.probabilities);
+    return jsd;
+}
+
+float shannon_cross_entropy(
+    const shannon_distribution_t* p,
+    const shannon_distribution_t* q)
+{
+    if (!p || !q || !p->probabilities || !q->probabilities) {
+        return 0.0F;
+    }
+
+    if (p->num_states != q->num_states) {
+        return 0.0F;
+    }
+
+    float ce = 0.0F;
+
+    // H(P,Q) = -Σ p(x) log₂(q(x))
+    for (uint32_t i = 0; i < p->num_states; i++) {
+        float p_i = p->probabilities[i];
+        float q_i = q->probabilities[i];
+
+        if (p_i > SHANNON_EPSILON && q_i > SHANNON_EPSILON) {
+            ce -= p_i * log2f(q_i);
+        } else if (p_i > SHANNON_EPSILON && q_i <= SHANNON_EPSILON) {
+            // q_i = 0 where p_i > 0 → infinite cross-entropy
+            return INFINITY;
+        }
+    }
+
+    return ce;
+}
+
+float shannon_entropy_nats(const shannon_distribution_t* distribution)
+{
+    if (!distribution || !distribution->probabilities) {
+        return 0.0F;
+    }
+
+    float entropy = 0.0F;
+
+    for (uint32_t i = 0; i < distribution->num_states; i++) {
+        float p_i = distribution->probabilities[i];
+
+        if (p_i > SHANNON_EPSILON) {
+            entropy -= p_i * logf(p_i);  // Natural log for nats
+        }
+    }
+
+    return entropy;
+}
+
+float shannon_entropy_nats_array(const float* probabilities, uint32_t num_states)
+{
+    if (!probabilities || num_states == 0) {
+        return 0.0F;
+    }
+
+    float entropy = 0.0F;
+
+    for (uint32_t i = 0; i < num_states; i++) {
+        float p_i = probabilities[i];
+
+        if (p_i > SHANNON_EPSILON) {
+            entropy -= p_i * logf(p_i);
+        }
+    }
+
+    return entropy;
+}
+
 //=============================================================================
 // Synapse-Level Shannon Analysis
 //=============================================================================

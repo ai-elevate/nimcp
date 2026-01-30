@@ -2994,6 +2994,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/CMakeLists.txt)
     add_subdirectory(snn)
 endif()
 
+# Include Statistics E2E test subdirectory (Shannon integration)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
+    message(STATUS "Adding Statistics E2E tests (Shannon integration)...")
+    add_subdirectory(statistics)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
