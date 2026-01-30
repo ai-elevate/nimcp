@@ -1712,6 +1712,10 @@ set(NIMCP_CORE_SOURCES
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)
 
+    # Utils - Statistics (Statistical and probability methods for neural computation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_statistics.c  # Descriptive stats, distributions, hypothesis testing, Bayesian inference
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_quantum_statistics.c  # Quantum entropy, fidelity, entanglement, Fisher information
+
     # Utils - Signal Processing (Phase 0.5: Band-pass filtering for PAC detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_filter.c  # FIR/IIR band-pass filtering using windowed sinc method
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_hilbert.c  # Hilbert transform for analytic signal, amplitude, and phase extraction
@@ -2130,6 +2134,20 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/hypothalamus/nimcp_hypothalamus_kernels.cu>
     # Hypothalamus QMC GPU kernels (EFE computation, trajectory sampling, policy optimization)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/hypothalamus/nimcp_hypothalamus_qmc_kernels.cu>
+
+    # Fuzzy Logic GPU kernels (membership functions, defuzzification, inference, relations, ANFIS)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_defuzz_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_inference_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_relation_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_anfis_kernels.cu>
+
+    # Financial GPU kernels (Monte Carlo, optimization, risk metrics, derivatives)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_gpu_rng.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_monte_carlo_gpu.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_optimization_gpu.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_risk_gpu.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_derivatives_gpu.cu>
 
     # Graph DAO and GraphQL utilities (CPU-side, always compiled)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_dao.c

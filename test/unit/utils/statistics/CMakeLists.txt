@@ -20,3 +20,4 @@ endmacro()
 
 # Add all statistics tests
 add_statistics_test(test_statistics)
+add_statistics_test(test_quantum_statistics)

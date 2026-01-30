@@ -24,7 +24,7 @@
 #define NIMCP_CUDA_UTILS_H
 
 #include "common/nimcp_export.h"
-#include "common/nimcp_error.h"
+#include "utils/error/nimcp_error_codes.h"
 
 #ifdef NIMCP_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -176,6 +176,124 @@ extern "C" {
 #endif // NIMCP_ENABLE_CUDA
 
 //=============================================================================
+// Immune-Integrated CUDA Error Checking
+//=============================================================================
+//
+// WHAT: CUDA error macros that present errors to the brain immune system
+// WHY:  Enable automatic recovery from GPU errors via immune response
+// HOW:  Call NIMCP_THROW_TO_IMMUNE on CUDA failures before returning
+//
+// These macros require including utils/exception/nimcp_exception_macros.h
+// Use these in code paths where immune system recovery is desired.
+//
+// Example:
+//   #include "utils/exception/nimcp_exception_macros.h"
+//   NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&ptr, size));  // Presents to immune on failure
+//
+
+#ifdef NIMCP_ENABLE_CUDA
+
+/**
+ * @brief Check CUDA call, present to immune system, and return false on failure
+ *
+ * Use in functions returning bool where immune recovery is desired.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE(call) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
+                __FILE__, __LINE__, #call, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA error: %s - %s", #call, _err_str); \
+        return false; \
+    } \
+} while(0)
+
+/**
+ * @brief Check CUDA call, present to immune system, and return NULL on failure
+ *
+ * Use in functions returning pointers where immune recovery is desired.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE_NULL(call) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
+                __FILE__, __LINE__, #call, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA error: %s - %s", #call, _err_str); \
+        return NULL; \
+    } \
+} while(0)
+
+/**
+ * @brief Check CUDA call, present to immune system, and return error code on failure
+ *
+ * Use in functions returning nimcp_error_t where immune recovery is desired.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE_ERROR(call) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
+                __FILE__, __LINE__, #call, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA error: %s - %s", #call, _err_str); \
+        return NIMCP_ERROR_GPU; \
+    } \
+} while(0)
+
+/**
+ * @brief Check last CUDA error (kernel launches), present to immune system
+ *
+ * Call after kernel launches where immune recovery is desired.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE_LAST() do { \
+    cudaError_t _err = cudaGetLastError(); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: kernel error: %s\n", \
+                __FILE__, __LINE__, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA kernel error: %s", _err_str); \
+        return false; \
+    } \
+} while(0)
+
+/**
+ * @brief CUDA error check with immune presentation and goto cleanup
+ *
+ * Use when cleanup is needed before return and immune recovery is desired.
+ */
+#define NIMCP_CUDA_CHECK_IMMUNE_GOTO(call, label) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        const char* _err_str = cudaGetErrorString(_err); \
+        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
+                __FILE__, __LINE__, #call, _err_str); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA error: %s - %s", #call, _err_str); \
+        goto label; \
+    } \
+} while(0)
+
+/**
+ * @brief Synchronize and check with immune presentation
+ */
+#define NIMCP_CUDA_SYNC_CHECK_IMMUNE() do { \
+    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize()); \
+    NIMCP_CUDA_CHECK_IMMUNE_LAST(); \
+} while(0)
+
+#else // !NIMCP_ENABLE_CUDA
+
+// No-op macros when CUDA is disabled
+#define NIMCP_CUDA_CHECK_IMMUNE(call) ((void)0)
+#define NIMCP_CUDA_CHECK_IMMUNE_NULL(call) ((void)0)
+#define NIMCP_CUDA_CHECK_IMMUNE_ERROR(call) (NIMCP_ERROR_GPU)
+#define NIMCP_CUDA_CHECK_IMMUNE_LAST() ((void)0)
+#define NIMCP_CUDA_CHECK_IMMUNE_GOTO(call, label) ((void)0)
+#define NIMCP_CUDA_SYNC_CHECK_IMMUNE() ((void)0)
+
+#endif // NIMCP_ENABLE_CUDA
+
+//=============================================================================
 // cuBLAS/cuSPARSE/cuRAND Error Checking
 //=============================================================================
 
@@ -222,6 +340,59 @@ extern "C" {
 #define NIMCP_CUBLAS_CHECK(call) ((void)0)
 #define NIMCP_CUSPARSE_CHECK(call) ((void)0)
 #define NIMCP_CURAND_CHECK(call) ((void)0)
+
+#endif // NIMCP_ENABLE_CUDA
+
+//=============================================================================
+// Immune-Integrated cuBLAS/cuSPARSE/cuRAND Error Checking
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_CUDA
+
+/**
+ * @brief Check cuBLAS call with immune system presentation
+ */
+#define NIMCP_CUBLAS_CHECK_IMMUNE(call) do { \
+    cublasStatus_t _status = (call); \
+    if (_status != CUBLAS_STATUS_SUCCESS) { \
+        fprintf(stderr, "[NIMCP cuBLAS ERROR] %s:%d: %s returned %d\n", \
+                __FILE__, __LINE__, #call, _status); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "cuBLAS error: %s returned %d", #call, _status); \
+        return false; \
+    } \
+} while(0)
+
+/**
+ * @brief Check cuSPARSE call with immune system presentation
+ */
+#define NIMCP_CUSPARSE_CHECK_IMMUNE(call) do { \
+    cusparseStatus_t _status = (call); \
+    if (_status != CUSPARSE_STATUS_SUCCESS) { \
+        fprintf(stderr, "[NIMCP cuSPARSE ERROR] %s:%d: %s returned %d\n", \
+                __FILE__, __LINE__, #call, _status); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "cuSPARSE error: %s returned %d", #call, _status); \
+        return false; \
+    } \
+} while(0)
+
+/**
+ * @brief Check cuRAND call with immune system presentation
+ */
+#define NIMCP_CURAND_CHECK_IMMUNE(call) do { \
+    curandStatus_t _status = (call); \
+    if (_status != CURAND_STATUS_SUCCESS) { \
+        fprintf(stderr, "[NIMCP cuRAND ERROR] %s:%d: %s returned %d\n", \
+                __FILE__, __LINE__, #call, _status); \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "cuRAND error: %s returned %d", #call, _status); \
+        return false; \
+    } \
+} while(0)
+
+#else
+
+#define NIMCP_CUBLAS_CHECK_IMMUNE(call) ((void)0)
+#define NIMCP_CUSPARSE_CHECK_IMMUNE(call) ((void)0)
+#define NIMCP_CURAND_CHECK_IMMUNE(call) ((void)0)
 
 #endif // NIMCP_ENABLE_CUDA
 
