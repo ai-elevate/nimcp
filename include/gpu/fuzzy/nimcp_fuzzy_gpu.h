@@ -370,10 +370,10 @@ NIMCP_EXPORT bool nimcp_gpu_fuzzy_relation_compose_batch(
  *   params.max_epochs = 500;
  *   params.learning_rate = 0.01f;
  *   float final_error;
- *   bool ok = nimcp_gpu_anfis_train(ctx, state, train_x, train_y,
+ *   bool ok = nimcp_gpu_anfis_train_raw(ctx, state, train_x, train_y,
  *                                    1000, &final_error, &params);
  */
-NIMCP_EXPORT bool nimcp_gpu_anfis_train(
+NIMCP_EXPORT bool nimcp_gpu_anfis_train_raw(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_fuzzy_inference_state_t* state,
     const float* train_inputs,
