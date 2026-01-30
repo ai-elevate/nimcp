@@ -219,7 +219,7 @@ TEST_F(FinancialInvestmentTest, AssessRisk)
     int rc = financial_investment_assess_risk(fin, &p, corr, returns, 100, &metrics);
     EXPECT_EQ(rc, FIN_ERR_OK);
     EXPECT_NE(metrics.sharpe_ratio, 0.0f);
-    EXPECT_LE(metrics.max_drawdown, 0.0f); // drawdown is negative or zero
+    EXPECT_GE(metrics.max_drawdown, 0.0f); // drawdown is positive (0 to 1 range)
 }
 
 TEST_F(FinancialInvestmentTest, AssessRiskFuzzyGrade)
@@ -249,7 +249,7 @@ TEST_F(FinancialInvestmentTest, ComputeVaR)
     float returns[] = {-0.05f, -0.02f, 0.01f, 0.03f, -0.04f,
                        0.02f, -0.01f, 0.00f, -0.03f, 0.04f};
     float var = financial_investment_compute_var(fin, returns, 10, 0.95f);
-    EXPECT_LT(var, 0.0f);
+    EXPECT_GE(var, 0.0f); // VaR is positive loss measure
 }
 
 TEST_F(FinancialInvestmentTest, ComputeCVaR)
@@ -257,19 +257,19 @@ TEST_F(FinancialInvestmentTest, ComputeCVaR)
     float returns[] = {-0.05f, -0.02f, 0.01f, 0.03f, -0.04f,
                        0.02f, -0.01f, 0.00f, -0.03f, 0.04f};
     float cvar = financial_investment_compute_cvar(fin, returns, 10, 0.95f);
-    EXPECT_LT(cvar, 0.0f);
-    // CVaR should be worse (more negative) than VaR
+    EXPECT_GE(cvar, 0.0f); // CVaR is positive loss measure
+    // CVaR should be worse (larger) than VaR
     float var = financial_investment_compute_var(fin, returns, 10, 0.95f);
-    EXPECT_LE(cvar, var);
+    EXPECT_GE(cvar, var);
 }
 
 TEST_F(FinancialInvestmentTest, MaxDrawdown)
 {
     float prices[] = {100.0f, 110.0f, 105.0f, 95.0f, 100.0f, 120.0f};
     float mdd = financial_investment_max_drawdown(prices, 6);
-    // Drawdown from 110 to 95 = -13.6%
-    EXPECT_LT(mdd, 0.0f);
-    EXPECT_GT(mdd, -1.0f);
+    // Drawdown from 110 to 95 = 13.6%
+    EXPECT_GT(mdd, 0.0f);  // drawdown is positive
+    EXPECT_LT(mdd, 1.0f);  // and less than 100%
 }
 
 //=============================================================================

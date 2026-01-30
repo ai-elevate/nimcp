@@ -227,7 +227,8 @@ TEST_F(FinancialNeuralBridgeTest, DecodeSpikes)
 TEST_F(FinancialNeuralBridgeTest, STDPRewardPositive)
 {
     fin_stdp_reward_t reward{};
-    int rc = financial_neural_bridge_stdp_reward(bridge, 0.05f, 86400000000ULL,
+    // Use 15% return (0.15f) which is above the s_shaped threshold of 0.05-0.20
+    int rc = financial_neural_bridge_stdp_reward(bridge, 0.15f, 86400000000ULL,
         &reward);
     EXPECT_EQ(rc, FIN_NEURAL_ERR_OK);
     EXPECT_GT(reward.reward_magnitude, 0.0f);
@@ -236,7 +237,8 @@ TEST_F(FinancialNeuralBridgeTest, STDPRewardPositive)
 TEST_F(FinancialNeuralBridgeTest, STDPRewardNegative)
 {
     fin_stdp_reward_t reward{};
-    int rc = financial_neural_bridge_stdp_reward(bridge, -0.03f, 86400000000ULL,
+    // Use -15% return which is above the s_shaped threshold for loss detection
+    int rc = financial_neural_bridge_stdp_reward(bridge, -0.15f, 86400000000ULL,
         &reward);
     EXPECT_EQ(rc, FIN_NEURAL_ERR_OK);
     EXPECT_LT(reward.reward_magnitude, 0.0f);

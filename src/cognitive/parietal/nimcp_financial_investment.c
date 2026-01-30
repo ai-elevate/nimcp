@@ -1088,6 +1088,20 @@ int financial_investment_price_option(financial_investment_eng_t* fin,
         break;
     }
 
+    /* Validate output for NaN/Inf - sanitize if invalid */
+    if (rc == FIN_ERR_OK) {
+        if (isnan(out_result->price) || isinf(out_result->price)) {
+            out_result->price = 0.0f;
+            rc = FIN_ERR_PRICING_FAILED;
+        }
+        /* Sanitize Greeks - replace NaN/Inf with 0 */
+        if (isnan(out_result->delta) || isinf(out_result->delta)) out_result->delta = 0.0f;
+        if (isnan(out_result->gamma) || isinf(out_result->gamma)) out_result->gamma = 0.0f;
+        if (isnan(out_result->theta) || isinf(out_result->theta)) out_result->theta = 0.0f;
+        if (isnan(out_result->vega) || isinf(out_result->vega)) out_result->vega = 0.0f;
+        if (isnan(out_result->rho) || isinf(out_result->rho)) out_result->rho = 0.0f;
+    }
+
     fin->stats.option_pricings++;
     return rc;
 }

@@ -230,8 +230,8 @@ static void softmax_probabilities(const float* q_values, uint32_t num_actions,
  * @brief Sample from probability distribution
  */
 static uint32_t sample_action(const float* probs, uint32_t num_actions) {
-    /* Simple LCG for reproducible randomness */
-    static uint32_t rand_state = 12345;
+    /* Simple LCG for reproducible randomness - thread-local for thread safety */
+    static _Thread_local uint32_t rand_state = 12345;
     rand_state = rand_state * 1103515245 + 12345;
     float r = (float)(rand_state & 0x7FFFFFFF) / (float)0x7FFFFFFF;
 

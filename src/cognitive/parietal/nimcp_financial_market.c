@@ -296,7 +296,7 @@ static float fuzzy_triangular(float a, float b, float c, float x) {
 // Internal Helper: Simple LCG Random Number Generator
 //=============================================================================
 
-static uint32_t lcg_state = 42u;
+static _Thread_local uint32_t lcg_state = 42u;
 
 static uint32_t lcg_next(void) {
     lcg_state = FIN_MKT_LCG_A * lcg_state + FIN_MKT_LCG_C;
@@ -1076,11 +1076,13 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
 
     /* Volatility contribution: higher volatility = more fear */
     float vol_contrib = 50.0f;
-    if (len >= 20) {
+    if (len >= 21) {  /* Need len >= 21 to safely access prices[i-1] when i starts at len-20 */
         float sum_r2 = 0.0f;
         for (uint32_t i = len - 20; i < len; i++) {
-            float r = (prices[i] - prices[i - 1]) / prices[i - 1];
-            sum_r2 += r * r;
+            if (prices[i - 1] > FIN_MKT_EPSILON) {  /* Guard against division by zero */
+                float r = (prices[i] - prices[i - 1]) / prices[i - 1];
+                sum_r2 += r * r;
+            }
         }
         float realized_vol = sqrtf(sum_r2 / 20.0f) * sqrtf((float)FIN_MKT_TRADING_DAYS);
         /* Higher vol -> lower score (more fear). Typical vol range 0.1 to 0.5 */
@@ -1301,14 +1303,14 @@ int financial_market_detect_regime_fuzzy(financial_market_eng_t* mkt,
     if (long_period <= short_period) long_period = short_period + 1;
     if (long_period > len) long_period = len;
 
-    financial_market_compute_sma(prices, len, short_period, short_sma_buf);
+    int sl = financial_market_compute_sma(prices, len, short_period, short_sma_buf);
     int ll = financial_market_compute_sma(prices, len, long_period, long_sma_buf);
 
     float trend_strength = 50.0f;
-    if (ll > 0) {
-        int sl_len = (int)(len - short_period + 1);
+    if (sl > 0 && ll > 0) {  /* Both SMAs must be valid */
+        int sl_len = sl;
         int offset = sl_len - ll;
-        if (offset >= 0 && ll > 0) {
+        if (offset >= 0) {
             float s = short_sma_buf[sl_len - 1];
             float l = long_sma_buf[ll - 1];
             if (l > FIN_MKT_EPSILON) {
@@ -1321,7 +1323,7 @@ int financial_market_detect_regime_fuzzy(financial_market_eng_t* mkt,
     /* Volatility: annualized */
     float sum_r2 = 0.0f;
     uint32_t start = (len > 20) ? len - 20 : 1;
-    uint32_t count = len - start;
+    uint32_t count = (len > start) ? len - start : 1;  /* Guard against count == 0 */
     for (uint32_t i = start; i < len; i++) {
         if (prices[i - 1] > FIN_MKT_EPSILON) {
             float r = (prices[i] - prices[i - 1]) / prices[i - 1];

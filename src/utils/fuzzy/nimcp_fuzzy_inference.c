@@ -306,7 +306,10 @@ static float compute_rule_strength(const fuzzy_inference_engine_t* engine,
 float fuzzy_defuzzify(const fuzzy_discrete_set_t* set, fuzzy_defuzz_type_t method) {
     if (!set || !set->values || set->resolution == 0) return 0.0f;
 
-    float dx = (set->x_max - set->x_min) / (float)(set->resolution - 1);
+    /* Guard against division by zero when resolution == 1 */
+    float dx = (set->resolution > 1)
+        ? (set->x_max - set->x_min) / (float)(set->resolution - 1)
+        : 0.0f;
 
     switch (method) {
         case FUZZY_DEFUZZ_CENTROID: {
@@ -410,7 +413,10 @@ static int evaluate_mamdani(fuzzy_inference_engine_t* engine,
                                             out_var->universe_min, out_var->universe_max);
         if (rc != FUZZY_ERR_OK) return FUZZY_INF_ERR_ALLOC;
 
-        float dx = (out_var->universe_max - out_var->universe_min) / (float)(resolution - 1);
+        /* Guard against division by zero when resolution == 1 */
+        float dx = (resolution > 1)
+            ? (out_var->universe_max - out_var->universe_min) / (float)(resolution - 1)
+            : 0.0f;
 
         /* Evaluate each rule targeting this output */
         for (uint32_t r = 0; r < engine->num_rules; r++) {

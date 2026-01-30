@@ -182,7 +182,10 @@ static float clampf(float val, float lo, float hi) {
 static float s_shaped(float low, float high, float x) {
     if (x <= low) return 0.0f;
     if (x >= high) return 1.0f;
-    float t = (x - low) / (high - low);
+    /* Guard against division by zero when low == high */
+    float range = high - low;
+    if (range < 1e-8f) return 0.5f;
+    float t = (x - low) / range;
     return t * t * (3.0f - 2.0f * t);
 }
 

@@ -267,7 +267,10 @@ static void neural_present_antigen(financial_neural_bridge_t* bridge,
 static float s_shaped(float low, float high, float x) {
     if (x <= low) return 0.0f;
     if (x >= high) return 1.0f;
-    float t = (x - low) / (high - low);
+    /* Guard against division by zero when low == high */
+    float range = high - low;
+    if (range < 1e-8f) return 0.5f;
+    float t = (x - low) / range;
     return t * t * (3.0f - 2.0f * t);
 }
 
@@ -1013,7 +1016,8 @@ int financial_neural_bridge_lnn_predict(
     for (uint32_t i = 0; i < dim; i++) {
         vol_sum += bridge->lnn_state[i] * bridge->lnn_state[i];
     }
-    float predicted_vol = sqrtf(vol_sum / (float)dim);
+    /* Guard against division by zero when dim == 0 */
+    float predicted_vol = (dim > 0) ? sqrtf(vol_sum / (float)dim) : 0.0f;
 
     /* Confidence = 1 / (1 + |state_norm_change|) */
     float confidence = 1.0f / (1.0f + state_norm);
