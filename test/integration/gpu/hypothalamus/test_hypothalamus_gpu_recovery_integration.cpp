@@ -250,7 +250,7 @@ TEST_F(HypothalamusGPURecoveryIntegrationTest, PIDControllerLongTerm) {
     for (size_t i = 0; i < target_data.size(); i++) {
         target_data[i] = 1.0f;
     }
-    nimcp_gpu_tensor_from_host_data(target, target_data.data());
+    nimcp_gpu_tensor_upload(target, target_data.data(), target_data.size() * sizeof(float));
 
     int successful_updates = 0;
     const int n_iterations = 500;
@@ -260,7 +260,7 @@ TEST_F(HypothalamusGPURecoveryIntegrationTest, PIDControllerLongTerm) {
         for (size_t i = 0; i < target_data.size(); i++) {
             target_data[i] = 1.0f + 0.5f * std::sin(iter * 0.05f);
         }
-        nimcp_gpu_tensor_from_host_data(target, target_data.data());
+        nimcp_gpu_tensor_upload(target, target_data.data(), target_data.size() * sizeof(float));
 
         /* Controller update */
         bool result = nimcp_hypo_gpu_controller_update(
@@ -278,7 +278,7 @@ TEST_F(HypothalamusGPURecoveryIntegrationTest, PIDControllerLongTerm) {
             for (size_t i = 0; i < current_data.size(); i++) {
                 current_data[i] += output_data[i] * DT;
             }
-            nimcp_gpu_tensor_from_host_data(current, current_data.data());
+            nimcp_gpu_tensor_upload(current, current_data.data(), current_data.size() * sizeof(float));
         }
 
         successful_updates++;
@@ -395,8 +395,8 @@ TEST_F(HypothalamusGPURecoveryIntegrationTest, RewardPredictionError) {
             expected_data[i] = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.0f;
         }
 
-        nimcp_gpu_tensor_from_host_data(actual, actual_data.data());
-        nimcp_gpu_tensor_from_host_data(expected, expected_data.data());
+        nimcp_gpu_tensor_upload(actual, actual_data.data(), actual_data.size() * sizeof(float));
+        nimcp_gpu_tensor_upload(expected, expected_data.data(), expected_data.size() * sizeof(float));
 
         bool result = nimcp_hypo_gpu_compute_rpe(ctx, actual, expected, rpe);
         if (!result) continue;

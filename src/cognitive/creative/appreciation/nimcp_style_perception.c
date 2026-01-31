@@ -23,6 +23,33 @@
 
 #define LOG_MODULE "STYLE_PERCEPTION"
 
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for style_perception module */
+static nimcp_health_agent_t* g_style_perception_health_agent = NULL;
+
+/**
+ * @brief Set health agent for style_perception heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void style_perception_set_health_agent(nimcp_health_agent_t* agent) {
+    g_style_perception_health_agent = agent;
+}
+
+/** @brief Send heartbeat from style_perception module */
+static inline void style_perception_heartbeat(const char* operation, float progress) {
+    if (g_style_perception_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_style_perception_health_agent, operation, progress);
+    }
+}
+
 #define MAX_EVOLUTION_POINTS 1024
 
 //=============================================================================

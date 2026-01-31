@@ -1533,6 +1533,68 @@ int sandbox_apply_seccomp(bool allow_network, bool allow_filesystem) {
     return 0;
 }
 
+/* ============================================================================
+ * STATISTICS AND CLEANUP FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * @brief Get recompiler statistics
+ *
+ * @param recompiler Recompiler handle
+ * @param stats Output statistics structure
+ * @return true on success
+ */
+bool recompiler_get_stats(recompiler_t recompiler, recompiler_stats_t* stats) {
+    if (!validate_recompiler(recompiler) || !stats) {
+        return false;
+    }
+
+    nimcp_platform_mutex_lock(&recompiler->mutex);
+    *stats = recompiler->stats;
+    nimcp_platform_mutex_unlock(&recompiler->mutex);
+
+    return true;
+}
+
+/**
+ * @brief Reset statistics
+ *
+ * @param recompiler Recompiler handle
+ */
+void recompiler_reset_stats(recompiler_t recompiler) {
+    if (!validate_recompiler(recompiler)) {
+        return;
+    }
+
+    nimcp_platform_mutex_lock(&recompiler->mutex);
+    memset(&recompiler->stats, 0, sizeof(recompiler_stats_t));
+    nimcp_platform_mutex_unlock(&recompiler->mutex);
+}
+
+/**
+ * @brief Remove compiled output file
+ *
+ * @param so_path Path to the shared object file
+ * @return true if file was removed or didn't exist
+ */
+bool recompiler_remove_output(const char* so_path) {
+    if (!so_path || so_path[0] == '\0') {
+        return false;
+    }
+
+    /* Try to remove the file */
+    if (unlink(so_path) == 0) {
+        return true;
+    }
+
+    /* File doesn't exist is also success */
+    if (errno == ENOENT) {
+        return true;
+    }
+
+    return false;
+}
+
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================

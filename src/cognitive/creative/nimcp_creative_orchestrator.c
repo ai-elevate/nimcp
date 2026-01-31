@@ -24,6 +24,44 @@
 #define LOG_MODULE "CREATIVE_ORCH"
 
 //=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for creative orchestrator module */
+static nimcp_health_agent_t* g_creative_orchestrator_health_agent = NULL;
+
+/**
+ * @brief Set health agent for creative orchestrator heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void creative_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
+    g_creative_orchestrator_health_agent = agent;
+}
+
+/** @brief Send heartbeat from creative orchestrator module */
+static inline void creative_orchestrator_heartbeat(const char* operation, float progress) {
+    if (g_creative_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_creative_orchestrator_health_agent, operation, progress);
+    }
+}
+
+/** @brief Dual-level heartbeat: instance agent or global */
+static inline void creative_orchestrator_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (instance_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    } else if (g_creative_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_creative_orchestrator_health_agent, operation, progress);
+    }
+}
+
+//=============================================================================
 // Lifecycle API
 //=============================================================================
 
@@ -51,6 +89,8 @@ creative_orchestrator_t* creative_orchestrator_create(
 
     LOG_INFO(LOG_MODULE, "Creative orchestrator created");
 
+    creative_orchestrator_heartbeat("orchestrator_create", 1.0f);
+
     orch->state = CREATIVE_STATE_READY;
     return orch;
 }
@@ -70,8 +110,12 @@ void creative_orchestrator_destroy(creative_orchestrator_t* orch) {
 int creative_orchestrator_init_subsystems(creative_orchestrator_t* orch) {
     if (!orch) return -1;
 
+    creative_orchestrator_heartbeat("init_subsystems", 0.0f);
+
     /* Subsystem initialization would happen here */
     /* Currently a stub for future implementation */
+
+    creative_orchestrator_heartbeat("init_subsystems", 1.0f);
 
     return 0;
 }
@@ -89,9 +133,13 @@ void creative_orchestrator_shutdown(creative_orchestrator_t* orch) {
 int creative_orchestrator_update(creative_orchestrator_t* orch, uint64_t dt_us) {
     if (!orch) return -1;
 
+    creative_orchestrator_heartbeat("orchestrator_update", 0.0f);
+
     /* Update statistics */
     orch->stats.update_cycles++;
     orch->stats.last_update_us = dt_us;
+
+    creative_orchestrator_heartbeat("orchestrator_update", 1.0f);
 
     return 0;
 }

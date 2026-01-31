@@ -127,9 +127,9 @@ START_TEST(test_anfis_forward_pass)
     }
 
     nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){batch_size, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){batch_size, 2}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){batch_size, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){batch_size, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, batch_size * 2 * sizeof(float));
@@ -202,9 +202,9 @@ START_TEST(test_anfis_training_linear_function)
     }
 
     nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* target_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && target_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, n_samples * sizeof(float));
@@ -279,9 +279,9 @@ START_TEST(test_anfis_training_nonlinear_function)
     generate_sincos_data(inputs, targets, n_samples);
 
     nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 2}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* target_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && target_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, n_samples * 2 * sizeof(float));
@@ -356,9 +356,9 @@ START_TEST(test_anfis_hybrid_learning)
     generate_xor_data(inputs, targets, n_samples);
 
     nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 2}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* target_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_samples, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && target_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, n_samples * 2 * sizeof(float));
@@ -448,13 +448,13 @@ START_TEST(test_anfis_validation_split)
     }
 
     nimcp_gpu_tensor_t* train_input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_train, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_train, 1}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* train_target_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_train, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_train, 1}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* val_input_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_val, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_val, 1}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* val_output_tensor = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){n_val, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){n_val, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (train_input_tensor && train_target_tensor && val_input_tensor && val_output_tensor) {
         nimcp_gpu_tensor_copy_from_host(train_input_tensor, train_inputs, n_train * sizeof(float));
@@ -644,9 +644,9 @@ START_TEST(test_anfis_mismatched_dimensions)
 
     /* Create tensor with wrong number of inputs */
     nimcp_gpu_tensor_t* wrong_input = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){10, 5}, 2, NIMCP_GPU_DTYPE_FLOAT32);  /* 5 inputs instead of 2 */
+        (size_t[]){10, 5}, 2, NIMCP_GPU_PRECISION_FP32);  /* 5 inputs instead of 2 */
     nimcp_gpu_tensor_t* output = nimcp_gpu_tensor_create(ctx,
-        (size_t[]){10, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        (size_t[]){10, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (wrong_input && output) {
         bool success = nimcp_gpu_anfis_forward(ctx, state, wrong_input, output);

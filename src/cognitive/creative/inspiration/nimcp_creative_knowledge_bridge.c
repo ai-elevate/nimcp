@@ -25,6 +25,33 @@
 
 #define LOG_MODULE "CREATIVE_KNOWLEDGE"
 
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for creative_knowledge_bridge module */
+static nimcp_health_agent_t* g_creative_knowledge_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for creative_knowledge_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void creative_knowledge_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_creative_knowledge_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from creative_knowledge_bridge module */
+static inline void creative_knowledge_bridge_heartbeat(const char* operation, float progress) {
+    if (g_creative_knowledge_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_creative_knowledge_bridge_health_agent, operation, progress);
+    }
+}
+
 #define DEFAULT_MAX_RESULTS 50
 #define DEFAULT_CACHE_SIZE 100
 

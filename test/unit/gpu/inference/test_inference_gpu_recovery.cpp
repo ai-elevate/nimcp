@@ -61,7 +61,7 @@ protected:
 
     // Helper: Create test GPU tensor
     nimcp_gpu_tensor_t* create_test_tensor(const std::vector<size_t>& dims) {
-        return nimcp_gpu_tensor_create(ctx_, dims.data(), dims.size(), NIMCP_DTYPE_FLOAT32);
+        return nimcp_gpu_tensor_create(ctx_, dims.data(), dims.size(), NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper: Fill tensor with random data
@@ -72,7 +72,7 @@ protected:
         std::mt19937 gen(42);
         std::uniform_real_distribution<float> dist(min_val, max_val);
         for (auto& x : host_data) x = dist(gen);
-        nimcp_gpu_tensor_set_data(tensor, host_data.data(), numel * sizeof(float));
+        nimcp_gpu_tensor_upload(tensor, host_data.data(), numel * sizeof(float));
     }
 
     // Helper: Create and fill INT8 quantization parameters
@@ -602,8 +602,8 @@ TEST_F(InferenceGPURecoveryTest, LayerNormInference) {
     // Fill gamma with 1s and beta with 0s (identity transform)
     std::vector<float> ones(features, 1.0f);
     std::vector<float> zeros(features, 0.0f);
-    nimcp_gpu_tensor_set_data(gamma, ones.data(), features * sizeof(float));
-    nimcp_gpu_tensor_set_data(beta, zeros.data(), features * sizeof(float));
+    nimcp_gpu_tensor_upload(gamma, ones.data(), features * sizeof(float));
+    nimcp_gpu_tensor_upload(beta, zeros.data(), features * sizeof(float));
 
     bool result = nimcp_gpu_infer_layernorm(ctx_, input, gamma, beta, output, 1e-5f);
     EXPECT_TRUE(result) << "LayerNorm should succeed";
@@ -638,7 +638,7 @@ TEST_F(InferenceGPURecoveryTest, RMSNormInference) {
     fill_random(input);
 
     std::vector<float> ones(features, 1.0f);
-    nimcp_gpu_tensor_set_data(gamma, ones.data(), features * sizeof(float));
+    nimcp_gpu_tensor_upload(gamma, ones.data(), features * sizeof(float));
 
     bool result = nimcp_gpu_infer_rmsnorm(ctx_, input, gamma, output, 1e-5f);
     EXPECT_TRUE(result) << "RMSNorm should succeed";

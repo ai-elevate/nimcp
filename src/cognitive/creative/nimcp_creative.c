@@ -24,6 +24,44 @@
 #define LOG_MODULE "CREATIVE"
 
 //=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for creative module */
+static nimcp_health_agent_t* g_creative_health_agent = NULL;
+
+/**
+ * @brief Set health agent for creative heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void creative_set_health_agent(nimcp_health_agent_t* agent) {
+    g_creative_health_agent = agent;
+}
+
+/** @brief Send heartbeat from creative module */
+static inline void creative_heartbeat(const char* operation, float progress) {
+    if (g_creative_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_creative_health_agent, operation, progress);
+    }
+}
+
+/** @brief Dual-level heartbeat: instance agent or global */
+static inline void creative_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (instance_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    } else if (g_creative_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_creative_health_agent, operation, progress);
+    }
+}
+
+//=============================================================================
 // Config Defaults
 //=============================================================================
 
@@ -188,6 +226,8 @@ int style_embedding_create(style_embedding_t* embedding, uint32_t dim) {
         return -1;
     }
 
+    creative_heartbeat("style_embedding_create", 0.0f);
+
     memset(embedding, 0, sizeof(style_embedding_t));
 
     embedding->embedding = nimcp_calloc(dim, sizeof(float));
@@ -199,6 +239,8 @@ int style_embedding_create(style_embedding_t* embedding, uint32_t dim) {
     embedding->embedding_dim = dim;
     embedding->archetype_id = -1;  /* No archetype */
     embedding->confidence = 0.0f;
+
+    creative_heartbeat("style_embedding_create", 1.0f);
 
     return 0;
 }

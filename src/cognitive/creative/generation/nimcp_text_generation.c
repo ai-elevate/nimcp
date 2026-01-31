@@ -26,6 +26,33 @@
 
 #define LOG_MODULE "TEXT_GEN"
 
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for text_generation module */
+static nimcp_health_agent_t* g_text_generation_health_agent = NULL;
+
+/**
+ * @brief Set health agent for text_generation heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void text_generation_set_health_agent(nimcp_health_agent_t* agent) {
+    g_text_generation_health_agent = agent;
+}
+
+/** @brief Send heartbeat from text_generation module */
+static inline void text_generation_heartbeat(const char* operation, float progress) {
+    if (g_text_generation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_text_generation_health_agent, operation, progress);
+    }
+}
+
 #define DEFAULT_MAX_TOKENS 2048
 #define DEFAULT_TEMPERATURE 0.8f
 #define DEFAULT_TOP_P 0.9f

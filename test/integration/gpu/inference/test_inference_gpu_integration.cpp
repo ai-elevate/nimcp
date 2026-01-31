@@ -67,7 +67,7 @@ protected:
 
     // Helper: Create test GPU tensor
     nimcp_gpu_tensor_t* create_tensor(const std::vector<size_t>& dims) {
-        return nimcp_gpu_tensor_create(ctx_, dims.data(), dims.size(), NIMCP_DTYPE_FLOAT32);
+        return nimcp_gpu_tensor_create(ctx_, dims.data(), dims.size(), NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper: Fill tensor with random data
@@ -78,7 +78,7 @@ protected:
         std::mt19937 gen(42);
         std::uniform_real_distribution<float> dist(min_val, max_val);
         for (auto& x : data) x = dist(gen);
-        nimcp_gpu_tensor_set_data(tensor, data.data(), numel * sizeof(float));
+        nimcp_gpu_tensor_upload(tensor, data.data(), numel * sizeof(float));
     }
 
     // Helper: Initialize quant params

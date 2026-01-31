@@ -741,7 +741,7 @@ TEST_F(SwarmGPURecoveryTest, MemoryConsolidationNumericalStability) {
     for (size_t i = 0; i < capacity; i++) {
         strengths[i] = static_cast<float>(i) / capacity;
     }
-    nimcp_gpu_tensor_from_host(memory_strength, strengths.data());
+    nimcp_gpu_tensor_upload(memory_strength, strengths.data(), strengths.size() * sizeof(float));
 
     /* Apply decay - should not produce NaN or Inf */
     bool result = nimcp_swarm_memory_gpu_decay(

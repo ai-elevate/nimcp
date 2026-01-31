@@ -494,8 +494,8 @@ TEST_F(HypothalamusGPURecoveryTest, PIDControllerUpdateWithRecovery) {
     /* Initialize with some values */
     std::vector<float> current_data(DEFAULT_BATCH_SIZE * n_variables, 0.5f);
     std::vector<float> target_data(DEFAULT_BATCH_SIZE * n_variables, 1.0f);
-    nimcp_gpu_tensor_from_host(current, current_data.data());
-    nimcp_gpu_tensor_from_host(target, target_data.data());
+    nimcp_gpu_tensor_upload(current, current_data.data(), current_data.size() * sizeof(float));
+    nimcp_gpu_tensor_upload(target, target_data.data(), target_data.size() * sizeof(float));
 
     nimcp_hypo_gpu_pid_config_t pid_config = nimcp_hypo_gpu_pid_config_default();
 

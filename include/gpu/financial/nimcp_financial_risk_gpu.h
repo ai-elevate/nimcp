@@ -159,6 +159,27 @@ static inline fin_risk_extended_params_t fin_risk_extended_params_default(void)
 //=============================================================================
 
 /**
+ * @brief Compute rolling risk metrics on GPU
+ *
+ * Computes rolling VaR, CVaR, and volatility over a sliding window.
+ *
+ * @param ctx      GPU context
+ * @param returns  Return data [num_returns]
+ * @param num_returns Number of returns
+ * @param window   Rolling window size
+ * @param params   Risk parameters
+ * @param result   Rolling result (var_series, cvar_series, vol_series allocated)
+ * @return true on success
+ */
+NIMCP_EXPORT bool fin_risk_gpu_rolling(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    uint32_t window,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_rolling_result_t* result);
+
+/**
  * @brief Compute extended risk metrics on GPU
  *
  * @param ctx      GPU context

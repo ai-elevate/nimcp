@@ -506,6 +506,391 @@ __global__ void kernel_yang_zhang_components(
 }
 
 //=============================================================================
+// Additional Statistical Kernels
+//=============================================================================
+
+/**
+ * @brief Compute skewness given pre-computed mean and std_dev
+ */
+__global__ void kernel_compute_skewness(
+    const float* __restrict__ data,
+    float mean,
+    float std_dev,
+    float* __restrict__ partial_cubed,
+    uint32_t n)
+{
+    extern __shared__ float s_cubed[];
+
+    uint32_t tid = threadIdx.x;
+    uint32_t i = blockIdx.x * blockDim.x * 2 + threadIdx.x;
+
+    float cubed_sum = 0.0f;
+    if (i < n && std_dev > 1e-10f) {
+        float z = (data[i] - mean) / std_dev;
+        cubed_sum = z * z * z;
+    }
+    if (i + blockDim.x < n && std_dev > 1e-10f) {
+        float z = (data[i + blockDim.x] - mean) / std_dev;
+        cubed_sum += z * z * z;
+    }
+
+    s_cubed[tid] = cubed_sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_cubed[tid] += s_cubed[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        partial_cubed[blockIdx.x] = s_cubed[0];
+    }
+}
+
+/**
+ * @brief Compute kurtosis given pre-computed mean and std_dev
+ */
+__global__ void kernel_compute_kurtosis(
+    const float* __restrict__ data,
+    float mean,
+    float std_dev,
+    float* __restrict__ partial_fourth,
+    uint32_t n)
+{
+    extern __shared__ float s_fourth[];
+
+    uint32_t tid = threadIdx.x;
+    uint32_t i = blockIdx.x * blockDim.x * 2 + threadIdx.x;
+
+    float fourth_sum = 0.0f;
+    if (i < n && std_dev > 1e-10f) {
+        float z = (data[i] - mean) / std_dev;
+        float z2 = z * z;
+        fourth_sum = z2 * z2;
+    }
+    if (i + blockDim.x < n && std_dev > 1e-10f) {
+        float z = (data[i + blockDim.x] - mean) / std_dev;
+        float z2 = z * z;
+        fourth_sum += z2 * z2;
+    }
+
+    s_fourth[tid] = fourth_sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_fourth[tid] += s_fourth[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        partial_fourth[blockIdx.x] = s_fourth[0];
+    }
+}
+
+/**
+ * @brief Compute drawdown series from cumulative returns
+ */
+__global__ void kernel_compute_drawdown_series(
+    const float* __restrict__ prices,
+    float* __restrict__ drawdown,
+    float* __restrict__ peak,
+    uint32_t n)
+{
+    // This kernel computes parallel drawdowns
+    // Each thread handles its position
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) {
+        // Find peak up to this point (O(n) per thread, but parallelized)
+        // For better performance, use parallel scan
+        float max_so_far = prices[0];
+        for (uint32_t j = 1; j <= i; j++) {
+            if (prices[j] > max_so_far) {
+                max_so_far = prices[j];
+            }
+        }
+        if (peak) peak[i] = max_so_far;
+        drawdown[i] = (prices[i] - max_so_far) / max_so_far;  // Negative if below peak
+    }
+}
+
+/**
+ * @brief Parallel prefix max for drawdown (Hillis-Steele style)
+ */
+__global__ void kernel_parallel_prefix_max(
+    float* __restrict__ data,
+    uint32_t n,
+    uint32_t offset)
+{
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i >= offset && i < n) {
+        float left = data[i - offset];
+        float curr = data[i];
+        data[i] = fmaxf(left, curr);
+    }
+}
+
+/**
+ * @brief Find max drawdown using reduction
+ */
+__global__ void kernel_find_max_drawdown(
+    const float* __restrict__ drawdown,
+    float* __restrict__ partial_min,
+    uint32_t* __restrict__ partial_idx,
+    uint32_t n)
+{
+    extern __shared__ float s_data[];
+    uint32_t* s_idx = (uint32_t*)&s_data[blockDim.x];
+
+    uint32_t tid = threadIdx.x;
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    s_data[tid] = (i < n) ? drawdown[i] : 0.0f;
+    s_idx[tid] = (i < n) ? i : 0;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            if (s_data[tid + s] < s_data[tid]) {
+                s_data[tid] = s_data[tid + s];
+                s_idx[tid] = s_idx[tid + s];
+            }
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        partial_min[blockIdx.x] = s_data[0];
+        partial_idx[blockIdx.x] = s_idx[0];
+    }
+}
+
+/**
+ * @brief Compute EWMA volatility series (with output at each step)
+ */
+__global__ void kernel_ewma_volatility_series(
+    const float* __restrict__ returns,
+    float* __restrict__ variance_series,
+    float lambda,
+    float initial_variance,
+    uint32_t n)
+{
+    // Single thread processes sequentially
+    if (blockIdx.x == 0 && threadIdx.x == 0) {
+        float variance = initial_variance;
+        variance_series[0] = sqrtf(variance);
+
+        for (uint32_t i = 0; i < n; i++) {
+            float r = returns[i];
+            variance = lambda * variance + (1.0f - lambda) * r * r;
+            if (i + 1 < n) {
+                variance_series[i + 1] = sqrtf(variance);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Compute covariance matrix elements
+ */
+__global__ void kernel_compute_covariance_element(
+    const float* __restrict__ returns,  // [num_assets x num_returns]
+    const float* __restrict__ means,    // [num_assets]
+    float* __restrict__ covariance,     // [num_assets x num_assets]
+    uint32_t num_assets,
+    uint32_t num_returns)
+{
+    uint32_t i = blockIdx.x;
+    uint32_t j = blockIdx.y;
+
+    if (i >= num_assets || j >= num_assets) return;
+
+    extern __shared__ float s_sum[];
+
+    uint32_t tid = threadIdx.x;
+    float sum = 0.0f;
+
+    float mean_i = means[i];
+    float mean_j = means[j];
+
+    for (uint32_t t = tid; t < num_returns; t += blockDim.x) {
+        float ri = returns[i * num_returns + t] - mean_i;
+        float rj = returns[j * num_returns + t] - mean_j;
+        sum += ri * rj;
+    }
+
+    s_sum[tid] = sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_sum[tid] += s_sum[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        covariance[i * num_assets + j] = s_sum[0] / (float)(num_returns - 1);
+    }
+}
+
+/**
+ * @brief Compute asset means for covariance
+ */
+__global__ void kernel_compute_asset_means(
+    const float* __restrict__ returns,  // [num_assets x num_returns]
+    float* __restrict__ means,          // [num_assets]
+    uint32_t num_assets,
+    uint32_t num_returns)
+{
+    uint32_t asset = blockIdx.x;
+    if (asset >= num_assets) return;
+
+    extern __shared__ float s_sum[];
+
+    uint32_t tid = threadIdx.x;
+    float sum = 0.0f;
+
+    for (uint32_t t = tid; t < num_returns; t += blockDim.x) {
+        sum += returns[asset * num_returns + t];
+    }
+
+    s_sum[tid] = sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_sum[tid] += s_sum[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        means[asset] = s_sum[0] / (float)num_returns;
+    }
+}
+
+/**
+ * @brief Batch risk computation kernel
+ * Each block processes one portfolio's returns
+ */
+__global__ void kernel_batch_risk_mean_var(
+    const float* __restrict__ returns,   // [num_portfolios x num_returns]
+    float* __restrict__ means,           // [num_portfolios]
+    float* __restrict__ variances,       // [num_portfolios]
+    uint32_t num_portfolios,
+    uint32_t num_returns)
+{
+    extern __shared__ float s_data[];
+    float* s_sum = s_data;
+    float* s_sq = &s_data[blockDim.x];
+
+    uint32_t portfolio = blockIdx.x;
+    if (portfolio >= num_portfolios) return;
+
+    uint32_t tid = threadIdx.x;
+    const float* port_returns = &returns[portfolio * num_returns];
+
+    // First pass: compute sum
+    float sum = 0.0f;
+    for (uint32_t i = tid; i < num_returns; i += blockDim.x) {
+        sum += port_returns[i];
+    }
+    s_sum[tid] = sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_sum[tid] += s_sum[tid + s];
+        }
+        __syncthreads();
+    }
+
+    float mean = s_sum[0] / (float)num_returns;
+    if (tid == 0) means[portfolio] = mean;
+    __syncthreads();
+
+    // Second pass: compute variance
+    float sq_sum = 0.0f;
+    for (uint32_t i = tid; i < num_returns; i += blockDim.x) {
+        float diff = port_returns[i] - mean;
+        sq_sum += diff * diff;
+    }
+    s_sq[tid] = sq_sum;
+    __syncthreads();
+
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            s_sq[tid] += s_sq[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        variances[portfolio] = s_sq[0] / (float)(num_returns - 1);
+    }
+}
+
+/**
+ * @brief Rolling CVaR computation kernel (proper computation, not approximation)
+ */
+__global__ void kernel_rolling_cvar(
+    const float* __restrict__ returns,
+    float* __restrict__ rolling_cvar,
+    uint32_t window_size,
+    float confidence,
+    uint32_t n)
+{
+    // Note: This is a proper CVaR computation using sorting within each window
+    // For very large windows, this is O(n * window_size * log(window_size))
+    // but parallelizes across windows
+
+    extern __shared__ float s_window[];
+
+    uint32_t out_idx = blockIdx.x;
+    uint32_t window_start = out_idx;
+
+    if (out_idx + window_size > n) return;
+
+    uint32_t tid = threadIdx.x;
+
+    // Load window data into shared memory
+    if (tid < window_size) {
+        s_window[tid] = returns[window_start + tid];
+    }
+    __syncthreads();
+
+    // Simple insertion sort in shared memory (good for small windows)
+    // Thread 0 does the sorting
+    if (tid == 0 && window_size <= blockDim.x) {
+        for (uint32_t i = 1; i < window_size; i++) {
+            float key = s_window[i];
+            int j = i - 1;
+            while (j >= 0 && s_window[j] > key) {
+                s_window[j + 1] = s_window[j];
+                j--;
+            }
+            s_window[j + 1] = key;
+        }
+
+        // Compute CVaR: average of returns below VaR threshold
+        uint32_t cutoff = (uint32_t)((1.0f - confidence) * window_size);
+        if (cutoff == 0) cutoff = 1;
+
+        float sum = 0.0f;
+        for (uint32_t i = 0; i < cutoff; i++) {
+            sum += s_window[i];
+        }
+        rolling_cvar[out_idx] = -sum / (float)cutoff;  // Positive CVaR
+    }
+}
+
+//=============================================================================
 // Rolling Risk Metrics Kernels
 //=============================================================================
 
@@ -1185,15 +1570,1229 @@ bool fin_risk_gpu_rolling(
             params->confidence_95, result->var_series, NULL);
     }
 
-    // CVaR computation would need additional kernel - stub for now
+    // CVaR computation - properly compute using sorted windows
     if (params->compute_cvar && result->cvar_series) {
-        // Initialize to VaR as approximation
-        if (result->var_series) {
-            memcpy(result->cvar_series, result->var_series, num_points * sizeof(float));
+        cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+
+        float* d_returns_cvar = NULL;
+        float* d_cvar_out = NULL;
+
+        cudaError_t err = cudaMalloc(&d_returns_cvar, num_returns * sizeof(float));
+        if (err != cudaSuccess) {
+            // Fall back to VaR approximation
+            if (result->var_series) {
+                memcpy(result->cvar_series, result->var_series, num_points * sizeof(float));
+            }
+        } else {
+            err = cudaMalloc(&d_cvar_out, num_points * sizeof(float));
+            if (err != cudaSuccess) {
+                cudaFree(d_returns_cvar);
+                if (result->var_series) {
+                    memcpy(result->cvar_series, result->var_series, num_points * sizeof(float));
+                }
+            } else {
+                cudaMemcpyAsync(d_returns_cvar, returns, num_returns * sizeof(float),
+                                cudaMemcpyHostToDevice, stream);
+
+                // Launch rolling CVaR kernel
+                // Each block processes one window; use shared memory for sorting
+                uint32_t cvar_block_size = (window <= 256) ? 256 : 512;
+                size_t shared_size = window * sizeof(float);
+
+                kernel_rolling_cvar<<<num_points, cvar_block_size, shared_size, stream>>>(
+                    d_returns_cvar, d_cvar_out, window, params->confidence_95, num_returns);
+
+                cudaMemcpy(result->cvar_series, d_cvar_out, num_points * sizeof(float),
+                           cudaMemcpyDeviceToHost);
+
+                cudaFree(d_returns_cvar);
+                cudaFree(d_cvar_out);
+            }
         }
     }
 
     return true;
+}
+
+//=============================================================================
+// Extended Risk API Implementation
+//=============================================================================
+
+/**
+ * @brief Helper to compute mean, variance, skewness, kurtosis on GPU
+ */
+static bool compute_moments_gpu(
+    nimcp_gpu_context_t* ctx,
+    const float* d_returns,
+    uint32_t n,
+    float* out_mean,
+    float* out_variance,
+    float* out_skewness,
+    float* out_kurtosis)
+{
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+    uint32_t reduce_blocks = (n + block_size * 2 - 1) / (block_size * 2);
+
+    float* d_partial = NULL;
+    float* h_partial = NULL;
+
+    cudaError_t err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
+    if (err != cudaSuccess) return false;
+
+    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    if (!h_partial) {
+        cudaFree(d_partial);
+        return false;
+    }
+
+    // Compute mean
+    kernel_compute_mean<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, d_partial, n);
+    cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < reduce_blocks; i++) sum += h_partial[i];
+    float mean = sum / (float)n;
+    *out_mean = mean;
+
+    // Compute variance
+    kernel_compute_variance<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, mean, d_partial, n);
+    cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float sq_sum = 0.0f;
+    for (uint32_t i = 0; i < reduce_blocks; i++) sq_sum += h_partial[i];
+    float variance = sq_sum / (float)(n - 1);
+    float std_dev = sqrtf(variance);
+    *out_variance = variance;
+
+    // Compute skewness
+    if (out_skewness && std_dev > 1e-10f) {
+        kernel_compute_skewness<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+            d_returns, mean, std_dev, d_partial, n);
+        cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+        float cubed_sum = 0.0f;
+        for (uint32_t i = 0; i < reduce_blocks; i++) cubed_sum += h_partial[i];
+        *out_skewness = cubed_sum / (float)n;
+    } else if (out_skewness) {
+        *out_skewness = 0.0f;
+    }
+
+    // Compute kurtosis
+    if (out_kurtosis && std_dev > 1e-10f) {
+        kernel_compute_kurtosis<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+            d_returns, mean, std_dev, d_partial, n);
+        cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+        float fourth_sum = 0.0f;
+        for (uint32_t i = 0; i < reduce_blocks; i++) fourth_sum += h_partial[i];
+        *out_kurtosis = fourth_sum / (float)n - 3.0f;  // Excess kurtosis
+    } else if (out_kurtosis) {
+        *out_kurtosis = 0.0f;
+    }
+
+    free(h_partial);
+    cudaFree(d_partial);
+    return true;
+}
+
+bool fin_risk_gpu_extended(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    const fin_risk_extended_params_t* params,
+    fin_risk_extended_result_t* result)
+{
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+        return false;
+    }
+    if (!returns || !params || !result || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
+        return false;
+    }
+
+    memset(result, 0, sizeof(*result));
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t n = num_returns;
+    uint32_t block_size = 256;
+
+    // Allocate device memory
+    float* d_returns = NULL;
+    float* d_sorted = NULL;
+
+    cudaError_t err;
+    err = cudaMalloc(&d_returns, n * sizeof(float));
+    if (err != cudaSuccess) {
+        set_risk_error("Failed to allocate device memory");
+        return false;
+    }
+
+    err = cudaMalloc(&d_sorted, n * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        set_risk_error("Failed to allocate sorted array");
+        return false;
+    }
+
+    cudaMemcpyAsync(d_returns, returns, n * sizeof(float), cudaMemcpyHostToDevice, stream);
+
+    // Compute moments
+    float mean, variance, skewness, kurtosis;
+    if (!compute_moments_gpu(ctx, d_returns, n, &mean, &variance, &skewness, &kurtosis)) {
+        cudaFree(d_returns);
+        cudaFree(d_sorted);
+        return false;
+    }
+
+    float std_dev = sqrtf(variance);
+    result->base.mean_return = mean;
+    result->base.volatility = std_dev;
+
+    // Sort for VaR/CVaR
+    cudaMemcpyAsync(d_sorted, d_returns, n * sizeof(float), cudaMemcpyDeviceToDevice, stream);
+    gpu_sort(d_sorted, n, stream);
+
+    // Historical VaR
+    uint32_t var_idx_95 = (uint32_t)((1.0f - 0.95f) * n);
+    uint32_t var_idx_99 = (uint32_t)((1.0f - 0.99f) * n);
+    if (var_idx_95 >= n) var_idx_95 = n - 1;
+    if (var_idx_99 >= n) var_idx_99 = n - 1;
+
+    float h_var_95, h_var_99;
+    cudaMemcpy(&h_var_95, &d_sorted[var_idx_95], sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&h_var_99, &d_sorted[var_idx_99], sizeof(float), cudaMemcpyDeviceToHost);
+
+    result->var_historical = -h_var_95;
+    result->base.var_95 = -h_var_95;
+    result->base.var_99 = -h_var_99;
+
+    // Parametric VaR (assumes normal distribution)
+    float z_95 = -1.645f;
+    float z_99 = -2.326f;
+    result->var_parametric = -(mean + z_95 * std_dev);
+    result->base.var_parametric = result->var_parametric;
+
+    // Cornish-Fisher VaR (adjusts for skewness and kurtosis)
+    float z_cf_95 = z_95 + (skewness / 6.0f) * (z_95 * z_95 - 1.0f)
+                   + (kurtosis / 24.0f) * (z_95 * z_95 * z_95 - 3.0f * z_95)
+                   - (skewness * skewness / 36.0f) * (2.0f * z_95 * z_95 * z_95 - 5.0f * z_95);
+    result->var_cornish_fisher = -(mean + z_cf_95 * std_dev);
+
+    // CVaR computation
+    float* d_cvar = NULL;
+    cudaMalloc(&d_cvar, sizeof(float));
+
+    kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
+        d_sorted, d_cvar, n, 0.95f);
+    float h_cvar_95;
+    cudaMemcpy(&h_cvar_95, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
+    result->base.cvar_95 = -h_cvar_95;
+
+    kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
+        d_sorted, d_cvar, n, 0.99f);
+    float h_cvar_99;
+    cudaMemcpy(&h_cvar_99, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
+    result->base.cvar_99 = -h_cvar_99;
+
+    cudaFree(d_cvar);
+
+    // EWMA volatility
+    if (params->vol_method == FIN_VOL_EWMA) {
+        float* d_var_out = NULL;
+        cudaMalloc(&d_var_out, sizeof(float));
+
+        float init_var = variance;  // Use sample variance as initial
+        kernel_ewma_volatility<<<1, 1, 0, stream>>>(
+            d_returns, d_var_out, params->ewma_lambda, init_var, n);
+
+        float h_ewma_var;
+        cudaMemcpy(&h_ewma_var, d_var_out, sizeof(float), cudaMemcpyDeviceToHost);
+        result->vol_ewma = sqrtf(h_ewma_var);
+
+        cudaFree(d_var_out);
+    } else {
+        result->vol_ewma = std_dev;
+    }
+
+    result->vol_realized = std_dev;
+
+    // Compute Sharpe ratio
+    float risk_free_daily = params->base.risk_free_rate / params->base.annualization_factor;
+    float excess_return = mean - risk_free_daily;
+    result->base.sharpe_ratio = (std_dev > 1e-10f) ? excess_return / std_dev : 0.0f;
+
+    // Compute Sortino ratio (using downside deviation)
+    float* h_returns = (float*)malloc(n * sizeof(float));
+    cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float downside_sum = 0.0f;
+    uint32_t downside_count = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (h_returns[i] < risk_free_daily) {
+            float diff = h_returns[i] - risk_free_daily;
+            downside_sum += diff * diff;
+            downside_count++;
+        }
+    }
+    float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
+    result->base.downside_deviation = downside_dev;
+    result->base.sortino_ratio = (downside_dev > 1e-10f) ? excess_return / downside_dev : 0.0f;
+
+    free(h_returns);
+    cudaFree(d_returns);
+    cudaFree(d_sorted);
+
+    return true;
+}
+
+bool fin_risk_gpu_rolling_extended(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    uint32_t window,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_rolling_result_t* result)
+{
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!returns || num_returns == 0 || window == 0 || window > num_returns) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+
+    uint32_t num_points = num_returns - window + 1;
+    result->num_points = num_points;
+
+    // Allocate output arrays
+    result->var_series = (float*)calloc(num_points, sizeof(float));
+    result->cvar_series = (float*)calloc(num_points, sizeof(float));
+    result->vol_series = (float*)calloc(num_points, sizeof(float));
+    result->drawdown_series = (float*)calloc(num_points, sizeof(float));
+
+    if (!result->var_series || !result->cvar_series ||
+        !result->vol_series || !result->drawdown_series) {
+        fin_risk_rolling_result_free(result);
+        set_risk_error("Memory allocation failed");
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+    uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(num_returns, block_size);
+
+    float* d_returns = NULL;
+    float* d_rolling_var = NULL;
+    float* d_rolling_vol = NULL;
+    float* d_rolling_cvar = NULL;
+
+    cudaError_t err = cudaMalloc(&d_returns, num_returns * sizeof(float));
+    if (err != cudaSuccess) goto cleanup_rolling_ext;
+
+    err = cudaMalloc(&d_rolling_var, num_points * sizeof(float));
+    if (err != cudaSuccess) goto cleanup_rolling_ext;
+
+    err = cudaMalloc(&d_rolling_vol, num_points * sizeof(float));
+    if (err != cudaSuccess) goto cleanup_rolling_ext;
+
+    err = cudaMalloc(&d_rolling_cvar, num_points * sizeof(float));
+    if (err != cudaSuccess) goto cleanup_rolling_ext;
+
+    cudaMemcpyAsync(d_returns, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Rolling volatility
+    kernel_rolling_volatility<<<grid_size, block_size, 0, stream>>>(
+        d_returns, d_rolling_vol, window, num_returns);
+
+    // Rolling VaR (parametric)
+    kernel_rolling_var<<<grid_size, block_size, 0, stream>>>(
+        d_returns, d_rolling_var, window, params->confidence_95, num_returns);
+
+    // Rolling CVaR (proper computation)
+    {
+        uint32_t cvar_block_size = (window <= 256) ? 256 : 512;
+        size_t shared_size = window * sizeof(float);
+        kernel_rolling_cvar<<<num_points, cvar_block_size, shared_size, stream>>>(
+            d_returns, d_rolling_cvar, window, params->confidence_95, num_returns);
+    }
+
+    cudaMemcpy(result->vol_series, d_rolling_vol, num_points * sizeof(float),
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(result->var_series, d_rolling_var, num_points * sizeof(float),
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(result->cvar_series, d_rolling_cvar, num_points * sizeof(float),
+               cudaMemcpyDeviceToHost);
+
+    // Compute rolling drawdown on CPU (requires cumulative price)
+    // This is a simplified version using returns
+    {
+        float cum_return = 1.0f;
+        float peak = 1.0f;
+        for (uint32_t i = 0; i < num_points; i++) {
+            // Use mean return of window as proxy
+            float sum = 0.0f;
+            for (uint32_t j = 0; j < window && (i + j) < num_returns; j++) {
+                sum += returns[i + j];
+            }
+            cum_return *= (1.0f + sum / window);
+            if (cum_return > peak) peak = cum_return;
+            result->drawdown_series[i] = (cum_return - peak) / peak;
+        }
+    }
+
+    cudaFree(d_returns);
+    cudaFree(d_rolling_var);
+    cudaFree(d_rolling_vol);
+    cudaFree(d_rolling_cvar);
+    return true;
+
+cleanup_rolling_ext:
+    cudaFree(d_returns);
+    cudaFree(d_rolling_var);
+    cudaFree(d_rolling_vol);
+    cudaFree(d_rolling_cvar);
+    fin_risk_rolling_result_free(result);
+    set_risk_error("Memory allocation failed");
+    return false;
+}
+
+float fin_risk_gpu_var_parametric(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !returns || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        return 0.0f;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+    uint32_t reduce_blocks = (num_returns + block_size * 2 - 1) / (block_size * 2);
+
+    float* d_returns = NULL;
+    float* d_partial = NULL;
+    float* h_partial = NULL;
+
+    cudaError_t err = cudaMalloc(&d_returns, num_returns * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        return 0.0f;
+    }
+
+    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    if (!h_partial) {
+        cudaFree(d_returns);
+        cudaFree(d_partial);
+        return 0.0f;
+    }
+
+    cudaMemcpyAsync(d_returns, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Compute mean
+    kernel_compute_mean<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, d_partial, num_returns);
+    cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < reduce_blocks; i++) sum += h_partial[i];
+    float mean = sum / (float)num_returns;
+
+    // Compute variance
+    kernel_compute_variance<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, mean, d_partial, num_returns);
+    cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float sq_sum = 0.0f;
+    for (uint32_t i = 0; i < reduce_blocks; i++) sq_sum += h_partial[i];
+    float std_dev = sqrtf(sq_sum / (float)(num_returns - 1));
+
+    free(h_partial);
+    cudaFree(d_returns);
+    cudaFree(d_partial);
+
+    // Normal quantile for given confidence
+    // Using approximation for common values
+    float z;
+    if (confidence >= 0.99f) {
+        z = -2.326f;
+    } else if (confidence >= 0.975f) {
+        z = -1.96f;
+    } else if (confidence >= 0.95f) {
+        z = -1.645f;
+    } else if (confidence >= 0.90f) {
+        z = -1.282f;
+    } else {
+        // General approximation
+        float p = 1.0f - confidence;
+        float t = sqrtf(-2.0f * logf(p));
+        z = -(t - (2.515517f + 0.802853f * t + 0.010328f * t * t) /
+              (1.0f + 1.432788f * t + 0.189269f * t * t + 0.001308f * t * t * t));
+    }
+
+    return -(mean + z * std_dev);
+}
+
+float fin_risk_gpu_var_cornish_fisher(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !returns || num_returns < 4) {
+        set_risk_error("Invalid parameters (need at least 4 returns for Cornish-Fisher)");
+        return 0.0f;
+    }
+
+    // Allocate and copy returns to device
+    float* d_returns = NULL;
+    cudaError_t err = cudaMalloc(&d_returns, num_returns * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    cudaMemcpyAsync(d_returns, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Compute all moments
+    float mean, variance, skewness, kurtosis;
+    if (!compute_moments_gpu(ctx, d_returns, num_returns, &mean, &variance, &skewness, &kurtosis)) {
+        cudaFree(d_returns);
+        return 0.0f;
+    }
+
+    cudaFree(d_returns);
+
+    float std_dev = sqrtf(variance);
+    if (std_dev < 1e-10f) return -mean;
+
+    // Normal quantile
+    float z;
+    if (confidence >= 0.99f) {
+        z = -2.326f;
+    } else if (confidence >= 0.95f) {
+        z = -1.645f;
+    } else {
+        float p = 1.0f - confidence;
+        float t = sqrtf(-2.0f * logf(p));
+        z = -(t - (2.515517f + 0.802853f * t + 0.010328f * t * t) /
+              (1.0f + 1.432788f * t + 0.189269f * t * t + 0.001308f * t * t * t));
+    }
+
+    // Cornish-Fisher expansion
+    float z_cf = z + (skewness / 6.0f) * (z * z - 1.0f)
+               + (kurtosis / 24.0f) * (z * z * z - 3.0f * z)
+               - (skewness * skewness / 36.0f) * (2.0f * z * z * z - 5.0f * z);
+
+    return -(mean + z_cf * std_dev);
+}
+
+float fin_risk_gpu_max_drawdown(
+    nimcp_gpu_context_t* ctx,
+    const float* prices,
+    uint32_t num_prices,
+    uint32_t* out_start,
+    uint32_t* out_end)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !prices || num_prices < 2) {
+        set_risk_error("Invalid parameters");
+        return 0.0f;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+    uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(num_prices, block_size);
+
+    float* d_prices = NULL;
+    float* d_drawdown = NULL;
+    float* d_peak = NULL;
+
+    cudaError_t err = cudaMalloc(&d_prices, num_prices * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    err = cudaMalloc(&d_drawdown, num_prices * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_prices);
+        return 0.0f;
+    }
+
+    err = cudaMalloc(&d_peak, num_prices * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_prices);
+        cudaFree(d_drawdown);
+        return 0.0f;
+    }
+
+    cudaMemcpyAsync(d_prices, prices, num_prices * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Compute prefix max (peak prices) using parallel scan
+    cudaMemcpy(d_peak, d_prices, num_prices * sizeof(float), cudaMemcpyDeviceToDevice);
+    for (uint32_t offset = 1; offset < num_prices; offset *= 2) {
+        kernel_parallel_prefix_max<<<grid_size, block_size, 0, stream>>>(
+            d_peak, num_prices, offset);
+        cudaDeviceSynchronize();
+    }
+
+    // Compute drawdowns: (price - peak) / peak
+    kernel_compute_drawdown_series<<<grid_size, block_size, 0, stream>>>(
+        d_prices, d_drawdown, d_peak, num_prices);
+
+    // Find minimum drawdown (most negative = max drawdown)
+    uint32_t reduce_blocks = (num_prices + block_size - 1) / block_size;
+    float* d_partial_min = NULL;
+    uint32_t* d_partial_idx = NULL;
+    cudaMalloc(&d_partial_min, reduce_blocks * sizeof(float));
+    cudaMalloc(&d_partial_idx, reduce_blocks * sizeof(uint32_t));
+
+    kernel_find_max_drawdown<<<reduce_blocks, block_size,
+        block_size * (sizeof(float) + sizeof(uint32_t)), stream>>>(
+        d_drawdown, d_partial_min, d_partial_idx, num_prices);
+
+    float* h_partial_min = (float*)malloc(reduce_blocks * sizeof(float));
+    uint32_t* h_partial_idx = (uint32_t*)malloc(reduce_blocks * sizeof(uint32_t));
+
+    cudaMemcpy(h_partial_min, d_partial_min, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_partial_idx, d_partial_idx, reduce_blocks * sizeof(uint32_t), cudaMemcpyDeviceToHost);
+
+    float max_dd = 0.0f;
+    uint32_t max_dd_end = 0;
+    for (uint32_t i = 0; i < reduce_blocks; i++) {
+        if (h_partial_min[i] < max_dd) {
+            max_dd = h_partial_min[i];
+            max_dd_end = h_partial_idx[i];
+        }
+    }
+
+    // Find start of drawdown (last peak before max_dd_end)
+    float* h_peak = (float*)malloc(num_prices * sizeof(float));
+    cudaMemcpy(h_peak, d_peak, num_prices * sizeof(float), cudaMemcpyDeviceToHost);
+
+    uint32_t max_dd_start = 0;
+    for (uint32_t i = max_dd_end; i > 0; i--) {
+        if (h_peak[i] > h_peak[i - 1]) {
+            max_dd_start = i;
+            break;
+        }
+    }
+
+    if (out_start) *out_start = max_dd_start;
+    if (out_end) *out_end = max_dd_end;
+
+    free(h_partial_min);
+    free(h_partial_idx);
+    free(h_peak);
+    cudaFree(d_prices);
+    cudaFree(d_drawdown);
+    cudaFree(d_peak);
+    cudaFree(d_partial_min);
+    cudaFree(d_partial_idx);
+
+    return max_dd;  // Returns negative value (e.g., -0.20 for 20% drawdown)
+}
+
+float fin_risk_gpu_ewma_volatility(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float lambda,
+    float* out_vol)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !returns || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        return 0.0f;
+    }
+
+    if (lambda <= 0.0f || lambda >= 1.0f) {
+        lambda = 0.94f;  // RiskMetrics default
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+
+    float* d_returns = NULL;
+    float* d_vol_series = NULL;
+    float* d_var_final = NULL;
+
+    cudaError_t err = cudaMalloc(&d_returns, num_returns * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    if (out_vol) {
+        err = cudaMalloc(&d_vol_series, num_returns * sizeof(float));
+        if (err != cudaSuccess) {
+            cudaFree(d_returns);
+            return 0.0f;
+        }
+    }
+
+    err = cudaMalloc(&d_var_final, sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        cudaFree(d_vol_series);
+        return 0.0f;
+    }
+
+    cudaMemcpyAsync(d_returns, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Initial variance estimate from first few returns
+    float init_var = 0.0f;
+    uint32_t init_n = (num_returns > 10) ? 10 : num_returns;
+    for (uint32_t i = 0; i < init_n; i++) {
+        init_var += returns[i] * returns[i];
+    }
+    init_var /= init_n;
+
+    if (out_vol) {
+        // Compute full volatility series
+        kernel_ewma_volatility_series<<<1, 1, 0, stream>>>(
+            d_returns, d_vol_series, lambda, init_var, num_returns);
+        cudaMemcpy(out_vol, d_vol_series, num_returns * sizeof(float), cudaMemcpyDeviceToHost);
+    }
+
+    // Compute final variance
+    kernel_ewma_volatility<<<1, 1, 0, stream>>>(
+        d_returns, d_var_final, lambda, init_var, num_returns);
+
+    float final_var;
+    cudaMemcpy(&final_var, d_var_final, sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_returns);
+    cudaFree(d_vol_series);
+    cudaFree(d_var_final);
+
+    return sqrtf(final_var);
+}
+
+float fin_risk_gpu_portfolio_var_delta_normal(
+    nimcp_gpu_context_t* ctx,
+    const float* weights,
+    const float* covariance,
+    uint32_t num_assets,
+    float confidence,
+    uint32_t horizon_days)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !weights || !covariance || num_assets == 0) {
+        set_risk_error("Invalid parameters");
+        return 0.0f;
+    }
+
+    // Compute portfolio variance: w' * Sigma * w
+    // First compute Sigma * w, then w' * (Sigma * w)
+    float portfolio_variance = 0.0f;
+
+    // For small portfolios, compute on CPU (simpler)
+    // For large portfolios, could use cuBLAS
+    if (num_assets <= 256) {
+        float* sigma_w = (float*)malloc(num_assets * sizeof(float));
+        if (!sigma_w) return 0.0f;
+
+        // Sigma * w
+        for (uint32_t i = 0; i < num_assets; i++) {
+            sigma_w[i] = 0.0f;
+            for (uint32_t j = 0; j < num_assets; j++) {
+                sigma_w[i] += covariance[i * num_assets + j] * weights[j];
+            }
+        }
+
+        // w' * (Sigma * w)
+        for (uint32_t i = 0; i < num_assets; i++) {
+            portfolio_variance += weights[i] * sigma_w[i];
+        }
+
+        free(sigma_w);
+    } else {
+        // TODO: Use cuBLAS for large portfolios
+        set_risk_error("Large portfolios (>256 assets) require cuBLAS - not yet implemented");
+        return 0.0f;
+    }
+
+    float portfolio_std = sqrtf(portfolio_variance);
+
+    // Scale for horizon
+    portfolio_std *= sqrtf((float)horizon_days);
+
+    // Normal quantile
+    float z;
+    if (confidence >= 0.99f) {
+        z = 2.326f;
+    } else if (confidence >= 0.95f) {
+        z = 1.645f;
+    } else {
+        float p = 1.0f - confidence;
+        float t = sqrtf(-2.0f * logf(p));
+        z = t - (2.515517f + 0.802853f * t + 0.010328f * t * t) /
+            (1.0f + 1.432788f * t + 0.189269f * t * t + 0.001308f * t * t * t);
+    }
+
+    return z * portfolio_std;
+}
+
+bool fin_risk_gpu_batch(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_portfolios,
+    uint32_t num_returns,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_gpu_result_t* results)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!returns || !params || !results || num_portfolios == 0 || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+
+    // Allocate device memory
+    float* d_returns = NULL;
+    float* d_means = NULL;
+    float* d_variances = NULL;
+
+    size_t total_size = (size_t)num_portfolios * num_returns * sizeof(float);
+    cudaError_t err = cudaMalloc(&d_returns, total_size);
+    if (err != cudaSuccess) {
+        set_risk_error("Failed to allocate returns");
+        return false;
+    }
+
+    err = cudaMalloc(&d_means, num_portfolios * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        set_risk_error("Failed to allocate means");
+        return false;
+    }
+
+    err = cudaMalloc(&d_variances, num_portfolios * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        cudaFree(d_means);
+        set_risk_error("Failed to allocate variances");
+        return false;
+    }
+
+    cudaMemcpyAsync(d_returns, returns, total_size, cudaMemcpyHostToDevice, stream);
+
+    // Launch batch mean/variance kernel
+    kernel_batch_risk_mean_var<<<num_portfolios, block_size,
+        2 * block_size * sizeof(float), stream>>>(
+        d_returns, d_means, d_variances, num_portfolios, num_returns);
+
+    // Copy results back
+    float* h_means = (float*)malloc(num_portfolios * sizeof(float));
+    float* h_variances = (float*)malloc(num_portfolios * sizeof(float));
+
+    cudaMemcpy(h_means, d_means, num_portfolios * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_variances, d_variances, num_portfolios * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Compute VaR/CVaR for each portfolio
+    float z_95 = -1.645f;
+    float z_99 = -2.326f;
+    float risk_free_daily = params->risk_free_rate / params->annualization_factor;
+
+    for (uint32_t p = 0; p < num_portfolios; p++) {
+        float mean = h_means[p];
+        float std_dev = sqrtf(h_variances[p]);
+
+        results[p].mean_return = mean;
+        results[p].volatility = std_dev;
+        results[p].volatility_daily = std_dev;
+        results[p].volatility_annual = std_dev * sqrtf((float)params->annualization_factor);
+
+        // Parametric VaR
+        results[p].var_95 = -(mean + z_95 * std_dev);
+        results[p].var_99 = -(mean + z_99 * std_dev);
+        results[p].var_parametric = results[p].var_95;
+
+        // Approximate CVaR (for parametric: E[X | X < VaR])
+        // For normal distribution: CVaR = mean + std * phi(z) / (1 - confidence)
+        float phi_95 = expf(-z_95 * z_95 / 2.0f) / sqrtf(2.0f * 3.14159f);
+        float phi_99 = expf(-z_99 * z_99 / 2.0f) / sqrtf(2.0f * 3.14159f);
+        results[p].cvar_95 = -(mean - std_dev * phi_95 / 0.05f);
+        results[p].cvar_99 = -(mean - std_dev * phi_99 / 0.01f);
+
+        // Sharpe ratio
+        float excess = mean - risk_free_daily;
+        results[p].sharpe_ratio = (std_dev > 1e-10f) ? excess / std_dev : 0.0f;
+    }
+
+    free(h_means);
+    free(h_variances);
+    cudaFree(d_returns);
+    cudaFree(d_means);
+    cudaFree(d_variances);
+
+    return true;
+}
+
+bool fin_risk_gpu_correlation_matrix(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_assets,
+    uint32_t num_returns,
+    float* correlation)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!returns || !correlation || num_assets == 0 || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+
+    // First compute covariance matrix
+    float* covariance = (float*)malloc(num_assets * num_assets * sizeof(float));
+    if (!covariance) {
+        set_risk_error("Memory allocation failed");
+        return false;
+    }
+
+    if (!fin_risk_gpu_covariance_matrix(ctx, returns, num_assets, num_returns, covariance)) {
+        free(covariance);
+        return false;
+    }
+
+    // Convert covariance to correlation: corr[i,j] = cov[i,j] / (std[i] * std[j])
+    float* std_devs = (float*)malloc(num_assets * sizeof(float));
+    if (!std_devs) {
+        free(covariance);
+        set_risk_error("Memory allocation failed");
+        return false;
+    }
+
+    // Extract standard deviations from diagonal
+    for (uint32_t i = 0; i < num_assets; i++) {
+        std_devs[i] = sqrtf(covariance[i * num_assets + i]);
+    }
+
+    // Compute correlation
+    for (uint32_t i = 0; i < num_assets; i++) {
+        for (uint32_t j = 0; j < num_assets; j++) {
+            float denom = std_devs[i] * std_devs[j];
+            if (denom > 1e-10f) {
+                correlation[i * num_assets + j] = covariance[i * num_assets + j] / denom;
+            } else {
+                correlation[i * num_assets + j] = (i == j) ? 1.0f : 0.0f;
+            }
+        }
+    }
+
+    free(covariance);
+    free(std_devs);
+    return true;
+}
+
+bool fin_risk_gpu_covariance_matrix(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_assets,
+    uint32_t num_returns,
+    float* covariance)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!returns || !covariance || num_assets == 0 || num_returns < 2) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+
+    // Allocate device memory
+    float* d_returns = NULL;
+    float* d_means = NULL;
+    float* d_covariance = NULL;
+
+    size_t returns_size = (size_t)num_assets * num_returns * sizeof(float);
+    size_t cov_size = (size_t)num_assets * num_assets * sizeof(float);
+
+    cudaError_t err = cudaMalloc(&d_returns, returns_size);
+    if (err != cudaSuccess) {
+        set_risk_error("Failed to allocate returns");
+        return false;
+    }
+
+    err = cudaMalloc(&d_means, num_assets * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        set_risk_error("Failed to allocate means");
+        return false;
+    }
+
+    err = cudaMalloc(&d_covariance, cov_size);
+    if (err != cudaSuccess) {
+        cudaFree(d_returns);
+        cudaFree(d_means);
+        set_risk_error("Failed to allocate covariance");
+        return false;
+    }
+
+    cudaMemcpyAsync(d_returns, returns, returns_size, cudaMemcpyHostToDevice, stream);
+
+    // Compute means for each asset
+    kernel_compute_asset_means<<<num_assets, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, d_means, num_assets, num_returns);
+
+    // Compute covariance elements
+    dim3 grid(num_assets, num_assets);
+    kernel_compute_covariance_element<<<grid, block_size, block_size * sizeof(float), stream>>>(
+        d_returns, d_means, d_covariance, num_assets, num_returns);
+
+    cudaMemcpy(covariance, d_covariance, cov_size, cudaMemcpyDeviceToHost);
+
+    cudaFree(d_returns);
+    cudaFree(d_means);
+    cudaFree(d_covariance);
+
+    return true;
+}
+
+bool fin_risk_gpu_sort(
+    nimcp_gpu_context_t* ctx,
+    float* data,
+    uint32_t n,
+    bool ascending)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!data || n == 0) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+
+    // Data is already on device
+    bool result = gpu_sort(data, n, stream);
+
+    // If descending, reverse the array
+    if (result && !ascending) {
+        // Simple CPU reverse for now (could add GPU kernel)
+        float* h_data = (float*)malloc(n * sizeof(float));
+        if (h_data) {
+            cudaMemcpy(h_data, data, n * sizeof(float), cudaMemcpyDeviceToHost);
+            for (uint32_t i = 0; i < n / 2; i++) {
+                float tmp = h_data[i];
+                h_data[i] = h_data[n - 1 - i];
+                h_data[n - 1 - i] = tmp;
+            }
+            cudaMemcpy(data, h_data, n * sizeof(float), cudaMemcpyHostToDevice);
+            free(h_data);
+        }
+    }
+
+    cudaStreamSynchronize(stream);
+    return result;
+}
+
+float fin_risk_gpu_percentile(
+    nimcp_gpu_context_t* ctx,
+    const float* sorted,
+    uint32_t n,
+    float percentile)
+{
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !sorted || n == 0) {
+        return 0.0f;
+    }
+
+    if (percentile < 0.0f) percentile = 0.0f;
+    if (percentile > 100.0f) percentile = 100.0f;
+
+    // Convert percentile to index
+    float idx_f = (percentile / 100.0f) * (n - 1);
+    uint32_t idx_lo = (uint32_t)idx_f;
+    uint32_t idx_hi = idx_lo + 1;
+    if (idx_hi >= n) idx_hi = n - 1;
+
+    float frac = idx_f - (float)idx_lo;
+
+    // Read values from device
+    float val_lo, val_hi;
+    cudaMemcpy(&val_lo, &sorted[idx_lo], sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&val_hi, &sorted[idx_hi], sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Linear interpolation
+    return val_lo + frac * (val_hi - val_lo);
+}
+
+float fin_risk_gpu_var(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !returns || num_returns < 2) {
+        return 0.0f;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+
+    // Allocate and copy
+    float* d_sorted = NULL;
+    cudaError_t err = cudaMalloc(&d_sorted, num_returns * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    cudaMemcpyAsync(d_sorted, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Sort
+    gpu_sort(d_sorted, num_returns, stream);
+
+    // Get VaR percentile
+    uint32_t var_idx = (uint32_t)((1.0f - confidence) * num_returns);
+    if (var_idx >= num_returns) var_idx = num_returns - 1;
+
+    float h_var;
+    cudaMemcpy(&h_var, &d_sorted[var_idx], sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_sorted);
+
+    return -h_var;  // Return as positive loss
+}
+
+float fin_risk_gpu_cvar(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !returns || num_returns < 2) {
+        return 0.0f;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+    uint32_t block_size = 256;
+
+    // Allocate and copy
+    float* d_sorted = NULL;
+    float* d_cvar = NULL;
+
+    cudaError_t err = cudaMalloc(&d_sorted, num_returns * sizeof(float));
+    if (err != cudaSuccess) return 0.0f;
+
+    err = cudaMalloc(&d_cvar, sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(d_sorted);
+        return 0.0f;
+    }
+
+    cudaMemcpyAsync(d_sorted, returns, num_returns * sizeof(float),
+                    cudaMemcpyHostToDevice, stream);
+
+    // Sort
+    gpu_sort(d_sorted, num_returns, stream);
+
+    // Compute CVaR
+    kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
+        d_sorted, d_cvar, num_returns, confidence);
+
+    float h_cvar;
+    cudaMemcpy(&h_cvar, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_sorted);
+    cudaFree(d_cvar);
+
+    return -h_cvar;  // Return as positive expected shortfall
+}
+
+void fin_risk_rolling_result_free(fin_risk_rolling_result_t* result)
+{
+    if (!result) return;
+
+    free(result->var_series);
+    free(result->cvar_series);
+    free(result->vol_series);
+    free(result->drawdown_series);
+
+    result->var_series = NULL;
+    result->cvar_series = NULL;
+    result->vol_series = NULL;
+    result->drawdown_series = NULL;
+    result->num_points = 0;
+}
+
+void fin_risk_extended_result_free(fin_risk_extended_result_t* result)
+{
+    // Extended result doesn't have dynamic allocations currently
+    // But clear it anyway for safety
+    if (result) {
+        memset(result, 0, sizeof(*result));
+    }
 }
 
 const char* fin_risk_gpu_get_last_error(void) {
@@ -1257,6 +2856,184 @@ bool fin_risk_gpu_rolling(
     (void)ctx; (void)returns; (void)num_returns; (void)window;
     (void)params; (void)result;
     return false;
+}
+
+bool fin_risk_gpu_extended(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    const fin_risk_extended_params_t* params,
+    fin_risk_extended_result_t* result)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)params; (void)result;
+    return false;
+}
+
+bool fin_risk_gpu_rolling_extended(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    uint32_t window,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_rolling_result_t* result)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)window;
+    (void)params; (void)result;
+    return false;
+}
+
+float fin_risk_gpu_var_parametric(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)confidence;
+    return 0.0f;
+}
+
+float fin_risk_gpu_var_cornish_fisher(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)confidence;
+    return 0.0f;
+}
+
+float fin_risk_gpu_max_drawdown(
+    nimcp_gpu_context_t* ctx,
+    const float* prices,
+    uint32_t num_prices,
+    uint32_t* out_start,
+    uint32_t* out_end)
+{
+    (void)ctx; (void)prices; (void)num_prices;
+    (void)out_start; (void)out_end;
+    return 0.0f;
+}
+
+float fin_risk_gpu_ewma_volatility(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float lambda,
+    float* out_vol)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)lambda; (void)out_vol;
+    return 0.0f;
+}
+
+float fin_risk_gpu_portfolio_var_delta_normal(
+    nimcp_gpu_context_t* ctx,
+    const float* weights,
+    const float* covariance,
+    uint32_t num_assets,
+    float confidence,
+    uint32_t horizon_days)
+{
+    (void)ctx; (void)weights; (void)covariance; (void)num_assets;
+    (void)confidence; (void)horizon_days;
+    return 0.0f;
+}
+
+bool fin_risk_gpu_batch(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_portfolios,
+    uint32_t num_returns,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_gpu_result_t* results)
+{
+    (void)ctx; (void)returns; (void)num_portfolios; (void)num_returns;
+    (void)params; (void)results;
+    return false;
+}
+
+bool fin_risk_gpu_correlation_matrix(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_assets,
+    uint32_t num_returns,
+    float* correlation)
+{
+    (void)ctx; (void)returns; (void)num_assets; (void)num_returns;
+    (void)correlation;
+    return false;
+}
+
+bool fin_risk_gpu_covariance_matrix(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_assets,
+    uint32_t num_returns,
+    float* covariance)
+{
+    (void)ctx; (void)returns; (void)num_assets; (void)num_returns;
+    (void)covariance;
+    return false;
+}
+
+bool fin_risk_gpu_sort(
+    nimcp_gpu_context_t* ctx,
+    float* data,
+    uint32_t n,
+    bool ascending)
+{
+    (void)ctx; (void)data; (void)n; (void)ascending;
+    return false;
+}
+
+float fin_risk_gpu_percentile(
+    nimcp_gpu_context_t* ctx,
+    const float* sorted,
+    uint32_t n,
+    float percentile)
+{
+    (void)ctx; (void)sorted; (void)n; (void)percentile;
+    return 0.0f;
+}
+
+float fin_risk_gpu_var(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)confidence;
+    return 0.0f;
+}
+
+float fin_risk_gpu_cvar(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    float confidence)
+{
+    (void)ctx; (void)returns; (void)num_returns; (void)confidence;
+    return 0.0f;
+}
+
+void fin_risk_rolling_result_free(fin_risk_rolling_result_t* result)
+{
+    if (!result) return;
+    free(result->var_series);
+    free(result->cvar_series);
+    free(result->vol_series);
+    free(result->drawdown_series);
+    result->var_series = NULL;
+    result->cvar_series = NULL;
+    result->vol_series = NULL;
+    result->drawdown_series = NULL;
+    result->num_points = 0;
+}
+
+void fin_risk_extended_result_free(fin_risk_extended_result_t* result)
+{
+    if (result) {
+        memset(result, 0, sizeof(*result));
+    }
 }
 
 const char* fin_risk_gpu_get_last_error(void) {

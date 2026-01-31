@@ -83,8 +83,8 @@ START_TEST(test_mamdani_inference_simple)
     float inputs[2] = {70.0, 60.0};  /* Hot and high humidity */
     float output = 0.0;
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, sizeof(inputs));
@@ -165,8 +165,8 @@ START_TEST(test_mamdani_batch_inference)
         inputs[i] = (float)i / (BATCH_SIZE - 1) * 10.0f;  /* 0 to 10 */
     }
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){BATCH_SIZE, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){BATCH_SIZE, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){BATCH_SIZE, 1}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){BATCH_SIZE, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, BATCH_SIZE * sizeof(float));
@@ -277,8 +277,8 @@ START_TEST(test_sugeno_inference_simple)
     float inputs_large[2] = {8.0, 8.0};
     float output_small = 0.0, output_large = 0.0;
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     nimcp_gpu_inference_params_t params = {
         .t_norm = FUZZY_TNORM_PRODUCT,
@@ -386,8 +386,8 @@ START_TEST(test_cpu_gpu_equivalence_mamdani)
     }
 
     /* Compute GPU outputs */
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){10, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){10, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){10, 2}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){10, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, test_inputs, sizeof(test_inputs));
@@ -495,8 +495,8 @@ START_TEST(test_multi_output_inference)
     float inputs[2] = {5.0, 2.0};  /* Positive error, positive delta */
     float outputs[2] = {0.0, 0.0};
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, sizeof(inputs));
@@ -579,8 +579,8 @@ START_TEST(test_different_tnorms)
     float inputs[2] = {0.8, 0.8};  /* Both partially "high" */
     float output_min = 0.0, output_product = 0.0, output_lukasiewicz = 0.0;
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, sizeof(inputs));
@@ -699,8 +699,8 @@ START_TEST(test_large_batch_inference)
         inputs[i] = (float)(rand() % 1000) / 100.0f;  /* 0 to ~10 */
     }
 
-    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){large_batch, 3}, 2, NIMCP_GPU_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){large_batch, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){large_batch, 3}, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){large_batch, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input_tensor && output_tensor) {
         nimcp_gpu_tensor_copy_from_host(input_tensor, inputs, large_batch * 3 * sizeof(float));

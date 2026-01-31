@@ -16,13 +16,11 @@
 #include <numeric>
 
 #ifdef NIMCP_ENABLE_CUDA
-extern "C" {
 #include "gpu/financial/nimcp_financial_monte_carlo_gpu.h"
 #include "gpu/financial/nimcp_financial_optimization_gpu.h"
 #include "gpu/financial/nimcp_financial_risk_gpu.h"
 #include "gpu/financial/nimcp_financial_derivatives_gpu.h"
-#include "gpu/nimcp_gpu_context.h"
-}
+#include "gpu/context/nimcp_gpu_context.h"
 #endif
 
 namespace {
@@ -34,7 +32,7 @@ class FinancialWorkflowE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
 #ifdef NIMCP_ENABLE_CUDA
-        ctx_ = nimcp_gpu_context_create(nullptr);
+        ctx_ = nimcp_gpu_context_create(0);  // Use default device (GPU 0)
         if (ctx_) {
             rng_ = fin_gpu_rng_create(ctx_, 100000, 54321);
         }
@@ -111,14 +109,34 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     // ==================== Phase 2: Monte Carlo Simulation ====================
     auto sim_start = std::chrono::high_resolution_clock::now();
 
-    fin_multi_asset_gpu_params_t mc_params = {
-        .num_assets = static_cast<uint32_t>(num_assets),
-        .num_paths = static_cast<uint32_t>(num_scenarios),
-        .num_steps = static_cast<uint32_t>(num_steps),
-        .time_horizon = 1.0f,
-        .expected_returns = expected_returns.data(),
+    // Compute Cholesky decomposition of correlation matrix
+    std::vector<float> cholesky_L(num_assets * num_assets, 0.0f);
+    for (int i = 0; i < num_assets; i++) {
+        for (int j = 0; j <= i; j++) {
+            float sum = correlation[i * num_assets + j];
+            for (int k = 0; k < j; k++) {
+                sum -= cholesky_L[i * num_assets + k] * cholesky_L[j * num_assets + k];
+            }
+            if (i == j) {
+                cholesky_L[i * num_assets + j] = std::sqrt(std::max(0.0f, sum));
+            } else {
+                cholesky_L[i * num_assets + j] = sum / cholesky_L[j * num_assets + j];
+            }
+        }
+    }
+
+    fin_monte_carlo_gpu_params_t base_mc_params = fin_monte_carlo_gpu_params_default();
+    base_mc_params.num_paths = static_cast<uint32_t>(num_scenarios);
+    base_mc_params.num_steps = static_cast<uint32_t>(num_steps);
+    base_mc_params.time_horizon = 1.0f;
+
+    fin_multi_asset_params_t mc_params = {
+        .base = base_mc_params,
+        .n_assets = static_cast<uint32_t>(num_assets),
+        .initial_values = initial_prices.data(),
+        .drifts = expected_returns.data(),
         .volatilities = volatilities.data(),
-        .correlation_matrix = correlation.data()
+        .cholesky_L = cholesky_L.data()
     };
 
     std::vector<float> terminal_returns(num_scenarios * num_assets);
@@ -166,19 +184,20 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     // ==================== Phase 4: Portfolio Optimization ====================
     auto opt_start = std::chrono::high_resolution_clock::now();
 
-    fin_optimization_gpu_params_t opt_params = {
-        .target_return = 0.08f,
-        .max_iterations = 2000,
-        .convergence_threshold = 1e-8f,
-        .constraint_type = FIN_OPT_CONSTRAINT_LONG_ONLY,
-        .risk_aversion = 2.0f
-    };
+    fin_optimization_gpu_params_t opt_params = fin_optimization_gpu_params_default();
+    opt_params.target_return = 0.08f;
+    opt_params.max_iterations = 2000;
+    opt_params.convergence_tolerance = 1e-8f;
+    opt_params.long_only = true;
+    opt_params.risk_aversion = 2.0f;
+    opt_params.n_assets = static_cast<uint32_t>(num_assets);
 
     fin_optimization_gpu_result_t opt_result;
-    opt_result.weights = new float[num_assets];
+    memset(&opt_result, 0, sizeof(opt_result));
+    opt_result.optimal_weights = new float[num_assets];
 
     bool opt_success = fin_optimization_gpu_mean_variance(
-        ctx_, estimated_returns.data(), covariance.data(), num_assets,
+        ctx_, estimated_returns.data(), covariance.data(),
         &opt_params, &opt_result);
     ASSERT_TRUE(opt_success) << "Portfolio optimization failed";
 
@@ -188,8 +207,8 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     // Verify weights sum to 1
     float weight_sum = 0.0f;
     for (int i = 0; i < num_assets; i++) {
-        EXPECT_GE(opt_result.weights[i], -TOLERANCE) << "Weight " << i << " is negative";
-        weight_sum += opt_result.weights[i];
+        EXPECT_GE(opt_result.optimal_weights[i], -TOLERANCE) << "Weight " << i << " is negative";
+        weight_sum += opt_result.optimal_weights[i];
     }
     EXPECT_NEAR(weight_sum, 1.0f, 0.01f) << "Weights should sum to 1";
 
@@ -198,9 +217,9 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     float portfolio_variance = 0.0f;
 
     for (int i = 0; i < num_assets; i++) {
-        portfolio_return += opt_result.weights[i] * estimated_returns[i];
+        portfolio_return += opt_result.optimal_weights[i] * estimated_returns[i];
         for (int j = 0; j < num_assets; j++) {
-            portfolio_variance += opt_result.weights[i] * opt_result.weights[j] *
+            portfolio_variance += opt_result.optimal_weights[i] * opt_result.optimal_weights[j] *
                                  covariance[i * num_assets + j];
         }
     }
@@ -212,19 +231,18 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     for (int s = 0; s < num_scenarios; s++) {
         float port_ret = 0.0f;
         for (int a = 0; a < num_assets; a++) {
-            port_ret += opt_result.weights[a] * terminal_returns[s * num_assets + a];
+            port_ret += opt_result.optimal_weights[a] * terminal_returns[s * num_assets + a];
         }
         portfolio_scenario_returns[s] = port_ret;
     }
 
-    fin_risk_gpu_params_t risk_params = {
-        .confidence_level = 0.95f,
-        .time_horizon_days = 252
-    };
+    fin_risk_gpu_params_t risk_params = fin_risk_gpu_params_default();
+    risk_params.confidence_level = 0.95f;
+    risk_params.num_returns = static_cast<uint32_t>(num_scenarios);
 
     fin_risk_gpu_result_t risk_result;
     bool risk_success = fin_risk_gpu_compute(
-        ctx_, portfolio_scenario_returns.data(), num_scenarios, &risk_params, &risk_result);
+        ctx_, portfolio_scenario_returns.data(), &risk_params, &risk_result);
     ASSERT_TRUE(risk_success) << "Risk computation failed";
 
     // VaR should be reasonable
@@ -239,35 +257,44 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     // Price protective puts for the largest holdings
     std::vector<int> top_holdings;
     for (int i = 0; i < num_assets; i++) {
-        if (opt_result.weights[i] > 0.1f) {
+        if (opt_result.optimal_weights[i] > 0.1f) {
             top_holdings.push_back(i);
         }
     }
 
     if (!top_holdings.empty()) {
-        std::vector<float> spots, strikes, rates, vols, times;
-        std::vector<bool> is_call;
+        std::vector<float> put_prices(top_holdings.size());
+        bool deriv_success = true;
 
-        for (int idx : top_holdings) {
-            spots.push_back(initial_prices[idx]);
-            strikes.push_back(initial_prices[idx] * 0.95f);  // 5% OTM puts
-            rates.push_back(0.05f);
-            vols.push_back(volatilities[idx]);
-            times.push_back(0.25f);  // 3-month puts
-            is_call.push_back(false);
+        // Price puts using binomial tree
+        for (size_t i = 0; i < top_holdings.size(); i++) {
+            int idx = top_holdings[i];
+            fin_derivatives_gpu_params_t deriv_params = fin_derivatives_gpu_params_default();
+            deriv_params.spot = initial_prices[idx];
+            deriv_params.strike = initial_prices[idx] * 0.95f;  // 5% OTM puts
+            deriv_params.risk_free_rate = 0.05f;
+            deriv_params.volatility = volatilities[idx];
+            deriv_params.time_to_expiry = 0.25f;  // 3-month puts
+            deriv_params.option_type = FIN_OPT_PUT;
+            deriv_params.option_style = FIN_OPT_STYLE_EUROPEAN;
+            deriv_params.tree_steps = 100;
+
+            fin_derivatives_gpu_result_t deriv_result;
+            if (fin_derivatives_gpu_binomial_tree(ctx_, &deriv_params, &deriv_result)) {
+                put_prices[i] = deriv_result.price;
+            } else {
+                deriv_success = false;
+            }
         }
 
-        std::vector<float> put_prices(top_holdings.size());
-
-        bool deriv_success = fin_derivatives_gpu_black_scholes_batch(
-            ctx_, spots.data(), strikes.data(), rates.data(), vols.data(),
-            times.data(), is_call.data(), put_prices.data(),
-            static_cast<int>(top_holdings.size()));
-
         if (deriv_success) {
+            std::vector<float> spots;
+            for (int idx : top_holdings) {
+                spots.push_back(initial_prices[idx]);
+            }
             float total_hedge_cost = 0.0f;
             for (size_t i = 0; i < top_holdings.size(); i++) {
-                float position_value = opt_result.weights[top_holdings[i]] * 1000000.0f;  // $1M portfolio
+                float position_value = opt_result.optimal_weights[top_holdings[i]] * 1000000.0f;  // $1M portfolio
                 float num_contracts = position_value / (spots[i] * 100.0f);  // 100 shares per contract
                 float hedge_cost = num_contracts * put_prices[i] * 100.0f;
                 total_hedge_cost += hedge_cost;
@@ -296,12 +323,12 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
     std::cout << "  CVaR (95%): " << risk_result.cvar_95 * 100.0f << "%" << std::endl;
     std::cout << "\nTop Holdings:" << std::endl;
     for (int i = 0; i < num_assets; i++) {
-        if (opt_result.weights[i] > 0.05f) {
-            std::cout << "  Asset " << i << ": " << opt_result.weights[i] * 100.0f << "%" << std::endl;
+        if (opt_result.optimal_weights[i] > 0.05f) {
+            std::cout << "  Asset " << i << ": " << opt_result.optimal_weights[i] * 100.0f << "%" << std::endl;
         }
     }
 
-    delete[] opt_result.weights;
+    delete[] opt_result.optimal_weights;
 #else
     GTEST_SKIP() << "CUDA not enabled";
 #endif
@@ -325,7 +352,7 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
     // Generate option chain (5 strikes x 4 maturities x 2 types)
     std::vector<float> all_strikes;
     std::vector<float> all_times;
-    std::vector<bool> all_is_call;
+    std::vector<fin_option_type_t> all_types;
 
     float strike_range[] = {90.0f, 95.0f, 100.0f, 105.0f, 110.0f};
     float time_range[] = {0.0833f, 0.25f, 0.5f, 1.0f};  // 1M, 3M, 6M, 1Y
@@ -334,10 +361,10 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
         for (float K : strike_range) {
             all_strikes.push_back(K);
             all_times.push_back(T);
-            all_is_call.push_back(true);
+            all_types.push_back(FIN_OPT_CALL);
             all_strikes.push_back(K);
             all_times.push_back(T);
-            all_is_call.push_back(false);
+            all_types.push_back(FIN_OPT_PUT);
         }
     }
 
@@ -345,7 +372,6 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    float total_pnl = 0.0f;
     float total_delta = 0.0f;
     float total_gamma = 0.0f;
     float total_vega = 0.0f;
@@ -370,11 +396,28 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
         std::vector<float> spots(total_options, spot);
         std::vector<float> rates(total_options, rf_rate);
 
-        // Price all options
+        // Price all options using binomial tree
         std::vector<float> prices(total_options);
-        bool success = fin_derivatives_gpu_black_scholes_batch(
-            ctx_, spots.data(), all_strikes.data(), rates.data(), vols.data(),
-            all_times.data(), all_is_call.data(), prices.data(), total_options);
+        bool success = true;
+        for (int i = 0; i < total_options; i++) {
+            fin_derivatives_gpu_params_t deriv_params = fin_derivatives_gpu_params_default();
+            deriv_params.spot = spots[i];
+            deriv_params.strike = all_strikes[i];
+            deriv_params.risk_free_rate = rates[i];
+            deriv_params.volatility = vols[i];
+            deriv_params.time_to_expiry = all_times[i];
+            deriv_params.option_type = all_types[i];
+            deriv_params.option_style = FIN_OPT_STYLE_EUROPEAN;
+            deriv_params.tree_steps = 50;  // Fewer steps for speed
+
+            fin_derivatives_gpu_result_t deriv_result;
+            if (fin_derivatives_gpu_binomial_tree(ctx_, &deriv_params, &deriv_result)) {
+                prices[i] = deriv_result.price;
+            } else {
+                success = false;
+                break;
+            }
+        }
 
         if (!success) continue;
 
@@ -393,22 +436,22 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
         for (int k = 0; k < std::min(20, total_options); k++) {
             int idx = vega_rank[k].second;
 
-            fin_derivatives_gpu_params_t params = {
-                .spot_price = spot,
-                .strike_price = all_strikes[idx],
-                .risk_free_rate = rf_rate,
-                .volatility = vols[idx],
-                .time_to_maturity = all_times[idx],
-                .num_steps = 100,
-                .is_call = all_is_call[idx],
-                .is_american = false
-            };
+            fin_derivatives_gpu_params_t deriv_params = fin_derivatives_gpu_params_default();
+            deriv_params.spot = spot;
+            deriv_params.strike = all_strikes[idx];
+            deriv_params.risk_free_rate = rf_rate;
+            deriv_params.volatility = vols[idx];
+            deriv_params.time_to_expiry = all_times[idx];
+            deriv_params.tree_steps = 100;
+            deriv_params.option_type = all_types[idx];
+            deriv_params.option_style = FIN_OPT_STYLE_EUROPEAN;
+            deriv_params.compute_greeks = true;
 
-            fin_derivatives_gpu_greeks_t greeks;
-            if (fin_derivatives_gpu_compute_greeks(ctx_, &params, &greeks)) {
-                quote_delta += greeks.delta;
-                quote_gamma += greeks.gamma;
-                quote_vega += greeks.vega;
+            fin_derivatives_gpu_result_t deriv_result;
+            if (fin_derivatives_gpu_binomial_tree(ctx_, &deriv_params, &deriv_result)) {
+                quote_delta += deriv_result.delta;
+                quote_gamma += deriv_result.gamma;
+                quote_vega += deriv_result.vega;
             }
         }
 
@@ -471,64 +514,47 @@ TEST_F(FinancialWorkflowE2ETest, RiskScenarioAnalysis) {
     std::cout << std::string(70, '-') << std::endl;
 
     for (const auto& scenario : scenarios) {
-        fin_monte_carlo_gpu_params_t mc_params = {
-            .initial_value = portfolio_value,
-            .drift = scenario.drift,
-            .volatility = scenario.volatility,
-            .time_horizon = 1.0f,
-            .num_steps = 252,
-            .num_paths = static_cast<uint32_t>(num_paths)
-        };
+        fin_monte_carlo_gpu_params_t mc_params = fin_monte_carlo_gpu_params_default();
+        mc_params.initial_value = portfolio_value;
+        mc_params.drift = scenario.drift;
+        mc_params.volatility = scenario.volatility;
+        mc_params.time_horizon = 1.0f;
+        mc_params.num_steps = 252;
+        mc_params.num_paths = static_cast<uint32_t>(num_paths);
 
         fin_monte_carlo_gpu_result_t mc_result;
-        mc_result.terminal_values = new float[num_paths];
-        mc_result.path_returns = new float[num_paths];
+        memset(&mc_result, 0, sizeof(mc_result));
 
         bool mc_success = fin_monte_carlo_gpu_simulate(ctx_, rng_, &mc_params, &mc_result);
 
         if (mc_success) {
-            // Convert terminal values to returns
-            for (int i = 0; i < num_paths; i++) {
-                mc_result.path_returns[i] = (mc_result.terminal_values[i] - portfolio_value) / portfolio_value;
-            }
-
-            fin_risk_gpu_params_t risk_params = {.confidence_level = 0.95f, .time_horizon_days = 252};
-            fin_risk_gpu_result_t risk_result;
-
-            fin_risk_gpu_compute(ctx_, mc_result.path_returns, num_paths, &risk_params, &risk_result);
-
-            // Find max loss
-            float max_loss = 0.0f;
-            float mean_return = 0.0f;
-            for (int i = 0; i < num_paths; i++) {
-                max_loss = std::min(max_loss, mc_result.path_returns[i]);
-                mean_return += mc_result.path_returns[i];
-            }
-            mean_return /= num_paths;
+            // Use the computed VaR/CVaR from monte carlo result directly
+            float mean_return_pct = mc_result.mean_return;
+            float max_loss = -mc_result.var_99;  // Approximate max loss from 99% VaR
 
             printf("%-16s | %+10.1f%% | %9.1f%% | %10.1f%% | %8.1f%%\n",
                    scenario.name,
-                   mean_return * 100.0f,
-                   risk_result.var_95 * 100.0f,
-                   risk_result.cvar_95 * 100.0f,
+                   mean_return_pct * 100.0f,
+                   mc_result.var_95 * 100.0f,
+                   mc_result.cvar_95 * 100.0f,
                    max_loss * 100.0f);
 
             // Validate scenario expectations
             if (scenario.drift > 0.1f) {
-                EXPECT_GT(mean_return, 0.0f) << scenario.name << " should have positive mean";
+                EXPECT_GT(mean_return_pct, 0.0f) << scenario.name << " should have positive mean";
             } else if (scenario.drift < -0.1f) {
-                EXPECT_LT(mean_return, 0.0f) << scenario.name << " should have negative mean";
+                EXPECT_LT(mean_return_pct, 0.0f) << scenario.name << " should have negative mean";
             }
 
             // Higher volatility should generally mean worse VaR
             if (scenario.volatility > 0.30f) {
-                EXPECT_LT(risk_result.var_95, -0.2f)
+                EXPECT_LT(mc_result.var_95, -0.2f)
                     << scenario.name << " VaR should be significant with high vol";
             }
         }
 
-        delete[] mc_result.terminal_values;
-        delete[] mc_result.path_returns;
+        // Free monte carlo result resources
+        // Result struct was zeroed, no dynamic memory to free
     }
 
     std::cout << std::string(70, '-') << std::endl;
@@ -552,18 +578,16 @@ TEST_F(FinancialWorkflowE2ETest, GPUPerformanceBenchmark) {
     std::vector<int> path_counts = {1000, 10000, 100000, 500000};
 
     for (int num_paths : path_counts) {
-        fin_monte_carlo_gpu_params_t params = {
-            .initial_value = 100.0f,
-            .drift = 0.05f,
-            .volatility = 0.20f,
-            .time_horizon = 1.0f,
-            .num_steps = 252,
-            .num_paths = static_cast<uint32_t>(num_paths)
-        };
+        fin_monte_carlo_gpu_params_t params = fin_monte_carlo_gpu_params_default();
+        params.initial_value = 100.0f;
+        params.drift = 0.05f;
+        params.volatility = 0.20f;
+        params.time_horizon = 1.0f;
+        params.num_steps = 252;
+        params.num_paths = static_cast<uint32_t>(num_paths);
 
         fin_monte_carlo_gpu_result_t result;
-        result.terminal_values = new float[num_paths];
-        result.path_returns = new float[num_paths];
+        memset(&result, 0, sizeof(result));
 
         auto start = std::chrono::high_resolution_clock::now();
         fin_monte_carlo_gpu_simulate(ctx_, rng_, &params, &result);
@@ -576,27 +600,32 @@ TEST_F(FinancialWorkflowE2ETest, GPUPerformanceBenchmark) {
                   << elapsed.count() / 1000.0f << " ms ("
                   << paths_per_sec / 1e6f << "M paths/sec)" << std::endl;
 
-        delete[] result.terminal_values;
-        delete[] result.path_returns;
+        // Result struct was zeroed, no dynamic memory to free
     }
 
-    // Benchmark 2: Option Pricing Batch Size
-    std::cout << "\n2. Black-Scholes Batch Scaling:" << std::endl;
-    std::vector<int> batch_sizes = {100, 1000, 10000, 50000};
+    // Benchmark 2: Option Pricing Batch Size (using binomial tree)
+    std::cout << "\n2. Binomial Tree Batch Scaling:" << std::endl;
+    std::vector<int> batch_sizes = {10, 50, 100, 200};
 
     for (int batch : batch_sizes) {
-        std::vector<float> spots(batch, 100.0f);
-        std::vector<float> strikes(batch, 100.0f);
-        std::vector<float> rates(batch, 0.05f);
-        std::vector<float> vols(batch, 0.20f);
-        std::vector<float> times(batch, 1.0f);
-        std::vector<bool> is_call(batch, true);
         std::vector<float> prices(batch);
 
         auto start = std::chrono::high_resolution_clock::now();
-        fin_derivatives_gpu_black_scholes_batch(
-            ctx_, spots.data(), strikes.data(), rates.data(), vols.data(),
-            times.data(), is_call.data(), prices.data(), batch);
+        for (int i = 0; i < batch; i++) {
+            fin_derivatives_gpu_params_t deriv_params = fin_derivatives_gpu_params_default();
+            deriv_params.spot = 100.0f;
+            deriv_params.strike = 100.0f;
+            deriv_params.risk_free_rate = 0.05f;
+            deriv_params.volatility = 0.20f;
+            deriv_params.time_to_expiry = 1.0f;
+            deriv_params.option_type = FIN_OPT_CALL;
+            deriv_params.option_style = FIN_OPT_STYLE_EUROPEAN;
+            deriv_params.tree_steps = 100;
+
+            fin_derivatives_gpu_result_t deriv_result;
+            fin_derivatives_gpu_binomial_tree(ctx_, &deriv_params, &deriv_result);
+            prices[i] = deriv_result.price;
+        }
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -604,7 +633,7 @@ TEST_F(FinancialWorkflowE2ETest, GPUPerformanceBenchmark) {
 
         std::cout << "  " << batch << " options: "
                   << elapsed.count() / 1000.0f << " ms ("
-                  << opts_per_sec / 1e3f << "K opts/sec)" << std::endl;
+                  << opts_per_sec << " opts/sec)" << std::endl;
     }
 
     // Benchmark 3: Portfolio Optimization Asset Scaling
@@ -629,26 +658,27 @@ TEST_F(FinancialWorkflowE2ETest, GPUPerformanceBenchmark) {
             }
         }
 
-        fin_optimization_gpu_params_t params = {
-            .target_return = 0.08f,
-            .max_iterations = 1000,
-            .convergence_threshold = 1e-6f,
-            .constraint_type = FIN_OPT_CONSTRAINT_LONG_ONLY,
-            .risk_aversion = 1.0f
-        };
+        fin_optimization_gpu_params_t params = fin_optimization_gpu_params_default();
+        params.target_return = 0.08f;
+        params.max_iterations = 1000;
+        params.convergence_tolerance = 1e-6f;
+        params.long_only = true;
+        params.risk_aversion = 1.0f;
+        params.n_assets = n;
 
         fin_optimization_gpu_result_t result;
-        result.weights = new float[n];
+        memset(&result, 0, sizeof(result));
+        result.optimal_weights = new float[n];
 
         auto start = std::chrono::high_resolution_clock::now();
-        fin_optimization_gpu_mean_variance(ctx_, returns.data(), covariance.data(), n, &params, &result);
+        fin_optimization_gpu_mean_variance(ctx_, returns.data(), covariance.data(), &params, &result);
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         std::cout << "  " << n << " assets: " << elapsed.count() << " ms" << std::endl;
 
-        delete[] result.weights;
+        delete[] result.optimal_weights;
 
         // Optimization should complete in reasonable time
         EXPECT_LT(elapsed.count(), 5000) << n << " asset optimization took too long";
