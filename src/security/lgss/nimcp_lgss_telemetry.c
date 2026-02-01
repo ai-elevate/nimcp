@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -197,7 +198,7 @@ lgss_telemetry_t* lgss_telemetry_create(const lgss_telemetry_config_t* config)
         return NULL;
     }
 
-    telem = calloc(1, sizeof(lgss_telemetry_t));
+    telem = nimcp_calloc(1, sizeof(lgss_telemetry_t));
     if (!telem) {
         TELEM_LOG_ERROR("Failed to allocate telemetry context");
         return NULL;
@@ -208,11 +209,11 @@ lgss_telemetry_t* lgss_telemetry_create(const lgss_telemetry_config_t* config)
 
     /* Allocate ring buffer if memory logging enabled */
     if (config->log_to_memory && config->memory_buffer_size > 0) {
-        telem->buffer.entries = calloc(config->memory_buffer_size,
+        telem->buffer.entries = nimcp_calloc(config->memory_buffer_size,
             sizeof(lgss_telemetry_entry_t));
         if (!telem->buffer.entries) {
             TELEM_LOG_ERROR("Failed to allocate log buffer");
-            free(telem);
+            nimcp_free(telem);
             return NULL;
         }
         telem->buffer.capacity = config->memory_buffer_size;
@@ -262,11 +263,11 @@ void lgss_telemetry_destroy(lgss_telemetry_t* telemetry)
 
     /* Free buffer */
     if (telemetry->buffer.entries) {
-        free(telemetry->buffer.entries);
+        nimcp_free(telemetry->buffer.entries);
     }
 
     telemetry->magic = 0;
-    free(telemetry);
+    nimcp_free(telemetry);
 
     TELEM_LOG_INFO("Telemetry subsystem destroyed");
 }

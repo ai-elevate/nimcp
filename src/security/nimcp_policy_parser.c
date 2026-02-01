@@ -23,6 +23,7 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -411,7 +412,7 @@ static token_t next_token(parser_state_t* state) {
 
 static void advance(parser_state_t* state) {
     if (state->current_token.value) {
-        free(state->current_token.value);
+        nimcp_free(state->current_token.value);
     }
     state->current_token = next_token(state);
 }
@@ -472,7 +473,7 @@ static nimcp_ast_node_t* parse_primary(parser_state_t* state) {
             while (!match(state, TOKEN_RPAREN) && !match(state, TOKEN_EOF)) {
                 if (num_args >= capacity) {
                     capacity = capacity == 0 ? 4 : capacity * 2;
-                    args = realloc(args, capacity * sizeof(nimcp_ast_node_t*));
+                    args = nimcp_realloc(args, capacity * sizeof(nimcp_ast_node_t*));
                 }
                 args[num_args++] = parse_expression(state);
 
@@ -489,7 +490,7 @@ static nimcp_ast_node_t* parse_primary(parser_state_t* state) {
             node = nimcp_ast_create_identifier(name);
         }
 
-        free(name);
+        nimcp_free(name);
 
         // Member access
         while (match(state, TOKEN_DOT)) {
@@ -606,14 +607,14 @@ static nimcp_ast_node_t* parse_param(parser_state_t* state) {
     advance(state);
 
     if (!expect(state, TOKEN_COLON, "Expected ':'")) {
-        free(key);
+        nimcp_free(key);
         return NULL;
     }
     advance(state);
 
     nimcp_ast_node_t* value = parse_expression(state);
     nimcp_ast_node_t* param = nimcp_ast_create_param(key, value);
-    free(key);
+    nimcp_free(key);
 
     return param;
 }
@@ -631,7 +632,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
     }
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
-        free(name);
+        nimcp_free(name);
         return NULL;
     }
     advance(state);
@@ -660,7 +661,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
         } else if (match(state, TOKEN_IDENTIFIER)) {
             if (num_params >= capacity) {
                 capacity = capacity == 0 ? 4 : capacity * 2;
-                params = realloc(params, capacity * sizeof(nimcp_ast_node_t*));
+                params = nimcp_realloc(params, capacity * sizeof(nimcp_ast_node_t*));
             }
             params[num_params++] = parse_param(state);
         } else {
@@ -672,7 +673,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
     advance(state);
 
     nimcp_ast_node_t* rule = nimcp_ast_create_rule(name, condition, action, params, num_params);
-    free(name);
+    nimcp_free(name);
 
     return rule;
 }
@@ -690,7 +691,7 @@ static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
     }
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
-        free(name);
+        nimcp_free(name);
         return NULL;
     }
     advance(state);
@@ -703,7 +704,7 @@ static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
         if (match(state, TOKEN_RULE)) {
             if (num_rules >= capacity) {
                 capacity = capacity == 0 ? 4 : capacity * 2;
-                rules = realloc(rules, capacity * sizeof(nimcp_ast_node_t*));
+                rules = nimcp_realloc(rules, capacity * sizeof(nimcp_ast_node_t*));
             }
             rules[num_rules++] = parse_rule(state);
         } else {
@@ -715,7 +716,7 @@ static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
     advance(state);
 
     nimcp_ast_node_t* policy = nimcp_ast_create_policy(name, rules, num_rules, NULL, 0);
-    free(name);
+    nimcp_free(name);
 
     return policy;
 }
@@ -752,7 +753,7 @@ nimcp_ast_node_t* nimcp_policy_parse(const char* input, const char* filename, ch
     }
 
     if (state.current_token.value) {
-        free(state.current_token.value);
+        nimcp_free(state.current_token.value);
     }
 
     if (state.has_error) {

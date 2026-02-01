@@ -39,6 +39,56 @@ static inline void brain_init_basal_ganglia_heartbeat(const char* operation, flo
 
 
 //=============================================================================
+// Mesh Integration (Phase: Mesh Network Integration)
+//=============================================================================
+
+/* Mesh integration - forward declarations to avoid header conflicts */
+struct mesh_bootstrap;
+typedef struct mesh_bootstrap mesh_bootstrap_t;
+struct mesh_basal_ganglia_integration;
+typedef struct mesh_basal_ganglia_integration mesh_basal_ganglia_integration_t;
+
+/* Mesh basal ganglia integration function declarations */
+extern mesh_basal_ganglia_integration_t* mesh_basal_ganglia_create(
+    mesh_bootstrap_t* bootstrap,
+    void* basal_ganglia,
+    const void* config
+);
+extern void mesh_basal_ganglia_destroy(mesh_basal_ganglia_integration_t* integration);
+extern int mesh_basal_ganglia_register_participant(mesh_basal_ganglia_integration_t* integration);
+extern int mesh_basal_ganglia_set_health_agent(mesh_basal_ganglia_integration_t* integration,
+                                                void* agent);
+
+/** Global mesh bootstrap handle (set externally) */
+static mesh_bootstrap_t* g_bg_mesh_bootstrap = NULL;
+static mesh_basal_ganglia_integration_t* g_bg_mesh_integration = NULL;
+
+/**
+ * @brief Set the mesh bootstrap handle for basal ganglia mesh registration
+ *
+ * WHAT: Configures basal ganglia init to register with mesh network
+ * WHY:  Enable coordinated action selection via mesh consensus
+ * HOW:  Stores bootstrap handle, used during basal ganglia init
+ *
+ * @param bootstrap Mesh bootstrap handle (NULL to disable)
+ */
+void nimcp_brain_bg_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
+    g_bg_mesh_bootstrap = bootstrap;
+    if (bootstrap) {
+        NIMCP_LOGGING_INFO("Mesh bootstrap set for basal ganglia integration");
+    }
+}
+
+/**
+ * @brief Get the basal ganglia mesh integration handle
+ *
+ * @return Current mesh integration or NULL if not registered
+ */
+mesh_basal_ganglia_integration_t* nimcp_brain_bg_get_mesh_integration(void) {
+    return g_bg_mesh_integration;
+}
+
+//=============================================================================
 // Configuration
 //=============================================================================
 
@@ -145,6 +195,40 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
 
     NIMCP_LOGGING_INFO("Enhanced basal ganglia initialized successfully");
 
+    /* Register with mesh network if bootstrap is available */
+    if (g_bg_mesh_bootstrap) {
+        brain_init_basal_ganglia_heartbeat("mesh_registration", 0.0f);
+
+        mesh_basal_ganglia_integration_t* mesh_integration = mesh_basal_ganglia_create(
+            g_bg_mesh_bootstrap,
+            b->basal_ganglia,
+            NULL  /* Use default config */
+        );
+
+        if (mesh_integration) {
+            /* Set health agent if available */
+            if (g_brain_init_basal_ganglia_health_agent) {
+                mesh_basal_ganglia_set_health_agent(mesh_integration,
+                                                    g_brain_init_basal_ganglia_health_agent);
+            }
+
+            /* Register as mesh participant */
+            int mesh_result = mesh_basal_ganglia_register_participant(mesh_integration);
+            if (mesh_result == NIMCP_SUCCESS) {
+                g_bg_mesh_integration = mesh_integration;
+                NIMCP_LOGGING_INFO("Basal ganglia registered with mesh network");
+            } else {
+                NIMCP_LOGGING_WARN("Failed to register basal ganglia with mesh (error %d)",
+                                   mesh_result);
+                mesh_basal_ganglia_destroy(mesh_integration);
+            }
+        } else {
+            NIMCP_LOGGING_WARN("Failed to create basal ganglia mesh integration");
+        }
+
+        brain_init_basal_ganglia_heartbeat("mesh_registration", 1.0f);
+    }
+
     /* Log enabled features */
     NIMCP_LOGGING_DEBUG("BG features enabled:");
     if (config.features.enable_beta_oscillations) NIMCP_LOGGING_DEBUG("  - Beta oscillations");
@@ -166,6 +250,13 @@ void nimcp_brain_bg_destroy(brain_t brain) {
     if (!brain) return;
 
     struct brain_struct* b = (struct brain_struct*)brain;
+
+    /* Destroy mesh integration first */
+    if (g_bg_mesh_integration) {
+        mesh_basal_ganglia_destroy(g_bg_mesh_integration);
+        g_bg_mesh_integration = NULL;
+        NIMCP_LOGGING_DEBUG("Basal ganglia mesh integration destroyed");
+    }
 
     if (b->basal_ganglia) {
         bg_enhanced_destroy(b->basal_ganglia);

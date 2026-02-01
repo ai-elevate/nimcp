@@ -35,6 +35,7 @@
 #include <ctype.h>
 #include <time.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -132,7 +133,7 @@ float nimcp_calculate_ngram_entropy(const uint8_t* data, size_t len, uint32_t n)
     }
 
     /* Simple hash table for n-gram counts */
-    uint32_t* freq_table = (uint32_t*)calloc(MAX_NGRAM_TABLE_SIZE, sizeof(uint32_t));
+    uint32_t* freq_table = (uint32_t*)nimcp_calloc(MAX_NGRAM_TABLE_SIZE, sizeof(uint32_t));
     if (!freq_table) {
         return 0.0F;
     }
@@ -154,7 +155,7 @@ float nimcp_calculate_ngram_entropy(const uint8_t* data, size_t len, uint32_t n)
         }
     }
 
-    free(freq_table);
+    nimcp_free(freq_table);
     return entropy;
 }
 

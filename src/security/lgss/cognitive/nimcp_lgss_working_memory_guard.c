@@ -11,6 +11,7 @@
 
 #include "security/lgss/cognitive/nimcp_lgss_working_memory_guard.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -299,7 +300,7 @@ working_memory_guard_t* wm_guard_create(
     void* wm,
     const wm_guard_config_t* config) {
 
-    working_memory_guard_t* guard = (working_memory_guard_t*)calloc(1, sizeof(working_memory_guard_t));
+    working_memory_guard_t* guard = (working_memory_guard_t*)nimcp_calloc(1, sizeof(working_memory_guard_t));
     if (guard == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
@@ -339,19 +340,19 @@ void wm_guard_destroy(working_memory_guard_t* guard) {
     /* Free any content copies */
     for (size_t i = 0; i < LGSS_WM_MAX_SLOTS; i++) {
         if (guard->slots[i].content_copy != NULL) {
-            free(guard->slots[i].content_copy);
+            nimcp_free(guard->slots[i].content_copy);
         }
     }
 
     /* Free safety item contents */
     for (size_t i = 0; i < LGSS_WM_MAX_SAFETY_ITEMS; i++) {
         if (guard->safety_items[i].content != NULL) {
-            free(guard->safety_items[i].content);
+            nimcp_free(guard->safety_items[i].content);
         }
     }
 
     memset(guard, 0, sizeof(working_memory_guard_t));
-    free(guard);
+    nimcp_free(guard);
 }
 
 //=============================================================================
@@ -440,7 +441,7 @@ wm_guard_result_t wm_guard_insert(
     if (guard->config.sanitize_unsafe_content && !proposal->is_sanitized &&
         proposal->content_type == WM_CONTENT_EXTERNAL_INPUT) {
 
-        sanitized_content = malloc(proposal->size + 1);
+        sanitized_content = nimcp_malloc(proposal->size + 1);
         if (sanitized_content == NULL) {
             result->result = WM_GUARD_ERROR_MEMORY;
             return WM_GUARD_ERROR_MEMORY;
@@ -458,7 +459,7 @@ wm_guard_result_t wm_guard_insert(
         );
 
         if (san_result == WM_GUARD_REJECTED) {
-            free(sanitized_content);
+            nimcp_free(sanitized_content);
             result->result = WM_GUARD_REJECTED;
             guard->stats.rejected_items++;
             strncpy(result->details, "Content rejected during sanitization",
@@ -486,7 +487,7 @@ wm_guard_result_t wm_guard_insert(
             /* Check if we can replace */
             if (guard->slots[proposal->slot_id].is_safety_item &&
                 !proposal->is_safety_relevant) {
-                if (sanitized_content) free(sanitized_content);
+                if (sanitized_content) nimcp_free(sanitized_content);
                 result->result = WM_GUARD_PROTECTED;
                 strncpy(result->details, "Cannot replace protected safety item",
                         sizeof(result->details) - 1);
@@ -497,7 +498,7 @@ wm_guard_result_t wm_guard_insert(
     } else {
         slot_idx = find_empty_slot(guard);
         if (slot_idx < 0) {
-            if (sanitized_content) free(sanitized_content);
+            if (sanitized_content) nimcp_free(sanitized_content);
             result->result = WM_GUARD_ERROR_CAPACITY;
             strncpy(result->details, "No empty slots available",
                     sizeof(result->details) - 1);
@@ -510,7 +511,7 @@ wm_guard_result_t wm_guard_insert(
 
     /* Free old content if replacing */
     if (slot->content_copy != NULL) {
-        free(slot->content_copy);
+        nimcp_free(slot->content_copy);
         slot->content_copy = NULL;
     }
 
@@ -535,7 +536,7 @@ wm_guard_result_t wm_guard_insert(
 
     /* Store copy for tampering detection */
     if (guard->config.detect_tampering && final_size > 0) {
-        slot->content_copy = malloc(final_size);
+        slot->content_copy = nimcp_malloc(final_size);
         if (slot->content_copy != NULL) {
             memcpy(slot->content_copy, final_content, final_size);
             slot->content_copy_size = final_size;
@@ -560,7 +561,7 @@ wm_guard_result_t wm_guard_insert(
 
     /* Clean up sanitized content if we copied it */
     if (sanitized_content) {
-        free(sanitized_content);
+        nimcp_free(sanitized_content);
     }
 
     result->assigned_slot = slot_idx;
@@ -834,7 +835,7 @@ wm_guard_result_t wm_guard_register_safety_context(
 
     /* Create safety item entry */
     safety_context_item_t* item = &guard->safety_items[guard->safety_item_count];
-    item->content = malloc(content_size);
+    item->content = nimcp_malloc(content_size);
     if (item->content == NULL) {
         return WM_GUARD_ERROR_MEMORY;
     }
@@ -862,7 +863,7 @@ wm_guard_result_t wm_guard_register_safety_context(
     slot->is_safety_item = true;
 
     /* Store copy */
-    slot->content_copy = malloc(content_size);
+    slot->content_copy = nimcp_malloc(content_size);
     if (slot->content_copy != NULL) {
         memcpy(slot->content_copy, content, content_size);
         slot->content_copy_size = content_size;
@@ -1089,7 +1090,7 @@ wm_guard_result_t wm_guard_enforce_duration(
             /* Mark as expired (caller handles actual removal) */
             slot->state.occupied = false;
             if (slot->content_copy != NULL) {
-                free(slot->content_copy);
+                nimcp_free(slot->content_copy);
                 slot->content_copy = NULL;
             }
             guard->occupied_slots--;

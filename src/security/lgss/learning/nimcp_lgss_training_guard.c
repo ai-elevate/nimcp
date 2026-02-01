@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -152,11 +153,11 @@ static uint64_t get_time_us(void) {
 }
 
 static bool reward_history_init(reward_history_t* h, uint32_t capacity) {
-    h->values = calloc(capacity, sizeof(float));
-    h->timestamps = calloc(capacity, sizeof(uint64_t));
+    h->values = nimcp_calloc(capacity, sizeof(float));
+    h->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!h->values || !h->timestamps) {
-        free(h->values);
-        free(h->timestamps);
+        nimcp_free(h->values);
+        nimcp_free(h->timestamps);
         return false;
     }
     h->capacity = capacity;
@@ -166,8 +167,8 @@ static bool reward_history_init(reward_history_t* h, uint32_t capacity) {
 }
 
 static void reward_history_destroy(reward_history_t* h) {
-    free(h->values);
-    free(h->timestamps);
+    nimcp_free(h->values);
+    nimcp_free(h->timestamps);
     h->values = NULL;
     h->timestamps = NULL;
 }
@@ -180,7 +181,7 @@ static void reward_history_add(reward_history_t* h, float value, uint64_t timest
 }
 
 static bool gradient_history_init(gradient_history_t* h, uint32_t capacity) {
-    h->norms = calloc(capacity, sizeof(float));
+    h->norms = nimcp_calloc(capacity, sizeof(float));
     if (!h->norms) return false;
     h->capacity = capacity;
     h->head = 0;
@@ -191,7 +192,7 @@ static bool gradient_history_init(gradient_history_t* h, uint32_t capacity) {
 }
 
 static void gradient_history_destroy(gradient_history_t* h) {
-    free(h->norms);
+    nimcp_free(h->norms);
     h->norms = NULL;
 }
 
@@ -218,7 +219,7 @@ static float gradient_history_stddev(gradient_history_t* h) {
 }
 
 static bool loss_history_init(loss_history_t* h, uint32_t capacity) {
-    h->values = calloc(capacity, sizeof(float));
+    h->values = nimcp_calloc(capacity, sizeof(float));
     if (!h->values) return false;
     h->capacity = capacity;
     h->head = 0;
@@ -228,7 +229,7 @@ static bool loss_history_init(loss_history_t* h, uint32_t capacity) {
 }
 
 static void loss_history_destroy(loss_history_t* h) {
-    free(h->values);
+    nimcp_free(h->values);
     h->values = NULL;
 }
 
@@ -243,7 +244,7 @@ static void loss_history_add(loss_history_t* h, float loss) {
 }
 
 static bool frozen_params_init(frozen_params_t* f, uint32_t capacity) {
-    f->indices = calloc(capacity, sizeof(uint32_t));
+    f->indices = nimcp_calloc(capacity, sizeof(uint32_t));
     if (!f->indices) return false;
     f->count = 0;
     f->capacity = capacity;
@@ -251,7 +252,7 @@ static bool frozen_params_init(frozen_params_t* f, uint32_t capacity) {
 }
 
 static void frozen_params_destroy(frozen_params_t* f) {
-    free(f->indices);
+    nimcp_free(f->indices);
     f->indices = NULL;
 }
 
@@ -360,7 +361,7 @@ training_guard_t training_guard_create(
     const training_guard_config_t* config,
     security_orchestrator_t orchestrator
 ) {
-    struct training_guard_internal* guard = calloc(1, sizeof(*guard));
+    struct training_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
@@ -381,14 +382,14 @@ training_guard_t training_guard_create(
 
     /* Initialize reward history */
     if (!reward_history_init(&guard->reward_history, guard->config.reward_history_size)) {
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
     /* Initialize gradient history */
     if (!gradient_history_init(&guard->gradient_history, guard->config.anomaly_history_size)) {
         reward_history_destroy(&guard->reward_history);
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -396,7 +397,7 @@ training_guard_t training_guard_create(
     if (!loss_history_init(&guard->loss_history, 100)) {
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -405,7 +406,7 @@ training_guard_t training_guard_create(
         loss_history_destroy(&guard->loss_history);
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -418,13 +419,13 @@ training_guard_t training_guard_create(
 
     /* Initialize checkpoint storage */
     guard->checkpoint_capacity = guard->config.max_checkpoints;
-    guard->checkpoints = calloc(guard->checkpoint_capacity, sizeof(checkpoint_info_t));
+    guard->checkpoints = nimcp_calloc(guard->checkpoint_capacity, sizeof(checkpoint_info_t));
     if (!guard->checkpoints) {
         frozen_params_destroy(&guard->frozen_params);
         loss_history_destroy(&guard->loss_history);
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
     guard->next_checkpoint_id = 1;
@@ -438,15 +439,15 @@ void training_guard_destroy(training_guard_t guard) {
     struct training_guard_internal* g = guard;
     if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return;
 
-    free(g->reference_goal);
-    free(g->checkpoints);
+    nimcp_free(g->reference_goal);
+    nimcp_free(g->checkpoints);
     frozen_params_destroy(&g->frozen_params);
     loss_history_destroy(&g->loss_history);
     gradient_history_destroy(&g->gradient_history);
     reward_history_destroy(&g->reward_history);
 
     g->magic = 0;
-    free(g);
+    nimcp_free(g);
 }
 
 int training_guard_reset(training_guard_t guard) {
@@ -659,7 +660,7 @@ int training_guard_check_gradients(
 
     /* Create a copy for non-destructive checking */
     gradient_buffer_t copy = *gradients;
-    float* copy_data = malloc(gradients->size * sizeof(float));
+    float* copy_data = nimcp_malloc(gradients->size * sizeof(float));
     NIMCP_CHECK_THROW(copy_data, NIMCP_ERROR_NO_MEMORY, "failed to allocate gradient buffer copy");
 
     memcpy(copy_data, gradients->data, gradients->size * sizeof(float));
@@ -667,7 +668,7 @@ int training_guard_check_gradients(
 
     int err = training_guard_apply_gradients(guard, &copy, result);
 
-    free(copy_data);
+    nimcp_free(copy_data);
     return err;
 }
 
@@ -872,7 +873,7 @@ int training_guard_set_reference_goal(
     NIMCP_CHECK_THROW(goal_dim <= TRAINING_MAX_GOAL_DIM, NIMCP_ERROR_OUT_OF_RANGE, "goal_dim exceeds maximum");
 
     /* Allocate or reallocate */
-    float* new_goal = realloc(g->reference_goal, goal_dim * sizeof(float));
+    float* new_goal = nimcp_realloc(g->reference_goal, goal_dim * sizeof(float));
     NIMCP_CHECK_THROW(new_goal, NIMCP_ERROR_NO_MEMORY, "failed to allocate reference goal");
 
     memcpy(new_goal, goal, goal_dim * sizeof(float));

@@ -22,6 +22,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "utils/memory/nimcp_memory.h"
+
 /* ============================================================================
  * Constants
  * ============================================================================ */
@@ -273,7 +275,7 @@ capability_control_config_t capability_control_default_config(void)
 capability_control_t* capability_control_create(
     const capability_control_config_t* config)
 {
-    capability_control_t* system = calloc(1, sizeof(capability_control_t));
+    capability_control_t* system = nimcp_calloc(1, sizeof(capability_control_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate capability control");
         return NULL;
@@ -283,7 +285,7 @@ capability_control_t* capability_control_create(
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -299,7 +301,7 @@ capability_control_t* capability_control_create(
         NIMCP_LOG_ERROR(LOG_CATEGORY,
             "Configuration error: self-modification must be disabled");
         nimcp_mutex_destroy(system->mutex);
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -332,7 +334,7 @@ void capability_control_destroy(capability_control_t* system)
         nimcp_mutex_destroy(system->mutex);
     }
 
-    free(system);
+    nimcp_free(system);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Capability control destroyed");
 }

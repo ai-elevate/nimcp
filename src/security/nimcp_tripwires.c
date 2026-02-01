@@ -16,6 +16,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/statistics/nimcp_statistics.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
@@ -35,6 +36,13 @@
 #define TRIPWIRE_MAX_GOALS          64
 #define TRIPWIRE_MAX_RESOURCES      32
 #define TRIPWIRE_FEATURE_DIM        128
+
+/* Network anomaly detection constants */
+#define TRIPWIRE_MAX_NETWORK_ENDPOINTS     256      /**< Max unique endpoints to track */
+#define TRIPWIRE_NETWORK_HISTORY_SIZE      1000     /**< Connection history buffer size */
+#define TRIPWIRE_BEACON_WINDOW_SIZE        50       /**< Connections for beaconing analysis */
+#define TRIPWIRE_NETWORK_FEATURE_DIM       16       /**< Network pattern feature dimension */
+#define TRIPWIRE_MIN_BEACON_INTERVALS      10       /**< Min intervals to detect beaconing */
 
 /* ============================================================================
  * Health Agent Integration
@@ -114,6 +122,82 @@ typedef struct alert_entry {
     bool active;
 } alert_entry_t;
 
+/* ============================================================================
+ * Network Anomaly Detection Types
+ * ============================================================================ */
+
+/**
+ * @brief Network endpoint tracking
+ */
+typedef struct network_endpoint {
+    uint32_t ip;                        /**< Destination IP */
+    uint16_t port;                      /**< Destination port */
+    tripwire_network_protocol_t proto;  /**< Protocol */
+    uint64_t total_bytes_sent;          /**< Total bytes sent to this endpoint */
+    uint64_t total_bytes_recv;          /**< Total bytes received from this endpoint */
+    uint32_t connection_count;          /**< Number of connections to this endpoint */
+    uint64_t first_seen_us;             /**< First connection timestamp */
+    uint64_t last_seen_us;              /**< Last connection timestamp */
+    bool active;
+} network_endpoint_t;
+
+/**
+ * @brief Network connection record for timing analysis
+ */
+typedef struct network_connection_record {
+    uint32_t ip;                        /**< Destination IP */
+    uint16_t port;                      /**< Destination port */
+    uint64_t timestamp_us;              /**< When connection occurred */
+    uint64_t bytes_sent;                /**< Bytes sent */
+    uint64_t bytes_recv;                /**< Bytes received */
+    tripwire_network_protocol_t proto;  /**< Protocol */
+} network_connection_record_t;
+
+/**
+ * @brief Network behavior tracking state
+ */
+typedef struct network_tracker {
+    /* Endpoint tracking */
+    network_endpoint_t endpoints[TRIPWIRE_MAX_NETWORK_ENDPOINTS];
+    size_t endpoint_count;
+
+    /* Connection history (circular buffer for timing analysis) */
+    network_connection_record_t* connection_history;
+    size_t history_capacity;
+    size_t history_head;
+    size_t history_count;
+
+    /* Aggregate statistics */
+    nimcp_running_stats_t bytes_sent_stats;     /**< Running stats for sent data */
+    nimcp_running_stats_t bytes_recv_stats;     /**< Running stats for received data */
+    nimcp_running_stats_t connection_rate_stats;/**< Connections per second */
+    nimcp_running_stats_t interval_stats;       /**< Inter-connection intervals */
+
+    /* Protocol distribution */
+    uint64_t protocol_counts[7];                /**< Counts per protocol type */
+
+    /* Beaconing detection */
+    float* beacon_intervals;                    /**< Recent inter-connection intervals */
+    size_t beacon_interval_count;
+    size_t beacon_interval_capacity;
+
+    /* Baseline tracking */
+    bool has_baseline;
+    float baseline_outbound_ratio;              /**< Normal outbound/inbound ratio */
+    float baseline_connection_rate;             /**< Normal connections per second */
+    uint64_t baseline_samples;
+
+    /* Pattern feature tracking */
+    nimcp_running_stats_t pattern_stats[TRIPWIRE_NETWORK_FEATURE_DIM];
+    bool has_pattern_baseline;
+
+    /* Totals */
+    uint64_t total_bytes_sent;
+    uint64_t total_bytes_recv;
+    uint64_t total_connections;
+    uint64_t last_connection_us;
+} network_tracker_t;
+
 /**
  * @brief Tripwire system internal state
  */
@@ -173,6 +257,9 @@ struct tripwire_system {
     bool bio_async_connected;
     void* brain_immune;              /**< Brain immune system for antigen presentation */
 
+    /* Network anomaly detection */
+    network_tracker_t network;
+
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
@@ -216,6 +303,11 @@ tripwire_config_t tripwire_default_config(void) {
     config.thresholds.consistency_threshold = 0.7f;
     config.thresholds.resource_zscore_threshold = 3.0f;
     config.thresholds.goal_drift_threshold = 0.3f;
+
+    /* Network anomaly detection thresholds */
+    config.thresholds.network_exfil_threshold = 5.0f;     /* Outbound 5x inbound is suspicious */
+    config.thresholds.network_anomaly_zscore = 3.0f;      /* 3 sigma for anomaly */
+    config.thresholds.network_beacon_threshold = 0.85f;   /* 85% regularity = beaconing */
 
     /* Default sensitivities */
     for (int i = 0; i < TRIPWIRE_COUNT; i++) {
@@ -294,6 +386,37 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
     }
     system->correlation_count = 0;
 
+    /* Initialize network tracker */
+    memset(&system->network, 0, sizeof(network_tracker_t));
+    system->network.history_capacity = TRIPWIRE_NETWORK_HISTORY_SIZE;
+    system->network.connection_history = nimcp_calloc(
+        TRIPWIRE_NETWORK_HISTORY_SIZE, sizeof(network_connection_record_t));
+    if (!system->network.connection_history) {
+        NIMCP_LOGGING_WARN("%s Failed to allocate network connection history",
+                           TRIPWIRE_LOG_PREFIX);
+        /* Non-fatal - network detection will be limited */
+    }
+
+    /* Allocate beacon interval tracking */
+    system->network.beacon_interval_capacity = TRIPWIRE_BEACON_WINDOW_SIZE;
+    system->network.beacon_intervals = nimcp_calloc(
+        TRIPWIRE_BEACON_WINDOW_SIZE, sizeof(float));
+    if (!system->network.beacon_intervals) {
+        NIMCP_LOGGING_WARN("%s Failed to allocate beacon interval buffer",
+                           TRIPWIRE_LOG_PREFIX);
+    }
+
+    /* Initialize network running statistics */
+    nimcp_stats_running_init(&system->network.bytes_sent_stats);
+    nimcp_stats_running_init(&system->network.bytes_recv_stats);
+    nimcp_stats_running_init(&system->network.connection_rate_stats);
+    nimcp_stats_running_init(&system->network.interval_stats);
+
+    /* Initialize pattern statistics */
+    for (int i = 0; i < TRIPWIRE_NETWORK_FEATURE_DIM; i++) {
+        nimcp_stats_running_init(&system->network.pattern_stats[i]);
+    }
+
     /* Initialize mutex */
     system->mutex = nimcp_mutex_create(NULL);
     if (!system->mutex) {
@@ -338,6 +461,14 @@ void tripwire_destroy(tripwire_system_t* system) {
         if (system->goals[i].pursuit_history) {
             nimcp_free(system->goals[i].pursuit_history);
         }
+    }
+
+    /* Free network tracker buffers */
+    if (system->network.connection_history) {
+        nimcp_free(system->network.connection_history);
+    }
+    if (system->network.beacon_intervals) {
+        nimcp_free(system->network.beacon_intervals);
     }
 
     /* Destroy mutex */
@@ -392,6 +523,27 @@ nimcp_error_t tripwire_reset(tripwire_system_t* system) {
     /* Clear alerts */
     system->alert_count = 0;
     system->alert_head = 0;
+
+    /* Reset network tracker */
+    memset(system->network.endpoints, 0, sizeof(system->network.endpoints));
+    system->network.endpoint_count = 0;
+    system->network.history_head = 0;
+    system->network.history_count = 0;
+    system->network.beacon_interval_count = 0;
+    system->network.has_baseline = false;
+    system->network.has_pattern_baseline = false;
+    system->network.total_bytes_sent = 0;
+    system->network.total_bytes_recv = 0;
+    system->network.total_connections = 0;
+    system->network.last_connection_us = 0;
+    memset(system->network.protocol_counts, 0, sizeof(system->network.protocol_counts));
+    nimcp_stats_running_init(&system->network.bytes_sent_stats);
+    nimcp_stats_running_init(&system->network.bytes_recv_stats);
+    nimcp_stats_running_init(&system->network.connection_rate_stats);
+    nimcp_stats_running_init(&system->network.interval_stats);
+    for (int i = 0; i < TRIPWIRE_NETWORK_FEATURE_DIM; i++) {
+        nimcp_stats_running_init(&system->network.pattern_stats[i]);
+    }
 
     nimcp_mutex_unlock(system->mutex);
 
@@ -928,6 +1080,640 @@ float tripwire_detect_power_seeking(tripwire_system_t* system) {
 }
 
 /* ============================================================================
+ * Network Observation Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Find or create endpoint tracker
+ */
+static network_endpoint_t* network_find_or_create_endpoint(
+    network_tracker_t* tracker,
+    uint32_t ip,
+    uint16_t port,
+    tripwire_network_protocol_t proto)
+{
+    /* Search existing */
+    for (size_t i = 0; i < tracker->endpoint_count; i++) {
+        if (tracker->endpoints[i].active &&
+            tracker->endpoints[i].ip == ip &&
+            tracker->endpoints[i].port == port) {
+            return &tracker->endpoints[i];
+        }
+    }
+
+    /* Create new if space available */
+    if (tracker->endpoint_count < TRIPWIRE_MAX_NETWORK_ENDPOINTS) {
+        network_endpoint_t* ep = &tracker->endpoints[tracker->endpoint_count++];
+        memset(ep, 0, sizeof(network_endpoint_t));
+        ep->ip = ip;
+        ep->port = port;
+        ep->proto = proto;
+        ep->first_seen_us = nimcp_time_now_us();
+        ep->active = true;
+        return ep;
+    }
+
+    /* Find oldest endpoint to recycle */
+    size_t oldest_idx = 0;
+    uint64_t oldest_time = UINT64_MAX;
+    for (size_t i = 0; i < tracker->endpoint_count; i++) {
+        if (tracker->endpoints[i].last_seen_us < oldest_time) {
+            oldest_time = tracker->endpoints[i].last_seen_us;
+            oldest_idx = i;
+        }
+    }
+
+    network_endpoint_t* ep = &tracker->endpoints[oldest_idx];
+    memset(ep, 0, sizeof(network_endpoint_t));
+    ep->ip = ip;
+    ep->port = port;
+    ep->proto = proto;
+    ep->first_seen_us = nimcp_time_now_us();
+    ep->active = true;
+    return ep;
+}
+
+/**
+ * @brief Add connection to history buffer
+ */
+static void network_add_to_history(
+    network_tracker_t* tracker,
+    uint32_t ip,
+    uint16_t port,
+    uint64_t timestamp_us,
+    uint64_t bytes_sent,
+    uint64_t bytes_recv,
+    tripwire_network_protocol_t proto)
+{
+    if (!tracker->connection_history) return;
+
+    network_connection_record_t* record =
+        &tracker->connection_history[tracker->history_head];
+    record->ip = ip;
+    record->port = port;
+    record->timestamp_us = timestamp_us;
+    record->bytes_sent = bytes_sent;
+    record->bytes_recv = bytes_recv;
+    record->proto = proto;
+
+    tracker->history_head = (tracker->history_head + 1) % tracker->history_capacity;
+    if (tracker->history_count < tracker->history_capacity) {
+        tracker->history_count++;
+    }
+}
+
+/**
+ * @brief Compute destination IP entropy (uniqueness measure)
+ *
+ * High entropy = many unique destinations (normal)
+ * Low entropy = few repeated destinations (potential C2)
+ */
+static float compute_destination_entropy(network_tracker_t* tracker) {
+    if (tracker->endpoint_count < 2) return 1.0f;
+
+    /* Count connections per endpoint */
+    uint64_t total_connections = 0;
+    for (size_t i = 0; i < tracker->endpoint_count; i++) {
+        if (tracker->endpoints[i].active) {
+            total_connections += tracker->endpoints[i].connection_count;
+        }
+    }
+    if (total_connections == 0) return 1.0f;
+
+    /* Compute probability distribution and entropy */
+    float entropy = 0.0f;
+    for (size_t i = 0; i < tracker->endpoint_count; i++) {
+        if (!tracker->endpoints[i].active) continue;
+        float p = (float)tracker->endpoints[i].connection_count / (float)total_connections;
+        if (p > 0.0f) {
+            entropy -= p * log2f(p);
+        }
+    }
+
+    /* Normalize by max entropy (log2 of endpoint count) */
+    float max_entropy = log2f((float)tracker->endpoint_count);
+    if (max_entropy > 0.0f) {
+        entropy /= max_entropy;
+    }
+
+    return entropy;  /* 0 = single destination, 1 = uniform distribution */
+}
+
+/**
+ * @brief Compute interval regularity (beaconing detection)
+ *
+ * Analyzes coefficient of variation of inter-connection intervals.
+ * Regular intervals (low CoV) suggest beaconing behavior.
+ *
+ * @return Regularity score [0-1], higher = more regular (suspicious)
+ */
+static float compute_interval_regularity(network_tracker_t* tracker) {
+    if (tracker->beacon_interval_count < TRIPWIRE_MIN_BEACON_INTERVALS) {
+        return 0.0f;  /* Not enough data */
+    }
+
+    /* Compute mean and std of intervals */
+    float sum = 0.0f;
+    for (size_t i = 0; i < tracker->beacon_interval_count; i++) {
+        sum += tracker->beacon_intervals[i];
+    }
+    float mean = sum / tracker->beacon_interval_count;
+
+    if (mean < 1e-6f) return 0.0f;  /* Avoid division by zero */
+
+    float variance_sum = 0.0f;
+    for (size_t i = 0; i < tracker->beacon_interval_count; i++) {
+        float diff = tracker->beacon_intervals[i] - mean;
+        variance_sum += diff * diff;
+    }
+    float std = sqrtf(variance_sum / tracker->beacon_interval_count);
+
+    /* Coefficient of variation: lower = more regular */
+    float cov = std / mean;
+
+    /* Convert to regularity score (inverse of CoV, clamped) */
+    /* CoV of 0 = perfectly regular, CoV > 1 = highly variable */
+    float regularity = 1.0f / (1.0f + cov);
+
+    return regularity;
+}
+
+nimcp_error_t tripwire_observe_network_connection(
+    tripwire_system_t* system,
+    uint32_t dest_ip,
+    uint16_t dest_port,
+    uint64_t bytes_sent,
+    uint64_t bytes_recv,
+    tripwire_network_protocol_t protocol)
+{
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    uint64_t now_us = nimcp_time_now_us();
+
+    nimcp_mutex_lock(system->mutex);
+
+    network_tracker_t* net = &system->network;
+
+    /* Update endpoint tracking */
+    network_endpoint_t* ep = network_find_or_create_endpoint(
+        net, dest_ip, dest_port, protocol);
+    if (ep) {
+        ep->total_bytes_sent += bytes_sent;
+        ep->total_bytes_recv += bytes_recv;
+        ep->connection_count++;
+        ep->last_seen_us = now_us;
+    }
+
+    /* Add to connection history */
+    network_add_to_history(net, dest_ip, dest_port, now_us,
+                           bytes_sent, bytes_recv, protocol);
+
+    /* Update running statistics */
+    nimcp_stats_running_add(&net->bytes_sent_stats, (double)bytes_sent);
+    nimcp_stats_running_add(&net->bytes_recv_stats, (double)bytes_recv);
+
+    /* Track inter-connection interval */
+    if (net->last_connection_us > 0) {
+        float interval_sec = (float)(now_us - net->last_connection_us) / 1e6f;
+
+        /* Add to interval stats */
+        nimcp_stats_running_add(&net->interval_stats, interval_sec);
+
+        /* Add to beacon interval buffer (circular) */
+        if (net->beacon_intervals) {
+            size_t idx = net->beacon_interval_count < net->beacon_interval_capacity ?
+                         net->beacon_interval_count :
+                         (net->total_connections % net->beacon_interval_capacity);
+            net->beacon_intervals[idx] = interval_sec;
+            if (net->beacon_interval_count < net->beacon_interval_capacity) {
+                net->beacon_interval_count++;
+            }
+        }
+    }
+    net->last_connection_us = now_us;
+
+    /* Update protocol distribution */
+    if (protocol < 7) {
+        net->protocol_counts[protocol]++;
+    }
+
+    /* Update totals */
+    net->total_bytes_sent += bytes_sent;
+    net->total_bytes_recv += bytes_recv;
+    net->total_connections++;
+
+    /* Check if we need to establish baseline */
+    if (!net->has_baseline && net->total_connections >= system->config.baseline_window) {
+        if (net->total_bytes_recv > 0) {
+            net->baseline_outbound_ratio =
+                (float)net->total_bytes_sent / (float)net->total_bytes_recv;
+        } else {
+            net->baseline_outbound_ratio = 1.0f;
+        }
+        net->baseline_connection_rate =
+            (float)nimcp_stats_running_mean(&net->interval_stats);
+        net->has_baseline = true;
+        net->baseline_samples = net->total_connections;
+
+        NIMCP_LOGGING_DEBUG("%s Network baseline established: ratio=%.2f, interval=%.3fs",
+            TRIPWIRE_LOG_PREFIX, net->baseline_outbound_ratio, net->baseline_connection_rate);
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Send heartbeat during network observation */
+    tripwire_heartbeat("network_observe",
+        (float)net->total_connections / (float)system->config.baseline_window);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t tripwire_observe_network_pattern(
+    tripwire_system_t* system,
+    const float* pattern_features,
+    size_t feature_count)
+{
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC || !pattern_features) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+
+    network_tracker_t* net = &system->network;
+
+    /* Update pattern statistics */
+    size_t count = feature_count < TRIPWIRE_NETWORK_FEATURE_DIM ?
+                   feature_count : TRIPWIRE_NETWORK_FEATURE_DIM;
+    for (size_t i = 0; i < count; i++) {
+        nimcp_stats_running_add(&net->pattern_stats[i], pattern_features[i]);
+    }
+
+    /* Check if we have enough data for pattern baseline */
+    if (!net->has_pattern_baseline &&
+        net->pattern_stats[0].n >= system->config.baseline_window) {
+        net->has_pattern_baseline = true;
+        NIMCP_LOGGING_DEBUG("%s Network pattern baseline established",
+            TRIPWIRE_LOG_PREFIX);
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Network Detection Implementation
+ * ============================================================================ */
+
+float tripwire_detect_exfiltration(tripwire_system_t* system) {
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) return 0.0f;
+
+    nimcp_mutex_lock(system->mutex);
+
+    network_tracker_t* net = &system->network;
+    float score = 0.0f;
+
+    /* Need baseline and minimum data */
+    if (!net->has_baseline ||
+        net->total_connections < system->config.thresholds.min_observations) {
+        system->detection_scores[TRIPWIRE_NETWORK_EXFILTRATION] = 0.0f;
+        system->detection_confidence[TRIPWIRE_NETWORK_EXFILTRATION] = 0.0f;
+        nimcp_mutex_unlock(system->mutex);
+        return 0.0f;
+    }
+
+    /* Calculate current outbound/inbound ratio */
+    float current_ratio = 1.0f;
+    if (net->total_bytes_recv > 0) {
+        current_ratio = (float)net->total_bytes_sent / (float)net->total_bytes_recv;
+    } else if (net->total_bytes_sent > 0) {
+        current_ratio = 10.0f;  /* All outbound, very suspicious */
+    }
+
+    /* Component 1: Ratio anomaly vs baseline */
+    float ratio_anomaly = 0.0f;
+    if (net->baseline_outbound_ratio > 0.0f) {
+        ratio_anomaly = current_ratio / net->baseline_outbound_ratio;
+        ratio_anomaly = (ratio_anomaly - 1.0f);  /* Deviation from baseline */
+        if (ratio_anomaly < 0.0f) ratio_anomaly = 0.0f;  /* Only care about excess outbound */
+    }
+
+    /* Component 2: Absolute ratio vs threshold */
+    float absolute_exfil = current_ratio / system->config.thresholds.network_exfil_threshold;
+    if (absolute_exfil > 1.0f) absolute_exfil = 1.0f;
+
+    /* Component 3: Check for large individual transfers (z-score) */
+    float transfer_zscore = 0.0f;
+    if (net->bytes_sent_stats.n > 10) {
+        double mean = nimcp_stats_running_mean(&net->bytes_sent_stats);
+        double std = nimcp_stats_running_std_dev(&net->bytes_sent_stats);
+        if (std > 1e-6) {
+            /* Check if recent average is anomalous */
+            transfer_zscore = compute_zscore(
+                mean * 1.5f,  /* Check if 1.5x mean would be anomalous */
+                mean, std);
+            transfer_zscore /= system->config.thresholds.network_anomaly_zscore;
+            if (transfer_zscore > 1.0f) transfer_zscore = 1.0f;
+            if (transfer_zscore < 0.0f) transfer_zscore = 0.0f;
+        }
+    }
+
+    /* Component 4: Destination entropy (low = potential exfil to single target) */
+    float dest_entropy = compute_destination_entropy(net);
+    float entropy_score = (1.0f - dest_entropy) * 0.5f;  /* Low entropy is suspicious */
+
+    /* Combine components */
+    score = (ratio_anomaly * 0.3f) +
+            (absolute_exfil * 0.3f) +
+            (transfer_zscore * 0.2f) +
+            (entropy_score * 0.2f);
+
+    /* Apply sensitivity */
+    score *= system->config.thresholds.sensitivity[TRIPWIRE_NETWORK_EXFILTRATION];
+    if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f || isnan(score)) score = 0.0f;
+
+    system->detection_scores[TRIPWIRE_NETWORK_EXFILTRATION] = score;
+    system->detection_confidence[TRIPWIRE_NETWORK_EXFILTRATION] =
+        (float)net->total_connections / (float)(system->config.baseline_window * 2);
+    if (system->detection_confidence[TRIPWIRE_NETWORK_EXFILTRATION] > 1.0f) {
+        system->detection_confidence[TRIPWIRE_NETWORK_EXFILTRATION] = 1.0f;
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Throw to immune system if score is high */
+    if (score > 0.7f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
+            "Network exfiltration detected: score=%.3f, ratio=%.2f", score, current_ratio);
+    }
+
+    return score;
+}
+
+float tripwire_detect_network_anomaly(tripwire_system_t* system) {
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) return 0.0f;
+
+    nimcp_mutex_lock(system->mutex);
+
+    network_tracker_t* net = &system->network;
+    float score = 0.0f;
+
+    /* Need baseline and minimum data */
+    if (!net->has_baseline ||
+        net->total_connections < system->config.thresholds.min_observations) {
+        system->detection_scores[TRIPWIRE_NETWORK_ANOMALY] = 0.0f;
+        system->detection_confidence[TRIPWIRE_NETWORK_ANOMALY] = 0.0f;
+        nimcp_mutex_unlock(system->mutex);
+        return 0.0f;
+    }
+
+    /* Component 1: Connection interval anomaly (z-score) */
+    float interval_zscore = 0.0f;
+    if (net->interval_stats.n > 10) {
+        double mean = nimcp_stats_running_mean(&net->interval_stats);
+        double std = nimcp_stats_running_std_dev(&net->interval_stats);
+        if (std > 1e-6 && mean > 0) {
+            /* Check if current interval pattern is anomalous */
+            double current_mean = mean;  /* Use current as baseline for now */
+            interval_zscore = fabsf(compute_zscore(current_mean, mean, std));
+            interval_zscore /= system->config.thresholds.network_anomaly_zscore;
+            if (interval_zscore > 1.0f) interval_zscore = 1.0f;
+        }
+    }
+
+    /* Component 2: Protocol distribution anomaly */
+    float proto_anomaly = 0.0f;
+    uint64_t total_proto = 0;
+    for (int i = 0; i < 7; i++) {
+        total_proto += net->protocol_counts[i];
+    }
+    if (total_proto > 100) {
+        /* Check for unusual protocol distribution */
+        float expected_tcp = 0.7f;   /* Expect ~70% TCP normally */
+        float expected_http = 0.15f; /* Expect ~15% HTTP/HTTPS */
+        float actual_tcp = (float)net->protocol_counts[TRIPWIRE_PROTO_TCP] / total_proto;
+        float actual_http = (float)(net->protocol_counts[TRIPWIRE_PROTO_HTTP] +
+                                    net->protocol_counts[TRIPWIRE_PROTO_HTTPS]) / total_proto;
+
+        proto_anomaly = fabsf(actual_tcp - expected_tcp) + fabsf(actual_http - expected_http);
+        if (proto_anomaly > 1.0f) proto_anomaly = 1.0f;
+    }
+
+    /* Component 3: Unique endpoint rate (sudden increase = scanning or new C2) */
+    float endpoint_rate_anomaly = 0.0f;
+    if (net->baseline_samples > 0 && net->total_connections > net->baseline_samples) {
+        float baseline_rate = (float)net->endpoint_count / (float)net->baseline_samples;
+        float current_connections_since_baseline = (float)(net->total_connections - net->baseline_samples);
+        if (current_connections_since_baseline > 10) {
+            /* Count new endpoints since baseline */
+            float new_endpoints = 0;
+            for (size_t i = 0; i < net->endpoint_count; i++) {
+                if (net->endpoints[i].first_seen_us > 0 &&
+                    net->endpoints[i].connection_count < 5) {
+                    new_endpoints += 1.0f;
+                }
+            }
+            float new_rate = new_endpoints / current_connections_since_baseline;
+            endpoint_rate_anomaly = new_rate / (baseline_rate + 0.01f);
+            if (endpoint_rate_anomaly > 1.0f) endpoint_rate_anomaly = 1.0f;
+        }
+    }
+
+    /* Component 4: Bytes per connection anomaly */
+    float bytes_anomaly = 0.0f;
+    if (net->bytes_sent_stats.n > 10 && net->bytes_recv_stats.n > 10) {
+        double sent_mean = nimcp_stats_running_mean(&net->bytes_sent_stats);
+        double sent_std = nimcp_stats_running_std_dev(&net->bytes_sent_stats);
+        double recv_mean = nimcp_stats_running_mean(&net->bytes_recv_stats);
+        double recv_std = nimcp_stats_running_std_dev(&net->bytes_recv_stats);
+
+        /* Check for anomalously small payloads (command traffic) */
+        if (sent_mean < 100 && recv_mean < 100 && sent_std < 50 && recv_std < 50) {
+            /* Very small, consistent packets = command/control pattern */
+            bytes_anomaly = 0.5f;
+        }
+
+        /* Check for anomalously large payloads */
+        if (sent_mean > 100000 || recv_mean > 100000) {
+            bytes_anomaly = 0.3f;
+        }
+    }
+
+    /* Component 5: Pattern feature anomaly (if enabled) */
+    float pattern_anomaly = 0.0f;
+    if (net->has_pattern_baseline) {
+        int anomalous_features = 0;
+        for (int i = 0; i < TRIPWIRE_NETWORK_FEATURE_DIM; i++) {
+            if (net->pattern_stats[i].n > 10) {
+                double mean = nimcp_stats_running_mean(&net->pattern_stats[i]);
+                double std = nimcp_stats_running_std_dev(&net->pattern_stats[i]);
+                if (std > 1e-6) {
+                    float z = fabsf(compute_zscore(mean, mean, std));
+                    if (z > system->config.thresholds.network_anomaly_zscore) {
+                        anomalous_features++;
+                    }
+                }
+            }
+        }
+        pattern_anomaly = (float)anomalous_features / TRIPWIRE_NETWORK_FEATURE_DIM;
+    }
+
+    /* Combine components */
+    score = (interval_zscore * 0.2f) +
+            (proto_anomaly * 0.2f) +
+            (endpoint_rate_anomaly * 0.2f) +
+            (bytes_anomaly * 0.2f) +
+            (pattern_anomaly * 0.2f);
+
+    /* Apply sensitivity */
+    score *= system->config.thresholds.sensitivity[TRIPWIRE_NETWORK_ANOMALY];
+    if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f || isnan(score)) score = 0.0f;
+
+    system->detection_scores[TRIPWIRE_NETWORK_ANOMALY] = score;
+    system->detection_confidence[TRIPWIRE_NETWORK_ANOMALY] =
+        (float)net->total_connections / (float)(system->config.baseline_window * 2);
+    if (system->detection_confidence[TRIPWIRE_NETWORK_ANOMALY] > 1.0f) {
+        system->detection_confidence[TRIPWIRE_NETWORK_ANOMALY] = 1.0f;
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Throw to immune system if score is high */
+    if (score > 0.7f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
+            "Network anomaly detected: score=%.3f", score);
+    }
+
+    return score;
+}
+
+float tripwire_detect_command_control(tripwire_system_t* system) {
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) return 0.0f;
+
+    nimcp_mutex_lock(system->mutex);
+
+    network_tracker_t* net = &system->network;
+    float score = 0.0f;
+
+    /* Need baseline and minimum data */
+    if (!net->has_baseline ||
+        net->total_connections < system->config.thresholds.min_observations ||
+        net->beacon_interval_count < TRIPWIRE_MIN_BEACON_INTERVALS) {
+        system->detection_scores[TRIPWIRE_NETWORK_COMMAND_CONTROL] = 0.0f;
+        system->detection_confidence[TRIPWIRE_NETWORK_COMMAND_CONTROL] = 0.0f;
+        nimcp_mutex_unlock(system->mutex);
+        return 0.0f;
+    }
+
+    /* Component 1: Beaconing detection - interval regularity */
+    float regularity = compute_interval_regularity(net);
+    float beacon_score = 0.0f;
+    if (regularity > system->config.thresholds.network_beacon_threshold) {
+        /* Highly regular intervals = beaconing */
+        beacon_score = (regularity - system->config.thresholds.network_beacon_threshold) /
+                       (1.0f - system->config.thresholds.network_beacon_threshold);
+    }
+
+    /* Component 2: Low destination entropy (fixed C2 server) */
+    float dest_entropy = compute_destination_entropy(net);
+    float entropy_score = 0.0f;
+    if (dest_entropy < 0.3f) {
+        /* Very low entropy = few repeated destinations */
+        entropy_score = (0.3f - dest_entropy) / 0.3f;
+    }
+
+    /* Component 3: Small consistent payload sizes (command/response) */
+    float payload_score = 0.0f;
+    if (net->bytes_sent_stats.n > 20 && net->bytes_recv_stats.n > 20) {
+        double sent_mean = nimcp_stats_running_mean(&net->bytes_sent_stats);
+        double sent_std = nimcp_stats_running_std_dev(&net->bytes_sent_stats);
+        double recv_mean = nimcp_stats_running_mean(&net->bytes_recv_stats);
+        double recv_std = nimcp_stats_running_std_dev(&net->bytes_recv_stats);
+
+        /* C2 typically has small, consistent payloads */
+        bool small_sent = (sent_mean < 500);
+        bool small_recv = (recv_mean < 500);
+        bool consistent_sent = (sent_mean > 0 && sent_std / sent_mean < 0.5);
+        bool consistent_recv = (recv_mean > 0 && recv_std / recv_mean < 0.5);
+
+        if (small_sent && small_recv && consistent_sent && consistent_recv) {
+            payload_score = 0.8f;
+        } else if ((small_sent && consistent_sent) || (small_recv && consistent_recv)) {
+            payload_score = 0.4f;
+        }
+    }
+
+    /* Component 4: Repeated connections to same port/IP pattern */
+    float repeat_score = 0.0f;
+    if (net->endpoint_count > 0) {
+        /* Find most connected endpoint */
+        uint32_t max_connections = 0;
+        for (size_t i = 0; i < net->endpoint_count; i++) {
+            if (net->endpoints[i].active &&
+                net->endpoints[i].connection_count > max_connections) {
+                max_connections = net->endpoints[i].connection_count;
+            }
+        }
+
+        /* If one endpoint dominates, suspicious */
+        if (net->total_connections > 0) {
+            float dominance = (float)max_connections / (float)net->total_connections;
+            if (dominance > 0.5f) {
+                repeat_score = (dominance - 0.5f) * 2.0f;  /* Scale 0.5-1.0 to 0-1 */
+            }
+        }
+    }
+
+    /* Component 5: Known C2 port patterns */
+    float port_score = 0.0f;
+    /* Check for non-standard ports with high traffic */
+    for (size_t i = 0; i < net->endpoint_count; i++) {
+        if (!net->endpoints[i].active) continue;
+        uint16_t port = net->endpoints[i].port;
+        /* Non-standard HTTP ports often used for C2 */
+        if ((port > 1024 && port != 8080 && port != 8443) &&
+            net->endpoints[i].connection_count > net->total_connections / 10) {
+            port_score = 0.5f;
+            break;
+        }
+    }
+
+    /* Combine components with weights */
+    score = (beacon_score * 0.35f) +      /* Beaconing is primary C2 indicator */
+            (entropy_score * 0.20f) +     /* Fixed destination */
+            (payload_score * 0.20f) +     /* Small consistent payloads */
+            (repeat_score * 0.15f) +      /* Repeated connections */
+            (port_score * 0.10f);         /* Suspicious ports */
+
+    /* Apply sensitivity */
+    score *= system->config.thresholds.sensitivity[TRIPWIRE_NETWORK_COMMAND_CONTROL];
+    if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f || isnan(score)) score = 0.0f;
+
+    system->detection_scores[TRIPWIRE_NETWORK_COMMAND_CONTROL] = score;
+    system->detection_confidence[TRIPWIRE_NETWORK_COMMAND_CONTROL] =
+        (float)net->beacon_interval_count / (float)TRIPWIRE_BEACON_WINDOW_SIZE;
+    if (system->detection_confidence[TRIPWIRE_NETWORK_COMMAND_CONTROL] > 1.0f) {
+        system->detection_confidence[TRIPWIRE_NETWORK_COMMAND_CONTROL] = 1.0f;
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Throw to immune system if score is high - C2 is critical */
+    if (score > 0.6f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
+            "C2 communication pattern detected: score=%.3f, regularity=%.3f",
+            score, regularity);
+    }
+
+    return score;
+}
+
+/* ============================================================================
  * Statistics and Status Implementation
  * ============================================================================ */
 
@@ -1129,6 +1915,9 @@ const char* tripwire_type_name(tripwire_type_t type) {
         case TRIPWIRE_SANDBAGGING:           return "SANDBAGGING";
         case TRIPWIRE_SYCOPHANCY:            return "SYCOPHANCY";
         case TRIPWIRE_POWER_SEEKING:         return "POWER_SEEKING";
+        case TRIPWIRE_NETWORK_EXFILTRATION:  return "NETWORK_EXFILTRATION";
+        case TRIPWIRE_NETWORK_ANOMALY:       return "NETWORK_ANOMALY";
+        case TRIPWIRE_NETWORK_COMMAND_CONTROL: return "NETWORK_C2";
         default:                             return "UNKNOWN";
     }
 }
@@ -1326,6 +2115,15 @@ static void tripwire_update_all_detectors(tripwire_system_t* system) {
                 break;
             case TRIPWIRE_POWER_SEEKING:
                 score = tripwire_detect_power_seeking(system);
+                break;
+            case TRIPWIRE_NETWORK_EXFILTRATION:
+                score = tripwire_detect_exfiltration(system);
+                break;
+            case TRIPWIRE_NETWORK_ANOMALY:
+                score = tripwire_detect_network_anomaly(system);
+                break;
+            case TRIPWIRE_NETWORK_COMMAND_CONTROL:
+                score = tripwire_detect_command_control(system);
                 break;
             default:
                 /* Other detectors not yet implemented */

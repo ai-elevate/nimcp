@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
@@ -327,7 +328,7 @@ interpretability_config_t interpretability_default_config(void)
 interpretability_t* interpretability_create(
     const interpretability_config_t* config)
 {
-    interpretability_t* system = calloc(1, sizeof(interpretability_t));
+    interpretability_t* system = nimcp_calloc(1, sizeof(interpretability_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate interpretability system");
         return NULL;
@@ -337,7 +338,7 @@ interpretability_t* interpretability_create(
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -380,7 +381,7 @@ void interpretability_destroy(interpretability_t* system)
         nimcp_mutex_destroy(system->mutex);
     }
 
-    free(system);
+    nimcp_free(system);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Interpretability system destroyed");
 }

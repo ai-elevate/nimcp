@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "utils/memory/nimcp_memory.h"
+
 /* Error code aliases for this file */
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
@@ -224,13 +226,13 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     }
 
     /* Allocate key buffers */
-    uint8_t* public_key = (uint8_t*)malloc(public_key_len);
-    uint8_t* secret_key = (uint8_t*)malloc(secret_key_len);
+    uint8_t* public_key = (uint8_t*)nimcp_malloc(public_key_len);
+    uint8_t* secret_key = (uint8_t*)nimcp_malloc(secret_key_len);
 
     if (!public_key || !secret_key) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_kyber_keygen: failed to allocate keys");
-        free(public_key);
-        free(secret_key);
+        nimcp_free(public_key);
+        nimcp_free(secret_key);
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -239,9 +241,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     err = secure_random_bytes(seed, sizeof(seed));
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         LOG_ERROR("nimcp_kyber_keygen: Random generation failed");
         return err;
     }
@@ -256,9 +258,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     err = secure_random_bytes(public_key, public_key_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         return err;
     }
 
@@ -266,9 +268,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     err = secure_random_bytes(secret_key, secret_key_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         return err;
     }
 
@@ -449,13 +451,13 @@ void nimcp_kyber_keypair_free(nimcp_kyber_keypair_t* keypair) {
     /* Securely zero and free secret key */
     if (keypair->secret_key) {
         _local_secure_zero(keypair->secret_key, keypair->secret_key_len);
-        free(keypair->secret_key);
+        nimcp_free(keypair->secret_key);
         keypair->secret_key = NULL;
     }
 
     /* Free public key */
     if (keypair->public_key) {
-        free(keypair->public_key);
+        nimcp_free(keypair->public_key);
         keypair->public_key = NULL;
     }
 

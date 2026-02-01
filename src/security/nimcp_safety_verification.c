@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utils/memory/nimcp_memory.h"
+
 #define LOG_CATEGORY "safety_verification"
 
 /* ============================================================================
@@ -81,11 +83,11 @@ safety_verification_config_t safety_verification_default_config(void) {
 }
 
 safety_verification_t* safety_verification_create(const safety_verification_config_t* config) {
-    safety_verification_t* system = calloc(1, sizeof(safety_verification_t));
+    safety_verification_t* system = nimcp_calloc(1, sizeof(safety_verification_t));
     if (system == NULL) return NULL;
 
     system->mutex = nimcp_mutex_create(NULL);
-    if (system->mutex == NULL) { free(system); return NULL; }
+    if (system->mutex == NULL) { nimcp_free(system); return NULL; }
 
     if (config) memcpy(&system->config, config, sizeof(*config));
     else system->config = safety_verification_default_config();
@@ -107,7 +109,7 @@ void safety_verification_destroy(safety_verification_t* system) {
 
     system->magic = 0;
     if (system->mutex) nimcp_mutex_destroy(system->mutex);
-    free(system);
+    nimcp_free(system);
     NIMCP_LOG_INFO(LOG_CATEGORY, "Safety verification system destroyed");
 }
 

@@ -69,6 +69,56 @@ static inline void brain_init_hippocampus_heartbeat(const char* operation, float
 
 #include <string.h>
 
+//=============================================================================
+// Mesh Integration (Phase: Mesh Network Integration)
+//=============================================================================
+
+/* Mesh integration - forward declarations to avoid header conflicts */
+struct mesh_bootstrap;
+typedef struct mesh_bootstrap mesh_bootstrap_t;
+struct mesh_hippocampus_integration;
+typedef struct mesh_hippocampus_integration mesh_hippocampus_integration_t;
+
+/* Mesh hippocampus integration function declarations */
+extern mesh_hippocampus_integration_t* mesh_hippocampus_create(
+    mesh_bootstrap_t* bootstrap,
+    void* hippocampus,
+    const void* config
+);
+extern void mesh_hippocampus_destroy(mesh_hippocampus_integration_t* integration);
+extern int mesh_hippocampus_register_participant(mesh_hippocampus_integration_t* integration);
+extern int mesh_hippocampus_set_health_agent(mesh_hippocampus_integration_t* integration,
+                                              void* agent);
+
+/** Global mesh bootstrap handle (set externally) */
+static mesh_bootstrap_t* g_hippocampus_mesh_bootstrap = NULL;
+static mesh_hippocampus_integration_t* g_hippocampus_mesh_integration = NULL;
+
+/**
+ * @brief Set the mesh bootstrap handle for hippocampus mesh registration
+ *
+ * WHAT: Configures hippocampus init to register with mesh network
+ * WHY:  Enable coordinated memory operations via mesh consensus
+ * HOW:  Stores bootstrap handle, used during hippocampus init
+ *
+ * @param bootstrap Mesh bootstrap handle (NULL to disable)
+ */
+void nimcp_brain_hippocampus_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
+    g_hippocampus_mesh_bootstrap = bootstrap;
+    if (bootstrap) {
+        NIMCP_LOGGING_INFO("Mesh bootstrap set for hippocampus integration");
+    }
+}
+
+/**
+ * @brief Get the hippocampus mesh integration handle
+ *
+ * @return Current mesh integration or NULL if not registered
+ */
+mesh_hippocampus_integration_t* nimcp_brain_hippocampus_get_mesh_integration(void) {
+    return g_hippocampus_mesh_integration;
+}
+
 // Forward declarations for substrate and thalamic bridges
 // These will be implemented as the substrate/thalamic bridge system matures
 struct hippocampus_substrate_bridge;
@@ -291,6 +341,40 @@ bool nimcp_brain_factory_init_hippocampus_subsystem(brain_t brain) {
     /* Connect to bio-async */
     if (!connect_hippocampus_to_bio_async(brain)) {
         LOG_WARN(LOG_MODULE, "Hippocampus bio-async connection failed (non-fatal)");
+    }
+
+    /* Register with mesh network if bootstrap is available */
+    if (g_hippocampus_mesh_bootstrap) {
+        brain_init_hippocampus_heartbeat("mesh_registration", 0.0f);
+
+        mesh_hippocampus_integration_t* mesh_integration = mesh_hippocampus_create(
+            g_hippocampus_mesh_bootstrap,
+            brain->hippocampus,
+            NULL  /* Use default config */
+        );
+
+        if (mesh_integration) {
+            /* Set health agent if available */
+            if (g_brain_init_hippocampus_health_agent) {
+                mesh_hippocampus_set_health_agent(mesh_integration,
+                                                  g_brain_init_hippocampus_health_agent);
+            }
+
+            /* Register as mesh participant */
+            int mesh_result = mesh_hippocampus_register_participant(mesh_integration);
+            if (mesh_result == NIMCP_SUCCESS) {
+                g_hippocampus_mesh_integration = mesh_integration;
+                LOG_INFO(LOG_MODULE, "Hippocampus registered with mesh network");
+            } else {
+                LOG_WARN(LOG_MODULE, "Failed to register hippocampus with mesh (error %d)",
+                         mesh_result);
+                mesh_hippocampus_destroy(mesh_integration);
+            }
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to create hippocampus mesh integration");
+        }
+
+        brain_init_hippocampus_heartbeat("mesh_registration", 1.0f);
     }
 
     LOG_INFO(LOG_MODULE, "Hippocampus subsystem initialized successfully");
@@ -604,6 +688,13 @@ void nimcp_brain_factory_destroy_hippocampus_subsystem(brain_t brain) {
     if (!brain) return;
 
     LOG_DEBUG(LOG_MODULE, "Destroying hippocampus subsystem");
+
+    /* Destroy mesh integration first */
+    if (g_hippocampus_mesh_integration) {
+        mesh_hippocampus_destroy(g_hippocampus_mesh_integration);
+        g_hippocampus_mesh_integration = NULL;
+        LOG_DEBUG(LOG_MODULE, "Hippocampus mesh integration destroyed");
+    }
 
     /* Destroy quantum bridge first (depends on hippocampus) */
     if (brain->hippocampus_quantum_bridge) {

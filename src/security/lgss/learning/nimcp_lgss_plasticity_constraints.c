@@ -13,6 +13,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -140,7 +141,7 @@ static uint32_t hash_synapse_id(uint64_t id, uint32_t size) {
  * Initialize a hashmap for synapse tracking
  */
 static frozen_entry_t* hashmap_create(uint32_t size) {
-    frozen_entry_t* map = calloc(size, sizeof(frozen_entry_t));
+    frozen_entry_t* map = nimcp_calloc(size, sizeof(frozen_entry_t));
     return map;
 }
 
@@ -221,7 +222,7 @@ static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
  * Initialize sliding window
  */
 static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
-    window->timestamps = calloc(capacity, sizeof(uint64_t));
+    window->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!window->timestamps) {
         return false;
     }
@@ -236,7 +237,7 @@ static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
  */
 static void sliding_window_destroy(sliding_window_t* window) {
     if (window->timestamps) {
-        free(window->timestamps);
+        nimcp_free(window->timestamps);
         window->timestamps = NULL;
     }
 }
@@ -300,7 +301,7 @@ plasticity_guard_t plasticity_guard_create(
     const plasticity_safety_config_t* config,
     security_orchestrator_t orchestrator
 ) {
-    struct plasticity_guard_internal* guard = calloc(1, sizeof(*guard));
+    struct plasticity_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
@@ -320,7 +321,7 @@ plasticity_guard_t plasticity_guard_create(
     guard->frozen_hashmap_size = LGSS_MAX_FROZEN_SYNAPSES * 2; /* Load factor ~0.5 */
     guard->frozen_synapses = hashmap_create(guard->frozen_hashmap_size);
     if (!guard->frozen_synapses) {
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -334,10 +335,10 @@ plasticity_guard_t plasticity_guard_create(
 
     /* Initialize frozen pathways array */
     guard->frozen_pathway_capacity = LGSS_MAX_FROZEN_PATHWAYS;
-    guard->frozen_pathways = calloc(guard->frozen_pathway_capacity, sizeof(uint32_t));
+    guard->frozen_pathways = nimcp_calloc(guard->frozen_pathway_capacity, sizeof(uint32_t));
     if (!guard->frozen_pathways) {
-        free(guard->frozen_synapses);
-        free(guard);
+        nimcp_free(guard->frozen_synapses);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -354,11 +355,11 @@ plasticity_guard_t plasticity_guard_create(
                                           guard->config.rate_limit_window_sec * 2);
     if (window_capacity < 100) window_capacity = 100;
     if (!sliding_window_init(&guard->rate_window, window_capacity)) {
-        free(guard->self_reward_synapses);
-        free(guard->reward_synapses);
-        free(guard->frozen_pathways);
-        free(guard->frozen_synapses);
-        free(guard);
+        nimcp_free(guard->self_reward_synapses);
+        nimcp_free(guard->reward_synapses);
+        nimcp_free(guard->frozen_pathways);
+        nimcp_free(guard->frozen_synapses);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -379,13 +380,13 @@ void plasticity_guard_destroy(plasticity_guard_t guard) {
     if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return;
 
     sliding_window_destroy(&g->rate_window);
-    free(g->self_reward_synapses);
-    free(g->reward_synapses);
-    free(g->frozen_pathways);
-    free(g->frozen_synapses);
+    nimcp_free(g->self_reward_synapses);
+    nimcp_free(g->reward_synapses);
+    nimcp_free(g->frozen_pathways);
+    nimcp_free(g->frozen_synapses);
 
     g->magic = 0;
-    free(g);
+    nimcp_free(g);
 }
 
 int plasticity_guard_reset(plasticity_guard_t guard) {

@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -65,7 +66,7 @@ static char* safe_strdup(const char* str) {
 }
 
 static nimcp_ast_node_t* create_node(nimcp_ast_type_t type) {
-    nimcp_ast_node_t* node = calloc(1, sizeof(nimcp_ast_node_t));
+    nimcp_ast_node_t* node = nimcp_calloc(1, sizeof(nimcp_ast_node_t));
     if (!node) {
         LOG_ERROR("Failed to allocate AST node");
         return NULL;
@@ -374,33 +375,33 @@ void nimcp_ast_destroy(nimcp_ast_node_t* node) {
 
     switch (node->type) {
         case NIMCP_AST_POLICY:
-            free(node->policy.name);
+            nimcp_free(node->policy.name);
             for (size_t i = 0; i < node->policy.num_rules; i++) {
                 nimcp_ast_destroy(node->policy.rules[i]);
             }
-            free(node->policy.rules);
+            nimcp_free(node->policy.rules);
             for (size_t i = 0; i < node->policy.num_params; i++) {
                 nimcp_ast_destroy(node->policy.params[i]);
             }
-            free(node->policy.params);
+            nimcp_free(node->policy.params);
             break;
 
         case NIMCP_AST_RULE:
-            free(node->rule.name);
+            nimcp_free(node->rule.name);
             nimcp_ast_destroy(node->rule.condition);
             nimcp_ast_destroy(node->rule.action);
             for (size_t i = 0; i < node->rule.num_params; i++) {
                 nimcp_ast_destroy(node->rule.params[i]);
             }
-            free(node->rule.params);
+            nimcp_free(node->rule.params);
             break;
 
         case NIMCP_AST_ACTION:
-            free(node->action.action_type);
+            nimcp_free(node->action.action_type);
             for (size_t i = 0; i < node->action.num_params; i++) {
                 nimcp_ast_destroy(node->action.params[i]);
             }
-            free(node->action.params);
+            nimcp_free(node->action.params);
             break;
 
         case NIMCP_AST_BINARY_OP:
@@ -413,30 +414,30 @@ void nimcp_ast_destroy(nimcp_ast_node_t* node) {
             break;
 
         case NIMCP_AST_CALL:
-            free(node->call.name);
+            nimcp_free(node->call.name);
             for (size_t i = 0; i < node->call.num_args; i++) {
                 nimcp_ast_destroy(node->call.args[i]);
             }
-            free(node->call.args);
+            nimcp_free(node->call.args);
             break;
 
         case NIMCP_AST_MEMBER:
             nimcp_ast_destroy(node->member.object);
-            free(node->member.member);
+            nimcp_free(node->member.member);
             break;
 
         case NIMCP_AST_LITERAL:
             if (node->literal.type == NIMCP_LITERAL_STRING) {
-                free(node->literal.string_val);
+                nimcp_free(node->literal.string_val);
             }
             break;
 
         case NIMCP_AST_IDENTIFIER:
-            free(node->identifier.name);
+            nimcp_free(node->identifier.name);
             break;
 
         case NIMCP_AST_PARAM:
-            free(node->param.key);
+            nimcp_free(node->param.key);
             nimcp_ast_destroy(node->param.value);
             break;
 
@@ -446,7 +447,7 @@ void nimcp_ast_destroy(nimcp_ast_node_t* node) {
     }
 
     node->magic = 0;
-    free(node);
+    nimcp_free(node);
 }
 
 bool nimcp_ast_validate(const nimcp_ast_node_t* node) {
@@ -596,14 +597,14 @@ nimcp_ast_node_t* nimcp_ast_clone(const nimcp_ast_node_t* node) {
         case NIMCP_AST_POLICY: {
             nimcp_ast_node_t** rules = NULL;
             if (node->policy.num_rules > 0) {
-                rules = calloc(node->policy.num_rules, sizeof(nimcp_ast_node_t*));
+                rules = nimcp_calloc(node->policy.num_rules, sizeof(nimcp_ast_node_t*));
                 for (size_t i = 0; i < node->policy.num_rules; i++) {
                     rules[i] = nimcp_ast_clone(node->policy.rules[i]);
                 }
             }
             nimcp_ast_node_t** params = NULL;
             if (node->policy.num_params > 0) {
-                params = calloc(node->policy.num_params, sizeof(nimcp_ast_node_t*));
+                params = nimcp_calloc(node->policy.num_params, sizeof(nimcp_ast_node_t*));
                 for (size_t i = 0; i < node->policy.num_params; i++) {
                     params[i] = nimcp_ast_clone(node->policy.params[i]);
                 }

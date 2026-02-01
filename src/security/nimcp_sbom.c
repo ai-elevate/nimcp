@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -109,7 +110,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char* content = (char*)malloc(file_size + 1);
+    char* content = (char*)nimcp_malloc(file_size + 1);
     if (!content) {
         fclose(file);
         return NIMCP_ERROR_NO_MEMORY;
@@ -142,7 +143,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
 
     pthread_mutex_unlock(&sc->lock);
 
-    free(content);
+    nimcp_free(content);
 
     LOG_INFO("SBOM loaded successfully");
 
@@ -156,7 +157,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
 static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) {
     /* Estimate size */
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
-    char* sbom = (char*)malloc(estimated_size);
+    char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -260,14 +261,14 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
 
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
-    free(sbom);
+    nimcp_free(sbom);
     return NIMCP_ERROR_NO_MEMORY;
 }
 
 static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** output) {
     /* Estimate size */
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
-    char* sbom = (char*)malloc(estimated_size);
+    char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -375,7 +376,7 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
 
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
-    free(sbom);
+    nimcp_free(sbom);
     return NIMCP_ERROR_NO_MEMORY;
 }
 
@@ -426,14 +427,14 @@ nimcp_error_t nimcp_sbom_save(nimcp_supply_chain_t sc,
 
     FILE* file = fopen(filepath, "w");
     if (!file) {
-        free(sbom_content);
+        nimcp_free(sbom_content);
         LOG_ERROR("nimcp_sbom_save: Cannot open file %s for writing", filepath);
         return NIMCP_ERROR_IO;
     }
 
     size_t bytes_written = fwrite(sbom_content, 1, strlen(sbom_content), file);
     fclose(file);
-    free(sbom_content);
+    nimcp_free(sbom_content);
 
     if (bytes_written == 0) {
         LOG_ERROR("nimcp_sbom_save: Write failed");
@@ -466,7 +467,7 @@ nimcp_error_t nimcp_sbom_get_dependencies(nimcp_supply_chain_t sc,
     }
 
     /* Allocate copy of dependencies */
-    *deps = (nimcp_dependency_t*)malloc(sc->dependency_count * sizeof(nimcp_dependency_t));
+    *deps = (nimcp_dependency_t*)nimcp_malloc(sc->dependency_count * sizeof(nimcp_dependency_t));
     if (!*deps) {
         pthread_mutex_unlock(&sc->lock);
         return NIMCP_ERROR_NO_MEMORY;
@@ -493,7 +494,7 @@ nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
     /* Check capacity */
     if (sc->dependency_count >= sc->dependency_capacity) {
         size_t new_capacity = sc->dependency_capacity * 2;
-        nimcp_dependency_t* new_deps = (nimcp_dependency_t*)realloc(
+        nimcp_dependency_t* new_deps = (nimcp_dependency_t*)nimcp_realloc(
             sc->dependencies,
             new_capacity * sizeof(nimcp_dependency_t)
         );

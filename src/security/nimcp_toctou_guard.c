@@ -24,6 +24,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -252,7 +253,7 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
     }
 
     // Allocate guard structure
-    nimcp_toctou_guard_t guard = (nimcp_toctou_guard_t)calloc(
+    nimcp_toctou_guard_t guard = (nimcp_toctou_guard_t)nimcp_calloc(
         1, sizeof(struct nimcp_toctou_guard_impl));
     if (!guard) {
         LOG_ERROR("Failed to allocate TOCTOU guard");
@@ -271,17 +272,17 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
     // Initialize guard lock
     if (nimcp_platform_mutex_init(&guard->guard_lock, false) != 0) {
         LOG_ERROR("Failed to initialize guard lock");
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
     // Allocate token pool
-    guard->token_pool = (nimcp_toctou_token_t*)calloc(
+    guard->token_pool = (nimcp_toctou_token_t*)nimcp_calloc(
         actual_config.max_concurrent_tokens, sizeof(nimcp_toctou_token_t));
     if (!guard->token_pool) {
         LOG_ERROR("Failed to allocate token pool");
         nimcp_platform_mutex_destroy(&guard->guard_lock);
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -318,10 +319,10 @@ void nimcp_toctou_guard_destroy(nimcp_toctou_guard_t guard) {
             if (token) {
                 nimcp_platform_mutex_destroy(&token->token_lock);
                 token->magic = 0; // Invalidate
-                free(token);
+                nimcp_free(token);
             }
         }
-        free(guard->token_pool);
+        nimcp_free(guard->token_pool);
     }
 
     // Unregister from bio-async
@@ -334,7 +335,7 @@ void nimcp_toctou_guard_destroy(nimcp_toctou_guard_t guard) {
     nimcp_platform_mutex_unlock(&guard->guard_lock);
     nimcp_platform_mutex_destroy(&guard->guard_lock);
 
-    free(guard);
+    nimcp_free(guard);
 }
 
 //=============================================================================
@@ -383,7 +384,7 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
         // Need to allocate new token
         for (uint32_t i = 0; i < guard->config.max_concurrent_tokens; i++) {
             if (guard->token_pool[i] == NULL) {
-                token = (nimcp_toctou_token_t)calloc(
+                token = (nimcp_toctou_token_t)nimcp_calloc(
                     1, sizeof(struct nimcp_toctou_token_impl));
                 if (token) {
                     nimcp_platform_mutex_init(&token->token_lock, false);

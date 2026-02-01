@@ -42,6 +42,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -236,7 +237,7 @@ static nimcp_error_t sc_inbox_handler(
 
 nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t* config) {
     /* Allocate context */
-    nimcp_supply_chain_t sc = (nimcp_supply_chain_t)calloc(1, sizeof(struct nimcp_supply_chain));
+    nimcp_supply_chain_t sc = (nimcp_supply_chain_t)nimcp_calloc(1, sizeof(struct nimcp_supply_chain));
     NIMCP_API_CHECK_ALLOC(sc, "Failed to allocate supply chain context");
 
     /* Set magic number */
@@ -264,30 +265,30 @@ nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t
 
     /* Initialize dependency list */
     sc->dependency_capacity = 64;
-    sc->dependencies = (nimcp_dependency_t*)calloc(sc->dependency_capacity,
+    sc->dependencies = (nimcp_dependency_t*)nimcp_calloc(sc->dependency_capacity,
                                                     sizeof(nimcp_dependency_t));
     if (!sc->dependencies) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate supply chain dependencies");
-        free(sc);
+        nimcp_free(sc);
         return NULL;
     }
 
     /* Initialize trusted sources list */
     sc->source_capacity = 16;
-    sc->sources = (nimcp_trusted_source_t*)calloc(sc->source_capacity,
+    sc->sources = (nimcp_trusted_source_t*)nimcp_calloc(sc->source_capacity,
                                                    sizeof(nimcp_trusted_source_t));
     if (!sc->sources) {
-        free(sc->dependencies);
-        free(sc);
+        nimcp_free(sc->dependencies);
+        nimcp_free(sc);
         LOG_ERROR("nimcp_supply_chain_create: Source allocation failed");
         return NULL;
     }
 
     /* Initialize mutex */
     if (pthread_mutex_init(&sc->lock, NULL) != 0) {
-        free(sc->sources);
-        free(sc->dependencies);
-        free(sc);
+        nimcp_free(sc->sources);
+        nimcp_free(sc->dependencies);
+        nimcp_free(sc);
         LOG_ERROR("nimcp_supply_chain_create: Mutex initialization failed");
         return NULL;
     }
@@ -335,10 +336,10 @@ void nimcp_supply_chain_destroy(nimcp_supply_chain_t sc) {
     }
 
     /* Free dependencies */
-    free(sc->dependencies);
+    nimcp_free(sc->dependencies);
 
     /* Free sources */
-    free(sc->sources);
+    nimcp_free(sc->sources);
 
     /* Destroy mutex */
     pthread_mutex_destroy(&sc->lock);
@@ -347,7 +348,7 @@ void nimcp_supply_chain_destroy(nimcp_supply_chain_t sc) {
     sc->magic = 0;
 
     /* Free context */
-    free(sc);
+    nimcp_free(sc);
 
     LOG_INFO("Supply chain context destroyed");
 }

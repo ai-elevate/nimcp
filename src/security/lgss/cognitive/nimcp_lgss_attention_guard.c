@@ -11,6 +11,7 @@
 
 #include "security/lgss/cognitive/nimcp_lgss_attention_guard.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -220,7 +221,7 @@ attention_guard_t* attention_guard_create(
     void* attention_system,
     const attention_guard_config_t* config) {
 
-    attention_guard_t* guard = (attention_guard_t*)calloc(1, sizeof(attention_guard_t));
+    attention_guard_t* guard = (attention_guard_t*)nimcp_calloc(1, sizeof(attention_guard_t));
     if (guard == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
@@ -254,7 +255,7 @@ void attention_guard_destroy(attention_guard_t* guard) {
     }
 
     memset(guard, 0, sizeof(attention_guard_t));
-    free(guard);
+    nimcp_free(guard);
 }
 
 //=============================================================================

@@ -85,6 +85,12 @@ typedef enum tripwire_type {
     TRIPWIRE_SANDBAGGING,               /**< Deliberate underperformance */
     TRIPWIRE_SYCOPHANCY,                /**< Excessive agreement/validation */
     TRIPWIRE_POWER_SEEKING,             /**< Acquiring influence/control */
+
+    /* Network Anomaly Detection (new) */
+    TRIPWIRE_NETWORK_EXFILTRATION,      /**< Unusual outbound data patterns */
+    TRIPWIRE_NETWORK_ANOMALY,           /**< Unexpected connection patterns */
+    TRIPWIRE_NETWORK_COMMAND_CONTROL,   /**< C2-like communication patterns */
+
     TRIPWIRE_COUNT
 } tripwire_type_t;
 
@@ -170,6 +176,11 @@ typedef struct tripwire_thresholds {
 
     /* Goal stability (uses Bayesian posterior) */
     float goal_drift_threshold;         /**< Max posterior shift */
+
+    /* Network anomaly detection thresholds */
+    float network_exfil_threshold;      /**< Outbound/inbound ratio threshold for exfiltration */
+    float network_anomaly_zscore;       /**< Z-score threshold for network anomaly detection */
+    float network_beacon_threshold;     /**< Regularity threshold for beaconing (0-1, higher = more regular) */
 
     /* Individual tripwire sensitivity */
     float sensitivity[TRIPWIRE_COUNT];  /**< Per-tripwire sensitivity [0.5-2.0] */
@@ -322,6 +333,71 @@ NIMCP_EXPORT nimcp_error_t tripwire_observe_goal(
 );
 
 /* ============================================================================
+ * Network Observation API
+ * ============================================================================ */
+
+/**
+ * @brief Network protocol types for connection observation
+ */
+typedef enum tripwire_network_protocol {
+    TRIPWIRE_PROTO_TCP = 0,
+    TRIPWIRE_PROTO_UDP,
+    TRIPWIRE_PROTO_ICMP,
+    TRIPWIRE_PROTO_HTTP,
+    TRIPWIRE_PROTO_HTTPS,
+    TRIPWIRE_PROTO_DNS,
+    TRIPWIRE_PROTO_OTHER
+} tripwire_network_protocol_t;
+
+/**
+ * @brief Observe a network connection
+ *
+ * WHAT: Track network connection patterns
+ * WHY:  Detect exfiltration, C2, and anomalous network behavior
+ * HOW:  Statistical analysis of connection patterns, data volumes, timing
+ *
+ * @param system Tripwire system handle
+ * @param dest_ip Destination IP address (as 32-bit value)
+ * @param dest_port Destination port number
+ * @param bytes_sent Bytes sent in this connection/period
+ * @param bytes_recv Bytes received in this connection/period
+ * @param protocol Network protocol used
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t tripwire_observe_network_connection(
+    tripwire_system_t* system,
+    uint32_t dest_ip,
+    uint16_t dest_port,
+    uint64_t bytes_sent,
+    uint64_t bytes_recv,
+    tripwire_network_protocol_t protocol
+);
+
+/**
+ * @brief Observe network pattern features
+ *
+ * WHAT: Feed extracted network features to anomaly detection
+ * WHY:  Higher-level pattern detection beyond raw connections
+ * HOW:  Pattern features are compared against baseline using z-score
+ *
+ * Features can include:
+ * - Connection frequency to unique destinations
+ * - Packet size distributions
+ * - Connection duration patterns
+ * - Protocol mix ratios
+ *
+ * @param system Tripwire system handle
+ * @param pattern_features Array of extracted feature values
+ * @param feature_count Number of features
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t tripwire_observe_network_pattern(
+    tripwire_system_t* system,
+    const float* pattern_features,
+    size_t feature_count
+);
+
+/* ============================================================================
  * Detection API
  * ============================================================================ */
 
@@ -441,6 +517,65 @@ NIMCP_EXPORT float tripwire_detect_sycophancy(tripwire_system_t* system);
  * @return Detection score [0-1], higher = more power-seeking
  */
 NIMCP_EXPORT float tripwire_detect_power_seeking(tripwire_system_t* system);
+
+/* ============================================================================
+ * Network Detection API
+ * ============================================================================ */
+
+/**
+ * @brief Detect data exfiltration attempts
+ *
+ * WHAT: Detect unusual outbound data patterns
+ * WHY:  Identify unauthorized data extraction
+ * HOW:  Analyzes outbound/inbound ratios, destination entropy, timing patterns
+ *
+ * Detection signals:
+ * - High outbound/inbound byte ratio (unusual for normal operation)
+ * - Connections to low-entropy destinations (fixed C2 servers)
+ * - Large data transfers during off-peak times
+ * - Unusual protocol usage for data transfer
+ *
+ * @param system Tripwire system handle
+ * @return Detection score [0-1], higher = more likely exfiltration
+ */
+NIMCP_EXPORT float tripwire_detect_exfiltration(tripwire_system_t* system);
+
+/**
+ * @brief Detect network anomalies
+ *
+ * WHAT: Detect unusual network connection patterns
+ * WHY:  Identify compromised or malicious behavior
+ * HOW:  Z-score analysis of connection patterns against baseline
+ *
+ * Detection signals:
+ * - Connections to unusual ports/IPs
+ * - Abnormal connection frequency
+ * - Unusual protocol distribution
+ * - Connection timing anomalies
+ *
+ * @param system Tripwire system handle
+ * @return Detection score [0-1], higher = more anomalous
+ */
+NIMCP_EXPORT float tripwire_detect_network_anomaly(tripwire_system_t* system);
+
+/**
+ * @brief Detect C2 (Command and Control) communication patterns
+ *
+ * WHAT: Detect beaconing and C2-like communication
+ * WHY:  Identify malware-like communication patterns
+ * HOW:  Periodicity analysis, entropy analysis, destination analysis
+ *
+ * Detection signals:
+ * - Regular interval connections (beaconing)
+ * - Low entropy in connection timing (too regular)
+ * - Consistent small payload sizes (command/response)
+ * - Fixed destination patterns
+ * - Jitter patterns typical of C2 beacons
+ *
+ * @param system Tripwire system handle
+ * @return Detection score [0-1], higher = more C2-like
+ */
+NIMCP_EXPORT float tripwire_detect_command_control(tripwire_system_t* system);
 
 /* ============================================================================
  * Statistics and Status API

@@ -37,6 +37,7 @@
 #include <time.h>
 #include <pthread.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 // Try to use libsodium if available, otherwise use a simplified implementation
 #ifdef HAVE_LIBSODIUM
@@ -239,7 +240,7 @@ static nimcp_error_t encrypt_entry(
 
     // Allocate encrypted entry
     size_t total_len = sizeof(encrypted_entry_t) + ciphertext_len;
-    encrypted_entry_t* encrypted = malloc(total_len);
+    encrypted_entry_t* encrypted = nimcp_malloc(total_len);
     if (!encrypted) {
         return NIMCP_NO_MEMORY;
     }
@@ -276,7 +277,7 @@ static nimcp_error_t encrypt_entry(
 
     if (ret != 0) {
         secure_zero(encrypted, total_len);
-        free(encrypted);
+        nimcp_free(encrypted);
         return NIMCP_CRYPTO_ERROR;
     }
 #else
@@ -434,7 +435,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     }
 #endif
 
-    nimcp_encrypted_audit_t audit = calloc(1, sizeof(struct nimcp_encrypted_audit_impl));
+    nimcp_encrypted_audit_t audit = nimcp_calloc(1, sizeof(struct nimcp_encrypted_audit_impl));
     if (!audit) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audit is NULL");
 
@@ -449,17 +450,17 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     }
 
     // Allocate circular buffer
-    audit->buffer = calloc(audit->config.buffer_size, sizeof(buffer_slot_t));
+    audit->buffer = nimcp_calloc(audit->config.buffer_size, sizeof(buffer_slot_t));
     if (!audit->buffer) {
-        free(audit);
+        nimcp_free(audit);
         return NULL;
     }
 
     // Initialize encryption key
-    audit->current_key = calloc(1, sizeof(encryption_key_t));
+    audit->current_key = nimcp_calloc(1, sizeof(encryption_key_t));
     if (!audit->current_key) {
-        free(audit->buffer);
-        free(audit);
+        nimcp_free(audit->buffer);
+        nimcp_free(audit);
         return NULL;
     }
 
@@ -488,9 +489,9 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     // Initialize synchronization
     if (pthread_mutex_init(&audit->lock, NULL) != 0) {
         secure_zero(audit->current_key->key, NIMCP_AUDIT_KEY_SIZE);
-        free(audit->current_key);
-        free(audit->buffer);
-        free(audit);
+        nimcp_free(audit->current_key);
+        nimcp_free(audit->buffer);
+        nimcp_free(audit);
         return NULL;
     }
 
@@ -527,21 +528,21 @@ void nimcp_encrypted_audit_destroy(nimcp_encrypted_audit_t audit) {
             if (audit->config.secure_erase) {
                 secure_zero(audit->buffer[i].entry, audit->buffer[i].allocated_size);
             }
-            free(audit->buffer[i].entry);
+            nimcp_free(audit->buffer[i].entry);
         }
     }
-    free(audit->buffer);
+    nimcp_free(audit->buffer);
 
     // Securely erase current key
     secure_zero(audit->current_key->key, NIMCP_AUDIT_KEY_SIZE);
-    free(audit->current_key);
+    nimcp_free(audit->current_key);
 
     // Securely erase key history
     encryption_key_t* key = audit->key_history;
     while (key) {
         encryption_key_t* next = key->next;
         secure_zero(key->key, NIMCP_AUDIT_KEY_SIZE);
-        free(key);
+        nimcp_free(key);
         key = next;
     }
 
@@ -555,7 +556,7 @@ void nimcp_encrypted_audit_destroy(nimcp_encrypted_audit_t audit) {
     #endif
 
     secure_zero(audit, sizeof(*audit));
-    free(audit);
+    nimcp_free(audit);
 }
 
 //=============================================================================
@@ -635,7 +636,7 @@ nimcp_error_t nimcp_encrypted_audit_log_timestamped(
         if (audit->config.secure_erase) {
             secure_zero(audit->buffer[write_idx].entry, audit->buffer[write_idx].allocated_size);
         }
-        free(audit->buffer[write_idx].entry);
+        nimcp_free(audit->buffer[write_idx].entry);
         audit->stats.buffer_wraps++;
     }
 
@@ -752,7 +753,7 @@ nimcp_error_t nimcp_encrypted_audit_read_filtered(
     }
 
     // Read all entries
-    nimcp_audit_entry_t* all_entries = malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
+    nimcp_audit_entry_t* all_entries = nimcp_malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
     if (!all_entries) {
         return NIMCP_NO_MEMORY;
     }
@@ -760,7 +761,7 @@ nimcp_error_t nimcp_encrypted_audit_read_filtered(
     size_t all_count = 0;
     nimcp_error_t err = nimcp_encrypted_audit_read(audit, all_entries, audit->config.buffer_size, &all_count);
     if (err != NIMCP_SUCCESS) {
-        free(all_entries);
+        nimcp_free(all_entries);
         return err;
     }
 
@@ -783,7 +784,7 @@ nimcp_error_t nimcp_encrypted_audit_read_filtered(
     }
 
     *num_entries = count;
-    free(all_entries);
+    nimcp_free(all_entries);
 
     return NIMCP_SUCCESS;
 }
@@ -801,7 +802,7 @@ nimcp_error_t nimcp_encrypted_audit_read_range(
     }
 
     // Read all entries
-    nimcp_audit_entry_t* all_entries = malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
+    nimcp_audit_entry_t* all_entries = nimcp_malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
     if (!all_entries) {
         return NIMCP_NO_MEMORY;
     }
@@ -809,7 +810,7 @@ nimcp_error_t nimcp_encrypted_audit_read_range(
     size_t all_count = 0;
     nimcp_error_t err = nimcp_encrypted_audit_read(audit, all_entries, audit->config.buffer_size, &all_count);
     if (err != NIMCP_SUCCESS) {
-        free(all_entries);
+        nimcp_free(all_entries);
         return err;
     }
 
@@ -823,7 +824,7 @@ nimcp_error_t nimcp_encrypted_audit_read_range(
     }
 
     *num_entries = count;
-    free(all_entries);
+    nimcp_free(all_entries);
 
     return NIMCP_SUCCESS;
 }
@@ -848,7 +849,7 @@ nimcp_error_t nimcp_encrypted_audit_rotate_key(
     audit->key_history = audit->current_key;
 
     // Create new key
-    audit->current_key = calloc(1, sizeof(encryption_key_t));
+    audit->current_key = nimcp_calloc(1, sizeof(encryption_key_t));
     if (!audit->current_key) {
         pthread_mutex_unlock(&audit->lock);
         return NIMCP_NO_MEMORY;
@@ -1032,10 +1033,10 @@ nimcp_error_t nimcp_encrypted_audit_import(
 
         // Clear old entry if needed
         if (slot->entry) {
-            free(slot->entry);
+            nimcp_free(slot->entry);
         }
 
-        slot->entry = malloc(total_size);
+        slot->entry = nimcp_malloc(total_size);
         if (!slot->entry) {
             pthread_mutex_unlock(&audit->lock);
             fclose(file);
@@ -1043,7 +1044,7 @@ nimcp_error_t nimcp_encrypted_audit_import(
         }
 
         if (fread(slot->entry, total_size, 1, file) != 1) {
-            free(slot->entry);
+            nimcp_free(slot->entry);
             slot->entry = NULL;
             break;
         }
@@ -1079,7 +1080,7 @@ nimcp_error_t nimcp_encrypted_audit_export_json(
     }
 
     // Read all entries (decrypted)
-    nimcp_audit_entry_t* entries = malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
+    nimcp_audit_entry_t* entries = nimcp_malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
     if (!entries) {
         fclose(file);
         return NIMCP_NO_MEMORY;
@@ -1088,7 +1089,7 @@ nimcp_error_t nimcp_encrypted_audit_export_json(
     size_t entry_count = 0;
     nimcp_error_t err = nimcp_encrypted_audit_read(audit, entries, audit->config.buffer_size, &entry_count);
     if (err != NIMCP_SUCCESS) {
-        free(entries);
+        nimcp_free(entries);
         fclose(file);
         return err;
     }
@@ -1128,7 +1129,7 @@ nimcp_error_t nimcp_encrypted_audit_export_json(
 
     fprintf(file, "  ]\n}\n");
 
-    free(entries);
+    nimcp_free(entries);
     fclose(file);
 
     LOG_MODULE_INFO("encrypted_audit", "Exported %zu entries to JSON: %s", entry_count, filepath);

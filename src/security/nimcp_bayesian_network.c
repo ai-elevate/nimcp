@@ -30,6 +30,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/algorithms/nimcp_sort.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -291,7 +292,7 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
         return NULL;
     }
 
-    nimcp_bayesian_network_t bn = (nimcp_bayesian_network_t)calloc(1, sizeof(struct nimcp_bayesian_network_internal));
+    nimcp_bayesian_network_t bn = (nimcp_bayesian_network_t)nimcp_calloc(1, sizeof(struct nimcp_bayesian_network_internal));
     if (!bn) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate network structure");
         return NULL;
@@ -300,18 +301,18 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
     bn->magic = NIMCP_BAYESIAN_NETWORK_MAGIC;
     bn->num_nodes = num_nodes;
 
-    bn->nodes = (bn_node_t*)calloc(num_nodes, sizeof(bn_node_t));
+    bn->nodes = (bn_node_t*)nimcp_calloc(num_nodes, sizeof(bn_node_t));
     if (!bn->nodes) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate nodes array");
-        free(bn);
+        nimcp_free(bn);
         return NULL;
     }
 
-    bn->topo_order = (uint32_t*)malloc(num_nodes * sizeof(uint32_t));
+    bn->topo_order = (uint32_t*)nimcp_malloc(num_nodes * sizeof(uint32_t));
     if (!bn->topo_order) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate topo_order array");
-        free(bn->nodes);
-        free(bn);
+        nimcp_free(bn->nodes);
+        nimcp_free(bn);
         return NULL;
     }
 
@@ -320,8 +321,8 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
         bn->nodes[i].node_id = i;
         bn->nodes[i].num_parents = 0;
         bn->nodes[i].cpt_size = MAX_STATES;
-        bn->nodes[i].cpt = (float*)malloc(MAX_STATES * sizeof(float));
-        bn->nodes[i].count_table = (float*)calloc(MAX_STATES, sizeof(float));
+        bn->nodes[i].cpt = (float*)nimcp_malloc(MAX_STATES * sizeof(float));
+        bn->nodes[i].count_table = (float*)nimcp_calloc(MAX_STATES, sizeof(float));
 
         if (!bn->nodes[i].cpt || !bn->nodes[i].count_table) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate CPT for node %u", i);
@@ -348,16 +349,16 @@ void nimcp_bn_destroy(nimcp_bayesian_network_t bn) {
 
     if (bn->nodes) {
         for (uint32_t i = 0; i < bn->num_nodes; i++) {
-            free(bn->nodes[i].cpt);
-            free(bn->nodes[i].count_table);
+            nimcp_free(bn->nodes[i].cpt);
+            nimcp_free(bn->nodes[i].count_table);
         }
-        free(bn->nodes);
+        nimcp_free(bn->nodes);
     }
 
-    free(bn->topo_order);
+    nimcp_free(bn->topo_order);
 
     bn->magic = 0;
-    free(bn);
+    nimcp_free(bn);
 }
 
 nimcp_error_t nimcp_bn_add_edge(nimcp_bayesian_network_t bn, uint32_t parent, uint32_t child) {
@@ -395,20 +396,20 @@ nimcp_error_t nimcp_bn_add_edge(nimcp_bayesian_network_t bn, uint32_t parent, ui
 
     /* Resize CPT */
     size_t new_cpt_size = get_cpt_size(node->num_parents);
-    float* new_cpt = (float*)malloc(new_cpt_size * sizeof(float));
-    float* new_count = (float*)calloc(new_cpt_size, sizeof(float));
+    float* new_cpt = (float*)nimcp_malloc(new_cpt_size * sizeof(float));
+    float* new_count = (float*)nimcp_calloc(new_cpt_size, sizeof(float));
 
     if (!new_cpt || !new_count) {
-        free(new_cpt);
-        free(new_count);
+        nimcp_free(new_cpt);
+        nimcp_free(new_count);
         node->num_parents--;  /* Rollback */
         return NIMCP_NO_MEMORY;
     }
 
     init_uniform_cpt(new_cpt, new_cpt_size);
 
-    free(node->cpt);
-    free(node->count_table);
+    nimcp_free(node->cpt);
+    nimcp_free(node->count_table);
     node->cpt = new_cpt;
     node->count_table = new_count;
     node->cpt_size = new_cpt_size;
@@ -458,7 +459,7 @@ nimcp_error_t nimcp_bn_infer(nimcp_bayesian_network_t bn, const float* evidence,
     }
 
     /* Discretize evidence */
-    uint32_t* states = (uint32_t*)malloc(bn->num_nodes * sizeof(uint32_t));
+    uint32_t* states = (uint32_t*)nimcp_malloc(bn->num_nodes * sizeof(uint32_t));
     if (!states) {
         return NIMCP_NO_MEMORY;
     }
@@ -512,7 +513,7 @@ nimcp_error_t nimcp_bn_infer(nimcp_bayesian_network_t bn, const float* evidence,
         }
     }
 
-    free(states);
+    nimcp_free(states);
     bn->inference_count++;
 
     return NIMCP_SUCCESS;
@@ -524,7 +525,7 @@ nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample) {
     }
 
     /* Discretize sample */
-    uint32_t* states = (uint32_t*)malloc(bn->num_nodes * sizeof(uint32_t));
+    uint32_t* states = (uint32_t*)nimcp_malloc(bn->num_nodes * sizeof(uint32_t));
     if (!states) {
         return NIMCP_NO_MEMORY;
     }
@@ -586,7 +587,7 @@ nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample) {
         }
     }
 
-    free(states);
+    nimcp_free(states);
     bn->learning_count++;
 
     return NIMCP_SUCCESS;
@@ -598,7 +599,7 @@ nimcp_error_t nimcp_bn_log_likelihood(nimcp_bayesian_network_t bn, const float* 
     }
 
     /* Discretize sample */
-    uint32_t* states = (uint32_t*)malloc(bn->num_nodes * sizeof(uint32_t));
+    uint32_t* states = (uint32_t*)nimcp_malloc(bn->num_nodes * sizeof(uint32_t));
     if (!states) {
         return NIMCP_NO_MEMORY;
     }
@@ -651,7 +652,7 @@ nimcp_error_t nimcp_bn_log_likelihood(nimcp_bayesian_network_t bn, const float* 
         }
     }
 
-    free(states);
+    nimcp_free(states);
     *log_likelihood = ll;
 
     return NIMCP_SUCCESS;

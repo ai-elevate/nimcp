@@ -107,6 +107,18 @@ set(MESH_PHASE16_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_cycle_coordinator.c
 )
 
+# Phase 17: Core Brain Module Mesh Integrations
+# WHAT: Direct mesh integrations for hippocampus, amygdala, basal ganglia, thalamus, global workspace
+# WHY:  Enable coordinated brain module operations via distributed mesh consensus
+set(MESH_PHASE17_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_hippocampus_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_amygdala_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_basal_ganglia_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_thalamus_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_global_workspace_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_mesh_medulla_integration.c
+)
+
 # Combined mesh sources for export
 set(NIMCP_MESH_SOURCES
     ${MESH_PHASE1_SOURCES}
@@ -125,5 +137,6 @@ set(NIMCP_MESH_SOURCES
     ${MESH_PHASE14_SOURCES}
     ${MESH_PHASE15_SOURCES}
     ${MESH_PHASE16_SOURCES}
+    ${MESH_PHASE17_SOURCES}
     PARENT_SCOPE
 )

@@ -17,6 +17,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -109,7 +110,7 @@ typedef struct {
 } value_stack_t;
 
 static value_stack_t* stack_create(void) {
-    value_stack_t* stack = calloc(1, sizeof(value_stack_t));
+    value_stack_t* stack = nimcp_calloc(1, sizeof(value_stack_t));
     if (!stack) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stack is NULL");
@@ -119,9 +120,9 @@ static value_stack_t* stack_create(void) {
     }
 
     stack->capacity = 256;
-    stack->values = calloc(stack->capacity, sizeof(nimcp_policy_value_t));
+    stack->values = nimcp_calloc(stack->capacity, sizeof(nimcp_policy_value_t));
     if (!stack->values) {
-        free(stack);
+        nimcp_free(stack);
         return NULL;
     }
 
@@ -133,11 +134,11 @@ static void stack_destroy(value_stack_t* stack) {
 
     for (size_t i = 0; i < stack->count; i++) {
         if (stack->values[i].type == NIMCP_POLICY_VALUE_STRING) {
-            free(stack->values[i].string_val);
+            nimcp_free(stack->values[i].string_val);
         }
     }
-    free(stack->values);
-    free(stack);
+    nimcp_free(stack->values);
+    nimcp_free(stack);
 }
 
 static void stack_push(value_stack_t* stack, nimcp_policy_value_t value) {
@@ -147,7 +148,7 @@ static void stack_push(value_stack_t* stack, nimcp_policy_value_t value) {
         if (new_capacity < stack->capacity || new_capacity > SIZE_MAX / sizeof(nimcp_policy_value_t)) {
             return;  // Overflow, cannot grow
         }
-        nimcp_policy_value_t* new_values = realloc(stack->values,
+        nimcp_policy_value_t* new_values = nimcp_realloc(stack->values,
                                                     new_capacity * sizeof(nimcp_policy_value_t));
         if (!new_values) {
             return;  // Keep original buffer intact
@@ -205,7 +206,7 @@ static uint32_t hash_string(const char* str) {
 }
 
 nimcp_policy_context_t nimcp_policy_context_create(void) {
-    struct nimcp_policy_context* ctx = calloc(1, sizeof(struct nimcp_policy_context));
+    struct nimcp_policy_context* ctx = nimcp_calloc(1, sizeof(struct nimcp_policy_context));
     if (!ctx) {
         LOG_ERROR("Failed to allocate context");
         return NULL;
@@ -213,10 +214,10 @@ nimcp_policy_context_t nimcp_policy_context_create(void) {
 
     ctx->magic = CONTEXT_MAGIC;
     ctx->bucket_count = 32;
-    ctx->buckets = calloc(ctx->bucket_count, sizeof(context_entry_t*));
+    ctx->buckets = nimcp_calloc(ctx->bucket_count, sizeof(context_entry_t*));
 
     if (!ctx->buckets) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -231,18 +232,18 @@ void nimcp_policy_context_destroy(nimcp_policy_context_t ctx) {
         context_entry_t* entry = ctx->buckets[i];
         while (entry) {
             context_entry_t* next = entry->next;
-            free(entry->key);
+            nimcp_free(entry->key);
             if (entry->value.type == NIMCP_POLICY_VALUE_STRING) {
-                free(entry->value.string_val);
+                nimcp_free(entry->value.string_val);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
 
-    free(ctx->buckets);
+    nimcp_free(ctx->buckets);
     ctx->magic = 0;
-    free(ctx);
+    nimcp_free(ctx);
 
     LOG_DEBUG("Destroyed policy context");
 }
@@ -265,7 +266,7 @@ static nimcp_error_t context_set(
         if (strcmp(entry->key, key) == 0) {
             // Update existing
             if (entry->value.type == NIMCP_POLICY_VALUE_STRING) {
-                free(entry->value.string_val);
+                nimcp_free(entry->value.string_val);
             }
             entry->value = value;
             return NIMCP_OK;
@@ -274,12 +275,12 @@ static nimcp_error_t context_set(
     }
 
     // Create new entry
-    entry = calloc(1, sizeof(context_entry_t));
+    entry = nimcp_calloc(1, sizeof(context_entry_t));
     if (!entry) return NIMCP_ERROR_NO_MEMORY;
 
     entry->key = strdup(key);
     if (!entry->key) {
-        free(entry);
+        nimcp_free(entry);
         return NIMCP_ERROR_NO_MEMORY;
     }
     entry->value = value;
@@ -494,7 +495,7 @@ typedef struct {
 
 /* Non-static - called from nimcp_policy_engine.c */
 function_registry_t* registry_create(void) {
-    function_registry_t* registry = calloc(1, sizeof(function_registry_t));
+    function_registry_t* registry = nimcp_calloc(1, sizeof(function_registry_t));
     if (!registry) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
@@ -504,7 +505,7 @@ function_registry_t* registry_create(void) {
     }
 
     registry->capacity = 16;
-    registry->functions = calloc(registry->capacity, sizeof(function_entry_t));
+    registry->functions = nimcp_calloc(registry->capacity, sizeof(function_entry_t));
 
     // Register built-in functions
     function_entry_t builtins[] = {
@@ -519,10 +520,10 @@ function_registry_t* registry_create(void) {
         if (!name_copy) {
             // Cleanup already-registered functions on failure
             for (size_t j = 0; j < registry->count; j++) {
-                free(registry->functions[j].name);
+                nimcp_free(registry->functions[j].name);
             }
-            free(registry->functions);
-            free(registry);
+            nimcp_free(registry->functions);
+            nimcp_free(registry);
             return NULL;
         }
         registry->functions[registry->count].name = name_copy;
@@ -539,10 +540,10 @@ void registry_destroy(function_registry_t* registry) {
     if (!registry) return;
 
     for (size_t i = 0; i < registry->count; i++) {
-        free(registry->functions[i].name);
+        nimcp_free(registry->functions[i].name);
     }
-    free(registry->functions);
-    free(registry);
+    nimcp_free(registry->functions);
+    nimcp_free(registry);
 }
 
 static nimcp_policy_function_t registry_lookup(
@@ -817,8 +818,8 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
                 result->message = strdup("");
                 result->rule_name = strdup("");
                 if (!result->message || !result->rule_name) {
-                    free(result->message);
-                    free(result->rule_name);
+                    nimcp_free(result->message);
+                    nimcp_free(result->rule_name);
                     result->message = NULL;
                     result->rule_name = NULL;
                     error = NIMCP_ERROR_NO_MEMORY;
@@ -860,9 +861,9 @@ cleanup:
 void nimcp_policy_result_free(nimcp_policy_result_t* result) {
     if (!result) return;
 
-    free(result->message);
-    free(result->rule_name);
-    free(result->params);
+    nimcp_free(result->message);
+    nimcp_free(result->rule_name);
+    nimcp_free(result->params);
 
     memset(result, 0, sizeof(nimcp_policy_result_t));
 }

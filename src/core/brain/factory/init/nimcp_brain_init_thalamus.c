@@ -40,6 +40,56 @@ static inline void brain_init_thalamus_heartbeat(const char* operation, float pr
 
 
 //=============================================================================
+// Mesh Integration (Phase: Mesh Network Integration)
+//=============================================================================
+
+/* Mesh integration - forward declarations to avoid header conflicts */
+struct mesh_bootstrap;
+typedef struct mesh_bootstrap mesh_bootstrap_t;
+struct mesh_thalamus_integration;
+typedef struct mesh_thalamus_integration mesh_thalamus_integration_t;
+
+/* Mesh thalamus integration function declarations */
+extern mesh_thalamus_integration_t* mesh_thalamus_create(
+    mesh_bootstrap_t* bootstrap,
+    void* thalamus,
+    const void* config
+);
+extern void mesh_thalamus_destroy(mesh_thalamus_integration_t* integration);
+extern int mesh_thalamus_register_participant(mesh_thalamus_integration_t* integration);
+extern int mesh_thalamus_set_health_agent(mesh_thalamus_integration_t* integration,
+                                           void* agent);
+
+/** Global mesh bootstrap handle (set externally) */
+static mesh_bootstrap_t* g_thalamus_mesh_bootstrap = NULL;
+static mesh_thalamus_integration_t* g_thalamus_mesh_integration = NULL;
+
+/**
+ * @brief Set the mesh bootstrap handle for thalamus mesh registration
+ *
+ * WHAT: Configures thalamus init to register with mesh network
+ * WHY:  Enable coordinated sensory relay via mesh consensus
+ * HOW:  Stores bootstrap handle, used during thalamus init
+ *
+ * @param bootstrap Mesh bootstrap handle (NULL to disable)
+ */
+void nimcp_brain_thalamus_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
+    g_thalamus_mesh_bootstrap = bootstrap;
+    if (bootstrap) {
+        NIMCP_LOGGING_INFO("Mesh bootstrap set for thalamus integration");
+    }
+}
+
+/**
+ * @brief Get the thalamus mesh integration handle
+ *
+ * @return Current mesh integration or NULL if not registered
+ */
+mesh_thalamus_integration_t* nimcp_brain_thalamus_get_mesh_integration(void) {
+    return g_thalamus_mesh_integration;
+}
+
+//=============================================================================
 // Configuration
 //=============================================================================
 
@@ -160,6 +210,40 @@ bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
     NIMCP_LOGGING_INFO("Thalamus initialized successfully with %d nuclei",
                         THAL_NUCLEUS_COUNT);
 
+    /* Register with mesh network if bootstrap is available */
+    if (g_thalamus_mesh_bootstrap) {
+        brain_init_thalamus_heartbeat("mesh_registration", 0.0f);
+
+        mesh_thalamus_integration_t* mesh_integration = mesh_thalamus_create(
+            g_thalamus_mesh_bootstrap,
+            b->thalamus,
+            NULL  /* Use default config */
+        );
+
+        if (mesh_integration) {
+            /* Set health agent if available */
+            if (g_brain_init_thalamus_health_agent) {
+                mesh_thalamus_set_health_agent(mesh_integration,
+                                               g_brain_init_thalamus_health_agent);
+            }
+
+            /* Register as mesh participant */
+            int mesh_result = mesh_thalamus_register_participant(mesh_integration);
+            if (mesh_result == NIMCP_SUCCESS) {
+                g_thalamus_mesh_integration = mesh_integration;
+                NIMCP_LOGGING_INFO("Thalamus registered with mesh network");
+            } else {
+                NIMCP_LOGGING_WARN("Failed to register thalamus with mesh (error %d)",
+                                   mesh_result);
+                mesh_thalamus_destroy(mesh_integration);
+            }
+        } else {
+            NIMCP_LOGGING_WARN("Failed to create thalamus mesh integration");
+        }
+
+        brain_init_thalamus_heartbeat("mesh_registration", 1.0f);
+    }
+
     /* Log enabled nuclei */
     NIMCP_LOGGING_DEBUG("Thalamus nuclei enabled:");
     NIMCP_LOGGING_DEBUG("  - LGN (visual relay)");
@@ -178,6 +262,13 @@ void nimcp_brain_thal_destroy(brain_t brain) {
     if (!brain) return;
 
     struct brain_struct* b = (struct brain_struct*)brain;
+
+    /* Destroy mesh integration first */
+    if (g_thalamus_mesh_integration) {
+        mesh_thalamus_destroy(g_thalamus_mesh_integration);
+        g_thalamus_mesh_integration = NULL;
+        NIMCP_LOGGING_DEBUG("Thalamus mesh integration destroyed");
+    }
 
     if (b->thalamus) {
         thalamus_destroy(b->thalamus);

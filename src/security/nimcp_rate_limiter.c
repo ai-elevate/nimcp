@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -388,7 +389,7 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
 
     // Create new bucket - lock still held, preventing race condition
     // Another thread cannot insert the same client_id between our search and insert
-    bucket = (client_bucket_t*)calloc(1, sizeof(client_bucket_t));
+    bucket = (client_bucket_t*)nimcp_calloc(1, sizeof(client_bucket_t));
     if (!bucket) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
         return NULL;
@@ -467,7 +468,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     }
 
     // Allocate limiter
-    nimcp_rate_limiter_t limiter = (nimcp_rate_limiter_t)calloc(
+    nimcp_rate_limiter_t limiter = (nimcp_rate_limiter_t)nimcp_calloc(
         1, sizeof(struct nimcp_rate_limiter_impl));
     NIMCP_API_CHECK_ALLOC(limiter, "Failed to allocate rate limiter");
 
@@ -488,17 +489,17 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     // Initialize main lock
     if (nimcp_platform_mutex_init(&limiter->limiter_lock, false) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to initialize rate limiter lock");
-        free(limiter);
+        nimcp_free(limiter);
         return NULL;
     }
 
     // Allocate hash table
-    limiter->client_table = (client_hash_table_t*)calloc(
+    limiter->client_table = (client_hash_table_t*)nimcp_calloc(
         1, sizeof(client_hash_table_t));
     if (!limiter->client_table) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(client_hash_table_t), "Failed to allocate rate limiter client hash table");
         nimcp_platform_mutex_destroy(&limiter->limiter_lock);
-        free(limiter);
+        nimcp_free(limiter);
         return NULL;
     }
 
@@ -531,7 +532,7 @@ void nimcp_rate_limiter_destroy(nimcp_rate_limiter_t limiter) {
                 client_bucket_t* next = bucket->next;
                 // SECURITY: Zero sensitive data before freeing
                 memset(bucket, 0, sizeof(client_bucket_t));
-                free(bucket);
+                nimcp_free(bucket);
                 bucket = next;
             }
 
@@ -540,7 +541,7 @@ void nimcp_rate_limiter_destroy(nimcp_rate_limiter_t limiter) {
         }
         // SECURITY: Zero table before freeing
         memset(limiter->client_table, 0, sizeof(client_hash_table_t));
-        free(limiter->client_table);
+        nimcp_free(limiter->client_table);
     }
 
     // Unregister from bio-async
@@ -551,7 +552,7 @@ void nimcp_rate_limiter_destroy(nimcp_rate_limiter_t limiter) {
     // Cleanup
     limiter->magic = 0;
     nimcp_platform_mutex_destroy(&limiter->limiter_lock);
-    free(limiter);
+    nimcp_free(limiter);
 }
 
 //=============================================================================

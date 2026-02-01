@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -166,7 +167,7 @@ static nimcp_error_t pq_inbox_handler(
 
 nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
     /* Allocate context */
-    nimcp_pq_context_t ctx = (nimcp_pq_context_t)calloc(1, sizeof(struct nimcp_pq_context));
+    nimcp_pq_context_t ctx = (nimcp_pq_context_t)nimcp_calloc(1, sizeof(struct nimcp_pq_context));
     if (!ctx) {
         LOG_ERROR("nimcp_pq_context_create: Memory allocation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -198,7 +199,7 @@ nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
     /* Initialize mutex */
     if (pthread_mutex_init(&ctx->stats_lock, NULL) != 0) {
         LOG_ERROR("nimcp_pq_context_create: Mutex initialization failed");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -280,7 +281,7 @@ void nimcp_pq_context_destroy(nimcp_pq_context_t ctx) {
     ctx->magic = 0;
 
     /* Free context */
-    free(ctx);
+    nimcp_free(ctx);
 
     LOG_INFO("Post-quantum context destroyed");
 }

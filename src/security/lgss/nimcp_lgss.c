@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -187,7 +188,7 @@ lgss_context_t* lgss_create(const lgss_config_t* config)
     }
 
     /* Allocate context */
-    lgss = calloc(1, sizeof(lgss_context_t));
+    lgss = nimcp_calloc(1, sizeof(lgss_context_t));
     if (!lgss) {
         LGSS_LOG_ERROR("Failed to allocate LGSS context");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss is NULL");
@@ -292,7 +293,7 @@ void lgss_destroy(lgss_context_t* lgss)
 
     /* Clear magic and free */
     lgss->magic = 0;
-    free(lgss);
+    nimcp_free(lgss);
 }
 
 int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)

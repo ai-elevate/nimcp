@@ -29,6 +29,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -353,7 +354,7 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     const nimcp_anomaly_config_t* cfg = config ? config : &default_config;
 
     /* Allocate detector */
-    nimcp_anomaly_detector_t detector = (nimcp_anomaly_detector_t)calloc(1, sizeof(struct nimcp_anomaly_detector_internal));
+    nimcp_anomaly_detector_t detector = (nimcp_anomaly_detector_t)nimcp_calloc(1, sizeof(struct nimcp_anomaly_detector_internal));
     if (!detector) {
         LOG_MODULE_ERROR("anomaly_detector", "Failed to allocate anomaly detector");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate anomaly detector");
@@ -372,7 +373,7 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     detector->bn = nimcp_bn_create(NIMCP_BN_NODE_COUNT);
     if (!detector->bn) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create Bayesian network for anomaly detector");
-        free(detector);
+        nimcp_free(detector);
         return NULL;
     }
 
@@ -380,16 +381,16 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     if (build_bn_structure(detector->bn) != NIMCP_SUCCESS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to build Bayesian network structure");
         nimcp_bn_destroy(detector->bn);
-        free(detector);
+        nimcp_free(detector);
         return NULL;
     }
 
     /* Create timing context */
-    detector->timing_ctx = (timing_context_t*)calloc(1, sizeof(timing_context_t));
+    detector->timing_ctx = (timing_context_t*)nimcp_calloc(1, sizeof(timing_context_t));
     if (!detector->timing_ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate timing context");
         nimcp_bn_destroy(detector->bn);
-        free(detector);
+        nimcp_free(detector);
         return NULL;
     }
     detector->timing_ctx->window_sec = cfg->timing_window_sec;
@@ -431,14 +432,14 @@ void nimcp_anomaly_detector_destroy(nimcp_anomaly_detector_t detector) {
         nimcp_bn_destroy(detector->bn);
     }
 
-    free(detector->timing_ctx);
+    nimcp_free(detector->timing_ctx);
 
     if (detector->bio_ctx) {
         bio_router_unregister_module(detector->bio_ctx);
     }
 
     detector->magic = 0;
-    free(detector);
+    nimcp_free(detector);
 }
 
 nimcp_error_t nimcp_anomaly_detect(nimcp_anomaly_detector_t detector,

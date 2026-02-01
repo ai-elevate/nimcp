@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -329,7 +330,7 @@ corrigibility_config_t corrigibility_default_config(void)
 
 corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
 {
-    corrigibility_t* system = calloc(1, sizeof(corrigibility_t));
+    corrigibility_t* system = nimcp_calloc(1, sizeof(corrigibility_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate corrigibility system");
         return NULL;
@@ -339,7 +340,7 @@ corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -355,7 +356,7 @@ corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
     if (corrigibility_validate_config(&system->config, error_msg, sizeof(error_msg)) != NIMCP_SUCCESS) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Invalid configuration: %s", error_msg);
         nimcp_mutex_destroy(system->mutex);
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -388,7 +389,7 @@ void corrigibility_destroy(corrigibility_t* system)
         nimcp_mutex_destroy(system->mutex);
     }
 
-    free(system);
+    nimcp_free(system);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Corrigibility system destroyed");
 }
