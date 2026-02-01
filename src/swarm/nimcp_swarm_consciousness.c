@@ -41,6 +41,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
+#include "utils/thread/nimcp_thread.h"
 
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -775,7 +776,7 @@ static bool swarm_consciousness_start_monitoring_internal(
     ctx->monitoring_active = true;
 
     // Spawn monitoring thread
-    if (pthread_create(&ctx->monitor_thread, NULL, consciousness_monitor_thread, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->monitor_thread, consciousness_monitor_thread, ctx, NULL) != 0) {
         LOG_ERROR("Failed to create monitoring thread");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create consciousness monitoring thread");
         ctx->monitoring_active = false;
@@ -824,7 +825,7 @@ void swarm_consciousness_stop_monitoring(swarm_consciousness_ctx_t* context) {
     pthread_mutex_unlock(&ctx->lock);
 
     // Wait for thread to complete
-    pthread_join(ctx->monitor_thread, NULL);
+    nimcp_thread_join(ctx->monitor_thread, NULL);
 
     // Clear callback
     pthread_mutex_lock(&ctx->lock);

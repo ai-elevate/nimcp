@@ -355,6 +355,15 @@ nimcp_error_t mesh_brain_integration_register_thalamus(
 );
 
 /**
+ * @brief Register basal ganglia with mesh (MOTOR role)
+ */
+nimcp_error_t mesh_brain_integration_register_basal_ganglia(
+    mesh_brain_integration_t* integration,
+    void* basal_ganglia,
+    nimcp_health_agent_t* health_agent
+);
+
+/**
  * @brief Register brain immune system with mesh
  */
 nimcp_error_t mesh_brain_integration_register_immune_system(

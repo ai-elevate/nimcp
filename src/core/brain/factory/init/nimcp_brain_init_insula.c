@@ -576,3 +576,39 @@ bool nimcp_brain_factory_connect_insula_to_theory_of_mind(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Insula connected to Theory of Mind");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy insula subsystem
+ *
+ * WHAT: Clean up all insula resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_insula_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying insula subsystem");
+
+    /* Destroy quantum bridge first (depends on insula) */
+    if (brain->insula_quantum_bridge) {
+        insula_quantum_bridge_destroy(brain->insula_quantum_bridge);
+        brain->insula_quantum_bridge = NULL;
+    }
+
+    /* Destroy insula adapter */
+    if (brain->insula) {
+        insula_destroy(brain->insula);
+        brain->insula = NULL;
+    }
+
+    brain->insula_enabled = false;
+    brain->last_insula_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Insula subsystem destroyed");
+}

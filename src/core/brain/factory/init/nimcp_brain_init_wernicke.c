@@ -686,3 +686,51 @@ bool nimcp_brain_factory_init_wernicke_nlp_bridge(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Wernicke NLP bridge initialized");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy Wernicke's area subsystem
+ *
+ * WHAT: Clean up all Wernicke resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_wernicke_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying Wernicke's area subsystem");
+
+    /* Destroy NLP bridge first */
+    if (brain->wernicke_nlp_bridge) {
+        wernicke_nlp_bridge_destroy(brain->wernicke_nlp_bridge);
+        brain->wernicke_nlp_bridge = NULL;
+    }
+
+    /* Destroy quantum bridge (depends on wernicke) */
+    if (brain->wernicke_quantum_bridge) {
+        wernicke_quantum_bridge_destroy(brain->wernicke_quantum_bridge);
+        brain->wernicke_quantum_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->wernicke_substrate_bridge) {
+        wernicke_substrate_bridge_destroy(brain->wernicke_substrate_bridge);
+        brain->wernicke_substrate_bridge = NULL;
+    }
+
+    /* Destroy Wernicke adapter */
+    if (brain->wernicke) {
+        wernicke_destroy(brain->wernicke);
+        brain->wernicke = NULL;
+    }
+
+    brain->wernicke_enabled = false;
+    brain->last_wernicke_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Wernicke's area subsystem destroyed");
+}

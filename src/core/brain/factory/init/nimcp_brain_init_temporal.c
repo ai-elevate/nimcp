@@ -469,3 +469,51 @@ bool nimcp_brain_factory_connect_temporal_to_frontal(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Temporal connected to frontal cortex");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy temporal cortex subsystem
+ *
+ * WHAT: Clean up all temporal resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_temporal_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying temporal cortex subsystem");
+
+    /* Destroy quantum bridge first (depends on temporal) */
+    if (brain->temporal_quantum_bridge) {
+        temporal_quantum_bridge_destroy(brain->temporal_quantum_bridge);
+        brain->temporal_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->temporal_thalamic_bridge) {
+        temporal_thalamic_bridge_destroy(brain->temporal_thalamic_bridge);
+        brain->temporal_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->temporal_substrate_bridge) {
+        temporal_substrate_bridge_destroy(brain->temporal_substrate_bridge);
+        brain->temporal_substrate_bridge = NULL;
+    }
+
+    /* Destroy temporal adapter */
+    if (brain->temporal) {
+        temporal_destroy(brain->temporal);
+        brain->temporal = NULL;
+    }
+
+    brain->temporal_enabled = false;
+    brain->last_temporal_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Temporal cortex subsystem destroyed");
+}

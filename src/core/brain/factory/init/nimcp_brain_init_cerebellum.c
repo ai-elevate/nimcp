@@ -467,3 +467,51 @@ bool nimcp_brain_factory_connect_cerebellum_to_immune(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Cerebellum connected to immune system");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy cerebellum subsystem
+ *
+ * WHAT: Clean up all cerebellum resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_cerebellum_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying cerebellum subsystem");
+
+    /* Destroy quantum bridge first (depends on cerebellum) */
+    if (brain->cerebellum_quantum_bridge) {
+        cerebellum_quantum_bridge_destroy(brain->cerebellum_quantum_bridge);
+        brain->cerebellum_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->cerebellum_thalamic_bridge) {
+        /* cerebellum_thalamic_bridge_destroy(brain->cerebellum_thalamic_bridge); */
+        brain->cerebellum_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->cerebellum_substrate_bridge) {
+        /* cerebellum_substrate_bridge_destroy(brain->cerebellum_substrate_bridge); */
+        brain->cerebellum_substrate_bridge = NULL;
+    }
+
+    /* Destroy cerebellum adapter */
+    if (brain->cerebellum) {
+        cerebellum_destroy(brain->cerebellum);
+        brain->cerebellum = NULL;
+    }
+
+    brain->cerebellum_enabled = false;
+    brain->last_cerebellum_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Cerebellum subsystem destroyed");
+}

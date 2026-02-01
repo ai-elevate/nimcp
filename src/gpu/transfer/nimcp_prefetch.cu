@@ -25,6 +25,7 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -490,8 +491,8 @@ int nimcp_prefetch_start_with_count(
     pthread_mutex_unlock(&mgr->mutex);
 
     // Create background thread
-    int result = pthread_create(&mgr->loader_thread, NULL,
-                                 prefetch_loader_thread, mgr);
+    int result = nimcp_thread_create(&mgr->loader_thread,
+                                     prefetch_loader_thread, mgr, NULL);
     if (result != 0) {
         LOG_ERROR("Failed to create loader thread: %d", result);
         pthread_mutex_lock(&mgr->mutex);
@@ -529,7 +530,7 @@ void nimcp_prefetch_stop(nimcp_prefetch_manager_t* mgr) {
 
     // Wait for thread to exit
     if (mgr->thread_created) {
-        pthread_join(mgr->loader_thread, NULL);
+        nimcp_thread_join(mgr->loader_thread, NULL);
         mgr->thread_created = false;
     }
 

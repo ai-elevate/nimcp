@@ -484,3 +484,51 @@ bool nimcp_brain_factory_connect_prefrontal_to_immune(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Prefrontal connected to immune system");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy prefrontal cortex subsystem
+ *
+ * WHAT: Clean up all prefrontal resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_prefrontal_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying prefrontal cortex subsystem");
+
+    /* Destroy quantum bridge first (depends on prefrontal) */
+    if (brain->prefrontal_quantum_bridge) {
+        prefrontal_quantum_bridge_destroy(brain->prefrontal_quantum_bridge);
+        brain->prefrontal_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->prefrontal_thalamic_bridge) {
+        /* prefrontal_thalamic_bridge_destroy(brain->prefrontal_thalamic_bridge); */
+        brain->prefrontal_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->prefrontal_substrate_bridge) {
+        /* prefrontal_substrate_bridge_destroy(brain->prefrontal_substrate_bridge); */
+        brain->prefrontal_substrate_bridge = NULL;
+    }
+
+    /* Destroy prefrontal adapter */
+    if (brain->prefrontal) {
+        prefrontal_destroy(brain->prefrontal);
+        brain->prefrontal = NULL;
+    }
+
+    brain->prefrontal_enabled = false;
+    brain->last_prefrontal_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Prefrontal cortex subsystem destroyed");
+}

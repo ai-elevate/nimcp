@@ -482,3 +482,39 @@ bool nimcp_brain_factory_connect_hypothalamus_to_emotions(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Hypothalamus connected to emotional system");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy hypothalamus subsystem
+ *
+ * WHAT: Clean up all hypothalamus resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_hypothalamus_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying hypothalamus subsystem");
+
+    /* Destroy quantum bridge first (depends on hypothalamus) */
+    if (brain->hypothalamus_quantum_bridge) {
+        hypothalamus_quantum_bridge_destroy(brain->hypothalamus_quantum_bridge);
+        brain->hypothalamus_quantum_bridge = NULL;
+    }
+
+    /* Destroy hypothalamus adapter */
+    if (brain->hypothalamus) {
+        hypothalamus_destroy(brain->hypothalamus);
+        brain->hypothalamus = NULL;
+    }
+
+    brain->hypothalamus_enabled = false;
+    brain->last_hypothalamus_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Hypothalamus subsystem destroyed");
+}

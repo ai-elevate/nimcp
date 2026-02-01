@@ -639,6 +639,16 @@ nimcp_error_t mesh_brain_integration_register_thalamus(
         thalamus, 0, 0, health_agent);
 }
 
+nimcp_error_t mesh_brain_integration_register_basal_ganglia(
+    mesh_brain_integration_t* integration,
+    void* basal_ganglia,
+    nimcp_health_agent_t* health_agent
+) {
+    return mesh_brain_integration_register_module(
+        integration, MESH_BRAIN_REGION_BASAL_GANGLIA,
+        basal_ganglia, 0, 0, health_agent);
+}
+
 nimcp_error_t mesh_brain_integration_register_immune_system(
     mesh_brain_integration_t* integration,
     brain_immune_system_t* immune,

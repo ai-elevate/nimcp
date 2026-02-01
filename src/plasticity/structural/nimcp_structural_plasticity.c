@@ -803,6 +803,9 @@ int structural_plasticity_update(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at start of structural plasticity update */
+    structural_plasticity_heartbeat("structural_update", 0.0f);
+
     for (uint32_t i = 0; i < system->num_spines; i++) {
         /* Defensive bounds check per iteration */
         if (i >= system->max_spines) break;
@@ -848,6 +851,12 @@ int structural_plasticity_update(
                     }
                 }
             }
+        }
+
+        /* Phase 8: Periodic heartbeat for large spine counts */
+        if ((i & 0x7F) == 0 && system->num_spines > 128) {
+            structural_plasticity_heartbeat("structural_update",
+                                           (float)(i + 1) / (float)system->num_spines);
         }
 
         /* Check for pruning */

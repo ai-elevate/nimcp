@@ -586,3 +586,51 @@ bool nimcp_brain_factory_connect_hippocampus_to_sleep(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Hippocampus connected to sleep system");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy hippocampus subsystem
+ *
+ * WHAT: Clean up all hippocampus resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_hippocampus_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying hippocampus subsystem");
+
+    /* Destroy quantum bridge first (depends on hippocampus) */
+    if (brain->hippocampus_quantum_bridge) {
+        hippocampus_quantum_bridge_destroy(brain->hippocampus_quantum_bridge);
+        brain->hippocampus_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->hippocampus_thalamic_bridge) {
+        hippocampus_thalamic_bridge_destroy(brain->hippocampus_thalamic_bridge);
+        brain->hippocampus_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->hippocampus_substrate_bridge) {
+        hippocampus_substrate_bridge_destroy(brain->hippocampus_substrate_bridge);
+        brain->hippocampus_substrate_bridge = NULL;
+    }
+
+    /* Destroy hippocampus adapter */
+    if (brain->hippocampus) {
+        hippocampus_destroy(brain->hippocampus);
+        brain->hippocampus = NULL;
+    }
+
+    brain->hippocampus_enabled = false;
+    brain->last_hippocampus_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Hippocampus subsystem destroyed");
+}

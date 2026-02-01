@@ -714,6 +714,9 @@ int eligibility_consolidate_batch(
     // BATCH PROCESSING: Apply consolidation to all synapses
     int num_consolidated = 0;
 
+    // Phase 8: Heartbeat at start of batch processing
+    eligibility_trace_heartbeat("batch_consolidation", 0.0f);
+
     for (int i = 0; i < num_synapses; i++) {
         // Call consolidate_on_burst for each synapse
         float delta_w = eligibility_consolidate_on_burst(
@@ -728,6 +731,12 @@ int eligibility_consolidate_batch(
         // Use same threshold as config->trace_threshold for consistency
         if (fabsf(delta_w) > 0.0F) {  // Any non-zero weight change
             num_consolidated++;
+        }
+
+        // Phase 8: Periodic heartbeat for large batches
+        if ((i & 0xFF) == 0 && num_synapses > 256) {
+            eligibility_trace_heartbeat("batch_consolidation",
+                                        (float)(i + 1) / (float)num_synapses);
         }
     }
 

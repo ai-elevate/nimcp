@@ -941,3 +941,64 @@ bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Occipital connected to Broca (audiovisual bridge)");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy occipital cortex subsystem
+ *
+ * WHAT: Clean up all occipital resources, bridges, and cortical columns
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_occipital_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying occipital cortex subsystem");
+
+    /* Destroy orientation hypercolumns */
+    if (brain->orientation_hypercolumns && brain->num_orientation_hypercolumns > 0) {
+        for (uint32_t i = 0; i < brain->num_orientation_hypercolumns; i++) {
+            if (brain->orientation_hypercolumns[i]) {
+                orientation_hypercolumn_destroy(brain->orientation_hypercolumns[i]);
+                brain->orientation_hypercolumns[i] = NULL;
+            }
+        }
+        nimcp_free(brain->orientation_hypercolumns);
+        brain->orientation_hypercolumns = NULL;
+        brain->num_orientation_hypercolumns = 0;
+    }
+
+    /* Destroy quantum bridge first (depends on occipital) */
+    if (brain->occipital_quantum_bridge) {
+        occipital_quantum_bridge_destroy(brain->occipital_quantum_bridge);
+        brain->occipital_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->occipital_thalamic_bridge) {
+        occipital_thalamic_bridge_destroy(brain->occipital_thalamic_bridge);
+        brain->occipital_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->occipital_substrate_bridge) {
+        occipital_substrate_bridge_destroy(brain->occipital_substrate_bridge);
+        brain->occipital_substrate_bridge = NULL;
+    }
+
+    /* Destroy occipital adapter */
+    if (brain->occipital) {
+        occipital_destroy(brain->occipital);
+        brain->occipital = NULL;
+    }
+
+    brain->occipital_enabled = false;
+    brain->last_occipital_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Occipital cortex subsystem destroyed");
+}

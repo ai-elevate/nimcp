@@ -34,6 +34,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "core/brain/regions/parietal/nimcp_parietal_quantum_bridge.h"
 #include "cognitive/parietal/nimcp_intuition_integrations.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
@@ -751,4 +752,46 @@ int brain_update_intuition_biological_state(brain_t brain) {
     intuition_system_set_fatigue(brain->intuition_system, fatigue);
 
     return 0;
+}
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy parietal cortex subsystem
+ *
+ * WHAT: Clean up all parietal resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_parietal_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    /* Destroy intuition system */
+    if (brain->intuition_system) {
+        intuition_system_destroy(brain->intuition_system);
+        brain->intuition_system = NULL;
+    }
+
+    /* Destroy quantum bridge first (depends on parietal) */
+    if (brain->parietal_cortex_quantum_bridge) {
+        parietal_region_quantum_bridge_destroy(brain->parietal_cortex_quantum_bridge);
+        brain->parietal_cortex_quantum_bridge = NULL;
+    }
+
+    /* Thalamic and substrate bridges are stubbed out (always NULL) - no destroy needed */
+    brain->parietal_cortex_thalamic_bridge = NULL;
+    brain->parietal_cortex_substrate_bridge = NULL;
+
+    /* Destroy parietal adapter */
+    if (brain->parietal) {
+        parietal_destroy(brain->parietal);
+        brain->parietal = NULL;
+    }
+
+    brain->parietal_enabled = false;
+    brain->last_parietal_update_us = 0;
 }

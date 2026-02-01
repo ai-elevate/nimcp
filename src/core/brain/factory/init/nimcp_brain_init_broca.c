@@ -431,3 +431,51 @@ bool nimcp_brain_factory_connect_broca_to_immune(brain_t brain) {
     LOG_DEBUG(LOG_MODULE, "Broca connected to immune system");
     return true;
 }
+
+//=============================================================================
+// Destruction
+//=============================================================================
+
+/**
+ * @brief Destroy Broca's area subsystem
+ *
+ * WHAT: Clean up all Broca resources and bridges
+ * WHY:  Prevent memory leaks during brain destruction
+ * HOW:  Destroy in reverse initialization order
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_broca_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    LOG_DEBUG(LOG_MODULE, "Destroying Broca's area subsystem");
+
+    /* Destroy quantum bridge first (depends on broca) */
+    if (brain->broca_quantum_bridge) {
+        broca_quantum_bridge_destroy(brain->broca_quantum_bridge);
+        brain->broca_quantum_bridge = NULL;
+    }
+
+    /* Destroy thalamic bridge */
+    if (brain->broca_thalamic_bridge) {
+        broca_thalamic_bridge_destroy(brain->broca_thalamic_bridge);
+        brain->broca_thalamic_bridge = NULL;
+    }
+
+    /* Destroy substrate bridge */
+    if (brain->broca_substrate_bridge) {
+        broca_substrate_bridge_destroy(brain->broca_substrate_bridge);
+        brain->broca_substrate_bridge = NULL;
+    }
+
+    /* Destroy Broca adapter */
+    if (brain->broca) {
+        broca_destroy(brain->broca);
+        brain->broca = NULL;
+    }
+
+    brain->broca_enabled = false;
+    brain->last_broca_update_us = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Broca's area subsystem destroyed");
+}

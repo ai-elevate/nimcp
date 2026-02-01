@@ -1436,7 +1436,7 @@ int nlp_set_mode(nlp_node_t node, nlp_mode_t mode) {
     if (mode == NLP_MODE_STEALTH) {
         // Start stealth thread if not running
         if (node->running && !node->threads_running) {
-            pthread_create(&node->stealth_thread, NULL, nlp_stealth_thread, node);
+            nimcp_thread_create(&node->stealth_thread, nlp_stealth_thread, node, NULL);
         }
         node->next_burst_time = nimcp_platform_time_monotonic_ms() +
                                 node->config.burst_interval_s * NIMCP_MS_PER_SEC;

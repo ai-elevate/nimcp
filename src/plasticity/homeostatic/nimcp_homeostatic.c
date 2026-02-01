@@ -758,6 +758,9 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
     controller->time_since_update = 0.0F;
     controller->stats.total_updates++;
 
+    /* Phase 8: Heartbeat at start of update cycle */
+    homeostatic_heartbeat("homeostatic_update", 0.0f);
+
     /* Counters for statistics */
     uint32_t above = 0, below = 0, stable = 0;
     float sum_rate = 0.0F, sum_rate_sq = 0.0F;
@@ -828,6 +831,12 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
         if (controller->config.enable_metaplasticity && controller->meta_states) {
             metaplasticity_state_t* mp = &controller->meta_states[n];
             metaplasticity_update_theta(mp, rate, dt, &controller->config.meta_params);
+        }
+
+        /* Phase 8: Periodic heartbeat for large neuron counts */
+        if ((n & 0x3F) == 0 && controller->num_neurons > 64) {
+            homeostatic_heartbeat("homeostatic_update",
+                                  (float)(n + 1) / (float)controller->num_neurons);
         }
     }
 

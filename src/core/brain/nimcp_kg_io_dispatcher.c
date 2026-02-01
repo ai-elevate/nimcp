@@ -826,12 +826,12 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
     /* Start writer threads */
     for (uint32_t i = 0; i < dispatcher->writer_count; i++) {
         dispatcher->writer_workers[i].should_stop = false;
-        if (pthread_create(&dispatcher->writer_workers[i].thread, NULL,
-                           writer_thread_func, &dispatcher->writer_workers[i]) != 0) {
+        if (nimcp_thread_create(&dispatcher->writer_workers[i].thread,
+                           writer_thread_func, &dispatcher->writer_workers[i], NULL) != 0) {
             /* Failed to start thread */
             for (uint32_t j = 0; j < i; j++) {
                 dispatcher->writer_workers[j].should_stop = true;
-                pthread_join(dispatcher->writer_workers[j].thread, NULL);
+                nimcp_thread_join(dispatcher->writer_workers[j].thread, NULL);
             }
             return -1;
         }
@@ -840,8 +840,8 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
     /* Start reader threads */
     for (uint32_t i = 0; i < dispatcher->reader_count; i++) {
         dispatcher->reader_workers[i].should_stop = false;
-        if (pthread_create(&dispatcher->reader_workers[i].thread, NULL,
-                           reader_thread_func, &dispatcher->reader_workers[i]) != 0) {
+        if (nimcp_thread_create(&dispatcher->reader_workers[i].thread,
+                           reader_thread_func, &dispatcher->reader_workers[i], NULL) != 0) {
             /* Failed - stop all threads */
             for (uint32_t j = 0; j < dispatcher->writer_count; j++) {
                 dispatcher->writer_workers[j].should_stop = true;
@@ -855,10 +855,10 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
             nimcp_mutex_unlock(dispatcher->control_mutex);
             /* Join */
             for (uint32_t j = 0; j < dispatcher->writer_count; j++) {
-                pthread_join(dispatcher->writer_workers[j].thread, NULL);
+                nimcp_thread_join(dispatcher->writer_workers[j].thread, NULL);
             }
             for (uint32_t j = 0; j < i; j++) {
-                pthread_join(dispatcher->reader_workers[j].thread, NULL);
+                nimcp_thread_join(dispatcher->reader_workers[j].thread, NULL);
             }
             return -1;
         }
@@ -888,10 +888,10 @@ int kg_io_dispatcher_stop(kg_io_dispatcher_t* dispatcher) {
 
     /* Join all threads */
     for (uint32_t i = 0; i < dispatcher->writer_count; i++) {
-        pthread_join(dispatcher->writer_workers[i].thread, NULL);
+        nimcp_thread_join(dispatcher->writer_workers[i].thread, NULL);
     }
     for (uint32_t i = 0; i < dispatcher->reader_count; i++) {
-        pthread_join(dispatcher->reader_workers[i].thread, NULL);
+        nimcp_thread_join(dispatcher->reader_workers[i].thread, NULL);
     }
 
     dispatcher->running = false;

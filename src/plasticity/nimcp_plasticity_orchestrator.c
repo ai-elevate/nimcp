@@ -878,6 +878,9 @@ int plasticity_orchestrator_update(
     orchestrator->current_time_ms += delta_ms;
     float dt = (float)delta_ms;
 
+    /* Phase 8: Heartbeat at start of orchestrator update */
+    plasticity_orchestrator_heartbeat("orchestrator_update", 0.0f);
+
     /* Pre-update callbacks */
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (orchestrator->pre_update_callbacks[i].active) {
@@ -905,6 +908,9 @@ int plasticity_orchestrator_update(
                          orchestrator->immune_modulation_factor;
 
     /* ============ ORCHESTRATION ORDER ============ */
+
+    /* Phase 8: Heartbeat before main orchestration loop */
+    plasticity_orchestrator_heartbeat("orchestrator_update", 0.1f);
 
     /* 1. Metabolic check - ensure sufficient ATP */
     if (orchestrator->config.enabled.enable_metabolic && orchestrator->metabolic) {
@@ -988,6 +994,9 @@ int plasticity_orchestrator_update(
                 neuron->bcm_threshold = bcm_params.max_threshold;
         }
     }
+
+    /* Phase 8: Heartbeat at midpoint of orchestration */
+    plasticity_orchestrator_heartbeat("orchestrator_update", 0.5f);
 
     /* 6. Homeostatic - maintain target firing rates (periodic) */
     if (orchestrator->config.enabled.enable_homeostatic) {
@@ -1089,6 +1098,9 @@ int plasticity_orchestrator_update(
 
     /* Update weight statistics */
     update_weight_statistics(orchestrator);
+
+    /* Phase 8: Heartbeat before post-update callbacks */
+    plasticity_orchestrator_heartbeat("orchestrator_update", 0.9f);
 
     /* Post-update callbacks */
     for (int i = 0; i < MAX_CALLBACKS; i++) {

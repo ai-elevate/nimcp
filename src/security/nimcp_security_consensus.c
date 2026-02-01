@@ -15,6 +15,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -572,7 +573,7 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
     gettimeofday(&c->last_heartbeat_sent, NULL);
     gettimeofday(&c->last_heartbeat_received, NULL);
 
-    if (pthread_create(&c->timer_thread, NULL, timer_thread_func, c) != 0) {
+    if (nimcp_thread_create(&c->timer_thread, timer_thread_func, c, NULL) != 0) {
         LOG_ERROR("Failed to create timer thread");
         if (c->bio_ctx) bio_router_unregister_module(c->bio_ctx);
         pthread_mutex_destroy(&c->mutex);
@@ -594,7 +595,7 @@ void nimcp_consensus_destroy(nimcp_security_consensus_t c) {
 
     /* Stop timer thread */
     c->running = false;
-    pthread_join(c->timer_thread, NULL);
+    nimcp_thread_join(c->timer_thread, NULL);
 
     pthread_mutex_lock(&c->mutex);
 

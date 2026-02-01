@@ -470,3 +470,87 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
 
     return true;
 }
+
+//=============================================================================
+// Destruction Functions
+//=============================================================================
+
+/**
+ * @brief Destroy consolidation subsystem
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_consolidation_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->consolidation) {
+        brain_stop_background_consolidation(brain);
+        brain->consolidation = NULL;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Consolidation subsystem destroyed");
+}
+
+/**
+ * @brief Destroy curiosity subsystem
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_curiosity_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->curiosity) {
+        curiosity_engine_destroy(brain->curiosity);
+        brain->curiosity = NULL;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Curiosity subsystem destroyed");
+}
+
+/**
+ * @brief Destroy salience subsystem
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_salience_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->salience) {
+        salience_evaluator_destroy(brain->salience);
+        brain->salience = NULL;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Salience subsystem destroyed");
+}
+
+/**
+ * @brief Destroy autobiographical memory subsystem
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_autobiographical_memory_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->autobio) {
+        autobio_destroy(brain->autobio);
+        brain->autobio = NULL;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Autobiographical memory subsystem destroyed");
+}
+
+/**
+ * @brief Destroy global workspace subsystem
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_global_workspace_subsystem(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->global_workspace) {
+        global_workspace_destroy(brain->global_workspace);
+        brain->global_workspace = NULL;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Global workspace subsystem destroyed");
+}

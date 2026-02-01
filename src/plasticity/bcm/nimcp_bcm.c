@@ -634,6 +634,9 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
      */
     memset(stats, 0, sizeof(bcm_stats_t));
 
+    /* Phase 8: Heartbeat at start of stats computation */
+    bcm_heartbeat("bcm_compute_stats", 0.0f);
+
     /* WHAT: Accumulate sums for mean computation
      * WHY:  Single pass for efficiency
      * P2 fix: Use double for accumulators to prevent precision loss
@@ -659,6 +662,11 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
             stats->ltp_events++;
         } else if (syn->eligibility < 0.0F) {
             stats->ltd_events++;
+        }
+
+        /* Phase 8: Periodic heartbeat for large synapse counts */
+        if ((i & 0xFF) == 0 && num_synapses > 256) {
+            bcm_heartbeat("bcm_compute_stats", (float)(i + 1) / (float)num_synapses);
         }
     }
 

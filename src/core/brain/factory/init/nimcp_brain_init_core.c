@@ -53,6 +53,14 @@ extern nimcp_error_t mesh_brain_integration_register_plasticity_coordinator(
     mesh_brain_integration_t* integration, void* plasticity, void* health_agent);
 extern nimcp_error_t mesh_brain_integration_register_bio_async_orchestrator(
     mesh_brain_integration_t* integration, void* bio_orch, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_hippocampus(
+    mesh_brain_integration_t* integration, void* hippocampus, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_amygdala(
+    mesh_brain_integration_t* integration, void* amygdala, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_thalamus(
+    mesh_brain_integration_t* integration, void* thalamus, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_basal_ganglia(
+    mesh_brain_integration_t* integration, void* basal_ganglia, void* health_agent);
 
 /* Mesh brain integration stats structure */
 typedef struct mesh_brain_integration_stats {
@@ -399,6 +407,43 @@ bool nimcp_brain_factory_register_with_mesh(brain_t brain)
     if (brain->bio_async_orchestrator) {
         if (mesh_brain_integration_register_bio_async_orchestrator(
                 integration, brain->bio_async_orchestrator, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.7f);
+
+    /* Subcortical and memory modules */
+    if (brain->hippocampus) {
+        if (mesh_brain_integration_register_hippocampus(
+                integration, brain->hippocampus, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* Note: Thalamus is accessed via bridges, not as a standalone subsystem */
+
+    if (brain->basal_ganglia) {
+        if (mesh_brain_integration_register_basal_ganglia(
+                integration, brain->basal_ganglia, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* Amygdala is accessed through emotional system */
+    if (brain->emotional_system) {
+        /* Get amygdala from emotional system if available */
+        void* amygdala = NULL;
+        /* Note: Amygdala registration uses emotional_system as the amygdala proxy
+         * since amygdala is tightly coupled with emotional processing */
+        if (mesh_brain_integration_register_amygdala(
+                integration, brain->emotional_system, NULL) == NIMCP_SUCCESS) {
             registered++;
         } else {
             failed++;
