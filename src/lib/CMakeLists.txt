@@ -291,6 +291,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus.c                   # Hippocampus core implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_adapter.c           # Hippocampus core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c    # Hippocampus quantum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/bridges/nimcp_hippocampus_kg_wiring.c  # Hippocampus KG wiring
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hippocampus.c               # Hippocampus init
 
     # Entorhinal Cortex - Grid cells, path integration, memory gateway (Phase E1)
@@ -417,6 +418,7 @@ set(NIMCP_CORE_SOURCES
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/bridges/nimcp_pfc_kg_wiring.c          # Prefrontal KG wiring
 
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
 
@@ -433,6 +435,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_stress_bridge.c  # Amygdala-stress/wellbeing integration (stress-anxiety feedback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_autobio_bridge.c  # Amygdala-autobiographical memory integration (emotional tagging, recall reactivation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_fep_bridge.c  # Amygdala-FEP integration (threat as prediction error)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/amygdala/bridges/nimcp_amygdala_kg_wiring.c       # Amygdala KG wiring
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c  # Basal ganglia-FEP integration (action selection as free energy minimization)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c  # Basal ganglia-thalamus motor relay
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c  # Basal ganglia-amygdala emotional modulation
