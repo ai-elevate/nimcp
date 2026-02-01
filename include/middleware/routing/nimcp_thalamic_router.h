@@ -434,6 +434,22 @@ bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
  */
 bool thalamic_router_is_imagination_routing_enabled(const thalamic_router_t* router);
 
+/*=============================================================================
+ * Health Agent Integration
+ *===========================================================================*/
+
+/**
+ * @brief Set health agent for thalamic router heartbeats
+ *
+ * WHAT: Associate health agent with thalamic router for health monitoring
+ * WHY:  Enables heartbeat reporting during signal routing
+ * HOW:  Store agent reference, send heartbeats during dispatch
+ *
+ * @param agent Health agent instance (can be NULL to disable)
+ */
+struct nimcp_health_agent;
+void thalamic_router_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

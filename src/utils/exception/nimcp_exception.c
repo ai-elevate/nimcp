@@ -928,6 +928,139 @@ void nimcp_exception_print(const nimcp_exception_t* ex) {
 }
 
 /* ============================================================================
+ * Signal Handling Functions
+ * ============================================================================ */
+
+nimcp_error_t nimcp_signal_to_error_code(int signal_number) {
+    switch (signal_number) {
+#ifdef SIGSEGV
+        case SIGSEGV: return NIMCP_ERROR_SIGSEGV;
+#endif
+#ifdef SIGABRT
+        case SIGABRT: return NIMCP_ERROR_SIGABRT;
+#endif
+#ifdef SIGFPE
+        case SIGFPE:  return NIMCP_ERROR_SIGFPE;
+#endif
+#ifdef SIGBUS
+        case SIGBUS:  return NIMCP_ERROR_SIGBUS;
+#endif
+#ifdef SIGILL
+        case SIGILL:  return NIMCP_ERROR_SIGILL;
+#endif
+        default:      return NIMCP_ERROR_SIGNAL_RECEIVED;
+    }
+}
+
+const char* nimcp_signal_name(int signal_number) {
+    switch (signal_number) {
+#ifdef SIGSEGV
+        case SIGSEGV: return "SIGSEGV";
+#endif
+#ifdef SIGABRT
+        case SIGABRT: return "SIGABRT";
+#endif
+#ifdef SIGFPE
+        case SIGFPE:  return "SIGFPE";
+#endif
+#ifdef SIGBUS
+        case SIGBUS:  return "SIGBUS";
+#endif
+#ifdef SIGILL
+        case SIGILL:  return "SIGILL";
+#endif
+#ifdef SIGTERM
+        case SIGTERM: return "SIGTERM";
+#endif
+#ifdef SIGINT
+        case SIGINT:  return "SIGINT";
+#endif
+#ifdef SIGHUP
+        case SIGHUP:  return "SIGHUP";
+#endif
+        default:      return "UNKNOWN";
+    }
+}
+
+/* ============================================================================
+ * Aggregate Exception Functions
+ * ============================================================================ */
+
+nimcp_aggregate_exception_t* nimcp_aggregate_exception_create(
+    nimcp_error_t code,
+    nimcp_exception_severity_t severity,
+    const char* file,
+    int line,
+    const char* func,
+    const char* format,
+    ...
+) {
+    nimcp_aggregate_exception_t* agg = nimcp_calloc(1, sizeof(nimcp_aggregate_exception_t));
+    if (!agg) return NULL;
+
+    agg->base.type = EXCEPTION_TYPE_AGGREGATE;
+    agg->base.category = nimcp_exception_get_category_from_code(code);
+    agg->base.code = code;
+    agg->base.severity = severity;
+    agg->base.file = file;
+    agg->base.line = line;
+    agg->base.function = func;
+    agg->base.timestamp_us = get_timestamp_us();
+    agg->base.ref_count = 1;
+    agg->child_count = 0;
+
+    /* Initialize children array */
+    for (size_t i = 0; i < NIMCP_EXCEPTION_MAX_CHILDREN; i++) {
+        agg->children[i] = NULL;
+    }
+
+    /* Format message */
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(agg->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
+        va_end(args);
+    }
+
+    /* Capture stack trace (skip 2 frames: this function + caller) */
+    nimcp_exception_capture_stack_trace(&agg->base.stack_trace, 2);
+
+    /* Generate immune epitope */
+    nimcp_exception_generate_epitope(&agg->base);
+
+    /* Determine suggested recovery */
+    agg->base.suggested_action = nimcp_exception_get_suggested_recovery(&agg->base);
+
+    return agg;
+}
+
+int nimcp_aggregate_exception_add(nimcp_aggregate_exception_t* agg, nimcp_exception_t* child) {
+    if (!agg || !child) return -1;
+    if (agg->child_count >= NIMCP_EXCEPTION_MAX_CHILDREN) return -1;
+
+    /* Take ownership of the child reference */
+    nimcp_exception_ref(child);
+    agg->children[agg->child_count++] = child;
+
+    /* Update severity if child is more severe */
+    if (child->severity > agg->base.severity) {
+        agg->base.severity = child->severity;
+    }
+
+    return 0;
+}
+
+size_t nimcp_aggregate_exception_count(const nimcp_aggregate_exception_t* agg) {
+    if (!agg) return 0;
+    return agg->child_count;
+}
+
+nimcp_exception_t* nimcp_aggregate_exception_get(const nimcp_aggregate_exception_t* agg, size_t index) {
+    if (!agg || index >= agg->child_count) return NULL;
+    return agg->children[index];
+}
+
+/* ============================================================================
  * Thread-Local Exception Context
  * ============================================================================ */
 

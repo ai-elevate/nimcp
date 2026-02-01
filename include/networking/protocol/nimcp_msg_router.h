@@ -344,6 +344,22 @@ void nimcp_msg_router_reset_stats(nimcp_msg_router_t* router);
  */
 void nimcp_msg_router_dump(const nimcp_msg_router_t* router);
 
+/*=============================================================================
+ * Health Agent Integration
+ *===========================================================================*/
+
+/**
+ * @brief Set health agent for message router heartbeats
+ *
+ * WHAT: Associate health agent with message router for health monitoring
+ * WHY:  Enables heartbeat reporting during message processing
+ * HOW:  Store agent reference, send heartbeats during dispatch
+ *
+ * @param agent Health agent instance (can be NULL to disable)
+ */
+struct nimcp_health_agent;
+void nimcp_msg_router_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

@@ -59,8 +59,8 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for bio router operations */
 static nimcp_health_agent_t* g_bio_router_health_agent = NULL;
 
-static void bio_router_set_health_agent(nimcp_health_agent_t* agent) {
-    g_bio_router_health_agent = agent;
+void bio_router_set_health_agent(struct nimcp_health_agent* agent) {
+    g_bio_router_health_agent = (nimcp_health_agent_t*)agent;
 }
 
 static inline void bio_router_heartbeat(const char* operation, float progress) {

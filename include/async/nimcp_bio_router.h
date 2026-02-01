@@ -637,6 +637,18 @@ nimcp_error_t bio_router_register_wiring_callback(
     void* user_data
 );
 
+/**
+ * @brief Set health agent for bio router heartbeats
+ *
+ * WHAT: Associate health agent with bio router for health monitoring
+ * WHY:  Enables heartbeat reporting during message processing
+ * HOW:  Store agent reference, send heartbeats during dispatch
+ *
+ * @param agent Health agent instance (can be NULL to disable)
+ */
+struct nimcp_health_agent;
+void bio_router_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif
