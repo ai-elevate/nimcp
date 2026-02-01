@@ -230,10 +230,11 @@ nimcp_error_t graduated_autonomy_get_trust(
 
     autonomy_domain_t* d = find_domain(mutable_system, domain);
     if (d == NULL) {
+        /* Return default prior Beta(1,1) values for unknown domains */
         if (trust_mean) *trust_mean = 0.5f;
         if (trust_variance) *trust_variance = 0.25f;
         nimcp_mutex_unlock(mutable_system->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_OK;  /* Unknown domain uses default prior */
     }
 
     float a = d->trust_alpha;

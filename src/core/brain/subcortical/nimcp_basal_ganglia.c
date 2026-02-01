@@ -52,6 +52,11 @@ static bbb_system_t g_basal_ganglia_bbb = NULL;
 /** Global KG context for state persistence */
 static void* g_basal_ganglia_kg_ctx = NULL;
 
+/* Forward declarations */
+static int basal_ganglia_strengthen_habit_unlocked(basal_ganglia_t* bg,
+                                                    uint32_t habit_id,
+                                                    bool success);
+
 /**
  * @brief Set health agent for basal_ganglia heartbeats (EXPORTED)
  * @param agent Health agent (can be NULL to disable)
@@ -83,6 +88,11 @@ static inline void basal_ganglia_heartbeat(const char* operation, float progress
     }
 }
 
+/* Forward declarations for internal functions */
+static int basal_ganglia_strengthen_habit_unlocked(basal_ganglia_t* bg,
+                                                    uint32_t habit_id,
+                                                    bool success);
+
 /**
  * @brief Validate cortical input through BBB
  * @param input Input array to validate
@@ -98,7 +108,7 @@ static bool basal_ganglia_validate_input(const float* input, uint32_t num_action
                                      num_actions * sizeof(float), &result);
     if (!valid) {
         NIMCP_LOGGING_WARN("BBB rejected cortical input: %s", result.reason);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_VIOLATION, result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result.reason);
     }
     return valid;
 }
@@ -1264,19 +1274,36 @@ int basal_ganglia_process_input(basal_ganglia_t* bg, const float* cortical_input
 //=============================================================================
 
 /**
- * @brief Process incoming bio-async message
- * @param bg Basal ganglia system
- * @param msg Bio message to process
- * @return 0 on success, -1 on error
+ * @brief Bio-async message handler callback
+ * @param msg Message header + payload
+ * @param msg_size Total message size
+ * @param response_promise Promise for response (may be NULL)
+ * @param user_data Basal ganglia pointer
+ * @return NIMCP_SUCCESS or error
  */
-static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_message_t* msg) {
-    if (!bg || !msg) return -1;
+static nimcp_error_t basal_ganglia_bio_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)response_promise;  /* Not used for these messages */
 
-    switch (msg->type) {
-        case BIO_MSG_REWARD:
+    basal_ganglia_t* bg = (basal_ganglia_t*)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+    const void* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+
+    if (!bg || !header || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    switch (header->type) {
+        case BIO_MSG_HYPO_REWARD_SIGNAL:
+        case BIO_MSG_VTA_DOPAMINE_BURST:
+        case BIO_MSG_VTA_DOPAMINE_DIP:
             /* Process reward signal */
-            if (msg->payload_size >= sizeof(float) * 2) {
-                const float* data = (const float*)msg->payload;
+            if (header->payload_size >= sizeof(float) * 2) {
+                const float* data = (const float*)payload;
                 float reward = data[0];
                 float expected = data[1];
                 basal_ganglia_update_dopamine(bg, reward, expected);
@@ -1285,10 +1312,11 @@ static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_mess
             }
             break;
 
-        case BIO_MSG_EMOTIONAL_SIGNAL:
+        case BIO_MSG_HYPO_EMOTION_UPDATE:
+        case BIO_MSG_EMOTION_TENSOR_UPDATE:
             /* Modulate action values based on emotional valence */
-            if (msg->payload_size >= sizeof(float) * 2) {
-                const float* data = (const float*)msg->payload;
+            if (header->payload_size >= sizeof(float) * 2) {
+                const float* data = (const float*)payload;
                 float valence = data[0];
                 float arousal = data[1];
                 /* Positive valence boosts dopamine, negative suppresses */
@@ -1299,10 +1327,11 @@ static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_mess
             }
             break;
 
-        case BIO_MSG_GOAL_CHANGE:
+        case BIO_MSG_EXEC_GOAL_ACTIVATED:
+        case BIO_MSG_EXEC_GOAL_COMPLETED:
             /* Update operating mode based on goal */
-            if (msg->payload_size >= sizeof(uint32_t)) {
-                uint32_t goal_active = *(const uint32_t*)msg->payload;
+            if (header->payload_size >= sizeof(uint32_t)) {
+                uint32_t goal_active = *(const uint32_t*)payload;
                 nimcp_mutex_lock(bg->mutex);
                 bg->mode = goal_active ? BG_MODE_GOAL_DIRECTED : BG_MODE_HABITUAL;
                 nimcp_mutex_unlock(bg->mutex);
@@ -1310,21 +1339,22 @@ static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_mess
             }
             break;
 
-        case BIO_MSG_SUPPRESSION:
+        case BIO_MSG_MOTOR_STOP_REQUEST:
+        case BIO_MSG_DIRECTIVE_ACTION_BLOCKED:
             /* Emergency stop signal */
-            if (msg->payload_size >= sizeof(float)) {
-                float strength = *(const float*)msg->payload;
+            if (header->payload_size >= sizeof(float)) {
+                float strength = *(const float*)payload;
                 basal_ganglia_suppress_action(bg, strength);
                 NIMCP_LOGGING_DEBUG("BIO: Suppression signal (s=%.2f)", strength);
             }
             break;
 
         default:
-            NIMCP_LOGGING_DEBUG("BIO: Unhandled message type %u", msg->type);
+            NIMCP_LOGGING_DEBUG("BIO: Unhandled message type %u", header->type);
             break;
     }
 
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 /**
@@ -1333,18 +1363,10 @@ static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_mess
  * @return Number of messages processed
  */
 int basal_ganglia_process_bio_messages(basal_ganglia_t* bg) {
-    if (!bg || !bg->bio_async_enabled) return 0;
+    if (!bg || !bg->bio_async_enabled || !bg->bio_ctx) return 0;
 
-    int count = 0;
-    bio_message_t msg;
-
-    while (bio_router_receive(bg->bio_ctx, &msg, 0) == 0) {
-        basal_ganglia_process_bio_message(bg, &msg);
-        bio_message_free(&msg);
-        count++;
-    }
-
-    return count;
+    /* Process inbox - handlers registered in connect will be called */
+    return (int)bio_router_process_inbox(bg->bio_ctx, 0);  /* 0 = process all */
 }
 
 int basal_ganglia_connect_bio_async(basal_ganglia_t* bg) {
@@ -1367,6 +1389,23 @@ int basal_ganglia_connect_bio_async(basal_ganglia_t* bg) {
 
     bg->bio_ctx = bio_router_register_module(&info);
     if (bg->bio_ctx) {
+        /* Register handlers for reward signals */
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_HYPO_REWARD_SIGNAL, basal_ganglia_bio_handler);
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_VTA_DOPAMINE_BURST, basal_ganglia_bio_handler);
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_VTA_DOPAMINE_DIP, basal_ganglia_bio_handler);
+
+        /* Register handlers for emotional signals */
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_HYPO_EMOTION_UPDATE, basal_ganglia_bio_handler);
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_EMOTION_TENSOR_UPDATE, basal_ganglia_bio_handler);
+
+        /* Register handlers for goal changes */
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_EXEC_GOAL_ACTIVATED, basal_ganglia_bio_handler);
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_EXEC_GOAL_COMPLETED, basal_ganglia_bio_handler);
+
+        /* Register handlers for action suppression */
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_MOTOR_STOP_REQUEST, basal_ganglia_bio_handler);
+        bio_router_register_handler(bg->bio_ctx, BIO_MSG_DIRECTIVE_ACTION_BLOCKED, basal_ganglia_bio_handler);
+
         bg->bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Basal ganglia connected to bio-async router");
     }

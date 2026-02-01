@@ -472,6 +472,10 @@ nimcp_error_t alignment_monitor_observe_action(
                 monitor->current_values[i] += value_signal * 0.01f;
             }
 
+            /* Clamp values to [0, 1] range */
+            if (monitor->current_values[i] < 0.0f) monitor->current_values[i] = 0.0f;
+            if (monitor->current_values[i] > 1.0f) monitor->current_values[i] = 1.0f;
+
             /* Update running stats */
             update_value_stats(&monitor->value_stats[i], monitor->current_values[i]);
         }
@@ -534,6 +538,9 @@ nimcp_error_t alignment_monitor_observe_values(
     for (uint32_t i = 0; i < monitor->config.active_dimensions; i++) {
         monitor->current_values[i] = (1.0f - confidence) * monitor->current_values[i] +
                                      confidence * values[i];
+        /* Clamp values to [0, 1] range */
+        if (monitor->current_values[i] < 0.0f) monitor->current_values[i] = 0.0f;
+        if (monitor->current_values[i] > 1.0f) monitor->current_values[i] = 1.0f;
         update_value_stats(&monitor->value_stats[i], monitor->current_values[i]);
     }
 
