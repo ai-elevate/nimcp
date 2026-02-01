@@ -156,7 +156,10 @@ extern "C" {
 // Forward Declarations
 //=============================================================================
 
+#ifndef NIMCP_PROTECTIVE_CUTOFF_T_DEFINED
+#define NIMCP_PROTECTIVE_CUTOFF_T_DEFINED
 typedef struct protective_cutoff_s protective_cutoff_t;
+#endif
 
 //=============================================================================
 // Enumerations
@@ -169,6 +172,8 @@ typedef struct protective_cutoff_s protective_cutoff_t;
  *
  * BIOLOGICAL BASIS: Models graded protective responses in medulla oblongata
  */
+#ifndef NIMCP_PROTECTION_LEVEL_DEFINED
+#define NIMCP_PROTECTION_LEVEL_DEFINED
 typedef enum {
     PROTECTION_NORMAL = 0,           /**< Normal operation, all capabilities */
     PROTECTION_WARN = 1,             /**< Warning state, enhanced monitoring */
@@ -177,23 +182,27 @@ typedef enum {
     PROTECTION_SAFE_MODE = 4,        /**< Safe mode, minimal vital ops */
     PROTECTION_EMERGENCY_SHUTDOWN = 5 /**< Emergency shutdown, all ops halted */
 } protection_level_t;
+#endif
 
 /**
  * WHAT: Types of threats that can trigger protection escalation
  * WHY:  Multi-dimensional threat assessment for comprehensive protection
  * HOW:  Each threat type contributes to overall protection level decision
  */
+#ifndef NIMCP_THREAT_TYPE_DEFINED
+#define NIMCP_THREAT_TYPE_DEFINED
 typedef enum {
-    THREAT_TEMPERATURE = 0,          /**< Thermal overload (CPU/GPU temperature) */
-    THREAT_MEMORY_PRESSURE,          /**< Memory exhaustion or pressure */
-    THREAT_CPU_OVERLOAD,             /**< CPU utilization approaching limits */
-    THREAT_ERROR_RATE,               /**< Error rate spike (failures, exceptions) */
-    THREAT_NETWORK_LATENCY,          /**< Network latency or timeout spike */
-    THREAT_IMMUNE_STORM,             /**< Cytokine storm from immune system */
-    THREAT_RESOURCE_LEAK,            /**< Resource leak detected */
-    THREAT_EXTERNAL_SIGNAL,          /**< External shutdown signal (SIGTERM, etc) */
-    THREAT_COUNT                     /**< Number of threat types */
-} threat_type_t;
+    PROTECTIVE_THREAT_TEMPERATURE = 0,  /**< Thermal overload (CPU/GPU temperature) */
+    PROTECTIVE_THREAT_MEMORY_PRESSURE,  /**< Memory exhaustion or pressure */
+    PROTECTIVE_THREAT_CPU_OVERLOAD,     /**< CPU utilization approaching limits */
+    PROTECTIVE_THREAT_ERROR_RATE,       /**< Error rate spike (failures, exceptions) */
+    PROTECTIVE_THREAT_NETWORK_LATENCY,  /**< Network latency or timeout spike */
+    PROTECTIVE_THREAT_IMMUNE_STORM,     /**< Cytokine storm from immune system */
+    PROTECTIVE_THREAT_RESOURCE_LEAK,    /**< Resource leak detected */
+    PROTECTIVE_THREAT_EXTERNAL_SIGNAL,  /**< External shutdown signal (SIGTERM, etc) */
+    PROTECTIVE_THREAT_COUNT             /**< Number of threat types */
+} protective_threat_type_t;
+#endif
 
 /**
  * WHAT: Operation categories that can be restricted
@@ -329,7 +338,7 @@ void protective_cutoff_destroy(protective_cutoff_t* cutoff);
  */
 int protective_cutoff_report_threat(
     protective_cutoff_t* cutoff,
-    threat_type_t type,
+    protective_threat_type_t type,
     float severity
 );
 
@@ -372,7 +381,7 @@ bool protective_cutoff_can_execute(
  */
 float protective_cutoff_get_threat(
     const protective_cutoff_t* cutoff,
-    threat_type_t type
+    protective_threat_type_t type
 );
 
 //=============================================================================
@@ -493,7 +502,7 @@ const char* protective_cutoff_level_to_string(protection_level_t level);
  * @param type Threat type to convert
  * @return String representation
  */
-const char* protective_cutoff_threat_to_string(threat_type_t type);
+const char* protective_cutoff_threat_to_string(protective_threat_type_t type);
 
 /**
  * WHAT: Convert operation type to string

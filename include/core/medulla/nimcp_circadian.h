@@ -187,7 +187,13 @@ extern "C" {
  * WHAT: Eight 3-hour phases covering 24-hour cycle
  * WHY:  Different phases have distinct physiological characteristics
  * HOW:  Each phase maps to specific time window and modulation profile
+ *
+ * NOTE: If nimcp_medulla.h is included first, we use its definition.
+ *       The medulla.h enum uses compatible but differently named phases.
+ *       Internal circadian.c code maps between representations.
  */
+#ifndef NIMCP_CIRCADIAN_PHASE_DEFINED
+#define NIMCP_CIRCADIAN_PHASE_DEFINED
 typedef enum {
     CIRCADIAN_PHASE_NIGHT_DEEP = 0,    /**< 00:00-03:00: Deep sleep, minimal arousal */
     CIRCADIAN_PHASE_NIGHT_LATE,        /**< 03:00-06:00: Late night, REM sleep peak */
@@ -199,6 +205,7 @@ typedef enum {
     CIRCADIAN_PHASE_DUSK,              /**< 21:00-24:00: Sleep preparation */
     CIRCADIAN_PHASE_COUNT = CIRCADIAN_NUM_PHASES
 } circadian_phase_t;
+#endif /* NIMCP_CIRCADIAN_PHASE_DEFINED */
 
 /**
  * @brief Modulation type enumeration
@@ -252,6 +259,8 @@ typedef enum {
  * WHY:  Allow customization of cycle duration, time scale, entrainment
  * HOW:  Passed to circadian_create() to initialize system
  */
+#ifndef NIMCP_CIRCADIAN_CONFIG_T_DEFINED
+#define NIMCP_CIRCADIAN_CONFIG_T_DEFINED
 typedef struct {
     uint64_t cycle_duration_us;            /**< Cycle duration (default 24h) */
     float time_scale;                      /**< Simulation speed (1.0 = real-time) */
@@ -262,6 +271,7 @@ typedef struct {
     float entrainment_strength_social;     /**< Social entrainment gain (0.0-1.0) */
     bool enable_sleep_pressure;            /**< Enable homeostatic sleep drive */
 } circadian_config_t;
+#endif
 
 /* ============================================================================
  * Main Structures
@@ -274,7 +284,10 @@ typedef struct {
  * WHY:  Tracks time, phase, modulation factors, sleep pressure
  * HOW:  Updated via circadian_update(), queried via getter functions
  */
+#ifndef NIMCP_CIRCADIAN_RHYTHM_T_DEFINED
+#define NIMCP_CIRCADIAN_RHYTHM_T_DEFINED
 typedef struct circadian_rhythm circadian_rhythm_t;
+#endif
 
 /* ============================================================================
  * Lifecycle Functions

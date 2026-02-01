@@ -70,7 +70,10 @@ struct arousal_state_struct;
  *
  * BIOLOGICAL: Emergency shutdown mechanisms for system protection
  */
+#ifndef NIMCP_PROTECTIVE_CUTOFF_T_DEFINED
+#define NIMCP_PROTECTIVE_CUTOFF_T_DEFINED
 typedef struct protective_cutoff_struct* protective_cutoff_t;
+#endif
 
 /**
  * @brief Brainstem-cortex coupling (Phase 1.4)
@@ -84,7 +87,10 @@ typedef struct brainstem_coupling_struct* brainstem_coupling_t;
  *
  * BIOLOGICAL: Synchronization with suprachiasmatic nucleus (SCN) signals
  */
+#ifndef NIMCP_CIRCADIAN_RHYTHM_T_DEFINED
+#define NIMCP_CIRCADIAN_RHYTHM_T_DEFINED
 typedef struct circadian_rhythm_struct* circadian_rhythm_t;
+#endif
 
 //=============================================================================
 // External System Forward Declarations
@@ -127,6 +133,8 @@ typedef enum {
  *
  * BIOLOGICAL: Emergency response escalation levels
  */
+#ifndef NIMCP_PROTECTION_LEVEL_DEFINED
+#define NIMCP_PROTECTION_LEVEL_DEFINED
 typedef enum {
     PROTECTION_LEVEL_NORMAL = 0,    /**< Normal operation */
     PROTECTION_LEVEL_CAUTIOUS = 1,  /**< Minor issues detected */
@@ -135,12 +143,15 @@ typedef enum {
     PROTECTION_LEVEL_CRITICAL = 4,  /**< Critical state */
     PROTECTION_LEVEL_SHUTDOWN = 5   /**< Emergency shutdown */
 } protection_level_t;
+#endif
 
 /**
  * @brief Circadian phase categories
  *
  * BIOLOGICAL: Maps to circadian cycle (24-hour rhythm)
  */
+#ifndef NIMCP_CIRCADIAN_PHASE_DEFINED
+#define NIMCP_CIRCADIAN_PHASE_DEFINED
 typedef enum {
     CIRCADIAN_PHASE_EARLY_MORNING = 0,  /**< 06:00-09:00 - Rising arousal */
     CIRCADIAN_PHASE_MORNING = 1,        /**< 09:00-12:00 - Peak alertness */
@@ -151,6 +162,7 @@ typedef enum {
     CIRCADIAN_PHASE_DEEP_NIGHT = 6,     /**< 00:00-03:00 - Minimal arousal */
     CIRCADIAN_PHASE_PRE_DAWN = 7        /**< 03:00-06:00 - Sleep end */
 } circadian_phase_t;
+#endif
 
 /**
  * @brief Medulla operational state
@@ -201,12 +213,15 @@ typedef struct {
 /**
  * @brief Circadian rhythm configuration (Phase 1.5)
  */
+#ifndef NIMCP_CIRCADIAN_CONFIG_T_DEFINED
+#define NIMCP_CIRCADIAN_CONFIG_T_DEFINED
 typedef struct {
     float period_hours;            /**< Circadian period (default: 24.0) */
     float phase_offset_hours;      /**< Phase offset from midnight */
     float amplitude;               /**< Amplitude of rhythm [0-1] */
     bool enable_synchronization;   /**< Sync with external zeitgebers */
 } circadian_config_t;
+#endif
 
 /**
  * @brief Medulla orchestrator configuration

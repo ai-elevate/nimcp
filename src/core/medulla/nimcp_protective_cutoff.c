@@ -82,7 +82,7 @@ struct protective_cutoff_s {
 
     // Current state
     protection_level_t current_level;     /**< Current protection level */
-    float threat_severities[THREAT_COUNT]; /**< Severity for each threat type */
+    float threat_severities[PROTECTIVE_THREAT_COUNT]; /**< Severity for each threat type */
     float combined_threat;                /**< Weighted combination of threats */
     uint64_t last_update_time;            /**< Last update timestamp (ms) */
     bool manual_override;                 /**< Manual level override active */
@@ -295,28 +295,28 @@ static float compute_combined_threat(const protective_cutoff_t* cutoff) {
     float weighted_sum = 0.0f;
     float total_weight = 0.0f;
 
-    weighted_sum += s[THREAT_TEMPERATURE] * w->temperature_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_TEMPERATURE] * w->temperature_weight;
     total_weight += w->temperature_weight;
 
-    weighted_sum += s[THREAT_MEMORY_PRESSURE] * w->memory_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_MEMORY_PRESSURE] * w->memory_weight;
     total_weight += w->memory_weight;
 
-    weighted_sum += s[THREAT_CPU_OVERLOAD] * w->cpu_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_CPU_OVERLOAD] * w->cpu_weight;
     total_weight += w->cpu_weight;
 
-    weighted_sum += s[THREAT_ERROR_RATE] * w->error_rate_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_ERROR_RATE] * w->error_rate_weight;
     total_weight += w->error_rate_weight;
 
-    weighted_sum += s[THREAT_NETWORK_LATENCY] * w->network_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_NETWORK_LATENCY] * w->network_weight;
     total_weight += w->network_weight;
 
-    weighted_sum += s[THREAT_IMMUNE_STORM] * w->immune_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_IMMUNE_STORM] * w->immune_weight;
     total_weight += w->immune_weight;
 
-    weighted_sum += s[THREAT_RESOURCE_LEAK] * w->leak_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_RESOURCE_LEAK] * w->leak_weight;
     total_weight += w->leak_weight;
 
-    weighted_sum += s[THREAT_EXTERNAL_SIGNAL] * w->external_weight;
+    weighted_sum += s[PROTECTIVE_THREAT_EXTERNAL_SIGNAL] * w->external_weight;
     total_weight += w->external_weight;
 
     // Normalize
@@ -431,7 +431,7 @@ static void publish_level_change(
 
 int protective_cutoff_report_threat(
     protective_cutoff_t* cutoff,
-    threat_type_t type,
+    protective_threat_type_t type,
     float severity)
 {
     if (!cutoff) {
@@ -440,7 +440,7 @@ int protective_cutoff_report_threat(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (type >= THREAT_COUNT) {
+    if (type >= PROTECTIVE_THREAT_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protective_cutoff_report_threat: invalid threat type");
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", type);
         return NIMCP_ERROR_INVALID_PARAM;
@@ -499,14 +499,14 @@ bool protective_cutoff_can_execute(
 
 float protective_cutoff_get_threat(
     const protective_cutoff_t* cutoff,
-    threat_type_t type)
+    protective_threat_type_t type)
 {
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("NULL cutoff context");
         return -1.0f;
     }
 
-    if (type >= THREAT_COUNT) {
+    if (type >= PROTECTIVE_THREAT_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", type);
         return -1.0f;
     }
@@ -786,23 +786,23 @@ const char* protective_cutoff_level_to_string(protection_level_t level) {
     }
 }
 
-const char* protective_cutoff_threat_to_string(threat_type_t type) {
+const char* protective_cutoff_threat_to_string(protective_threat_type_t type) {
     switch (type) {
-        case THREAT_TEMPERATURE:
+        case PROTECTIVE_THREAT_TEMPERATURE:
             return "TEMPERATURE";
-        case THREAT_MEMORY_PRESSURE:
+        case PROTECTIVE_THREAT_MEMORY_PRESSURE:
             return "MEMORY_PRESSURE";
-        case THREAT_CPU_OVERLOAD:
+        case PROTECTIVE_THREAT_CPU_OVERLOAD:
             return "CPU_OVERLOAD";
-        case THREAT_ERROR_RATE:
+        case PROTECTIVE_THREAT_ERROR_RATE:
             return "ERROR_RATE";
-        case THREAT_NETWORK_LATENCY:
+        case PROTECTIVE_THREAT_NETWORK_LATENCY:
             return "NETWORK_LATENCY";
-        case THREAT_IMMUNE_STORM:
+        case PROTECTIVE_THREAT_IMMUNE_STORM:
             return "IMMUNE_STORM";
-        case THREAT_RESOURCE_LEAK:
+        case PROTECTIVE_THREAT_RESOURCE_LEAK:
             return "RESOURCE_LEAK";
-        case THREAT_EXTERNAL_SIGNAL:
+        case PROTECTIVE_THREAT_EXTERNAL_SIGNAL:
             return "EXTERNAL_SIGNAL";
         default:
             return "UNKNOWN";
