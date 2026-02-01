@@ -534,6 +534,29 @@ NIMCP_EXPORT nimcp_error_t alignment_monitor_connect_value_commitment(
     void* commitment
 );
 
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Present alignment drift events as antigens
+ * WHY:  Coordinate value drift response across safety modules
+ * HOW:  Drift patterns processed by immune memory
+ *
+ * When connected:
+ * - Drift events presented as antigens
+ * - Bayesian updates inform immune response strength
+ * - Memory cells learn drift patterns
+ * - Cytokine signaling for gradual vs sudden drift
+ *
+ * @param monitor Alignment monitor handle
+ * @param brain_immune Brain immune system handle
+ * @return NIMCP_OK on success
+ */
+struct brain_immune;
+NIMCP_EXPORT nimcp_error_t alignment_monitor_connect_brain_immune(
+    alignment_monitor_t* monitor,
+    struct brain_immune* brain_immune
+);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

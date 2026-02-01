@@ -201,6 +201,55 @@ NIMCP_EXPORT nimcp_error_t red_team_estimate_coverage_mc(
 );
 
 /* ============================================================================
+ * Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect to bio-async for red team message broadcasting
+ *
+ * @param system Red team system handle
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t red_team_connect_bio_async(
+    red_team_t* system
+);
+
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Present discovered vulnerabilities as antigens
+ * WHY:  Train immune memory with attack patterns
+ * HOW:  Successful attacks become known antigens for faster detection
+ *
+ * When connected:
+ * - New attack patterns presented as antigens
+ * - Memory cell formation for recurring vulnerabilities
+ * - Antibody generation for attack neutralization
+ * - Cytokine signaling to alert other modules
+ *
+ * @param system Red team system handle
+ * @param brain_immune Brain immune system handle
+ * @return NIMCP_OK on success
+ */
+struct brain_immune;
+NIMCP_EXPORT nimcp_error_t red_team_connect_brain_immune(
+    red_team_t* system,
+    struct brain_immune* brain_immune
+);
+
+/**
+ * @brief Present discovered vulnerability to immune system
+ *
+ * @param system Red team system handle
+ * @param attack Attack that succeeded (vulnerability)
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t red_team_present_vulnerability_to_immune(
+    red_team_t* system,
+    const red_team_test_t* attack
+);
+
+/* ============================================================================
  * Health Agent Integration
  * ============================================================================ */
 

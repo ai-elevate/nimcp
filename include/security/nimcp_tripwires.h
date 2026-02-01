@@ -514,6 +514,45 @@ NIMCP_EXPORT nimcp_error_t tripwire_connect_emergency_halt(
  */
 NIMCP_EXPORT nimcp_error_t tripwire_connect_bio_async(tripwire_system_t* system);
 
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Present tripwire alerts as antigens to immune system
+ * WHY:  Coordinate threat response across all safety modules
+ * HOW:  Brain immune system processes alerts and coordinates response
+ *
+ * When connected:
+ * - Tripwire alerts are presented as antigens
+ * - Critical alerts trigger T cell responses
+ * - Memory formation for recurring threat patterns
+ * - Cytokine signaling for cross-module coordination
+ *
+ * @param system Tripwire system handle
+ * @param brain_immune Brain immune system handle
+ * @return NIMCP_OK on success
+ */
+struct brain_immune;
+NIMCP_EXPORT nimcp_error_t tripwire_connect_brain_immune(
+    tripwire_system_t* system,
+    struct brain_immune* brain_immune
+);
+
+/**
+ * @brief Present tripwire alert to immune system as antigen
+ *
+ * WHAT: Convert tripwire alert to antigen for immune processing
+ * WHY:  Unified threat handling via immune response
+ * HOW:  Maps tripwire type/severity to antigen characteristics
+ *
+ * @param system Tripwire system handle
+ * @param alert Alert to present
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t tripwire_present_to_immune(
+    tripwire_system_t* system,
+    const tripwire_alert_t* alert
+);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

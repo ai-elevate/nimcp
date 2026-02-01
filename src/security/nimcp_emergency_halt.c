@@ -79,6 +79,9 @@ struct emergency_halt {
     bio_module_context_t bio_ctx;
     bool bio_async_connected;
 
+    /* Brain immune integration */
+    void* brain_immune;               /**< Brain immune system for systemic response */
+
     /* Thread safety */
     nimcp_mutex_t* mutex;
 
@@ -557,6 +560,26 @@ nimcp_error_t emergency_halt_connect_bio_async(emergency_halt_t* halt) {
 
     NIMCP_LOGGING_INFO("%s Connected to bio-async", HALT_LOG_PREFIX);
 
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Brain Immune Integration
+ * ============================================================================ */
+
+nimcp_error_t emergency_halt_connect_brain_immune(
+    emergency_halt_t* halt,
+    struct brain_immune* brain_immune)
+{
+    if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(halt->mutex);
+    halt->brain_immune = brain_immune;
+    nimcp_mutex_unlock(halt->mutex);
+
+    NIMCP_LOGGING_INFO("%s Connected to brain immune system", HALT_LOG_PREFIX);
     return NIMCP_SUCCESS;
 }
 

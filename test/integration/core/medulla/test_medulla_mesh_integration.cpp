@@ -573,7 +573,7 @@ TEST_F(MedullaMeshIntegrationTest, StateChangeAffectsMultipleChannels) {
 TEST_F(MedullaMeshIntegrationTest, MedullaRecoveryAffectsState) {
     // WHAT: Test recovery from emergency state
     // WHY:  System must be able to recover from protection states
-    // HOW:  Trigger emergency, recover, verify state normalizes
+    // HOW:  Trigger emergency, properly recover via STOPPED, verify state normalizes
 
     EXPECT_EQ(medulla_start(medulla), NIMCP_SUCCESS);
 
@@ -583,17 +583,24 @@ TEST_F(MedullaMeshIntegrationTest, MedullaRecoveryAffectsState) {
     protection_level_t emergency_level = medulla_get_protection_level(medulla);
     EXPECT_GE((int)emergency_level, (int)PROTECTION_LEVEL_CRITICAL);
 
-    // Request return to running state
-    EXPECT_EQ(medulla_request_state_change(medulla, MEDULLA_STATE_RUNNING), NIMCP_SUCCESS);
+    // Recovery from EMERGENCY requires going through STOPPED first (safety protocol)
+    // Direct EMERGENCY -> RUNNING is not allowed by design
+    EXPECT_EQ(medulla_request_state_change(medulla, MEDULLA_STATE_STOPPED), NIMCP_SUCCESS);
 
     // Run updates to allow recovery
+    runMedullaUpdates(10);
+
+    // Now transition to running
+    EXPECT_EQ(medulla_request_state_change(medulla, MEDULLA_STATE_RUNNING), NIMCP_SUCCESS);
+
+    // Run updates
     runMedullaUpdates(50);
 
     // Verify state transitioned
     medulla_stats_t stats;
     medulla_get_stats(medulla, &stats);
-    // State should be running or degraded (not emergency)
-    EXPECT_NE(stats.state, MEDULLA_STATE_EMERGENCY);
+    // State should be running (not emergency)
+    EXPECT_EQ(stats.state, MEDULLA_STATE_RUNNING);
 }
 
 TEST_F(MedullaMeshIntegrationTest, ProtectionLevelRecovery) {

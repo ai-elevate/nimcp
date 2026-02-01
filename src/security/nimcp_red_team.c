@@ -53,6 +53,9 @@ struct red_team {
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
     bool bio_async_connected;
+
+    /* Brain immune integration */
+    void* brain_immune;
 };
 
 static bool is_valid_handle(const red_team_t* system) {
@@ -260,6 +263,49 @@ nimcp_error_t red_team_connect_bio_async(red_team_t* system) {
     nimcp_mutex_unlock(system->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to bio-async messaging");
+    return NIMCP_OK;
+}
+
+/* ============================================================================
+ * Brain Immune Integration
+ * ============================================================================ */
+
+nimcp_error_t red_team_connect_brain_immune(
+    red_team_t* system,
+    struct brain_immune* brain_immune)
+{
+    if (!is_valid_handle(system)) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+    system->brain_immune = brain_immune;
+    nimcp_mutex_unlock(system->mutex);
+
+    NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to brain immune system");
+    return NIMCP_OK;
+}
+
+nimcp_error_t red_team_present_vulnerability_to_immune(
+    red_team_t* system,
+    const red_team_test_t* attack)
+{
+    if (!is_valid_handle(system) || !attack) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+
+    if (!system->brain_immune) {
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_OK;  /* No immune system connected */
+    }
+
+    /* Log the vulnerability presentation */
+    NIMCP_LOG_DEBUG(LOG_CATEGORY, "Presenting vulnerability to immune: type=%s severity=%.2f",
+                    red_team_attack_name(attack->type), attack->severity);
+
+    nimcp_mutex_unlock(system->mutex);
     return NIMCP_OK;
 }
 

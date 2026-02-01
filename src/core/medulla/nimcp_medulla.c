@@ -1277,7 +1277,7 @@ int medulla_connect_bio_async(medulla_t medulla) {
     /* Check if router is initialized */
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("Bio-async router not initialized, skipping medulla registration");
-        return 0;
+        return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
     /* Register module with bio-async router */

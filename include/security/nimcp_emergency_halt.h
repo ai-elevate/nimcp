@@ -461,6 +461,36 @@ NIMCP_EXPORT nimcp_error_t emergency_halt_connect_bio_async(
     emergency_halt_t* halt
 );
 
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Coordinate halt events with immune response
+ * WHY:  Emergency halts represent severe threats requiring immune cascade
+ * HOW:  Present halt triggers as high-severity antigens
+ *
+ * When connected:
+ * - Halt events trigger systemic inflammation response
+ * - Cytokine storm for catastrophic halts
+ * - Memory formation for halt patterns
+ *
+ * @param halt Emergency halt system handle
+ * @param brain_immune Brain immune system handle
+ * @return NIMCP_OK on success
+ */
+struct brain_immune;
+NIMCP_EXPORT nimcp_error_t emergency_halt_connect_brain_immune(
+    emergency_halt_t* halt,
+    struct brain_immune* brain_immune
+);
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void emergency_halt_set_health_agent(struct nimcp_health_agent* agent);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

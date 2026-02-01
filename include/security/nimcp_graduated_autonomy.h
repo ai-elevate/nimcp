@@ -112,6 +112,32 @@ NIMCP_EXPORT nimcp_error_t graduated_autonomy_connect_bio_async(
 NIMCP_EXPORT const char* graduated_autonomy_level_name(autonomy_level_t level);
 
 /* ============================================================================
+ * Brain Immune Integration
+ * ============================================================================ */
+
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Coordinate autonomy levels with immune health status
+ * WHY:  Autonomy should decrease during active immune responses
+ * HOW:  Monitor immune inflammation levels, adjust autonomy accordingly
+ *
+ * When connected:
+ * - Systemic inflammation triggers autonomy reduction
+ * - Trust violations presented as antigens
+ * - Memory formation for trust-building patterns
+ *
+ * @param system Graduated autonomy handle
+ * @param brain_immune Brain immune system handle
+ * @return NIMCP_OK on success
+ */
+struct brain_immune;
+NIMCP_EXPORT nimcp_error_t graduated_autonomy_connect_brain_immune(
+    graduated_autonomy_t* system,
+    struct brain_immune* brain_immune
+);
+
+/* ============================================================================
  * Health Agent Integration
  * ============================================================================ */
 

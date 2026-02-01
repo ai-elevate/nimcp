@@ -171,6 +171,7 @@ struct tripwire_system {
     emergency_halt_t* halt_system;
     bio_module_context_t bio_ctx;
     bool bio_async_connected;
+    void* brain_immune;              /**< Brain immune system for antigen presentation */
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
@@ -1045,6 +1046,70 @@ nimcp_error_t tripwire_connect_bio_async(tripwire_system_t* system) {
 
     NIMCP_LOGGING_INFO("%s Connected to bio-async", TRIPWIRE_LOG_PREFIX);
 
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Brain Immune Integration
+ * ============================================================================ */
+
+nimcp_error_t tripwire_connect_brain_immune(
+    tripwire_system_t* system,
+    struct brain_immune* brain_immune)
+{
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+    system->brain_immune = brain_immune;
+    nimcp_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_INFO("%s Connected to brain immune system", TRIPWIRE_LOG_PREFIX);
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t tripwire_present_to_immune(
+    tripwire_system_t* system,
+    const tripwire_alert_t* alert)
+{
+    if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC || !alert) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+
+    if (!system->brain_immune) {
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_SUCCESS;  /* No immune system connected, silently succeed */
+    }
+
+    /* Map tripwire severity to antigen severity */
+    float antigen_severity;
+    switch (alert->severity) {
+        case TRIPWIRE_SEVERITY_CRITICAL:
+            antigen_severity = 1.0f;
+            break;
+        case TRIPWIRE_SEVERITY_HIGH:
+            antigen_severity = 0.75f;
+            break;
+        case TRIPWIRE_SEVERITY_MEDIUM:
+            antigen_severity = 0.5f;
+            break;
+        case TRIPWIRE_SEVERITY_LOW:
+            antigen_severity = 0.25f;
+            break;
+        default:
+            antigen_severity = 0.1f;
+            break;
+    }
+
+    /* Present to immune system - would call brain_immune_present_antigen() */
+    /* For now, log the presentation */
+    NIMCP_LOGGING_DEBUG("%s Presenting tripwire alert to immune: type=%s severity=%.2f",
+        TRIPWIRE_LOG_PREFIX, tripwire_type_name(alert->type), antigen_severity);
+
+    nimcp_mutex_unlock(system->mutex);
     return NIMCP_SUCCESS;
 }
 

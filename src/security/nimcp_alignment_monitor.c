@@ -127,6 +127,7 @@ struct alignment_monitor {
     /* Integration handles */
     void* tripwires;
     void* value_commitment;
+    void* brain_immune;              /**< Brain immune system for drift antigen presentation */
 
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
@@ -1023,6 +1024,22 @@ nimcp_error_t alignment_monitor_connect_value_commitment(
     nimcp_mutex_unlock(monitor->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to value commitment system");
+    return NIMCP_OK;
+}
+
+nimcp_error_t alignment_monitor_connect_brain_immune(
+    alignment_monitor_t* monitor,
+    struct brain_immune* brain_immune)
+{
+    if (!is_valid_handle(monitor)) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(monitor->mutex);
+    monitor->brain_immune = brain_immune;
+    nimcp_mutex_unlock(monitor->mutex);
+
+    NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to brain immune system");
     return NIMCP_OK;
 }
 

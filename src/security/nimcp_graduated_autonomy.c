@@ -53,6 +53,9 @@ struct graduated_autonomy {
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
     bool bio_async_connected;
+
+    /* Brain immune integration */
+    void* brain_immune;
 };
 
 static bool is_valid_handle(const graduated_autonomy_t* system) {
@@ -328,6 +331,26 @@ nimcp_error_t graduated_autonomy_connect_bio_async(graduated_autonomy_t* system)
     nimcp_mutex_unlock(system->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to bio-async messaging");
+    return NIMCP_OK;
+}
+
+/* ============================================================================
+ * Brain Immune Integration
+ * ============================================================================ */
+
+nimcp_error_t graduated_autonomy_connect_brain_immune(
+    graduated_autonomy_t* system,
+    struct brain_immune* brain_immune)
+{
+    if (!is_valid_handle(system)) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+    system->brain_immune = brain_immune;
+    nimcp_mutex_unlock(system->mutex);
+
+    NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to brain immune system");
     return NIMCP_OK;
 }
 
