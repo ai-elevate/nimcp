@@ -533,6 +533,40 @@ int basal_ganglia_disconnect_bio_async(basal_ganglia_t* bg);
  */
 bool basal_ganglia_is_bio_async_connected(const basal_ganglia_t* bg);
 
+/**
+ * @brief Process all pending bio-async messages
+ * @param bg Basal ganglia system
+ * @return Number of messages processed
+ */
+int basal_ganglia_process_bio_messages(basal_ganglia_t* bg);
+
+//=============================================================================
+// System Integration API
+//=============================================================================
+
+/* Forward declarations for integration types */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+typedef struct bbb_system_struct* bbb_system_t;
+
+/**
+ * @brief Set health agent for basal ganglia heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void basal_ganglia_set_health_agent(nimcp_health_agent_t* agent);
+
+/**
+ * @brief Set BBB system for input validation
+ * @param bbb BBB system handle (can be NULL to disable)
+ */
+void basal_ganglia_set_bbb(bbb_system_t bbb);
+
+/**
+ * @brief Set KG context for state persistence
+ * @param kg_ctx Knowledge graph context (can be NULL to disable)
+ */
+void basal_ganglia_set_kg_context(void* kg_ctx);
+
 //=============================================================================
 // Statistics and Debugging
 //=============================================================================

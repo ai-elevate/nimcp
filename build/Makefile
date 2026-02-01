@@ -1199,6 +1199,32 @@ unit_cognitive_joy_test_joy_euphoria/fast:
 .PHONY : unit_cognitive_joy_test_joy_euphoria/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge
+
+# Build rule for target.
+unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge
+.PHONY : unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge
+
+# fast build rule for target.
+unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge.dir/build.make test/CMakeFiles/unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge.dir/build
+.PHONY : unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge
+
+# Build rule for target.
+unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge
+.PHONY : unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge
+
+# fast build rule for target.
+unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge.dir/build.make test/CMakeFiles/unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge.dir/build
+.PHONY : unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_personality_test_personality
 
 # Build rule for target.
@@ -4423,6 +4449,19 @@ integration_cognitive_joy_test_joy_euphoria_integration/fast:
 .PHONY : integration_cognitive_joy_test_joy_euphoria_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration
+
+# Build rule for target.
+integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration
+.PHONY : integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration
+
+# fast build rule for target.
+integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration.dir/build.make test/CMakeFiles/integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration.dir/build
+.PHONY : integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_sleep_test_cognitive_sleep_integration
 
 # Build rule for target.
@@ -5448,19 +5487,6 @@ regression_core_topology_test_fractal_topology_backward_compat: cmake_check_buil
 regression_core_topology_test_fractal_topology_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_topology_test_fractal_topology_backward_compat.dir/build.make test/CMakeFiles/regression_core_topology_test_fractal_topology_backward_compat.dir/build
 .PHONY : regression_core_topology_test_fractal_topology_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_financial_test_financial_gpu_regression
-
-# Build rule for target.
-regression_gpu_financial_test_financial_gpu_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_financial_test_financial_gpu_regression
-.PHONY : regression_gpu_financial_test_financial_gpu_regression
-
-# fast build rule for target.
-regression_gpu_financial_test_financial_gpu_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_financial_test_financial_gpu_regression.dir/build.make test/CMakeFiles/regression_gpu_financial_test_financial_gpu_regression.dir/build
-.PHONY : regression_gpu_financial_test_financial_gpu_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_gpu_fuzzy_test_fuzzy_gpu_regression
@@ -8323,6 +8349,19 @@ e2e_gpu_test_e2e_financial_workflow_gpu/fast:
 .PHONY : e2e_gpu_test_e2e_financial_workflow_gpu/fast
 
 #=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_financial_complete
+
+# Build rule for target.
+e2e_gpu_test_e2e_financial_complete: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_financial_complete
+.PHONY : e2e_gpu_test_e2e_financial_complete
+
+# fast build rule for target.
+e2e_gpu_test_e2e_financial_complete/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_financial_complete.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_financial_complete.dir/build
+.PHONY : e2e_gpu_test_e2e_financial_complete/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_gpu_recovery_pipeline
 
 # Build rule for target.
@@ -10193,6 +10232,136 @@ e2e_statistics_test_statistics_gpu_e2e: cmake_check_build_system
 e2e_statistics_test_statistics_gpu_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/statistics/CMakeFiles/e2e_statistics_test_statistics_gpu_e2e.dir/build.make test/e2e/statistics/CMakeFiles/e2e_statistics_test_statistics_gpu_e2e.dir/build
 .PHONY : e2e_statistics_test_statistics_gpu_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_full_transaction
+
+# Build rule for target.
+e2e_test_mesh_full_transaction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_full_transaction
+.PHONY : e2e_test_mesh_full_transaction
+
+# fast build rule for target.
+e2e_test_mesh_full_transaction/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_full_transaction.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_full_transaction.dir/build
+.PHONY : e2e_test_mesh_full_transaction/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_msp_security
+
+# Build rule for target.
+e2e_test_mesh_msp_security: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_msp_security
+.PHONY : e2e_test_mesh_msp_security
+
+# fast build rule for target.
+e2e_test_mesh_msp_security/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_msp_security.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_msp_security.dir/build
+.PHONY : e2e_test_mesh_msp_security/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_system_integration
+
+# Build rule for target.
+e2e_test_mesh_system_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_system_integration
+.PHONY : e2e_test_mesh_system_integration
+
+# fast build rule for target.
+e2e_test_mesh_system_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_system_integration.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_system_integration.dir/build
+.PHONY : e2e_test_mesh_system_integration/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_bootstrap
+
+# Build rule for target.
+e2e_test_mesh_bootstrap: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_bootstrap
+.PHONY : e2e_test_mesh_bootstrap
+
+# fast build rule for target.
+e2e_test_mesh_bootstrap/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_bootstrap.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_bootstrap.dir/build
+.PHONY : e2e_test_mesh_bootstrap/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_enhanced_routing
+
+# Build rule for target.
+e2e_test_mesh_enhanced_routing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_enhanced_routing
+.PHONY : e2e_test_mesh_enhanced_routing
+
+# fast build rule for target.
+e2e_test_mesh_enhanced_routing/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_enhanced_routing.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_enhanced_routing.dir/build
+.PHONY : e2e_test_mesh_enhanced_routing/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_kg_routing_bridge
+
+# Build rule for target.
+e2e_test_mesh_kg_routing_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_kg_routing_bridge
+.PHONY : e2e_test_mesh_kg_routing_bridge
+
+# fast build rule for target.
+e2e_test_mesh_kg_routing_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_kg_routing_bridge.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_kg_routing_bridge.dir/build
+.PHONY : e2e_test_mesh_kg_routing_bridge/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_complete_brain
+
+# Build rule for target.
+e2e_test_mesh_complete_brain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_complete_brain
+.PHONY : e2e_test_mesh_complete_brain
+
+# fast build rule for target.
+e2e_test_mesh_complete_brain/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_complete_brain.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_complete_brain.dir/build
+.PHONY : e2e_test_mesh_complete_brain/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_bio_transaction_pipeline
+
+# Build rule for target.
+e2e_test_mesh_bio_transaction_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_bio_transaction_pipeline
+.PHONY : e2e_test_mesh_bio_transaction_pipeline
+
+# fast build rule for target.
+e2e_test_mesh_bio_transaction_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_bio_transaction_pipeline.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_bio_transaction_pipeline.dir/build
+.PHONY : e2e_test_mesh_bio_transaction_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_security_resilience
+
+# Build rule for target.
+e2e_test_mesh_security_resilience: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_security_resilience
+.PHONY : e2e_test_mesh_security_resilience
+
+# fast build rule for target.
+e2e_test_mesh_security_resilience/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_security_resilience.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_security_resilience.dir/build
+.PHONY : e2e_test_mesh_security_resilience/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_cycle_coordinator
+
+# Build rule for target.
+e2e_test_mesh_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_cycle_coordinator
+.PHONY : e2e_test_mesh_cycle_coordinator
+
+# fast build rule for target.
+e2e_test_mesh_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_cycle_coordinator.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_cycle_coordinator.dir/build
+.PHONY : e2e_test_mesh_cycle_coordinator/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -15042,6 +15211,32 @@ unit_parietal_financial_investment: cmake_check_build_system
 unit_parietal_financial_investment/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment.dir/build
 .PHONY : unit_parietal_financial_investment/fast
+
+#=============================================================================
+# Target rules for targets named unit_linguistics_snn_bridge
+
+# Build rule for target.
+unit_linguistics_snn_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_linguistics_snn_bridge
+.PHONY : unit_linguistics_snn_bridge
+
+# fast build rule for target.
+unit_linguistics_snn_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_linguistics_snn_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_linguistics_snn_bridge.dir/build
+.PHONY : unit_linguistics_snn_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_linguistics_plasticity_bridge
+
+# Build rule for target.
+unit_linguistics_plasticity_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_linguistics_plasticity_bridge
+.PHONY : unit_linguistics_plasticity_bridge
+
+# fast build rule for target.
+unit_linguistics_plasticity_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_linguistics_plasticity_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_linguistics_plasticity_bridge.dir/build
+.PHONY : unit_linguistics_plasticity_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_financial_core_modules
@@ -24001,6 +24196,19 @@ integration_parietal_financial_investment/fast:
 .PHONY : integration_parietal_financial_investment/fast
 
 #=============================================================================
+# Target rules for targets named integration_linguistics_fuzzy_stats
+
+# Build rule for target.
+integration_linguistics_fuzzy_stats: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_linguistics_fuzzy_stats
+.PHONY : integration_linguistics_fuzzy_stats
+
+# fast build rule for target.
+integration_linguistics_fuzzy_stats/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_linguistics_fuzzy_stats.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_linguistics_fuzzy_stats.dir/build
+.PHONY : integration_linguistics_fuzzy_stats/fast
+
+#=============================================================================
 # Target rules for targets named integration_financial_cognitive
 
 # Build rule for target.
@@ -27301,6 +27509,136 @@ unit_security_test_capability_thread_safety: cmake_check_build_system
 unit_security_test_capability_thread_safety/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_capability_thread_safety.dir/build.make test/unit/security/CMakeFiles/unit_security_test_capability_thread_safety.dir/build
 .PHONY : unit_security_test_capability_thread_safety/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_emergency_halt
+
+# Build rule for target.
+unit_security_test_emergency_halt: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_emergency_halt
+.PHONY : unit_security_test_emergency_halt
+
+# fast build rule for target.
+unit_security_test_emergency_halt/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_emergency_halt.dir/build.make test/unit/security/CMakeFiles/unit_security_test_emergency_halt.dir/build
+.PHONY : unit_security_test_emergency_halt/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_tripwires
+
+# Build rule for target.
+unit_security_test_tripwires: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_tripwires
+.PHONY : unit_security_test_tripwires
+
+# fast build rule for target.
+unit_security_test_tripwires/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_tripwires.dir/build.make test/unit/security/CMakeFiles/unit_security_test_tripwires.dir/build
+.PHONY : unit_security_test_tripwires/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_corrigibility
+
+# Build rule for target.
+unit_security_test_corrigibility: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_corrigibility
+.PHONY : unit_security_test_corrigibility
+
+# fast build rule for target.
+unit_security_test_corrigibility/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_corrigibility.dir/build.make test/unit/security/CMakeFiles/unit_security_test_corrigibility.dir/build
+.PHONY : unit_security_test_corrigibility/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_alignment_monitor
+
+# Build rule for target.
+unit_security_test_alignment_monitor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_alignment_monitor
+.PHONY : unit_security_test_alignment_monitor
+
+# fast build rule for target.
+unit_security_test_alignment_monitor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_alignment_monitor.dir/build.make test/unit/security/CMakeFiles/unit_security_test_alignment_monitor.dir/build
+.PHONY : unit_security_test_alignment_monitor/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_capability_control
+
+# Build rule for target.
+unit_security_test_capability_control: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_capability_control
+.PHONY : unit_security_test_capability_control
+
+# fast build rule for target.
+unit_security_test_capability_control/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_capability_control.dir/build.make test/unit/security/CMakeFiles/unit_security_test_capability_control.dir/build
+.PHONY : unit_security_test_capability_control/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_interpretability
+
+# Build rule for target.
+unit_security_test_interpretability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_interpretability
+.PHONY : unit_security_test_interpretability
+
+# fast build rule for target.
+unit_security_test_interpretability/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_interpretability.dir/build.make test/unit/security/CMakeFiles/unit_security_test_interpretability.dir/build
+.PHONY : unit_security_test_interpretability/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_safety_verification
+
+# Build rule for target.
+unit_security_test_safety_verification: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_safety_verification
+.PHONY : unit_security_test_safety_verification
+
+# fast build rule for target.
+unit_security_test_safety_verification/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_safety_verification.dir/build.make test/unit/security/CMakeFiles/unit_security_test_safety_verification.dir/build
+.PHONY : unit_security_test_safety_verification/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_red_team
+
+# Build rule for target.
+unit_security_test_red_team: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_red_team
+.PHONY : unit_security_test_red_team
+
+# fast build rule for target.
+unit_security_test_red_team/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_red_team.dir/build.make test/unit/security/CMakeFiles/unit_security_test_red_team.dir/build
+.PHONY : unit_security_test_red_team/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_graduated_autonomy
+
+# Build rule for target.
+unit_security_test_graduated_autonomy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_graduated_autonomy
+.PHONY : unit_security_test_graduated_autonomy
+
+# fast build rule for target.
+unit_security_test_graduated_autonomy/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_graduated_autonomy.dir/build.make test/unit/security/CMakeFiles/unit_security_test_graduated_autonomy.dir/build
+.PHONY : unit_security_test_graduated_autonomy/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_value_commitment
+
+# Build rule for target.
+unit_security_test_value_commitment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_value_commitment
+.PHONY : unit_security_test_value_commitment
+
+# fast build rule for target.
+unit_security_test_value_commitment/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_value_commitment.dir/build.make test/unit/security/CMakeFiles/unit_security_test_value_commitment.dir/build
+.PHONY : unit_security_test_value_commitment/fast
 
 #=============================================================================
 # Target rules for targets named unit_security_immune_pattern_db
@@ -30982,6 +31320,708 @@ test_swarm_struct_member_regression/fast:
 .PHONY : test_swarm_struct_member_regression/fast
 
 #=============================================================================
+# Target rules for targets named test_mesh_types
+
+# Build rule for target.
+test_mesh_types: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_types
+.PHONY : test_mesh_types
+
+# fast build rule for target.
+test_mesh_types/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_types.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_types.dir/build
+.PHONY : test_mesh_types/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_participant
+
+# Build rule for target.
+test_mesh_participant: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_participant
+.PHONY : test_mesh_participant
+
+# fast build rule for target.
+test_mesh_participant/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_participant.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_participant.dir/build
+.PHONY : test_mesh_participant/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_transaction
+
+# Build rule for target.
+test_mesh_transaction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_transaction
+.PHONY : test_mesh_transaction
+
+# fast build rule for target.
+test_mesh_transaction/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_transaction.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_transaction.dir/build
+.PHONY : test_mesh_transaction/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_channel
+
+# Build rule for target.
+test_mesh_channel: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_channel
+.PHONY : test_mesh_channel
+
+# fast build rule for target.
+test_mesh_channel/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_channel.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_channel.dir/build
+.PHONY : test_mesh_channel/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_coordinator
+
+# Build rule for target.
+test_mesh_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_coordinator
+.PHONY : test_mesh_coordinator
+
+# fast build rule for target.
+test_mesh_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_coordinator.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_coordinator.dir/build
+.PHONY : test_mesh_coordinator/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_coordinator_pool
+
+# Build rule for target.
+test_mesh_coordinator_pool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_coordinator_pool
+.PHONY : test_mesh_coordinator_pool
+
+# fast build rule for target.
+test_mesh_coordinator_pool/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_coordinator_pool.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_coordinator_pool.dir/build
+.PHONY : test_mesh_coordinator_pool/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_ordering
+
+# Build rule for target.
+test_mesh_ordering: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_ordering
+.PHONY : test_mesh_ordering
+
+# fast build rule for target.
+test_mesh_ordering/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_ordering.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_ordering.dir/build
+.PHONY : test_mesh_ordering/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_msp
+
+# Build rule for target.
+test_mesh_msp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_msp
+.PHONY : test_mesh_msp
+
+# fast build rule for target.
+test_mesh_msp/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_msp.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_msp.dir/build
+.PHONY : test_mesh_msp/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_endorsement
+
+# Build rule for target.
+test_mesh_endorsement: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_endorsement
+.PHONY : test_mesh_endorsement
+
+# fast build rule for target.
+test_mesh_endorsement/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_endorsement.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_endorsement.dir/build
+.PHONY : test_mesh_endorsement/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_topology
+
+# Build rule for target.
+test_mesh_topology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_topology
+.PHONY : test_mesh_topology
+
+# fast build rule for target.
+test_mesh_topology/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_topology.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_topology.dir/build
+.PHONY : test_mesh_topology/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_timing
+
+# Build rule for target.
+test_mesh_timing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_timing
+.PHONY : test_mesh_timing
+
+# fast build rule for target.
+test_mesh_timing/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_timing.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_timing.dir/build
+.PHONY : test_mesh_timing/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_gpu
+
+# Build rule for target.
+test_mesh_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_gpu
+.PHONY : test_mesh_gpu
+
+# fast build rule for target.
+test_mesh_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_gpu.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_gpu.dir/build
+.PHONY : test_mesh_gpu/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_cross_channel
+
+# Build rule for target.
+test_mesh_cross_channel: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_cross_channel
+.PHONY : test_mesh_cross_channel
+
+# fast build rule for target.
+test_mesh_cross_channel/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_cross_channel.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_cross_channel.dir/build
+.PHONY : test_mesh_cross_channel/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_q1_simple_recall
+
+# Build rule for target.
+test_mesh_q1_simple_recall: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_q1_simple_recall
+.PHONY : test_mesh_q1_simple_recall
+
+# fast build rule for target.
+test_mesh_q1_simple_recall/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_q1_simple_recall.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_q1_simple_recall.dir/build
+.PHONY : test_mesh_q1_simple_recall/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bootstrap
+
+# Build rule for target.
+test_mesh_bootstrap: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bootstrap
+.PHONY : test_mesh_bootstrap
+
+# fast build rule for target.
+test_mesh_bootstrap/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_bootstrap.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_bootstrap.dir/build
+.PHONY : test_mesh_bootstrap/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_pattern_routing
+
+# Build rule for target.
+test_mesh_pattern_routing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_pattern_routing
+.PHONY : test_mesh_pattern_routing
+
+# fast build rule for target.
+test_mesh_pattern_routing/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_pattern_routing.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_pattern_routing.dir/build
+.PHONY : test_mesh_pattern_routing/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_sat_solver
+
+# Build rule for target.
+test_mesh_sat_solver: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_sat_solver
+.PHONY : test_mesh_sat_solver
+
+# fast build rule for target.
+test_mesh_sat_solver/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_sat_solver.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_sat_solver.dir/build
+.PHONY : test_mesh_sat_solver/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_pattern_cache
+
+# Build rule for target.
+test_mesh_pattern_cache: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_pattern_cache
+.PHONY : test_mesh_pattern_cache
+
+# fast build rule for target.
+test_mesh_pattern_cache/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_pattern_cache.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_pattern_cache.dir/build
+.PHONY : test_mesh_pattern_cache/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_kg_routing_bridge
+
+# Build rule for target.
+test_mesh_kg_routing_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_kg_routing_bridge
+.PHONY : test_mesh_kg_routing_bridge
+
+# fast build rule for target.
+test_mesh_kg_routing_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_kg_routing_bridge.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_kg_routing_bridge.dir/build
+.PHONY : test_mesh_kg_routing_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_module_registry
+
+# Build rule for target.
+test_mesh_module_registry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_module_registry
+.PHONY : test_mesh_module_registry
+
+# fast build rule for target.
+test_mesh_module_registry/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_module_registry.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_module_registry.dir/build
+.PHONY : test_mesh_module_registry/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bio_bridge
+
+# Build rule for target.
+test_mesh_bio_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bio_bridge
+.PHONY : test_mesh_bio_bridge
+
+# fast build rule for target.
+test_mesh_bio_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_bio_bridge.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_bio_bridge.dir/build
+.PHONY : test_mesh_bio_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_receptive_fields
+
+# Build rule for target.
+test_mesh_receptive_fields: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_receptive_fields
+.PHONY : test_mesh_receptive_fields
+
+# fast build rule for target.
+test_mesh_receptive_fields/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_receptive_fields.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_receptive_fields.dir/build
+.PHONY : test_mesh_receptive_fields/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_exception_bridge
+
+# Build rule for target.
+test_mesh_exception_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_exception_bridge
+.PHONY : test_mesh_exception_bridge
+
+# fast build rule for target.
+test_mesh_exception_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_exception_bridge.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_exception_bridge.dir/build
+.PHONY : test_mesh_exception_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_health_bridge
+
+# Build rule for target.
+test_mesh_health_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_health_bridge
+.PHONY : test_mesh_health_bridge
+
+# fast build rule for target.
+test_mesh_health_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_health_bridge.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_health_bridge.dir/build
+.PHONY : test_mesh_health_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_brain_integration
+
+# Build rule for target.
+test_mesh_brain_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_brain_integration
+.PHONY : test_mesh_brain_integration
+
+# fast build rule for target.
+test_mesh_brain_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_brain_integration.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_brain_integration.dir/build
+.PHONY : test_mesh_brain_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bio_integration
+
+# Build rule for target.
+test_mesh_bio_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bio_integration
+.PHONY : test_mesh_bio_integration
+
+# fast build rule for target.
+test_mesh_bio_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_bio_integration.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_bio_integration.dir/build
+.PHONY : test_mesh_bio_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_security_integration
+
+# Build rule for target.
+test_mesh_security_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_security_integration
+.PHONY : test_mesh_security_integration
+
+# fast build rule for target.
+test_mesh_security_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_security_integration.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_security_integration.dir/build
+.PHONY : test_mesh_security_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_kg_integration
+
+# Build rule for target.
+test_mesh_kg_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_kg_integration
+.PHONY : test_mesh_kg_integration
+
+# fast build rule for target.
+test_mesh_kg_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_kg_integration.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_kg_integration.dir/build
+.PHONY : test_mesh_kg_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_resilience_integration
+
+# Build rule for target.
+test_mesh_resilience_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_resilience_integration
+.PHONY : test_mesh_resilience_integration
+
+# fast build rule for target.
+test_mesh_resilience_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_resilience_integration.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_resilience_integration.dir/build
+.PHONY : test_mesh_resilience_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_cycle_coordinator
+
+# Build rule for target.
+test_mesh_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_cycle_coordinator
+.PHONY : test_mesh_cycle_coordinator
+
+# fast build rule for target.
+test_mesh_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/mesh/CMakeFiles/test_mesh_cycle_coordinator.dir/build.make test/unit/mesh/CMakeFiles/test_mesh_cycle_coordinator.dir/build
+.PHONY : test_mesh_cycle_coordinator/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_channel_integration
+
+# Build rule for target.
+test_mesh_channel_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_channel_integration
+.PHONY : test_mesh_channel_integration
+
+# fast build rule for target.
+test_mesh_channel_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_channel_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_channel_integration.dir/build
+.PHONY : test_mesh_channel_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_coordinator_pool_integration
+
+# Build rule for target.
+test_mesh_coordinator_pool_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_coordinator_pool_integration
+.PHONY : test_mesh_coordinator_pool_integration
+
+# fast build rule for target.
+test_mesh_coordinator_pool_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_coordinator_pool_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_coordinator_pool_integration.dir/build
+.PHONY : test_mesh_coordinator_pool_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_transaction_flow_integration
+
+# Build rule for target.
+test_mesh_transaction_flow_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_transaction_flow_integration
+.PHONY : test_mesh_transaction_flow_integration
+
+# fast build rule for target.
+test_mesh_transaction_flow_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_transaction_flow_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_transaction_flow_integration.dir/build
+.PHONY : test_mesh_transaction_flow_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_msp_integration
+
+# Build rule for target.
+test_mesh_msp_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_msp_integration
+.PHONY : test_mesh_msp_integration
+
+# fast build rule for target.
+test_mesh_msp_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_msp_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_msp_integration.dir/build
+.PHONY : test_mesh_msp_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bootstrap_integration
+
+# Build rule for target.
+test_mesh_bootstrap_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bootstrap_integration
+.PHONY : test_mesh_bootstrap_integration
+
+# fast build rule for target.
+test_mesh_bootstrap_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_bootstrap_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_bootstrap_integration.dir/build
+.PHONY : test_mesh_bootstrap_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_enhanced_routing_integration
+
+# Build rule for target.
+test_mesh_enhanced_routing_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_enhanced_routing_integration
+.PHONY : test_mesh_enhanced_routing_integration
+
+# fast build rule for target.
+test_mesh_enhanced_routing_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_enhanced_routing_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_enhanced_routing_integration.dir/build
+.PHONY : test_mesh_enhanced_routing_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_kg_routing_bridge_integration
+
+# Build rule for target.
+test_mesh_kg_routing_bridge_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_kg_routing_bridge_integration
+.PHONY : test_mesh_kg_routing_bridge_integration
+
+# fast build rule for target.
+test_mesh_kg_routing_bridge_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_kg_routing_bridge_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_kg_routing_bridge_integration.dir/build
+.PHONY : test_mesh_kg_routing_bridge_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_brain_bootstrap_integration
+
+# Build rule for target.
+test_mesh_brain_bootstrap_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_brain_bootstrap_integration
+.PHONY : test_mesh_brain_bootstrap_integration
+
+# fast build rule for target.
+test_mesh_brain_bootstrap_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_brain_bootstrap_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_brain_bootstrap_integration.dir/build
+.PHONY : test_mesh_brain_bootstrap_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bio_flow_integration
+
+# Build rule for target.
+test_mesh_bio_flow_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bio_flow_integration
+.PHONY : test_mesh_bio_flow_integration
+
+# fast build rule for target.
+test_mesh_bio_flow_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_bio_flow_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_bio_flow_integration.dir/build
+.PHONY : test_mesh_bio_flow_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_security_flow_integration
+
+# Build rule for target.
+test_mesh_security_flow_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_security_flow_integration
+.PHONY : test_mesh_security_flow_integration
+
+# fast build rule for target.
+test_mesh_security_flow_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_security_flow_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_security_flow_integration.dir/build
+.PHONY : test_mesh_security_flow_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_kg_sync_integration
+
+# Build rule for target.
+test_mesh_kg_sync_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_kg_sync_integration
+.PHONY : test_mesh_kg_sync_integration
+
+# fast build rule for target.
+test_mesh_kg_sync_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_kg_sync_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_kg_sync_integration.dir/build
+.PHONY : test_mesh_kg_sync_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_resilience_flow_integration
+
+# Build rule for target.
+test_mesh_resilience_flow_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_resilience_flow_integration
+.PHONY : test_mesh_resilience_flow_integration
+
+# fast build rule for target.
+test_mesh_resilience_flow_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_resilience_flow_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_resilience_flow_integration.dir/build
+.PHONY : test_mesh_resilience_flow_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_cycle_coordinator_integration
+
+# Build rule for target.
+test_mesh_cycle_coordinator_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_cycle_coordinator_integration
+.PHONY : test_mesh_cycle_coordinator_integration
+
+# fast build rule for target.
+test_mesh_cycle_coordinator_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/mesh/CMakeFiles/test_mesh_cycle_coordinator_integration.dir/build.make test/integration/mesh/CMakeFiles/test_mesh_cycle_coordinator_integration.dir/build
+.PHONY : test_mesh_cycle_coordinator_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_stability_regression
+
+# Build rule for target.
+test_mesh_stability_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_stability_regression
+.PHONY : test_mesh_stability_regression
+
+# fast build rule for target.
+test_mesh_stability_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_stability_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_stability_regression.dir/build
+.PHONY : test_mesh_stability_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_consensus_regression
+
+# Build rule for target.
+test_mesh_consensus_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_consensus_regression
+.PHONY : test_mesh_consensus_regression
+
+# fast build rule for target.
+test_mesh_consensus_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_consensus_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_consensus_regression.dir/build
+.PHONY : test_mesh_consensus_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_transaction_regression
+
+# Build rule for target.
+test_mesh_transaction_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_transaction_regression
+.PHONY : test_mesh_transaction_regression
+
+# fast build rule for target.
+test_mesh_transaction_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_transaction_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_transaction_regression.dir/build
+.PHONY : test_mesh_transaction_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_performance_regression
+
+# Build rule for target.
+test_mesh_performance_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_performance_regression
+.PHONY : test_mesh_performance_regression
+
+# fast build rule for target.
+test_mesh_performance_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_performance_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_performance_regression.dir/build
+.PHONY : test_mesh_performance_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_bootstrap_regression
+
+# Build rule for target.
+test_mesh_bootstrap_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_bootstrap_regression
+.PHONY : test_mesh_bootstrap_regression
+
+# fast build rule for target.
+test_mesh_bootstrap_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_bootstrap_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_bootstrap_regression.dir/build
+.PHONY : test_mesh_bootstrap_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_enhanced_routing_regression
+
+# Build rule for target.
+test_mesh_enhanced_routing_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_enhanced_routing_regression
+.PHONY : test_mesh_enhanced_routing_regression
+
+# fast build rule for target.
+test_mesh_enhanced_routing_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_enhanced_routing_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_enhanced_routing_regression.dir/build
+.PHONY : test_mesh_enhanced_routing_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_kg_routing_bridge_regression
+
+# Build rule for target.
+test_mesh_kg_routing_bridge_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_kg_routing_bridge_regression
+.PHONY : test_mesh_kg_routing_bridge_regression
+
+# fast build rule for target.
+test_mesh_kg_routing_bridge_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_kg_routing_bridge_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_kg_routing_bridge_regression.dir/build
+.PHONY : test_mesh_kg_routing_bridge_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_registration_regression
+
+# Build rule for target.
+test_mesh_registration_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_registration_regression
+.PHONY : test_mesh_registration_regression
+
+# fast build rule for target.
+test_mesh_registration_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_registration_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_registration_regression.dir/build
+.PHONY : test_mesh_registration_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_routing_regression
+
+# Build rule for target.
+test_mesh_routing_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_routing_regression
+.PHONY : test_mesh_routing_regression
+
+# fast build rule for target.
+test_mesh_routing_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_routing_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_routing_regression.dir/build
+.PHONY : test_mesh_routing_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_security_regression
+
+# Build rule for target.
+test_mesh_security_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_security_regression
+.PHONY : test_mesh_security_regression
+
+# fast build rule for target.
+test_mesh_security_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_security_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_security_regression.dir/build
+.PHONY : test_mesh_security_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_mesh_cycle_coordinator_regression
+
+# Build rule for target.
+test_mesh_cycle_coordinator_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_cycle_coordinator_regression
+.PHONY : test_mesh_cycle_coordinator_regression
+
+# fast build rule for target.
+test_mesh_cycle_coordinator_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_cycle_coordinator_regression.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_cycle_coordinator_regression.dir/build
+.PHONY : test_mesh_cycle_coordinator_regression/fast
+
+#=============================================================================
 # Target rules for targets named test_platform_tier
 
 # Build rule for target.
@@ -33218,6 +34258,32 @@ integration_gpu_financial_test_integration/fast:
 .PHONY : integration_gpu_financial_test_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_gpu_financial_test_workflow
+
+# Build rule for target.
+integration_gpu_financial_test_workflow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_financial_test_workflow
+.PHONY : integration_gpu_financial_test_workflow
+
+# fast build rule for target.
+integration_gpu_financial_test_workflow/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/financial/CMakeFiles/integration_gpu_financial_test_workflow.dir/build.make test/integration/gpu/financial/CMakeFiles/integration_gpu_financial_test_workflow.dir/build
+.PHONY : integration_gpu_financial_test_workflow/fast
+
+#=============================================================================
+# Target rules for targets named integration_gpu_financial_all
+
+# Build rule for target.
+integration_gpu_financial_all: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_financial_all
+.PHONY : integration_gpu_financial_all
+
+# fast build rule for target.
+integration_gpu_financial_all/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/financial/CMakeFiles/integration_gpu_financial_all.dir/build.make test/integration/gpu/financial/CMakeFiles/integration_gpu_financial_all.dir/build
+.PHONY : integration_gpu_financial_all/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_statistics_test_statistics_gpu_integration
 
 # Build rule for target.
@@ -33593,6 +34659,19 @@ regression_gpu_recovery_test_gpu_recovery_regression: cmake_check_build_system
 regression_gpu_recovery_test_gpu_recovery_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/gpu/recovery/CMakeFiles/regression_gpu_recovery_test_gpu_recovery_regression.dir/build.make test/regression/gpu/recovery/CMakeFiles/regression_gpu_recovery_test_gpu_recovery_regression.dir/build
 .PHONY : regression_gpu_recovery_test_gpu_recovery_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_financial_test_comprehensive
+
+# Build rule for target.
+regression_gpu_financial_test_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_financial_test_comprehensive
+.PHONY : regression_gpu_financial_test_comprehensive
+
+# fast build rule for target.
+regression_gpu_financial_test_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/financial/CMakeFiles/regression_gpu_financial_test_comprehensive.dir/build.make test/regression/gpu/financial/CMakeFiles/regression_gpu_financial_test_comprehensive.dir/build
+.PHONY : regression_gpu_financial_test_comprehensive/fast
 
 #=============================================================================
 # Target rules for targets named unit_lnn_test_lnn_config
@@ -37091,6 +38170,19 @@ rl_eligibility_demo/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/build
 .PHONY : rl_eligibility_demo/fast
 
+#=============================================================================
+# Target rules for targets named mesh_bootstrap_demo
+
+# Build rule for target.
+mesh_bootstrap_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 mesh_bootstrap_demo
+.PHONY : mesh_bootstrap_demo
+
+# fast build rule for target.
+mesh_bootstrap_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/mesh_bootstrap_demo.dir/build.make examples/CMakeFiles/mesh_bootstrap_demo.dir/build
+.PHONY : mesh_bootstrap_demo/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -37111,6 +38203,7 @@ help:
 	@echo "... doc_cortical_substrate_integration"
 	@echo "... e2e_financial_cognitive_all"
 	@echo "... integration_financial_cognitive_all"
+	@echo "... integration_gpu_financial_all"
 	@echo "... integration_portia_full"
 	@echo "... integration_portia_learning"
 	@echo "... integration_portia_sensors"
@@ -37238,6 +38331,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_brain_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
+	@echo "... e2e_gpu_test_e2e_financial_complete"
 	@echo "... e2e_gpu_test_e2e_financial_workflow_gpu"
 	@echo "... e2e_gpu_test_e2e_fuzzy_controller_gpu"
 	@echo "... e2e_gpu_test_e2e_gpu_recovery_pipeline"
@@ -37349,6 +38443,16 @@ help:
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_memory_snn_plasticity_pipeline"
 	@echo "... e2e_test_mental_health_guardian"
+	@echo "... e2e_test_mesh_bio_transaction_pipeline"
+	@echo "... e2e_test_mesh_bootstrap"
+	@echo "... e2e_test_mesh_complete_brain"
+	@echo "... e2e_test_mesh_cycle_coordinator"
+	@echo "... e2e_test_mesh_enhanced_routing"
+	@echo "... e2e_test_mesh_full_transaction"
+	@echo "... e2e_test_mesh_kg_routing_bridge"
+	@echo "... e2e_test_mesh_msp_security"
+	@echo "... e2e_test_mesh_security_resilience"
+	@echo "... e2e_test_mesh_system_integration"
 	@echo "... e2e_test_meta_learning_snn_plasticity_pipeline"
 	@echo "... e2e_test_metabolic_processing"
 	@echo "... e2e_test_mirror_empathy_pipeline"
@@ -37534,6 +38638,7 @@ help:
 	@echo "... integration_cognitive_mirror_neurons_snn_plasticity"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_parietal"
+	@echo "... integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration"
 	@echo "... integration_cognitive_predictive_test_predictive_bridge_exception_integration"
 	@echo "... integration_cognitive_reasoning_snn_plasticity"
 	@echo "... integration_cognitive_salience_snn_plasticity"
@@ -37703,6 +38808,7 @@ help:
 	@echo "... integration_gpu_cognitive_test_cognitive_gpu_recovery"
 	@echo "... integration_gpu_exception"
 	@echo "... integration_gpu_financial_test_integration"
+	@echo "... integration_gpu_financial_test_workflow"
 	@echo "... integration_gpu_fuzzy_test_anfis"
 	@echo "... integration_gpu_fuzzy_test_inference"
 	@echo "... integration_gpu_graph_test_graph_gpu_recovery_integration"
@@ -37781,6 +38887,7 @@ help:
 	@echo "... integration_language_regions"
 	@echo "... integration_lc_test"
 	@echo "... integration_lib_cognitive_test_hierarchical_integration"
+	@echo "... integration_linguistics_fuzzy_stats"
 	@echo "... integration_metabolic_cascade"
 	@echo "... integration_middleware_bio_async"
 	@echo "... integration_middleware_controller"
@@ -37999,6 +39106,7 @@ help:
 	@echo "... integration_wernicke_full"
 	@echo "... integration_wernicke_test"
 	@echo "... izhikevich_demo"
+	@echo "... mesh_bootstrap_demo"
 	@echo "... multimodal_integration_demo"
 	@echo "... neuromodulation_integration_example"
 	@echo "... nimcp"
@@ -38194,7 +39302,7 @@ help:
 	@echo "... regression_genius_bridges_exception"
 	@echo "... regression_genius_math"
 	@echo "... regression_glial_performance"
-	@echo "... regression_gpu_financial_test_financial_gpu_regression"
+	@echo "... regression_gpu_financial_test_comprehensive"
 	@echo "... regression_gpu_fuzzy_test_fuzzy_gpu_regression"
 	@echo "... regression_gpu_recovery_test_gpu_recovery_regression"
 	@echo "... regression_gpu_statistics_test_statistics_gpu_regression"
@@ -38528,6 +39636,60 @@ help:
 	@echo "... test_medulla_exception_e2e"
 	@echo "... test_medulla_exception_integration"
 	@echo "... test_medulla_exception_regression"
+	@echo "... test_mesh_bio_bridge"
+	@echo "... test_mesh_bio_flow_integration"
+	@echo "... test_mesh_bio_integration"
+	@echo "... test_mesh_bootstrap"
+	@echo "... test_mesh_bootstrap_integration"
+	@echo "... test_mesh_bootstrap_regression"
+	@echo "... test_mesh_brain_bootstrap_integration"
+	@echo "... test_mesh_brain_integration"
+	@echo "... test_mesh_channel"
+	@echo "... test_mesh_channel_integration"
+	@echo "... test_mesh_consensus_regression"
+	@echo "... test_mesh_coordinator"
+	@echo "... test_mesh_coordinator_pool"
+	@echo "... test_mesh_coordinator_pool_integration"
+	@echo "... test_mesh_cross_channel"
+	@echo "... test_mesh_cycle_coordinator"
+	@echo "... test_mesh_cycle_coordinator_integration"
+	@echo "... test_mesh_cycle_coordinator_regression"
+	@echo "... test_mesh_endorsement"
+	@echo "... test_mesh_enhanced_routing_integration"
+	@echo "... test_mesh_enhanced_routing_regression"
+	@echo "... test_mesh_exception_bridge"
+	@echo "... test_mesh_gpu"
+	@echo "... test_mesh_health_bridge"
+	@echo "... test_mesh_kg_integration"
+	@echo "... test_mesh_kg_routing_bridge"
+	@echo "... test_mesh_kg_routing_bridge_integration"
+	@echo "... test_mesh_kg_routing_bridge_regression"
+	@echo "... test_mesh_kg_sync_integration"
+	@echo "... test_mesh_module_registry"
+	@echo "... test_mesh_msp"
+	@echo "... test_mesh_msp_integration"
+	@echo "... test_mesh_ordering"
+	@echo "... test_mesh_participant"
+	@echo "... test_mesh_pattern_cache"
+	@echo "... test_mesh_pattern_routing"
+	@echo "... test_mesh_performance_regression"
+	@echo "... test_mesh_q1_simple_recall"
+	@echo "... test_mesh_receptive_fields"
+	@echo "... test_mesh_registration_regression"
+	@echo "... test_mesh_resilience_flow_integration"
+	@echo "... test_mesh_resilience_integration"
+	@echo "... test_mesh_routing_regression"
+	@echo "... test_mesh_sat_solver"
+	@echo "... test_mesh_security_flow_integration"
+	@echo "... test_mesh_security_integration"
+	@echo "... test_mesh_security_regression"
+	@echo "... test_mesh_stability_regression"
+	@echo "... test_mesh_timing"
+	@echo "... test_mesh_topology"
+	@echo "... test_mesh_transaction"
+	@echo "... test_mesh_transaction_flow_integration"
+	@echo "... test_mesh_transaction_regression"
+	@echo "... test_mesh_types"
 	@echo "... test_misc_gpu_recovery"
 	@echo "... test_networking_exception_integration"
 	@echo "... test_neural_logic"
@@ -38895,6 +40057,8 @@ help:
 	@echo "... unit_cognitive_omni_bridges_test_omni_wm_tom_bridge"
 	@echo "... unit_cognitive_omni_test_omni_wm_exception_handling"
 	@echo "... unit_cognitive_omni_test_omni_world_model"
+	@echo "... unit_cognitive_parietal_linguistics_bridges_test_linguistics_plasticity_bridge"
+	@echo "... unit_cognitive_parietal_linguistics_bridges_test_linguistics_snn_bridge"
 	@echo "... unit_cognitive_personality_test_personality"
 	@echo "... unit_cognitive_predictive_test_predictive"
 	@echo "... unit_cognitive_predictive_test_predictive_bridge_exception"
@@ -39482,6 +40646,8 @@ help:
 	@echo "... unit_lc_test_ne_release"
 	@echo "... unit_lc_test_novelty_detection"
 	@echo "... unit_lib_cognitive_test_hierarchical"
+	@echo "... unit_linguistics_plasticity_bridge"
+	@echo "... unit_linguistics_snn_bridge"
 	@echo "... unit_lnn_exception_handling"
 	@echo "... unit_lnn_test_lnn_config"
 	@echo "... unit_lnn_test_lnn_layer"
@@ -39727,21 +40893,29 @@ help:
 	@echo "... unit_security_immune_unified_bridge"
 	@echo "... unit_security_rcog_bridge"
 	@echo "... unit_security_sleep_bridges"
+	@echo "... unit_security_test_alignment_monitor"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_bayesian_network"
 	@echo "... unit_security_test_bbb_immune_integration"
 	@echo "... unit_security_test_blood_brain_barrier"
+	@echo "... unit_security_test_capability_control"
 	@echo "... unit_security_test_capability_thread_safety"
 	@echo "... unit_security_test_constant_time"
+	@echo "... unit_security_test_corrigibility"
+	@echo "... unit_security_test_emergency_halt"
 	@echo "... unit_security_test_encrypted_audit"
 	@echo "... unit_security_test_exception_handling"
 	@echo "... unit_security_test_fep_bridges"
+	@echo "... unit_security_test_graduated_autonomy"
+	@echo "... unit_security_test_interpretability"
 	@echo "... unit_security_test_key_derivation"
 	@echo "... unit_security_test_nan_inf_validation"
 	@echo "... unit_security_test_path_traversal"
 	@echo "... unit_security_test_pattern_db"
 	@echo "... unit_security_test_policy_parser"
 	@echo "... unit_security_test_post_quantum"
+	@echo "... unit_security_test_red_team"
+	@echo "... unit_security_test_safety_verification"
 	@echo "... unit_security_test_security"
 	@echo "... unit_security_test_security_async_bridge"
 	@echo "... unit_security_test_security_collective_bridge"
@@ -39767,6 +40941,8 @@ help:
 	@echo "... unit_security_test_security_training_bridge"
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
+	@echo "... unit_security_test_tripwires"
+	@echo "... unit_security_test_value_commitment"
 	@echo "... unit_shannon_monitor_bio_async"
 	@echo "... unit_snn_bridge_exception"
 	@echo "... unit_snn_exception_handling"

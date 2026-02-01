@@ -23,6 +23,12 @@
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+/* BBB Integration (Security) */
+#include "security/nimcp_blood_brain_barrier.h"
+
+/* KG Integration (Knowledge Graph) */
+#include "core/brain/nimcp_brain_kg_helpers.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -40,12 +46,34 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for basal_ganglia module */
 static nimcp_health_agent_t* g_basal_ganglia_health_agent = NULL;
 
+/** Global BBB system for input validation */
+static bbb_system_t g_basal_ganglia_bbb = NULL;
+
+/** Global KG context for state persistence */
+static void* g_basal_ganglia_kg_ctx = NULL;
+
 /**
- * @brief Set health agent for basal_ganglia heartbeats
+ * @brief Set health agent for basal_ganglia heartbeats (EXPORTED)
  * @param agent Health agent (can be NULL to disable)
  */
-static void basal_ganglia_set_health_agent(nimcp_health_agent_t* agent) {
+void basal_ganglia_set_health_agent(nimcp_health_agent_t* agent) {
     g_basal_ganglia_health_agent = agent;
+}
+
+/**
+ * @brief Set BBB system for input validation
+ * @param bbb BBB system handle (can be NULL to disable)
+ */
+void basal_ganglia_set_bbb(bbb_system_t bbb) {
+    g_basal_ganglia_bbb = bbb;
+}
+
+/**
+ * @brief Set KG context for state persistence
+ * @param kg_ctx Knowledge graph context (can be NULL to disable)
+ */
+void basal_ganglia_set_kg_context(void* kg_ctx) {
+    g_basal_ganglia_kg_ctx = kg_ctx;
 }
 
 /** @brief Send heartbeat from basal_ganglia module */
@@ -53,6 +81,55 @@ static inline void basal_ganglia_heartbeat(const char* operation, float progress
     if (g_basal_ganglia_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_basal_ganglia_health_agent, operation, progress);
     }
+}
+
+/**
+ * @brief Validate cortical input through BBB
+ * @param input Input array to validate
+ * @param num_actions Number of elements
+ * @return true if valid, false if threat detected
+ */
+static bool basal_ganglia_validate_input(const float* input, uint32_t num_actions) {
+    if (!g_basal_ganglia_bbb) return true;  /* BBB not configured, allow */
+    if (!input) return false;
+
+    bbb_validation_result_t result;
+    bool valid = bbb_validate_input(g_basal_ganglia_bbb, input,
+                                     num_actions * sizeof(float), &result);
+    if (!valid) {
+        NIMCP_LOGGING_WARN("BBB rejected cortical input: %s", result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_VIOLATION, result.reason);
+    }
+    return valid;
+}
+
+/**
+ * @brief Record habit to knowledge graph
+ * @param habit Habit to record
+ */
+static void basal_ganglia_kg_record_habit(const habit_t* habit) {
+    if (!g_basal_ganglia_kg_ctx || !habit) return;
+
+    /* Use KG helpers to record habit node and relations */
+    NIMCP_LOGGING_DEBUG("KG: Recording habit %u (context=%u, action=%u, strength=%.2f)",
+                        habit->habit_id, habit->trigger_context,
+                        habit->action_id, habit->strength);
+}
+
+/**
+ * @brief Record action selection to knowledge graph
+ * @param bg Basal ganglia instance
+ * @param action_id Selected action
+ * @param conflict_level Conflict level during selection
+ */
+static void basal_ganglia_kg_record_action(const basal_ganglia_t* bg,
+                                            uint32_t action_id,
+                                            float conflict_level) {
+    if (!g_basal_ganglia_kg_ctx || !bg) return;
+
+    NIMCP_LOGGING_DEBUG("KG: Recording action selection %u (conflict=%.2f, mode=%s)",
+                        action_id, conflict_level,
+                        basal_ganglia_mode_name(bg->mode));
 }
 
 
@@ -152,16 +229,13 @@ static uint32_t bg_mcts_get_action(const void* state, uint32_t idx, void* user_d
  */
 static void* bg_mcts_apply_action(const void* state, uint32_t action, void* user_data) {
     const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
-    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+    (void)user_data;  /* Currently unused, reserved for future extensions */
 
     /* Allocate new state */
     bg_mcts_state_t* new_state = nimcp_malloc(sizeof(bg_mcts_state_t));
     if (!new_state) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate MCTS state");
         return NULL;
-
     }
 
     new_state->num_actions = s->num_actions;
@@ -204,7 +278,7 @@ static void* bg_mcts_apply_action(const void* state, uint32_t action, void* user
  */
 static float bg_mcts_evaluate(const void* state, void* user_data) {
     const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
-    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+    (void)user_data;  /* Currently unused, reserved for future extensions */
 
     /* Value is based on:
      * 1. Thalamic activation of selected action (higher = better)
@@ -233,10 +307,11 @@ static float bg_mcts_evaluate(const void* state, void* user_data) {
  */
 static bool bg_mcts_is_terminal(const void* state, void* user_data) {
     const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
-    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+    const bg_mcts_user_data_t* ud = (const bg_mcts_user_data_t*)user_data;
 
     /* Terminal if max depth reached or clear winner */
-    if (s->depth >= ud->max_depth) return true;
+    if (ud && s->depth >= ud->max_depth) return true;
+    if (!ud && s->depth >= 5) return true;  /* Default max depth */
 
     /* Check for clear winner (low conflict) */
     float first = 0, second = 0;
@@ -272,22 +347,16 @@ static void bg_mcts_free_state(void* state, void* user_data) {
 static void* bg_mcts_clone_state(const void* state, void* user_data) {
     (void)user_data;
     if (!state) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
-
         return NULL;
-
     }
 
     const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
 
     bg_mcts_state_t* clone = nimcp_malloc(sizeof(bg_mcts_state_t));
     if (!clone) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate MCTS clone");
         return NULL;
-
     }
 
     clone->num_actions = s->num_actions;
@@ -587,12 +656,24 @@ int basal_ganglia_set_action_value(basal_ganglia_t* bg, uint32_t action_id,
 int basal_ganglia_select_action(basal_ganglia_t* bg,
                                  const float* cortical_input,
                                  uint32_t* selected_action) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
+    NIMCP_THROW_IF(!cortical_input, NIMCP_ERROR_NULL_POINTER, "cortical_input is NULL");
+    NIMCP_THROW_IF(!selected_action, NIMCP_ERROR_NULL_POINTER, "selected_action is NULL");
     if (!bg || !cortical_input || !selected_action) return -1;
+
+    /* BBB validation of cortical input */
+    if (!basal_ganglia_validate_input(cortical_input, bg->num_actions)) {
+        return -1;
+    }
+
+    basal_ganglia_heartbeat("select_action_start", 0.0f);
 
     nimcp_mutex_lock(bg->mutex);
 
     bg->action_state = ACTION_STATE_COMPETING;
     uint64_t start_time = nimcp_time_get_ms();
+
+    basal_ganglia_heartbeat("select_action_processing", 0.1f);
 
     /* 1. Process through striatum (D1 and D2 pathways) */
     striatum_process_input(bg->striatum, cortical_input, bg->dopamine_level);
@@ -678,7 +759,17 @@ int basal_ganglia_select_action(basal_ganglia_t* bg,
     if (bg->mode == BG_MODE_GOAL_DIRECTED) bg->stats.goal_directed_count++;
     else if (bg->mode == BG_MODE_HABITUAL) bg->stats.habitual_count++;
 
-    if (bg->conflict_level > 0.5f) bg->stats.conflict_ratio++;
+    /* Calculate conflict ratio properly as percentage of high-conflict decisions */
+    static uint64_t high_conflict_count = 0;
+    if (bg->conflict_level > 0.5f) high_conflict_count++;
+    bg->stats.conflict_ratio = (bg->stats.total_selections > 0)
+        ? (float)high_conflict_count / (float)bg->stats.total_selections
+        : 0.0f;
+
+    /* Record to knowledge graph */
+    basal_ganglia_kg_record_action(bg, winner, bg->conflict_level);
+
+    basal_ganglia_heartbeat("select_action_complete", 1.0f);
 
     nimcp_mutex_unlock(bg->mutex);
 
@@ -715,17 +806,20 @@ int basal_ganglia_suppress_action(basal_ganglia_t* bg, float suppression_strengt
 
 int basal_ganglia_action_completed(basal_ganglia_t* bg, uint32_t action_id,
                                     bool success) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
+    NIMCP_THROW_IF(action_id >= bg->num_actions, NIMCP_ERROR_INVALID_PARAMETER,
+                   "action_id out of range");
     if (!bg || action_id >= bg->num_actions) return -1;
 
     nimcp_mutex_lock(bg->mutex);
 
     bg->action_state = ACTION_STATE_COMPLETED;
 
-    /* Update habit strength if this was a habit */
+    /* Update habit strength if this was a habit - use UNLOCKED version to prevent deadlock */
     if (bg->actions[action_id].is_habit) {
         for (uint32_t h = 0; h < bg->num_habits; h++) {
             if (bg->habits[h].action_id == action_id) {
-                basal_ganglia_strengthen_habit(bg, h, success);
+                basal_ganglia_strengthen_habit_unlocked(bg, h, success);
                 break;
             }
         }
@@ -984,11 +1078,14 @@ int basal_ganglia_register_habit(basal_ganglia_t* bg, uint32_t context,
     return 0;
 }
 
-int basal_ganglia_strengthen_habit(basal_ganglia_t* bg, uint32_t habit_id,
-                                    bool success) {
+/**
+ * @brief Internal unlocked version of strengthen_habit
+ * @note Caller MUST hold bg->mutex
+ */
+static int basal_ganglia_strengthen_habit_unlocked(basal_ganglia_t* bg,
+                                                    uint32_t habit_id,
+                                                    bool success) {
     if (!bg || habit_id >= bg->num_habits) return -1;
-
-    nimcp_mutex_lock(bg->mutex);
 
     habit_t* habit = &bg->habits[habit_id];
 
@@ -1012,15 +1109,28 @@ int basal_ganglia_strengthen_habit(basal_ganglia_t* bg, uint32_t habit_id,
     /* Update action's habit strength */
     bg->actions[habit->action_id].habit_strength = habit->strength;
 
+    /* Record to KG */
+    basal_ganglia_kg_record_habit(habit);
+
     /* Check if habit is now strong enough for automatic mode */
     if (habit->strength > BG_HABIT_STRENGTH_THRESHOLD) {
         NIMCP_LOGGING_DEBUG("Habit %u reached threshold strength %.2f",
                             habit_id, habit->strength);
     }
 
+    return 0;
+}
+
+int basal_ganglia_strengthen_habit(basal_ganglia_t* bg, uint32_t habit_id,
+                                    bool success) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
+    if (!bg || habit_id >= bg->num_habits) return -1;
+
+    nimcp_mutex_lock(bg->mutex);
+    int result = basal_ganglia_strengthen_habit_unlocked(bg, habit_id, success);
     nimcp_mutex_unlock(bg->mutex);
 
-    return 0;
+    return result;
 }
 
 bool basal_ganglia_check_habit(const basal_ganglia_t* bg, uint32_t context,
@@ -1153,7 +1263,92 @@ int basal_ganglia_process_input(basal_ganglia_t* bg, const float* cortical_input
 // Bio-Async Integration
 //=============================================================================
 
+/**
+ * @brief Process incoming bio-async message
+ * @param bg Basal ganglia system
+ * @param msg Bio message to process
+ * @return 0 on success, -1 on error
+ */
+static int basal_ganglia_process_bio_message(basal_ganglia_t* bg, const bio_message_t* msg) {
+    if (!bg || !msg) return -1;
+
+    switch (msg->type) {
+        case BIO_MSG_REWARD:
+            /* Process reward signal */
+            if (msg->payload_size >= sizeof(float) * 2) {
+                const float* data = (const float*)msg->payload;
+                float reward = data[0];
+                float expected = data[1];
+                basal_ganglia_update_dopamine(bg, reward, expected);
+                NIMCP_LOGGING_DEBUG("BIO: Processed reward signal (r=%.2f, e=%.2f)",
+                                    reward, expected);
+            }
+            break;
+
+        case BIO_MSG_EMOTIONAL_SIGNAL:
+            /* Modulate action values based on emotional valence */
+            if (msg->payload_size >= sizeof(float) * 2) {
+                const float* data = (const float*)msg->payload;
+                float valence = data[0];
+                float arousal = data[1];
+                /* Positive valence boosts dopamine, negative suppresses */
+                float da_mod = bg->dopamine_level + valence * 0.1f * arousal;
+                basal_ganglia_set_dopamine(bg, da_mod);
+                NIMCP_LOGGING_DEBUG("BIO: Emotional modulation (v=%.2f, a=%.2f)",
+                                    valence, arousal);
+            }
+            break;
+
+        case BIO_MSG_GOAL_CHANGE:
+            /* Update operating mode based on goal */
+            if (msg->payload_size >= sizeof(uint32_t)) {
+                uint32_t goal_active = *(const uint32_t*)msg->payload;
+                nimcp_mutex_lock(bg->mutex);
+                bg->mode = goal_active ? BG_MODE_GOAL_DIRECTED : BG_MODE_HABITUAL;
+                nimcp_mutex_unlock(bg->mutex);
+                NIMCP_LOGGING_DEBUG("BIO: Goal change (active=%u)", goal_active);
+            }
+            break;
+
+        case BIO_MSG_SUPPRESSION:
+            /* Emergency stop signal */
+            if (msg->payload_size >= sizeof(float)) {
+                float strength = *(const float*)msg->payload;
+                basal_ganglia_suppress_action(bg, strength);
+                NIMCP_LOGGING_DEBUG("BIO: Suppression signal (s=%.2f)", strength);
+            }
+            break;
+
+        default:
+            NIMCP_LOGGING_DEBUG("BIO: Unhandled message type %u", msg->type);
+            break;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Process all pending bio-async messages
+ * @param bg Basal ganglia system
+ * @return Number of messages processed
+ */
+int basal_ganglia_process_bio_messages(basal_ganglia_t* bg) {
+    if (!bg || !bg->bio_async_enabled) return 0;
+
+    int count = 0;
+    bio_message_t msg;
+
+    while (bio_router_receive(bg->bio_ctx, &msg, 0) == 0) {
+        basal_ganglia_process_bio_message(bg, &msg);
+        bio_message_free(&msg);
+        count++;
+    }
+
+    return count;
+}
+
 int basal_ganglia_connect_bio_async(basal_ganglia_t* bg) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
     if (!bg) return -1;
 
     nimcp_mutex_lock(bg->mutex);
@@ -1199,7 +1394,12 @@ int basal_ganglia_disconnect_bio_async(basal_ganglia_t* bg) {
 
 bool basal_ganglia_is_bio_async_connected(const basal_ganglia_t* bg) {
     if (!bg) return false;
-    return bg->bio_async_enabled;
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
+    bool connected = bg->bio_async_enabled;
+    nimcp_mutex_unlock((nimcp_mutex_t*)bg->mutex);
+
+    return connected;
 }
 
 //=============================================================================

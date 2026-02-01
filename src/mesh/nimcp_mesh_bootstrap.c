@@ -10,6 +10,11 @@
 #include "mesh/nimcp_mesh_bootstrap.h"
 #include "mesh/nimcp_mesh_integration.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "mesh/nimcp_mesh_module_registry.h"
+#include "mesh/nimcp_mesh_bio_bridge.h"
+#include "mesh/nimcp_mesh_exception_bridge.h"
+#include "mesh/nimcp_mesh_health_bridge.h"
+#include "mesh/nimcp_mesh_receptive_fields.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -85,8 +90,15 @@ struct mesh_bootstrap {
     /* Pattern-based routing (brain-like self-selection) */
     mesh_pattern_router_t* pattern_router;
 
+    /* Phase 14: Bridges for full bidirectional integration */
+    mesh_module_registry_t* module_registry;    /**< Type-safe module lookup */
+    mesh_bio_bridge_t* bio_bridge;              /**< Bio-async ↔ mesh translation */
+    mesh_exception_bridge_t* exception_bridge;  /**< Exception → immune routing */
+    mesh_health_bridge_t* health_bridge;        /**< Heartbeat aggregation */
+
     /* State */
     bool initialized;
+    bool receptive_fields_initialized;
     uint64_t init_start_ns;
 
     nimcp_mutex_t* mutex;
@@ -967,6 +979,54 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
         LOG_DEBUG("Pattern router created for brain-like self-selection");
     }
 
+    /* Phase 14: Initialize module registry for type-safe lookup */
+    mesh_module_registry_config_t registry_config;
+    mesh_module_registry_default_config(&registry_config);
+    registry_config.require_magic_validation = true;
+    registry_config.verbose_logging = config->verbose_logging;
+    bootstrap->module_registry = mesh_module_registry_create(&registry_config);
+    if (!bootstrap->module_registry) {
+        LOG_WARN("Failed to create module registry - type-safe lookup disabled");
+    } else {
+        LOG_DEBUG("Module registry created for type-safe module lookup");
+    }
+
+    /* Phase 14: Initialize bio bridge for bio-async integration */
+    mesh_bio_bridge_config_t bio_config;
+    mesh_bio_bridge_default_config(&bio_config);
+    bio_config.enable_pattern_routing = (bootstrap->pattern_router != NULL);
+    bio_config.verbose_logging = config->verbose_logging;
+    bootstrap->bio_bridge = mesh_bio_bridge_create(bootstrap, &bio_config);
+    if (!bootstrap->bio_bridge) {
+        LOG_WARN("Failed to create bio bridge - bio-async integration disabled");
+    } else {
+        LOG_DEBUG("Bio bridge created for bio-async ↔ mesh translation");
+    }
+
+    /* Phase 14: Initialize health bridge for distributed monitoring */
+    mesh_health_bridge_config_t health_config;
+    mesh_health_bridge_default_config(&health_config);
+    health_config.verbose_logging = config->verbose_logging;
+    bootstrap->health_bridge = mesh_health_bridge_create(bootstrap, &health_config);
+    if (!bootstrap->health_bridge) {
+        LOG_WARN("Failed to create health bridge - distributed health disabled");
+    } else {
+        LOG_DEBUG("Health bridge created for heartbeat aggregation");
+    }
+
+    /* Phase 14: Exception bridge requires immune system - defer if not available */
+    /* Will be initialized when immune system is registered */
+    bootstrap->exception_bridge = NULL;
+
+    /* Phase 14: Initialize receptive fields library */
+    if (mesh_receptive_fields_init() == NIMCP_SUCCESS) {
+        bootstrap->receptive_fields_initialized = true;
+        LOG_DEBUG("Receptive fields library initialized");
+    } else {
+        bootstrap->receptive_fields_initialized = false;
+        LOG_WARN("Failed to initialize receptive fields library");
+    }
+
     LOG_INFO("Created mesh bootstrap - registering subsystems...");
 
     /* Register core brain components first */
@@ -1073,6 +1133,32 @@ void mesh_bootstrap_destroy(mesh_bootstrap_t* bootstrap) {
     if (bootstrap->pattern_router) {
         mesh_pattern_router_destroy(bootstrap->pattern_router);
         bootstrap->pattern_router = NULL;
+    }
+
+    /* Phase 14: Destroy bridges */
+    if (bootstrap->exception_bridge) {
+        mesh_exception_bridge_destroy(bootstrap->exception_bridge);
+        bootstrap->exception_bridge = NULL;
+    }
+
+    if (bootstrap->health_bridge) {
+        mesh_health_bridge_destroy(bootstrap->health_bridge);
+        bootstrap->health_bridge = NULL;
+    }
+
+    if (bootstrap->bio_bridge) {
+        mesh_bio_bridge_destroy(bootstrap->bio_bridge);
+        bootstrap->bio_bridge = NULL;
+    }
+
+    if (bootstrap->module_registry) {
+        mesh_module_registry_destroy(bootstrap->module_registry);
+        bootstrap->module_registry = NULL;
+    }
+
+    /* Phase 14: Cleanup receptive fields library */
+    if (bootstrap->receptive_fields_initialized) {
+        mesh_receptive_fields_cleanup();
     }
 
     /* Destroy integration */
@@ -1313,6 +1399,19 @@ void mesh_bootstrap_print_status(const mesh_bootstrap_t* bootstrap) {
            mesh_bootstrap_get_free_energy(bootstrap));
     printf("║  Converged             │ %6s                                   ║\n",
            mesh_bootstrap_has_converged(bootstrap) ? "YES" : "NO");
+    printf("╠══════════════════════════════════════════════════════════════════╣\n");
+    printf("║  PHASE 14 BRIDGES                                                ║\n");
+    printf("╠────────────────────────┼─────────────────────────────────────────╣\n");
+    printf("║  Module Registry       │ %6s                                   ║\n",
+           bootstrap->module_registry ? "ACTIVE" : "OFF");
+    printf("║  Bio Bridge            │ %6s                                   ║\n",
+           bootstrap->bio_bridge ? "ACTIVE" : "OFF");
+    printf("║  Exception Bridge      │ %6s                                   ║\n",
+           bootstrap->exception_bridge ? "ACTIVE" : "OFF");
+    printf("║  Health Bridge         │ %6s                                   ║\n",
+           bootstrap->health_bridge ? "ACTIVE" : "OFF");
+    printf("║  Receptive Fields      │ %6s                                   ║\n",
+           bootstrap->receptive_fields_initialized ? "INIT" : "OFF");
     printf("╚══════════════════════════════════════════════════════════════════╝\n");
     printf("\n");
 }
@@ -1389,6 +1488,20 @@ nimcp_error_t mesh_bootstrap_register_immune(
         MESH_ADAPTER_CATEGORY_SECURITY, ENDORSER_ROLE_REQUIRED,
         immune_policies, 1
     );
+
+    /* Phase 14: Now that we have immune system, initialize exception bridge */
+    if (bootstrap->immune_id && !bootstrap->exception_bridge) {
+        mesh_exception_bridge_config_t exc_config;
+        mesh_exception_bridge_default_config(&exc_config);
+        exc_config.verbose_logging = bootstrap->config.verbose_logging;
+        bootstrap->exception_bridge = mesh_exception_bridge_create(
+            bootstrap, immune, &exc_config);
+        if (bootstrap->exception_bridge) {
+            LOG_DEBUG("Exception bridge created with immune system integration");
+        } else {
+            LOG_WARN("Failed to create exception bridge");
+        }
+    }
 
     return bootstrap->immune_id ? NIMCP_SUCCESS : NIMCP_ERROR_SYSTEM;
 }
@@ -1624,4 +1737,109 @@ nimcp_error_t mesh_bootstrap_learn_routing_outcome(
     return mesh_pattern_router_learn_outcome(
         bootstrap->pattern_router, tx, endorsers, endorser_count,
         success, reward_signal);
+}
+
+/* ============================================================================
+ * Public API: Phase 14 Bridge Access
+ * ============================================================================ */
+
+mesh_module_registry_t* mesh_bootstrap_get_module_registry(mesh_bootstrap_t* bootstrap) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NULL;
+    }
+    return bootstrap->module_registry;
+}
+
+mesh_bio_bridge_t* mesh_bootstrap_get_bio_bridge(mesh_bootstrap_t* bootstrap) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NULL;
+    }
+    return bootstrap->bio_bridge;
+}
+
+mesh_exception_bridge_t* mesh_bootstrap_get_exception_bridge(mesh_bootstrap_t* bootstrap) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NULL;
+    }
+    return bootstrap->exception_bridge;
+}
+
+mesh_health_bridge_t* mesh_bootstrap_get_health_bridge(mesh_bootstrap_t* bootstrap) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NULL;
+    }
+    return bootstrap->health_bridge;
+}
+
+nimcp_error_t mesh_bootstrap_register_module(
+    mesh_bootstrap_t* bootstrap,
+    const mesh_module_descriptor_t* descriptor
+) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (!descriptor) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bootstrap->module_registry) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    /* Register in the type-safe module registry */
+    nimcp_error_t err = mesh_module_registry_register(
+        bootstrap->module_registry, descriptor);
+    if (err != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to register module '%s' in registry: %d",
+                  descriptor->module_name, err);
+        return err;
+    }
+
+    /* Also register as mesh participant via legacy path */
+    mesh_participant_id_t id = register_generic_module(
+        bootstrap,
+        descriptor->module_instance,
+        descriptor->module_name,
+        descriptor->category,
+        ENDORSER_ROLE_OPTIONAL,
+        NULL, 0
+    );
+
+    if (id == 0) {
+        LOG_WARN("Module '%s' registered in registry but not as participant",
+                 descriptor->module_name);
+    }
+
+    /* Register receptive field if provided */
+    if (descriptor->receptive_field && bootstrap->pattern_router && id != 0) {
+        mesh_pattern_router_register_receptive_field(
+            bootstrap->pattern_router, id, descriptor->receptive_field);
+    }
+
+    /* Register with health bridge if health agent provided */
+    if (descriptor->health_agent && bootstrap->health_bridge && id != 0) {
+        mesh_health_bridge_register_agent(
+            bootstrap->health_bridge, id, descriptor->health_agent);
+    }
+
+    if (bootstrap->config.verbose_logging) {
+        LOG_DEBUG("Registered module '%s' (category=%d) with Phase 14 bridges",
+                  descriptor->module_name, descriptor->category);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+mesh_registered_module_t* mesh_bootstrap_lookup_module(
+    mesh_bootstrap_t* bootstrap,
+    const char* name
+) {
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        return NULL;
+    }
+    if (!name || !bootstrap->module_registry) {
+        return NULL;
+    }
+
+    /* mesh_module_registry_get returns const, but we return non-const for API compatibility */
+    return (mesh_registered_module_t*)mesh_module_registry_get(bootstrap->module_registry, name);
 }

@@ -32,6 +32,47 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+/* Forward declaration for mesh integration - include avoided to prevent type conflicts */
+struct mesh_brain_integration;
+typedef struct mesh_brain_integration mesh_brain_integration_t;
+
+/* Mesh brain integration function declarations */
+extern nimcp_error_t mesh_brain_integration_register_bbb(
+    mesh_brain_integration_t* integration, void* bbb, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_immune_system(
+    mesh_brain_integration_t* integration, void* immune, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_fep_orchestrator(
+    mesh_brain_integration_t* integration, void* fep, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_working_memory(
+    mesh_brain_integration_t* integration, void* wm, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_executive(
+    mesh_brain_integration_t* integration, void* exec, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_global_workspace(
+    mesh_brain_integration_t* integration, void* gw, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_plasticity_coordinator(
+    mesh_brain_integration_t* integration, void* plasticity, void* health_agent);
+extern nimcp_error_t mesh_brain_integration_register_bio_async_orchestrator(
+    mesh_brain_integration_t* integration, void* bio_orch, void* health_agent);
+
+/* Mesh brain integration stats structure */
+typedef struct mesh_brain_integration_stats {
+    size_t memory_modules_registered;
+    size_t cognitive_modules_registered;
+    size_t sensory_modules_registered;
+    size_t motor_modules_registered;
+    size_t security_modules_registered;
+    size_t plasticity_modules_registered;
+    size_t glial_modules_registered;
+    size_t orchestrator_modules_registered;
+    size_t total_modules_registered;
+    size_t registration_failures;
+    uint64_t last_registration_time_ns;
+} mesh_brain_integration_stats_t;
+
+extern nimcp_error_t mesh_brain_integration_get_stats(
+    const mesh_brain_integration_t* integration,
+    mesh_brain_integration_stats_t* stats);
+
 #define LOG_MODULE "BRAIN_INIT_CORE"
 
 //=============================================================================
@@ -203,4 +244,186 @@ bool nimcp_brain_factory_init_event_bus(brain_t brain)
 
     LOG_INFO("Universal event bus initialized for brain");
     return true;
+}
+
+//=============================================================================
+// Mesh Network Integration (Phase 15: Brain-Mesh Integration)
+//=============================================================================
+
+/**
+ * @brief Global mesh brain integration handle for brain module registration
+ *
+ * Set via nimcp_brain_factory_set_mesh_integration() before brain creation.
+ * When set, brain modules are automatically registered with the mesh network.
+ */
+static mesh_brain_integration_t* g_mesh_brain_integration = NULL;
+
+/**
+ * @brief Set the mesh brain integration handle for automatic registration
+ *
+ * WHAT: Configures brain factory to auto-register modules with mesh
+ * WHY:  Enables real brain modules to participate in mesh consensus
+ * HOW:  Stores integration handle, used during brain init
+ *
+ * @param integration Mesh brain integration handle (NULL to disable)
+ */
+void nimcp_brain_factory_set_mesh_integration(mesh_brain_integration_t* integration) {
+    g_mesh_brain_integration = integration;
+    if (integration) {
+        LOG_INFO("Mesh brain integration enabled for brain factory");
+    } else {
+        LOG_INFO("Mesh brain integration disabled for brain factory");
+    }
+}
+
+/**
+ * @brief Get the current mesh brain integration handle
+ *
+ * @return Current integration handle or NULL if not set
+ */
+mesh_brain_integration_t* nimcp_brain_factory_get_mesh_integration(void) {
+    return g_mesh_brain_integration;
+}
+
+/**
+ * @brief Register brain modules with mesh network
+ *
+ * WHAT: Registers all available brain modules with the mesh network
+ * WHY:  Enables real module instances to participate in mesh consensus
+ * HOW:  Iterates brain subsystems, registers non-NULL modules
+ *
+ * BIOLOGICAL MOTIVATION:
+ * - Brain regions form a distributed consensus network
+ * - Each region has specialized receptive fields (what it responds to)
+ * - Thalamus acts as gateway, amygdala has veto power
+ * - Hippocampus is required for memory transactions
+ *
+ * @param brain Brain instance with initialized modules
+ * @return true if registration successful, false on error
+ */
+bool nimcp_brain_factory_register_with_mesh(brain_t brain)
+{
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_register_with_mesh: brain is NULL");
+        return false;
+    }
+
+    mesh_brain_integration_t* integration = g_mesh_brain_integration;
+    if (!integration) {
+        /* Mesh integration not configured - not an error */
+        return true;
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.0f);
+
+    LOG_INFO("Registering brain modules with mesh network...");
+
+    size_t registered = 0;
+    size_t failed = 0;
+
+    /* Security modules (highest priority - must be registered first) */
+    if (brain->bbb_system) {
+        if (mesh_brain_integration_register_bbb(
+                integration, brain->bbb_system, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    if (brain->immune_system) {
+        if (mesh_brain_integration_register_immune_system(
+                integration, brain->immune_system, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.2f);
+
+    /* Core cognitive modules */
+    if (brain->fep_orchestrator) {
+        if (mesh_brain_integration_register_fep_orchestrator(
+                integration, brain->fep_orchestrator, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    if (brain->working_memory) {
+        if (mesh_brain_integration_register_working_memory(
+                integration, brain->working_memory, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    if (brain->executive) {
+        if (mesh_brain_integration_register_executive(
+                integration, brain->executive, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.4f);
+
+    /* Global workspace for conscious access */
+    if (brain->global_workspace) {
+        if (mesh_brain_integration_register_global_workspace(
+                integration, brain->global_workspace, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.6f);
+
+    /* Plasticity coordinator */
+    if (brain->plasticity_coordinator) {
+        if (mesh_brain_integration_register_plasticity_coordinator(
+                integration, brain->plasticity_coordinator, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* Bio-async orchestrator */
+    if (brain->bio_async_orchestrator) {
+        if (mesh_brain_integration_register_bio_async_orchestrator(
+                integration, brain->bio_async_orchestrator, NULL) == NIMCP_SUCCESS) {
+            registered++;
+        } else {
+            failed++;
+        }
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 0.8f);
+
+    /* Get statistics */
+    mesh_brain_integration_stats_t stats;
+    if (mesh_brain_integration_get_stats(integration, &stats) == NIMCP_SUCCESS) {
+        LOG_INFO("Mesh registration complete: %zu total (%zu memory, %zu cognitive, "
+                 "%zu security, %zu plasticity), %zu failed",
+                 stats.total_modules_registered,
+                 stats.memory_modules_registered,
+                 stats.cognitive_modules_registered,
+                 stats.security_modules_registered,
+                 stats.plasticity_modules_registered,
+                 failed);
+    } else {
+        LOG_INFO("Mesh registration complete: %zu registered, %zu failed",
+                 registered, failed);
+    }
+
+    brain_init_core_heartbeat("mesh_registration", 1.0f);
+
+    return (failed == 0);
 }

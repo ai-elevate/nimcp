@@ -1604,6 +1604,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/swarm")
 endif()
 
 # ============================================================================
+# Mesh Network Tests (Hyperledger-inspired Architecture)
+# ============================================================================
+# WHAT: Tests for unified mesh network with channels, endorsement, and ordering
+# WHY:  Verify distributed consensus, transaction lifecycle, and coordinator pools
+# HOW:  Unit tests for types/participant/transaction, integration for full flow
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/mesh")
+    message(STATUS "Adding mesh network unit tests...")
+    add_subdirectory(unit/mesh)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/mesh")
+    message(STATUS "Adding mesh network integration tests...")
+    add_subdirectory(integration/mesh)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/mesh")
+    message(STATUS "Adding mesh network regression tests...")
+    add_subdirectory(regression/mesh)
+endif()
+
+# ============================================================================
 # Platform Tier Tests (Portia Spider Foundation)
 # ============================================================================
 # WHAT: Tests for platform tier detection and configuration

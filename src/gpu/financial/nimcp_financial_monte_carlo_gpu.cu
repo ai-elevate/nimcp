@@ -540,8 +540,11 @@ __global__ void kernel_multi_asset_gbm_simulate(
     uint32_t path_idx = blockIdx.x;
     if (path_idx >= num_paths) return;
 
-    // Each block handles one path, threads collaborate on assets
-    curandState local_state = rng_states[path_idx % (gridDim.x * blockDim.x)];
+    // Each block handles one path, thread 0 does RNG to avoid state conflicts
+    curandState local_state;
+    if (threadIdx.x == 0) {
+        local_state = rng_states[path_idx];
+    }
 
     // Initialize prices in registers (for small n_assets) or use shared memory
     float sqrt_dt = sqrtf(dt);
@@ -555,9 +558,11 @@ __global__ void kernel_multi_asset_gbm_simulate(
 
     // Simulate path
     for (uint32_t step = 0; step < num_steps; step++) {
-        // Generate independent normals
-        for (uint32_t i = threadIdx.x; i < n_assets; i += blockDim.x) {
-            s_Z[i] = curand_normal(&local_state);
+        // Generate independent normals (thread 0 only to avoid RNG state conflicts)
+        if (threadIdx.x == 0) {
+            for (uint32_t i = 0; i < n_assets; i++) {
+                s_Z[i] = curand_normal(&local_state);
+            }
         }
         __syncthreads();
 
@@ -579,7 +584,7 @@ __global__ void kernel_multi_asset_gbm_simulate(
         __syncthreads();
     }
 
-    // Save RNG state
+    // Save RNG state (thread 0 only)
     if (threadIdx.x == 0) {
         rng_states[path_idx] = local_state;
     }
@@ -958,10 +963,10 @@ bool fin_monte_carlo_gpu_simulate(
         float variance_return = (sum_sq_returns / n_paths) - (mean_return * mean_return);
         float std_return = sqrtf(variance_return > 0.0f ? variance_return : 0.0f);
 
-        // Populate basic result fields
-        result->mean_value = mean_terminal * discount;
-        result->std_error = sqrtf(variance_terminal / n_paths) * discount;
-        result->variance = variance_terminal * discount * discount;
+        // Populate basic result fields - no discounting for simulation statistics
+        result->mean_value = mean_terminal;  // E[S_T]
+        result->std_error = sqrtf(variance_terminal / n_paths);
+        result->variance = variance_terminal;
         result->num_paths = num_paths;
         result->paths_completed = num_paths;
         result->mean_return = mean_return;
@@ -982,10 +987,11 @@ bool fin_monte_carlo_gpu_simulate(
         if (var_95_idx == 0) var_95_idx = 1;
         if (var_99_idx == 0) var_99_idx = 1;
 
-        result->var_95 = h_returns[var_95_idx];  // This will be negative for losses
-        result->var_99 = h_returns[var_99_idx];
+        // VaR: negative of the percentile return (expressed as positive loss)
+        result->var_95 = -h_returns[var_95_idx];
+        result->var_99 = -h_returns[var_99_idx];
 
-        // CVaR: average of returns below VaR threshold (expected shortfall)
+        // CVaR: negative of the average of returns below VaR threshold (expected shortfall)
         float sum_cvar_95 = 0.0f;
         float sum_cvar_99 = 0.0f;
         for (uint32_t i = 0; i < var_95_idx; i++) {
@@ -995,8 +1001,8 @@ bool fin_monte_carlo_gpu_simulate(
             sum_cvar_99 += h_returns[i];
         }
 
-        result->cvar_95 = var_95_idx > 0 ? sum_cvar_95 / (float)var_95_idx : result->var_95;
-        result->cvar_99 = var_99_idx > 0 ? sum_cvar_99 / (float)var_99_idx : result->var_99;
+        result->cvar_95 = var_95_idx > 0 ? -sum_cvar_95 / (float)var_95_idx : result->var_95;
+        result->cvar_99 = var_99_idx > 0 ? -sum_cvar_99 / (float)var_99_idx : result->var_99;
         result->expected_shortfall = result->cvar_95;
 
         // Median terminal value (from sorted returns, reconstruct)
@@ -1022,6 +1028,32 @@ bool fin_monte_carlo_gpu_simulate(
         // Cleanup
         free(h_terminal);
         free(h_returns);
+    }
+
+    // Handle path storage if requested
+    if (params->store_paths) {
+        // Allocate path data on device
+        size_t path_size = (size_t)params->num_paths * (params->num_steps + 1) * sizeof(float);
+        float* d_path_data = NULL;
+        err = cudaMalloc(&d_path_data, path_size);
+        if (err == cudaSuccess) {
+            // Reinitialize RNG states for path simulation
+            kernel_init_rng_states<<<grid_size, block_size, 0, stream>>>(
+                d_rng_states, params->seed != 0 ? params->seed : (uint64_t)time(NULL) + 1,
+                params->num_paths);
+
+            // Run path-storing kernel
+            kernel_gbm_simulate_paths<<<grid_size, block_size, 0, stream>>>(
+                d_rng_states, d_path_data,
+                params->initial_value, params->drift, params->volatility,
+                dt, params->num_steps, params->num_paths);
+
+            result->path_data = d_path_data;  // Keep on device
+        } else {
+            result->path_data = NULL;  // Allocation failed, paths not stored
+        }
+    } else {
+        result->path_data = NULL;
     }
 
     // Cleanup main allocations
@@ -1324,6 +1356,21 @@ bool fin_monte_carlo_gpu_heston(
     result->std_error = sqrtf(variance / n) * discount;
     result->variance = variance * discount * discount;
     result->num_paths = num_paths;
+    result->paths_completed = num_paths;
+
+    // Compute min/max terminal values
+    float* h_terminal = (float*)malloc(num_paths * sizeof(float));
+    if (h_terminal) {
+        cudaMemcpy(h_terminal, d_terminal_values, num_paths * sizeof(float), cudaMemcpyDeviceToHost);
+        float min_t = FLT_MAX, max_t = -FLT_MAX;
+        for (uint32_t i = 0; i < num_paths; i++) {
+            if (h_terminal[i] < min_t) min_t = h_terminal[i];
+            if (h_terminal[i] > max_t) max_t = h_terminal[i];
+        }
+        result->min_terminal = min_t;
+        result->max_terminal = max_t;
+        free(h_terminal);
+    }
 
     // Cleanup
     free(h_partial_sums);

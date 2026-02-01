@@ -50,6 +50,9 @@ typedef int32_t nimcp_error_t;
 #ifndef NIMCP_SUCCESS
 #define NIMCP_SUCCESS                   0    /**< Operation successful */
 #endif
+#ifndef NIMCP_OK
+#define NIMCP_OK                        0    /**< Alias for success */
+#endif
 #define NIMCP_SUCCESS_WITH_WARNINGS     1    /**< Success but with warnings */
 #define NIMCP_SUCCESS_PARTIAL           2    /**< Partial success */
 
@@ -67,6 +70,9 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_INVALID_PARAMETER   1002 /**< Invalid function parameter */
 #ifndef NIMCP_ERROR_INVALID_PARAM
 #define NIMCP_ERROR_INVALID_PARAM       NIMCP_ERROR_INVALID_PARAMETER /**< Alias for shorter name */
+#endif
+#ifndef NIMCP_ERROR_INVALID_ARGUMENT
+#define NIMCP_ERROR_INVALID_ARGUMENT    NIMCP_ERROR_INVALID_PARAMETER /**< Alias for clarity */
 #endif
 #ifndef NIMCP_ERROR_NULL_POINTER
 #define NIMCP_ERROR_NULL_POINTER        1003 /**< Unexpected NULL pointer */
@@ -113,6 +119,33 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_INVALID_ADDRESS     2004 /**< Invalid memory address */
 #define NIMCP_ERROR_MEMORY_LEAK         2005 /**< Memory leak detected */
 #define NIMCP_ERROR_DOUBLE_FREE         2006 /**< Double free detected */
+#define NIMCP_ERROR_CAPACITY_EXCEEDED   2007 /**< Capacity limit exceeded */
+#ifndef NIMCP_ERROR_OUT_OF_MEMORY
+#define NIMCP_ERROR_OUT_OF_MEMORY       2008 /**< Out of memory (alias) */
+#endif
+#ifndef NIMCP_ERROR_QUEUE_FULL
+#define NIMCP_ERROR_QUEUE_FULL          2009 /**< Queue is full */
+#endif
+
+//=============================================================================
+// Mesh Network Errors (2100-2199)
+//=============================================================================
+
+#define NIMCP_ERROR_MESH_BASE           2100 /**< Base for mesh network errors */
+#define NIMCP_ERROR_NOT_LEADER          2101 /**< Node is not the leader */
+#define NIMCP_ERROR_UNAUTHORIZED        2102 /**< Unauthorized operation */
+#define NIMCP_ERROR_CHANNEL_ACCESS_DENIED 2103 /**< Channel access denied */
+#define NIMCP_ERROR_MESH_CHANNEL_FULL   2104 /**< Channel participant limit reached */
+#define NIMCP_ERROR_MESH_TX_FAILED      2105 /**< Transaction failed */
+#define NIMCP_ERROR_MESH_ENDORSEMENT    2106 /**< Endorsement policy not satisfied */
+#define NIMCP_ERROR_MESH_ORDERING       2107 /**< Ordering service error */
+#define NIMCP_ERROR_MESH_CONSENSUS      2108 /**< Consensus not reached */
+#define NIMCP_ERROR_CONFLICT_LOST       2109 /**< Lost conflict resolution */
+#define NIMCP_ERROR_BACKPRESSURE        2110 /**< Backpressure - queue nearly full */
+#define NIMCP_ERROR_PARTITION_DETECTED  2111 /**< Network partition detected */
+#define NIMCP_ERROR_SPLIT_BRAIN         2112 /**< Split-brain scenario detected */
+#define NIMCP_ERROR_CASCADE_FAILURE     2113 /**< Cascading failure detected */
+#define NIMCP_ERROR_NOT_READY           2114 /**< System or component not ready */
 
 //=============================================================================
 // Brain/Network Errors (3000-3999)
@@ -240,6 +273,12 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_QUARANTINE_REQUIRED     9010 /**< Resource requires quarantine */
 #define NIMCP_ERROR_ETHICS_VIOLATION        9011 /**< Ethics evaluation denied operation */
 #define NIMCP_ERROR_LGSS_DENIED             9012 /**< LGSS safety gate denied operation */
+#define NIMCP_ERROR_SYSTEM_HALTED           9013 /**< System is in emergency halt state */
+#define NIMCP_ERROR_HALT_IN_PROGRESS        9014 /**< Emergency halt is in progress */
+#define NIMCP_ERROR_TRIPWIRE_TRIGGERED      9015 /**< Safety tripwire was triggered */
+#define NIMCP_ERROR_CORRIGIBILITY_VIOLATION 9016 /**< Corrigibility constraint violated */
+#define NIMCP_ERROR_ALIGNMENT_DRIFT         9017 /**< Alignment drift detected */
+#define NIMCP_ERROR_CAPABILITY_EXCEEDED     9018 /**< Capability envelope exceeded */
 
 //=============================================================================
 // Brain Region Errors (10000-19999)

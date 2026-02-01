@@ -194,3 +194,14 @@ target_include_directories(neuromodulation_integration_example PRIVATE ${NIMCP_I
 add_executable(rl_eligibility_demo rl_eligibility_demo.c)
 target_link_libraries(rl_eligibility_demo nimcp m)
 target_include_directories(rl_eligibility_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# Mesh Network Bootstrap Demo
+# Demonstrates the complete NIMCP mesh network integration:
+# - Bootstrap creates 5 channels (system, left/right hemisphere, subcortical, GPU)
+# - Registers ~260 modules across 12 categories
+# - Shows endorsement policies (cognitive, motor, memory, emergency, etc.)
+# - Demonstrates belief propagation via gossip
+# - Shows EOV transaction flow
+add_executable(mesh_bootstrap_demo mesh_bootstrap_demo.c)
+target_link_libraries(mesh_bootstrap_demo nimcp m)
+target_include_directories(mesh_bootstrap_demo PRIVATE ${NIMCP_INCLUDE_DIR})

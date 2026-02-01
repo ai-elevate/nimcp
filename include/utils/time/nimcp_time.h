@@ -51,6 +51,11 @@ uint64_t nimcp_time_get_us(void);
 #define nimcp_time_now_us() nimcp_time_get_us()
 
 /**
+ * @brief Alias for nimcp_time_monotonic_ns() for code compatibility
+ */
+#define nimcp_time_now_ns() nimcp_time_monotonic_ns()
+
+/**
  * WHAT: Get current wall clock time in milliseconds since Unix epoch
  * WHY: Timestamps with millisecond precision (less overhead than microseconds)
  * HOW: nimcp_time_get_us() / 1000

@@ -1079,3 +1079,69 @@ add_custom_target(unit_parietal_financial_investment DEPENDS
 #=============================================================================
 
 add_subdirectory(financial)
+
+#=============================================================================
+# Linguistics SNN Bridge Tests
+#=============================================================================
+
+add_executable(unit_linguistics_snn_bridge
+    linguistics/bridges/test_linguistics_snn_bridge.cpp
+)
+
+target_link_libraries(unit_linguistics_snn_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_linguistics_snn_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_linguistics_snn_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_linguistics_snn_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;linguistics;snn-bridge"
+        TIMEOUT 90
+)
+
+#=============================================================================
+# Linguistics Plasticity Bridge Tests
+#=============================================================================
+
+add_executable(unit_linguistics_plasticity_bridge
+    linguistics/bridges/test_linguistics_plasticity_bridge.cpp
+)
+
+target_link_libraries(unit_linguistics_plasticity_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_linguistics_plasticity_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_linguistics_plasticity_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_linguistics_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;linguistics;plasticity-bridge"
+        TIMEOUT 90
+)

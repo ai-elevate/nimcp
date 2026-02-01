@@ -71,3 +71,84 @@ add_e2e_test(
 
 add_test(NAME e2e_mesh_kg_routing_bridge COMMAND e2e_test_mesh_kg_routing_bridge)
 set_tests_properties(e2e_mesh_kg_routing_bridge PROPERTIES LABELS "e2e;mesh;routing;kg")
+
+# ============================================================================
+# Phase 15: Bidirectional Integration E2E Tests
+# ============================================================================
+# WHAT: End-to-end tests for bidirectional mesh integration
+# WHY:  Validates complete brain simulation, bio-pipeline, and security resilience
+
+# Test 7: Complete Brain E2E - Full brain with all regions through mesh
+add_e2e_test(
+    e2e_test_mesh_complete_brain
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_complete_brain_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_complete_brain COMMAND e2e_test_mesh_complete_brain)
+set_tests_properties(e2e_mesh_complete_brain PROPERTIES LABELS "e2e;mesh;brain;complete")
+
+# Test 8: Bio Transaction Pipeline E2E - Bio-async to mesh full pipeline
+add_e2e_test(
+    e2e_test_mesh_bio_transaction_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_bio_transaction_pipeline_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_bio_transaction_pipeline COMMAND e2e_test_mesh_bio_transaction_pipeline)
+set_tests_properties(e2e_mesh_bio_transaction_pipeline PROPERTIES LABELS "e2e;mesh;bio;pipeline")
+
+# Test 9: Security Resilience E2E - Exception to immune recovery full flow
+add_e2e_test(
+    e2e_test_mesh_security_resilience
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_security_resilience_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_security_resilience COMMAND e2e_test_mesh_security_resilience)
+set_tests_properties(e2e_mesh_security_resilience PROPERTIES LABELS "e2e;mesh;security;resilience")
+
+# ============================================================================
+# Legacy Deep Integration E2E Tests
+# ============================================================================
+# WHAT: Legacy end-to-end tests for deep integration components
+# WHY:  Validates complete brain, security, and resilience mesh pipelines
+
+# Test 10: Brain Integration E2E - Full brain-mesh integration pipeline
+add_e2e_test(
+    e2e_test_mesh_brain_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_brain_integration_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_brain_integration COMMAND e2e_test_mesh_brain_integration)
+set_tests_properties(e2e_mesh_brain_integration PROPERTIES LABELS "e2e;mesh;brain;integration")
+
+# Test 11: Security Integration E2E - Full security-mesh integration pipeline
+add_e2e_test(
+    e2e_test_mesh_security_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_security_integration_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_security_integration COMMAND e2e_test_mesh_security_integration)
+set_tests_properties(e2e_mesh_security_integration PROPERTIES LABELS "e2e;mesh;security;integration")
+
+# Test 12: Resilience Integration E2E - Full resilience-mesh integration pipeline
+add_e2e_test(
+    e2e_test_mesh_resilience_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_resilience_integration_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_resilience_integration COMMAND e2e_test_mesh_resilience_integration)
+set_tests_properties(e2e_mesh_resilience_integration PROPERTIES LABELS "e2e;mesh;resilience;integration")
+
+# ============================================================================
+# Phase 16: Cycle Coordinator E2E Tests
+# ============================================================================
+# WHAT: End-to-end tests for mesh-cycle coordinator integration
+# WHY:  Validates complete brain oscillation synchronization pipeline
+
+# Test 13: Cycle Coordinator E2E - Full mesh-brain oscillation sync pipeline
+add_e2e_test(
+    e2e_test_mesh_cycle_coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_cycle_coordinator COMMAND e2e_test_mesh_cycle_coordinator)
+set_tests_properties(e2e_mesh_cycle_coordinator PROPERTIES LABELS "e2e;mesh;cycle;coordinator")

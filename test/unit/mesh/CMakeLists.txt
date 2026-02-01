@@ -195,3 +195,98 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_routing_bridge.cpp
     unit
 )
+
+# ============================================================================
+# Phase 14: Full Bidirectional Mesh Integration
+# ============================================================================
+# WHAT: Tests for complete bidirectional mesh integration
+# WHY:  Validates type-safe registration, bio-async bridge, health/exception
+
+# Test: Module Registry - Type-safe module registration, magic validation
+add_test_binary(
+    test_mesh_module_registry
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_module_registry.cpp
+    unit
+)
+
+# Test: Bio Bridge - Bio-async to mesh translation, pattern extraction
+add_test_binary(
+    test_mesh_bio_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_bio_bridge.cpp
+    unit
+)
+
+# Test: Receptive Fields - Pre-defined patterns, neuromodulator gains
+add_test_binary(
+    test_mesh_receptive_fields
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_receptive_fields.cpp
+    unit
+)
+
+# Test: Exception Bridge - Exception to antigen routing, immune integration
+add_test_binary(
+    test_mesh_exception_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_exception_bridge.cpp
+    unit
+)
+
+# Test: Health Bridge - Heartbeat aggregation, distributed health monitoring
+add_test_binary(
+    test_mesh_health_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_health_bridge.cpp
+    unit
+)
+
+# ============================================================================
+# Phase 15: Deep Integration Components
+# ============================================================================
+# WHAT: Tests for brain, bio, security, KG, and resilience integration
+# WHY:  Validates complete bidirectional mesh integration with all NIMCP subsystems
+
+# Test: Brain Integration - Brain-mesh bidirectional communication
+add_test_binary(
+    test_mesh_brain_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_brain_integration.cpp
+    unit
+)
+
+# Test: Bio Integration - Bio-async subsystem mesh integration
+add_test_binary(
+    test_mesh_bio_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_bio_integration.cpp
+    unit
+)
+
+# Test: Security Integration - Security subsystem mesh integration
+add_test_binary(
+    test_mesh_security_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_security_integration.cpp
+    unit
+)
+
+# Test: KG Integration - Knowledge graph mesh integration
+add_test_binary(
+    test_mesh_kg_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_integration.cpp
+    unit
+)
+
+# Test: Resilience Integration - Fault tolerance and resilience mesh integration
+add_test_binary(
+    test_mesh_resilience_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_resilience_integration.cpp
+    unit
+)
+
+# ============================================================================
+# Phase 16: Cycle Coordinator Integration
+# ============================================================================
+# WHAT: Tests for mesh-cycle coordinator integration
+# WHY:  Validates brain oscillation synchronization with mesh network timing
+
+# Test: Cycle Coordinator - Brain oscillation sync, phase alignment, frequency coordination
+add_test_binary(
+    test_mesh_cycle_coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator.cpp
+    unit
+)

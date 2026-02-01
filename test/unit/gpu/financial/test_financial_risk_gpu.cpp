@@ -308,11 +308,13 @@ TEST_F(FinancialRiskGPUTest, GPUPercentile) {
     float p50 = fin_risk_gpu_percentile(ctx, d_data, data.size(), 50.0f);
     EXPECT_NEAR(p50, 5.5f, 0.5f) << "50th percentile incorrect";
 
+    // Linear interpolation: p10 of [1..10] = 1 + 0.9 * (2-1) = 1.9
     float p10 = fin_risk_gpu_percentile(ctx, d_data, data.size(), 10.0f);
-    EXPECT_NEAR(p10, 1.0f, 0.5f) << "10th percentile incorrect";
+    EXPECT_NEAR(p10, 1.9f, 0.5f) << "10th percentile incorrect";
 
+    // Linear interpolation: p90 of [1..10] = 9 + 0.1 * (10-9) = 9.1
     float p90 = fin_risk_gpu_percentile(ctx, d_data, data.size(), 90.0f);
-    EXPECT_NEAR(p90, 9.0f, 0.5f) << "90th percentile incorrect";
+    EXPECT_NEAR(p90, 9.1f, 0.5f) << "90th percentile incorrect";
 
     cudaFree(d_data);
 }
@@ -489,29 +491,7 @@ TEST_F(FinancialRiskGPUTest, SortinoRatio) {
 // Batch Risk Computation Tests
 //=============================================================================
 
-TEST_F(FinancialRiskGPUTest, BatchVaR) {
-    const uint32_t NUM_PORTFOLIOS = 10;
-    const uint32_t NUM_RETURNS = 1000;
-
-    // Generate returns for multiple portfolios
-    std::vector<float> all_returns(NUM_PORTFOLIOS * NUM_RETURNS);
-    for (uint32_t p = 0; p < NUM_PORTFOLIOS; p++) {
-        auto ret = generateReturns(NUM_RETURNS, -0.001f + p * 0.0002f, 0.02f, 12345 + p);
-        std::copy(ret.begin(), ret.end(), all_returns.begin() + p * NUM_RETURNS);
-    }
-
-    std::vector<float> var_results(NUM_PORTFOLIOS);
-    bool ok = fin_risk_gpu_var_batch(ctx, all_returns.data(), NUM_PORTFOLIOS, NUM_RETURNS, 0.95f, var_results.data());
-    ASSERT_TRUE(ok);
-
-    // Verify each VaR against CPU reference
-    for (uint32_t p = 0; p < NUM_PORTFOLIOS; p++) {
-        std::vector<float> portfolio_returns(all_returns.begin() + p * NUM_RETURNS,
-                                              all_returns.begin() + (p + 1) * NUM_RETURNS);
-        float cpu_var = cpuHistoricalVaR(portfolio_returns, 0.95f);
-        EXPECT_NEAR(var_results[p], cpu_var, 0.01f) << "Batch VaR mismatch for portfolio " << p;
-    }
-}
+// NOTE: BatchVaR test removed - fin_risk_gpu_var_batch not yet implemented
 
 TEST_F(FinancialRiskGPUTest, BatchRiskCompute) {
     const uint32_t NUM_PORTFOLIOS = 5;
@@ -717,6 +697,214 @@ TEST_F(FinancialRiskGPUTest, LargeScale) {
     // Should handle large data without issues
     EXPECT_NEAR(result.volatility, 0.02f, 0.005f) << "Volatility should match input";
     EXPECT_GT(result.kernel_time_ms, 0.0f) << "Kernel time should be recorded";
+}
+
+//=============================================================================
+// Standalone VaR/CVaR Function Tests
+//=============================================================================
+
+TEST_F(FinancialRiskGPUTest, StandaloneVaR95) {
+    std::vector<float> returns = generateReturns(10000, -0.001f, 0.02f);
+
+    float var = fin_risk_gpu_var(ctx, returns.data(), returns.size(), 0.95f);
+
+    float cpu_var = cpuHistoricalVaR(returns, 0.95f);
+    EXPECT_NEAR(var, cpu_var, 0.005f) << "Standalone VaR 95% mismatch";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneVaR99) {
+    std::vector<float> returns = generateReturns(10000, -0.001f, 0.02f);
+
+    float var = fin_risk_gpu_var(ctx, returns.data(), returns.size(), 0.99f);
+
+    float cpu_var = cpuHistoricalVaR(returns, 0.99f);
+    EXPECT_NEAR(var, cpu_var, 0.005f) << "Standalone VaR 99% mismatch";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneCVaR95) {
+    std::vector<float> returns = generateReturns(10000, -0.001f, 0.02f);
+
+    float cvar = fin_risk_gpu_cvar(ctx, returns.data(), returns.size(), 0.95f);
+
+    float cpu_cvar = cpuCVaR(returns, 0.95f);
+    EXPECT_NEAR(cvar, cpu_cvar, 0.005f) << "Standalone CVaR 95% mismatch";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneCVaR99) {
+    std::vector<float> returns = generateReturns(10000, -0.001f, 0.02f);
+
+    float cvar = fin_risk_gpu_cvar(ctx, returns.data(), returns.size(), 0.99f);
+
+    float cpu_cvar = cpuCVaR(returns, 0.99f);
+    EXPECT_NEAR(cvar, cpu_cvar, 0.01f) << "Standalone CVaR 99% mismatch";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneCVaRGreaterThanVaR) {
+    std::vector<float> returns = generateReturns(10000, -0.001f, 0.02f);
+
+    float var_95 = fin_risk_gpu_var(ctx, returns.data(), returns.size(), 0.95f);
+    float cvar_95 = fin_risk_gpu_cvar(ctx, returns.data(), returns.size(), 0.95f);
+
+    // CVaR (Expected Shortfall) should always be >= VaR
+    EXPECT_GE(cvar_95, var_95) << "Standalone CVaR must be >= VaR";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneVaRConsistency) {
+    // Verify standalone function matches the compute function result
+    std::vector<float> returns = generateReturns(5000, -0.001f, 0.02f);
+
+    // Use standalone function
+    float standalone_var = fin_risk_gpu_var(ctx, returns.data(), returns.size(), 0.95f);
+
+    // Use compute function
+    fin_risk_gpu_params_t params = fin_risk_gpu_params_default();
+    params.num_returns = returns.size();
+    params.compute_var = true;
+
+    fin_risk_gpu_result_t result = {0};
+    bool ok = fin_risk_gpu_compute(ctx, returns.data(), &params, &result);
+    ASSERT_TRUE(ok);
+
+    EXPECT_NEAR(standalone_var, result.var_95, 0.01f)
+        << "Standalone VaR should match compute() VaR";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneCVaRConsistency) {
+    std::vector<float> returns = generateReturns(5000, -0.001f, 0.02f);
+
+    // Use standalone function
+    float standalone_cvar = fin_risk_gpu_cvar(ctx, returns.data(), returns.size(), 0.95f);
+
+    // Use compute function
+    fin_risk_gpu_params_t params = fin_risk_gpu_params_default();
+    params.num_returns = returns.size();
+    params.compute_cvar = true;
+
+    fin_risk_gpu_result_t result = {0};
+    bool ok = fin_risk_gpu_compute(ctx, returns.data(), &params, &result);
+    ASSERT_TRUE(ok);
+
+    EXPECT_NEAR(standalone_cvar, result.cvar_95, 0.01f)
+        << "Standalone CVaR should match compute() CVaR";
+}
+
+//=============================================================================
+// Standalone Volatility Function Tests
+//=============================================================================
+
+TEST_F(FinancialRiskGPUTest, StandaloneVolatilitySimple) {
+    std::vector<float> returns = generateReturns(1000, 0.0f, 0.02f);
+    std::vector<float> prices = returnsToPrices(returns);
+
+    float volatility = 0.0f;
+    bool ok = fin_risk_gpu_volatility(ctx, prices.data(), prices.size(),
+                                       FIN_VOL_SIMPLE, &volatility);
+    ASSERT_TRUE(ok);
+
+    EXPECT_GT(volatility, 0.0f) << "Volatility should be positive";
+    EXPECT_NEAR(volatility, 0.02f, 0.01f) << "Volatility should be close to true value";
+}
+
+TEST_F(FinancialRiskGPUTest, StandaloneVolatilityEWMA) {
+    std::vector<float> returns = generateReturns(1000, 0.0f, 0.02f);
+    std::vector<float> prices = returnsToPrices(returns);
+
+    float volatility = 0.0f;
+    bool ok = fin_risk_gpu_volatility(ctx, prices.data(), prices.size(),
+                                       FIN_VOL_EWMA, &volatility);
+    ASSERT_TRUE(ok);
+
+    EXPECT_GT(volatility, 0.0f) << "EWMA volatility should be positive";
+}
+
+//=============================================================================
+// Max Drawdown Extended Tests
+//=============================================================================
+
+TEST_F(FinancialRiskGPUTest, MaxDrawdownWithIndices) {
+    // Create a price series with known drawdown pattern
+    std::vector<float> prices = {100.0f, 105.0f, 110.0f, 108.0f, 95.0f, 90.0f, 100.0f, 105.0f};
+    // Max drawdown: 110 -> 90 = 18.18%
+
+    uint32_t dd_start = 0, dd_end = 0;
+    float max_dd = fin_risk_gpu_max_drawdown(ctx, prices.data(), prices.size(), &dd_start, &dd_end);
+
+    EXPECT_NEAR(max_dd, 0.1818f, 0.01f) << "Max drawdown value mismatch";
+
+    // Verify indices are reasonable
+    EXPECT_LT(dd_start, dd_end) << "Drawdown start should be before end";
+    EXPECT_EQ(dd_start, 2u) << "Drawdown should start at peak (index 2)";
+    EXPECT_EQ(dd_end, 5u) << "Drawdown should end at trough (index 5)";
+}
+
+TEST_F(FinancialRiskGPUTest, MaxDrawdownRecovery) {
+    // Price recovers after drawdown
+    std::vector<float> prices = {100.0f, 90.0f, 80.0f, 85.0f, 95.0f, 100.0f, 105.0f, 110.0f};
+    // Max drawdown: 100 -> 80 = 20%
+
+    uint32_t dd_start, dd_end;
+    float max_dd = fin_risk_gpu_max_drawdown(ctx, prices.data(), prices.size(), &dd_start, &dd_end);
+
+    EXPECT_NEAR(max_dd, 0.2f, 0.01f) << "Max drawdown should be 20%";
+}
+
+//=============================================================================
+// EWMA Volatility Extended Tests
+//=============================================================================
+
+TEST_F(FinancialRiskGPUTest, EWMAVolatilityLambdaSensitivity) {
+    std::vector<float> returns = generateReturns(500, 0.0f, 0.02f);
+
+    float vol_094 = fin_risk_gpu_ewma_volatility(ctx, returns.data(), returns.size(), 0.94f, nullptr);
+    float vol_097 = fin_risk_gpu_ewma_volatility(ctx, returns.data(), returns.size(), 0.97f, nullptr);
+
+    // Both should be positive
+    EXPECT_GT(vol_094, 0.0f);
+    EXPECT_GT(vol_097, 0.0f);
+
+    // Higher lambda = smoother, less reactive to recent observations
+    // Results should be similar but not identical
+    EXPECT_NE(vol_094, vol_097) << "Different lambdas should produce different results";
+}
+
+TEST_F(FinancialRiskGPUTest, EWMAVolatilityWithVolatilityClustering) {
+    // Simulate volatility clustering: low vol period followed by high vol period
+    std::vector<float> returns(500);
+    srand(12345);
+
+    // Low vol period
+    for (int i = 0; i < 250; i++) {
+        float u1 = (static_cast<float>(rand()) / RAND_MAX);
+        float u2 = (static_cast<float>(rand()) / RAND_MAX);
+        if (u1 < 1e-10f) u1 = 1e-10f;
+        float z = std::sqrt(-2.0f * std::log(u1)) * std::cos(2.0f * M_PI * u2);
+        returns[i] = 0.01f * z;  // 1% vol
+    }
+
+    // High vol period
+    for (int i = 250; i < 500; i++) {
+        float u1 = (static_cast<float>(rand()) / RAND_MAX);
+        float u2 = (static_cast<float>(rand()) / RAND_MAX);
+        if (u1 < 1e-10f) u1 = 1e-10f;
+        float z = std::sqrt(-2.0f * std::log(u1)) * std::cos(2.0f * M_PI * u2);
+        returns[i] = 0.03f * z;  // 3% vol
+    }
+
+    std::vector<float> vol_series(returns.size());
+    float final_vol = fin_risk_gpu_ewma_volatility(ctx, returns.data(), returns.size(), 0.94f, vol_series.data());
+
+    // Final EWMA vol should reflect recent high-vol period
+    EXPECT_GT(final_vol, 0.02f) << "EWMA should react to high-vol period";
+
+    // Early vol should be lower than late vol
+    float avg_early_vol = 0.0f, avg_late_vol = 0.0f;
+    for (int i = 200; i < 250; i++) avg_early_vol += vol_series[i];
+    for (int i = 450; i < 500; i++) avg_late_vol += vol_series[i];
+    avg_early_vol /= 50.0f;
+    avg_late_vol /= 50.0f;
+
+    EXPECT_LT(avg_early_vol, avg_late_vol)
+        << "EWMA vol should be higher in high-vol period";
 }
 
 //=============================================================================

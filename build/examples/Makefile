@@ -549,6 +549,20 @@ rl_eligibility_demo/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/build
 .PHONY : rl_eligibility_demo/fast
 
+# Convenience name for target.
+examples/CMakeFiles/mesh_bootstrap_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/mesh_bootstrap_demo.dir/rule
+.PHONY : examples/CMakeFiles/mesh_bootstrap_demo.dir/rule
+
+# Convenience name for target.
+mesh_bootstrap_demo: examples/CMakeFiles/mesh_bootstrap_demo.dir/rule
+.PHONY : mesh_bootstrap_demo
+
+# fast build rule for target.
+mesh_bootstrap_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/mesh_bootstrap_demo.dir/build.make examples/CMakeFiles/mesh_bootstrap_demo.dir/build
+.PHONY : mesh_bootstrap_demo/fast
+
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
 
@@ -860,6 +874,30 @@ izhikevich_demo.s: izhikevich_demo.c.s
 izhikevich_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/izhikevich_demo.dir/build.make examples/CMakeFiles/izhikevich_demo.dir/izhikevich_demo.c.s
 .PHONY : izhikevich_demo.c.s
+
+mesh_bootstrap_demo.o: mesh_bootstrap_demo.c.o
+.PHONY : mesh_bootstrap_demo.o
+
+# target to build an object file
+mesh_bootstrap_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/mesh_bootstrap_demo.dir/build.make examples/CMakeFiles/mesh_bootstrap_demo.dir/mesh_bootstrap_demo.c.o
+.PHONY : mesh_bootstrap_demo.c.o
+
+mesh_bootstrap_demo.i: mesh_bootstrap_demo.c.i
+.PHONY : mesh_bootstrap_demo.i
+
+# target to preprocess a source file
+mesh_bootstrap_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/mesh_bootstrap_demo.dir/build.make examples/CMakeFiles/mesh_bootstrap_demo.dir/mesh_bootstrap_demo.c.i
+.PHONY : mesh_bootstrap_demo.c.i
+
+mesh_bootstrap_demo.s: mesh_bootstrap_demo.c.s
+.PHONY : mesh_bootstrap_demo.s
+
+# target to generate assembly for a file
+mesh_bootstrap_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/mesh_bootstrap_demo.dir/build.make examples/CMakeFiles/mesh_bootstrap_demo.dir/mesh_bootstrap_demo.c.s
+.PHONY : mesh_bootstrap_demo.c.s
 
 multimodal_integration_demo.o: multimodal_integration_demo.c.o
 .PHONY : multimodal_integration_demo.o
@@ -1223,6 +1261,7 @@ help:
 	@echo "... infant_demo"
 	@echo "... integrated_demo"
 	@echo "... izhikevich_demo"
+	@echo "... mesh_bootstrap_demo"
 	@echo "... multimodal_integration_demo"
 	@echo "... neuromodulation_integration_example"
 	@echo "... nlp_integration_demo"
@@ -1276,6 +1315,9 @@ help:
 	@echo "... izhikevich_demo.o"
 	@echo "... izhikevich_demo.i"
 	@echo "... izhikevich_demo.s"
+	@echo "... mesh_bootstrap_demo.o"
+	@echo "... mesh_bootstrap_demo.i"
+	@echo "... mesh_bootstrap_demo.s"
 	@echo "... multimodal_integration_demo.o"
 	@echo "... multimodal_integration_demo.i"
 	@echo "... multimodal_integration_demo.s"

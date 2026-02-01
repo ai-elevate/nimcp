@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <float.h>
+#include <vector>
 
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/financial/nimcp_financial_risk_gpu.h"
@@ -151,28 +152,38 @@ __global__ void kernel_bitonic_sort_shared(
     extern __shared__ float s_data[];
 
     uint32_t tid = threadIdx.x;
-    uint32_t gid = blockIdx.x * blockDim.x * 2 + threadIdx.x;
+    uint32_t n_padded = blockDim.x * 2;
 
-    // Load into shared memory
-    if (gid < n) s_data[tid] = data[gid];
+    // Load into shared memory (each thread loads 2 elements)
+    if (tid < n) s_data[tid] = data[tid];
     else s_data[tid] = FLT_MAX;
 
-    if (gid + blockDim.x < n) s_data[tid + blockDim.x] = data[gid + blockDim.x];
+    if (tid + blockDim.x < n) s_data[tid + blockDim.x] = data[tid + blockDim.x];
     else s_data[tid + blockDim.x] = FLT_MAX;
 
     __syncthreads();
 
     // Bitonic sort in shared memory
-    for (uint32_t k = 2; k <= blockDim.x * 2; k *= 2) {
+    // Each thread handles one comparison pair per stage
+    for (uint32_t k = 2; k <= n_padded; k *= 2) {
         for (uint32_t j = k / 2; j > 0; j /= 2) {
-            uint32_t idx = tid;
-            uint32_t ixj = idx ^ j;
+            // Compute which element pair this thread compares
+            // Thread tid compares elements (i, i^j) where i = tid with some offset
+            uint32_t i = tid;
+            // Map thread to comparison position
+            // For j-stage, threads compare (0,j), (1,j+1), ..., but skipping already-compared pairs
+            uint32_t segment = tid / j;
+            uint32_t pos_in_segment = tid % j;
+            i = segment * 2 * j + pos_in_segment;
 
-            if (ixj > idx && ixj < blockDim.x * 2) {
-                bool ascending = ((idx & k) == 0);
-                if ((s_data[idx] > s_data[ixj]) == ascending) {
-                    float tmp = s_data[idx];
-                    s_data[idx] = s_data[ixj];
+            uint32_t ixj = i ^ j;
+
+            if (i < n_padded && ixj < n_padded && i < ixj) {
+                // Ascending if (i & k) == 0
+                bool ascending = ((i & k) == 0);
+                if ((s_data[i] > s_data[ixj]) == ascending) {
+                    float tmp = s_data[i];
+                    s_data[i] = s_data[ixj];
                     s_data[ixj] = tmp;
                 }
             }
@@ -181,8 +192,8 @@ __global__ void kernel_bitonic_sort_shared(
     }
 
     // Write back
-    if (gid < n) data[gid] = s_data[tid];
-    if (gid + blockDim.x < n) data[gid + blockDim.x] = s_data[tid + blockDim.x];
+    if (tid < n) data[tid] = s_data[tid];
+    if (tid + blockDim.x < n) data[tid + blockDim.x] = s_data[tid + blockDim.x];
 }
 
 //=============================================================================
@@ -974,24 +985,64 @@ extern "C" {
 /**
  * @brief GPU bitonic sort for arrays up to 2^20 elements
  */
+// Helper to compute next power of 2
+static uint32_t next_pow2(uint32_t v) {
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+
 static bool gpu_sort(float* d_data, uint32_t n, cudaStream_t stream) {
+    // Bitonic sort requires power-of-2 array size
+    uint32_t n_padded = next_pow2(n);
+    if (n_padded < 2) n_padded = 2;
+
+    // If n is not power of 2, we need to pad with FLT_MAX
+    float* d_work = d_data;
+    bool allocated_work = false;
+
+    if (n_padded != n) {
+        cudaError_t err = cudaMalloc(&d_work, n_padded * sizeof(float));
+        if (err != cudaSuccess) {
+            return false;
+        }
+        allocated_work = true;
+
+        // Copy original data
+        cudaMemcpy(d_work, d_data, n * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        // Fill padding with FLT_MAX to sort to end
+        std::vector<float> padding(n_padded - n, FLT_MAX);
+        cudaMemcpy(d_work + n, padding.data(), (n_padded - n) * sizeof(float), cudaMemcpyHostToDevice);
+    }
+
     uint32_t block_size = 256;
 
     // Use shared memory sort for small arrays
-    if (n <= 512) {
-        kernel_bitonic_sort_shared<<<1, n / 2, n * sizeof(float), stream>>>(
-            d_data, n);
-        return true;
+    if (n_padded <= 512) {
+        kernel_bitonic_sort_shared<<<1, n_padded / 2, n_padded * sizeof(float), stream>>>(
+            d_work, n_padded);
+    } else {
+        // Full bitonic sort for larger arrays
+        uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n_padded, block_size);
+
+        for (uint32_t k = 2; k <= n_padded; k *= 2) {
+            for (uint32_t j = k / 2; j > 0; j /= 2) {
+                kernel_bitonic_sort_step<<<grid_size, block_size, 0, stream>>>(
+                    d_work, j, k, n_padded);
+            }
+        }
     }
 
-    // Full bitonic sort for larger arrays
-    uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
-
-    for (uint32_t k = 2; k <= n; k *= 2) {
-        for (uint32_t j = k / 2; j > 0; j /= 2) {
-            kernel_bitonic_sort_step<<<grid_size, block_size, 0, stream>>>(
-                d_data, j, k, n);
-        }
+    // Copy sorted data back if we used a work buffer
+    if (allocated_work) {
+        cudaMemcpy(d_data, d_work, n * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaFree(d_work);
     }
 
     return true;
@@ -1029,6 +1080,12 @@ bool fin_risk_gpu_compute(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
     uint32_t reduce_blocks = (n + block_size * 2 - 1) / (block_size * 2);
+
+    // Create timing events
+    cudaEvent_t start_event, end_event;
+    cudaEventCreate(&start_event);
+    cudaEventCreate(&end_event);
+    cudaEventRecord(start_event, stream);
 
     // Allocate device memory
     float* d_returns = NULL;
@@ -1140,12 +1197,93 @@ bool fin_risk_gpu_compute(
     result->mean_return = mean;
     result->max_drawdown = 0.0f;  // TODO: Compute max drawdown
 
+    // Compute 95% VaR and CVaR
+    uint32_t var_95_idx = (uint32_t)(0.05f * n);
+    if (var_95_idx >= n) var_95_idx = n - 1;
+    float h_var_95;
+    cudaMemcpy(&h_var_95, &d_sorted[var_95_idx], sizeof(float), cudaMemcpyDeviceToHost);
+    result->var_95 = -h_var_95;
+
+    // Compute 95% CVaR (average of worst 5%)
+    float sum_cvar_95 = 0.0f;
+    uint32_t num_cvar_95 = var_95_idx + 1;
+    if (num_cvar_95 > 0) {
+        std::vector<float> h_tail(num_cvar_95);
+        cudaMemcpy(h_tail.data(), d_sorted, num_cvar_95 * sizeof(float), cudaMemcpyDeviceToHost);
+        for (uint32_t i = 0; i < num_cvar_95; i++) {
+            sum_cvar_95 += h_tail[i];
+        }
+        result->cvar_95 = -sum_cvar_95 / num_cvar_95;
+    } else {
+        result->cvar_95 = result->var_95;
+    }
+
+    // Compute 99% VaR and CVaR
+    uint32_t var_99_idx = (uint32_t)(0.01f * n);
+    if (var_99_idx >= n) var_99_idx = n - 1;
+    float h_var_99;
+    cudaMemcpy(&h_var_99, &d_sorted[var_99_idx], sizeof(float), cudaMemcpyDeviceToHost);
+    result->var_99 = -h_var_99;
+
+    // Compute 99% CVaR (average of worst 1%)
+    float sum_cvar_99 = 0.0f;
+    uint32_t num_cvar_99 = var_99_idx + 1;
+    if (num_cvar_99 > 0) {
+        std::vector<float> h_tail99(num_cvar_99);
+        cudaMemcpy(h_tail99.data(), d_sorted, num_cvar_99 * sizeof(float), cudaMemcpyDeviceToHost);
+        for (uint32_t i = 0; i < num_cvar_99; i++) {
+            sum_cvar_99 += h_tail99[i];
+        }
+        result->cvar_99 = -sum_cvar_99 / num_cvar_99;
+    } else {
+        result->cvar_99 = result->var_99;
+    }
+
     // Compute parametric VaR for comparison
     float z = -2.326f;  // 99% confidence
     if (params->confidence_level < 0.99f) {
         z = -1.645f;  // 95% confidence
     }
     result->var_parametric = -(mean + z * std_dev);
+
+    // Also compute annualized volatility (assuming daily returns)
+    result->volatility_daily = std_dev;
+    result->volatility_annual = std_dev * sqrtf(252.0f);  // Assuming 252 trading days
+
+    // Compute Sharpe ratio using risk_free_rate from params
+    float daily_rf = params->risk_free_rate / 252.0f;
+    float excess_mean = mean - daily_rf;
+    result->sharpe_ratio = (std_dev > 1e-10f) ?
+        (excess_mean / std_dev) * sqrtf(252.0f) : 0.0f;
+
+    // Compute Sortino ratio (downside deviation)
+    float* h_returns = (float*)malloc(n * sizeof(float));
+    cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float downside_sum = 0.0f;
+    uint32_t downside_count = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (h_returns[i] < daily_rf) {
+            float diff = h_returns[i] - daily_rf;
+            downside_sum += diff * diff;
+            downside_count++;
+        }
+    }
+    float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
+    result->downside_deviation = downside_dev;
+    result->sortino_ratio = (downside_dev > 1e-10f) ?
+        (excess_mean / downside_dev) * sqrtf(252.0f) : 0.0f;
+
+    free(h_returns);
+
+    // Record timing
+    cudaEventRecord(end_event, stream);
+    cudaEventSynchronize(end_event);
+    float elapsed_ms = 0.0f;
+    cudaEventElapsedTime(&elapsed_ms, start_event, end_event);
+    result->kernel_time_ms = elapsed_ms;
+    cudaEventDestroy(start_event);
+    cudaEventDestroy(end_event);
 
     // Cleanup
     free(h_partial);
@@ -2222,7 +2360,7 @@ float fin_risk_gpu_max_drawdown(
     cudaFree(d_partial_min);
     cudaFree(d_partial_idx);
 
-    return max_dd;  // Returns negative value (e.g., -0.20 for 20% drawdown)
+    return -max_dd;  // Returns positive value (e.g., 0.20 for 20% drawdown)
 }
 
 float fin_risk_gpu_ewma_volatility(
@@ -2519,15 +2657,20 @@ bool fin_risk_gpu_correlation_matrix(
         std_devs[i] = sqrtf(covariance[i * num_assets + i]);
     }
 
-    // Compute correlation
+    // Compute correlation and clamp to [-1, 1] to handle floating point precision
     for (uint32_t i = 0; i < num_assets; i++) {
         for (uint32_t j = 0; j < num_assets; j++) {
             float denom = std_devs[i] * std_devs[j];
+            float corr;
             if (denom > 1e-10f) {
-                correlation[i * num_assets + j] = covariance[i * num_assets + j] / denom;
+                corr = covariance[i * num_assets + j] / denom;
             } else {
-                correlation[i * num_assets + j] = (i == j) ? 1.0f : 0.0f;
+                corr = (i == j) ? 1.0f : 0.0f;
             }
+            // Clamp to valid correlation range [-1, 1]
+            if (corr > 1.0f) corr = 1.0f;
+            if (corr < -1.0f) corr = -1.0f;
+            correlation[i * num_assets + j] = corr;
         }
     }
 
@@ -2629,26 +2772,86 @@ bool fin_risk_gpu_sort(
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
 
-    // Data is already on device
-    bool result = gpu_sort(data, n, stream);
+    // Check if data is already on device using cudaPointerGetAttributes
+    cudaPointerAttributes attr;
+    cudaError_t ptr_err = cudaPointerGetAttributes(&attr, data);
 
-    // If descending, reverse the array
-    if (result && !ascending) {
-        // Simple CPU reverse for now (could add GPU kernel)
-        float* h_data = (float*)malloc(n * sizeof(float));
-        if (h_data) {
-            cudaMemcpy(h_data, data, n * sizeof(float), cudaMemcpyDeviceToHost);
-            for (uint32_t i = 0; i < n / 2; i++) {
-                float tmp = h_data[i];
-                h_data[i] = h_data[n - 1 - i];
-                h_data[n - 1 - i] = tmp;
-            }
-            cudaMemcpy(data, h_data, n * sizeof(float), cudaMemcpyHostToDevice);
-            free(h_data);
+    bool is_device_ptr = (ptr_err == cudaSuccess &&
+                          (attr.type == cudaMemoryTypeDevice || attr.type == cudaMemoryTypeManaged));
+
+    // Reset any error from cudaPointerGetAttributes (it may fail for host pointers on older CUDA)
+    cudaGetLastError();
+
+    float* d_work = NULL;
+    bool allocated_work = false;
+
+    if (is_device_ptr) {
+        // Data is already on device - use directly or copy to work buffer
+        // We need a separate buffer for sorting in case input needs preservation
+        cudaError_t err = cudaMalloc(&d_work, n * sizeof(float));
+        if (err != cudaSuccess) {
+            set_risk_error("Failed to allocate device memory for sort");
+            return false;
+        }
+        allocated_work = true;
+        cudaMemcpy(d_work, data, n * sizeof(float), cudaMemcpyDeviceToDevice);
+    } else {
+        // Data is on host - allocate device memory and copy
+        cudaError_t err = cudaMalloc(&d_work, n * sizeof(float));
+        if (err != cudaSuccess) {
+            set_risk_error("Failed to allocate device memory for sort");
+            return false;
+        }
+        allocated_work = true;
+        err = cudaMemcpy(d_work, data, n * sizeof(float), cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            cudaFree(d_work);
+            set_risk_error("Failed to copy data to device for sort");
+            return false;
         }
     }
 
+    // Sort on device
+    bool result = gpu_sort(d_work, n, stream);
+
     cudaStreamSynchronize(stream);
+
+    if (result) {
+        if (is_device_ptr) {
+            // Copy sorted data back to device pointer
+            cudaMemcpy(data, d_work, n * sizeof(float), cudaMemcpyDeviceToDevice);
+
+            // If descending, reverse on device (use a simple kernel or copy to host)
+            if (!ascending) {
+                // For simplicity, do reverse on host via temp buffer
+                std::vector<float> h_temp(n);
+                cudaMemcpy(h_temp.data(), d_work, n * sizeof(float), cudaMemcpyDeviceToHost);
+                for (uint32_t i = 0; i < n / 2; i++) {
+                    std::swap(h_temp[i], h_temp[n - 1 - i]);
+                }
+                cudaMemcpy(data, h_temp.data(), n * sizeof(float), cudaMemcpyHostToDevice);
+            }
+        } else {
+            // Copy sorted data back to host
+            cudaError_t err = cudaMemcpy(data, d_work, n * sizeof(float), cudaMemcpyDeviceToHost);
+            if (err != cudaSuccess) {
+                if (allocated_work) cudaFree(d_work);
+                set_risk_error("Failed to copy sorted data back to host");
+                return false;
+            }
+
+            // If descending, reverse the array on host
+            if (!ascending) {
+                for (uint32_t i = 0; i < n / 2; i++) {
+                    float tmp = data[i];
+                    data[i] = data[n - 1 - i];
+                    data[n - 1 - i] = tmp;
+                }
+            }
+        }
+    }
+
+    if (allocated_work) cudaFree(d_work);
     return result;
 }
 

@@ -240,6 +240,8 @@ __global__ void kernel_apply_box_constraints(
 
 /**
  * @brief Normalize weights to sum to 1
+ *
+ * Uses warp-level reduction for correct handling of any block size.
  */
 __global__ void kernel_normalize_weights(
     float* __restrict__ weights,
@@ -257,11 +259,13 @@ __global__ void kernel_normalize_weights(
     s_partial[tid] = sum;
     __syncthreads();
 
-    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
-        if (tid < s) {
+    // Tree reduction that handles non-power-of-2 block sizes correctly
+    for (uint32_t s = (blockDim.x + 1) / 2; s > 0; s = (s > 1) ? ((s + 1) / 2) : 0) {
+        if (tid < s && tid + s < blockDim.x) {
             s_partial[tid] += s_partial[tid + s];
         }
         __syncthreads();
+        if (s == 1) break;
     }
 
     float total = s_partial[0];
@@ -270,6 +274,24 @@ __global__ void kernel_normalize_weights(
     if (total > 1e-10f) {
         for (uint32_t i = tid; i < n; i += blockDim.x) {
             weights[i] /= total;
+        }
+    }
+}
+
+/**
+ * @brief Clamp negative weights to small positive value
+ *
+ * For long-only portfolio constraints
+ */
+__global__ void kernel_clamp_positive(
+    float* __restrict__ weights,
+    float min_weight,
+    uint32_t n)
+{
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        if (weights[i] < min_weight) {
+            weights[i] = min_weight;
         }
     }
 }
@@ -452,6 +474,16 @@ bool fin_optimization_gpu_mean_variance(
     float one = 1.0f;
     float h_variance = 0.0f;
     float h_return = 0.0f;
+    float conv_tol = 0.0f;
+    float prev_variance = FLT_MAX;
+    bool converged = false;
+    uint32_t actual_iter = 0;
+    float kernel_time = 0.0f;
+    float* h_lower_tmp = NULL;
+    float* h_upper_tmp = NULL;
+    bool free_bounds_tmp = false;
+    cudaEvent_t start_event = NULL;
+    cudaEvent_t stop_event = NULL;
 
     // Allocate device memory
     float* d_returns = NULL;
@@ -536,8 +568,9 @@ bool fin_optimization_gpu_mean_variance(
     cudaMemsetAsync(d_momentum, 0, n * sizeof(float), stream);
     free(h_init);
 
-    // Handle constraints
+    // Handle constraints - use explicit arrays or create from scalar bounds
     if (params->lower_bounds && params->upper_bounds) {
+        // Use explicit bounds arrays
         err = cudaMalloc(&d_lower, n * sizeof(float));
         if (err != cudaSuccess) goto cleanup_mv;
         err = cudaMalloc(&d_upper, n * sizeof(float));
@@ -547,25 +580,87 @@ bool fin_optimization_gpu_mean_variance(
                         cudaMemcpyHostToDevice, stream);
         cudaMemcpyAsync(d_upper, params->upper_bounds, n * sizeof(float),
                         cudaMemcpyHostToDevice, stream);
+    } else if (params->min_weight > 0.0f || params->max_weight < 1.0f) {
+        // Create bounds from scalar min/max
+        h_lower_tmp = (float*)malloc(n * sizeof(float));
+        h_upper_tmp = (float*)malloc(n * sizeof(float));
+        if (h_lower_tmp && h_upper_tmp) {
+            float min_w = params->min_weight > 0.0f ? params->min_weight : 0.0f;
+            float max_w = params->max_weight > 0.0f && params->max_weight <= 1.0f ? params->max_weight : 1.0f;
+            for (uint32_t i = 0; i < n; i++) {
+                h_lower_tmp[i] = min_w;
+                h_upper_tmp[i] = max_w;
+            }
+            err = cudaMalloc(&d_lower, n * sizeof(float));
+            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            err = cudaMalloc(&d_upper, n * sizeof(float));
+            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+
+            cudaMemcpyAsync(d_lower, h_lower_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
+            cudaMemcpyAsync(d_upper, h_upper_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
+            free_bounds_tmp = true;
+        }
+    } else if (params->long_only) {
+        // Long-only constraint: weights >= 0
+        h_lower_tmp = (float*)calloc(n, sizeof(float));  // All zeros
+        h_upper_tmp = (float*)malloc(n * sizeof(float));
+        if (h_lower_tmp && h_upper_tmp) {
+            for (uint32_t i = 0; i < n; i++) {
+                h_upper_tmp[i] = 1.0f;
+            }
+            err = cudaMalloc(&d_lower, n * sizeof(float));
+            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            err = cudaMalloc(&d_upper, n * sizeof(float));
+            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+
+            cudaMemcpyAsync(d_lower, h_lower_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
+            cudaMemcpyAsync(d_upper, h_upper_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
+            free_bounds_tmp = true;
+        }
     }
 
-    block_size = min(256u, n);
+    if (free_bounds_tmp) {
+        free(h_lower_tmp);
+        free(h_upper_tmp);
+    }
+
+    // Use power-of-2 block size for reduction kernels
+    block_size = 1;
+    while (block_size < n && block_size < 256) block_size *= 2;
+    if (block_size < 32) block_size = 32;  // Minimum for warp
     grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
-    // Optimization loop
+    // Optimization loop with convergence detection
     learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
     momentum_coef = 0.9f;
     max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
+    conv_tol = params->convergence_tolerance > 0 ? params->convergence_tolerance : 1e-6f;
+
+    // CUDA timing
+    cudaEventCreate(&start_event);
+    cudaEventCreate(&stop_event);
+    cudaEventRecord(start_event, stream);
 
     for (uint32_t iter = 0; iter < max_iter; iter++) {
-        // Compute gradient: 2 * Cov @ w - risk_aversion * mu
+        actual_iter = iter + 1;
+
+        // Compute gradient: 2 * Cov @ w (variance gradient)
         kernel_variance_gradient<<<grid_size, block_size, n * sizeof(float), stream>>>(
             d_covariance, d_weights, d_gradient, n);
 
-        // Subtract return gradient (for maximization)
-        // gradient = 2 * Cov @ w - risk_aversion * mu
-        float alpha = -params->risk_aversion;
-        cublasSaxpy(cublas, n, &alpha, d_returns, 1, d_gradient, 1);
+        // For MIN_VARIANCE strategy, only minimize variance (no return component)
+        // For other strategies, use mean-variance formulation:
+        //   Maximize: mu^T w - (risk_aversion/2) * w^T Cov w
+        //   Gradient for descent: risk_aversion * 2 * Cov @ w - mu
+        //   We already have 2 * Cov @ w, so scale it and subtract mu
+        if (params->strategy != FIN_OPT_STRATEGY_MIN_VARIANCE) {
+            // Scale variance gradient by risk_aversion
+            float ra = params->risk_aversion > 0 ? params->risk_aversion : 1.0f;
+            cublasSscal(cublas, n, &ra, d_gradient, 1);
+            // Subtract return gradient (we want to move towards higher returns)
+            float neg_one = -1.0f;
+            cublasSaxpy(cublas, n, &neg_one, d_returns, 1, d_gradient, 1);
+        }
 
         // Gradient step with momentum
         kernel_gradient_step<<<grid_size, block_size, 0, stream>>>(
@@ -580,7 +675,30 @@ bool fin_optimization_gpu_mean_variance(
         // Normalize to sum to 1
         kernel_normalize_weights<<<1, block_size, block_size * sizeof(float), stream>>>(
             d_weights, n);
+
+        // Check convergence every 50 iterations
+        if (iter > 0 && iter % 50 == 0) {
+            // Compute current variance
+            kernel_portfolio_variance<<<grid_size, block_size, n * sizeof(float), stream>>>(
+                d_covariance, d_weights, d_temp, n);
+            float current_var = 0.0f;
+            cublasSdot(cublas, n, d_weights, 1, d_temp, 1, &current_var);
+            cudaStreamSynchronize(stream);
+
+            float delta = fabsf(prev_variance - current_var);
+            if (delta < conv_tol && iter > 100) {
+                converged = true;
+                break;
+            }
+            prev_variance = current_var;
+        }
     }
+
+    cudaEventRecord(stop_event, stream);
+    cudaEventSynchronize(stop_event);
+    cudaEventElapsedTime(&kernel_time, start_event, stop_event);
+    cudaEventDestroy(start_event);
+    cudaEventDestroy(stop_event);
 
     // Compute final portfolio metrics
     // Portfolio variance: w^T @ Cov @ w
@@ -608,9 +726,12 @@ bool fin_optimization_gpu_mean_variance(
     result->expected_return = h_return;
     result->portfolio_variance = h_variance;
     result->portfolio_volatility = sqrtf(h_variance);
-    result->sharpe_ratio = (params->risk_free_rate > 0) ?
+    result->sharpe_ratio = (result->portfolio_volatility > 1e-10f && params->risk_free_rate >= 0) ?
         (h_return - params->risk_free_rate) / result->portfolio_volatility : 0.0f;
     result->n_assets = n;
+    result->converged = converged || (actual_iter < max_iter);  // Consider converged if stopped early or completed
+    result->iterations = actual_iter;
+    result->kernel_time_ms = kernel_time;
 
     // Cleanup
     cudaFree(d_returns);
@@ -1398,6 +1519,10 @@ bool fin_opt_gpu_risk_parity(
     float port_vol = 0.0f;
     float h_variance = 0.0f;
     float neg_lr = 0.0f;
+    float damping = 0.5f;
+    float* h_rc = NULL;
+    float* h_w = NULL;
+    float* h_init = NULL;
 
     // Allocate device memory
     float* d_covariance = NULL;
@@ -1488,14 +1613,45 @@ bool fin_opt_gpu_risk_parity(
     free(h_weights);
     free(h_target_rc);
 
-    block_size = min(256u, n);
+    // Use power-of-2 block size
+    block_size = 1;
+    while (block_size < n && block_size < 256) block_size *= 2;
+    if (block_size < 32) block_size = 32;
     grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
-    learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
-    max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
+    // Risk parity typically needs smaller learning rate for stability
+    learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.001f;
+    max_iter = params->max_iterations > 0 ? params->max_iterations : 2000;
 
     // Risk parity uses equal risk contribution target by default
     rc_target = 1.0f / (float)n;
+
+    // For risk parity with equal risk contribution target, the analytical solution
+    // is approximately the inverse-volatility portfolio (exact for diagonal covariance)
+    // We use this as the starting point and refine with optimization
+    h_init = (float*)malloc(n * sizeof(float));
+    if (h_init) {
+        float sum_inv_vol = 0.0f;
+        for (uint32_t i = 0; i < n; i++) {
+            float vol = sqrtf(covariance_matrix[i * n + i]);
+            h_init[i] = (vol > 1e-10f) ? (1.0f / vol) : 1.0f;
+            sum_inv_vol += h_init[i];
+        }
+        for (uint32_t i = 0; i < n; i++) {
+            h_init[i] /= sum_inv_vol;
+        }
+        cudaMemcpy(d_weights, h_init, n * sizeof(float), cudaMemcpyHostToDevice);
+        free(h_init);
+        h_init = NULL;
+    }
+
+    // Risk parity optimization using the Spinu (2013) approach:
+    // The objective is to minimize sum_i (w_i * (Cov @ w)_i - b_i * w^T Cov w)^2
+    // where b_i is the target risk budget (1/n for equal risk contribution)
+    //
+    // For simplicity and robustness, we use an iterative rescaling approach:
+    // w_i^{new} = w_i * (target_RC / actual_RC_i)^alpha
+    // where alpha is a damping factor
 
     for (uint32_t iter = 0; iter < max_iter; iter++) {
         // Compute Cov @ w
@@ -1516,17 +1672,34 @@ bool fin_opt_gpu_risk_parity(
         kernel_risk_contribution<<<grid_size, block_size, 0, stream>>>(
             d_weights, d_mrc, d_rc, n);
 
-        // Compute gradient
-        kernel_risk_parity_gradient<<<grid_size, block_size, 0, stream>>>(
-            d_covariance, d_weights, d_rc, rc_target, port_vol, d_gradient, n);
+        // Copy RC to host for rescaling computation
+        h_rc = (float*)malloc(n * sizeof(float));
+        h_w = (float*)malloc(n * sizeof(float));
+        if (h_rc && h_w) {
+            cudaMemcpy(h_rc, d_rc, n * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(h_w, d_weights, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // Gradient step
-        neg_lr = -learning_rate;
-        cublasSaxpy(cublas, n, &neg_lr, d_gradient, 1, d_weights, 1);
-
-        // Ensure positive weights and normalize
-        kernel_normalize_weights<<<1, block_size, block_size * sizeof(float), stream>>>(
-            d_weights, n);
+            // Rescale weights based on risk contribution deviation
+            float sum_w = 0.0f;
+            for (uint32_t i = 0; i < n; i++) {
+                if (h_rc[i] > 1e-10f) {
+                    // Scale inversely to risk contribution deviation
+                    float scale = powf(rc_target / h_rc[i], damping);
+                    h_w[i] *= scale;
+                }
+                if (h_w[i] < 0.001f) h_w[i] = 0.001f;
+                sum_w += h_w[i];
+            }
+            // Normalize
+            for (uint32_t i = 0; i < n; i++) {
+                h_w[i] /= sum_w;
+            }
+            cudaMemcpy(d_weights, h_w, n * sizeof(float), cudaMemcpyHostToDevice);
+        }
+        free(h_rc);
+        free(h_w);
+        h_rc = NULL;
+        h_w = NULL;
     }
 
     // Compute final metrics

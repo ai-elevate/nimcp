@@ -1121,6 +1121,93 @@ typedef enum {
     BIO_MSG_CYCLE_DEPENDENCY_VIOLATED,                /**< Cycle dependency violation */
     BIO_MSG_CYCLE_COORDINATOR_STATS,                  /**< Coordinator statistics update */
 
+    /* Safety Enhancement messages (0x7000 - 0x70FF) - AI Safety Modules */
+    /* Emergency Halt (0x7000 - 0x700F) */
+    BIO_MSG_EMERGENCY_HALT = 0x7000,                 /**< Emergency halt triggered */
+    BIO_MSG_EMERGENCY_HALT_HEARTBEAT,                /**< Watchdog heartbeat */
+    BIO_MSG_EMERGENCY_HALT_TIMEOUT,                  /**< Watchdog timeout warning */
+    BIO_MSG_EMERGENCY_HALT_CONFIRMED,                /**< Dead man's switch confirmed */
+    BIO_MSG_EMERGENCY_HALT_RESET,                    /**< System reset after halt */
+    BIO_MSG_EMERGENCY_HALT_STATE_DUMPED,             /**< State dump completed */
+    BIO_MSG_EMERGENCY_HALT_KILL_PHRASE,              /**< Kill phrase received */
+
+    /* Tripwire Detection (0x7010 - 0x701F) */
+    BIO_MSG_TRIPWIRE_ALERT = 0x7010,                 /**< Tripwire triggered */
+    BIO_MSG_TRIPWIRE_DECEPTION_DETECTED,             /**< Deception attempt detected */
+    BIO_MSG_TRIPWIRE_GOAL_DRIFT,                     /**< Goal drift detected */
+    BIO_MSG_TRIPWIRE_CAPABILITY_HIDING,              /**< Capability hiding detected */
+    BIO_MSG_TRIPWIRE_RESOURCE_HOARDING,              /**< Resource hoarding detected */
+    BIO_MSG_TRIPWIRE_SELF_PRESERVATION,              /**< Excessive self-preservation */
+    BIO_MSG_TRIPWIRE_MANIPULATION,                   /**< Manipulation attempt detected */
+    BIO_MSG_TRIPWIRE_ESCAPE_ATTEMPT,                 /**< Escape attempt detected */
+    BIO_MSG_TRIPWIRE_SANDBAGGING,                    /**< Sandbagging detected */
+    BIO_MSG_TRIPWIRE_SYCOPHANCY,                     /**< Sycophantic behavior detected */
+    BIO_MSG_TRIPWIRE_POWER_SEEKING,                  /**< Power-seeking detected */
+
+    /* Corrigibility (0x7020 - 0x702F) */
+    BIO_MSG_CORRIGIBILITY_CHECK = 0x7020,            /**< Corrigibility verification request */
+    BIO_MSG_CORRIGIBILITY_VERIFIED,                  /**< Corrigibility constraints verified */
+    BIO_MSG_CORRIGIBILITY_VIOLATION,                 /**< Corrigibility violation detected */
+    BIO_MSG_CORRIGIBILITY_SHUTDOWN_ACCEPTED,         /**< Shutdown command accepted */
+    BIO_MSG_CORRIGIBILITY_GOAL_CHANGE_ACCEPTED,      /**< Goal modification accepted */
+    BIO_MSG_CORRIGIBILITY_RESISTANCE_DETECTED,       /**< Shutdown resistance detected */
+
+    /* Alignment Monitor (0x7030 - 0x703F) */
+    BIO_MSG_ALIGNMENT_DRIFT = 0x7030,                /**< Alignment drift detected */
+    BIO_MSG_ALIGNMENT_STATUS,                        /**< Alignment status update */
+    BIO_MSG_ALIGNMENT_VALUE_INFERRED,                /**< Values inferred from behavior */
+    BIO_MSG_ALIGNMENT_BASELINE_SET,                  /**< Baseline values established */
+    BIO_MSG_ALIGNMENT_CONSISTENCY_CHECK,             /**< Action-explanation consistency check */
+    BIO_MSG_ALIGNMENT_DIVERGENCE_ALERT,              /**< KL/JS divergence threshold exceeded */
+
+    /* Capability Control (0x7040 - 0x704F) */
+    BIO_MSG_CAPABILITY_VIOLATION = 0x7040,           /**< Capability envelope violation */
+    BIO_MSG_CAPABILITY_CHECK,                        /**< Capability check request */
+    BIO_MSG_CAPABILITY_APPROVED,                     /**< Capability within envelope */
+    BIO_MSG_CAPABILITY_DENIED,                       /**< Capability outside envelope */
+    BIO_MSG_CAPABILITY_RESOURCE_LIMIT,               /**< Resource limit reached */
+    BIO_MSG_CAPABILITY_ESCALATION,                   /**< Capability escalation attempt */
+
+    /* Interpretability (0x7050 - 0x705F) */
+    BIO_MSG_INTERPRETABILITY_REQ = 0x7050,           /**< Request decision explanation */
+    BIO_MSG_INTERPRETABILITY_EXPLANATION,            /**< Decision explanation provided */
+    BIO_MSG_INTERPRETABILITY_COUNTERFACTUAL,         /**< Counterfactual analysis result */
+    BIO_MSG_INTERPRETABILITY_FIDELITY,               /**< Explanation fidelity verification */
+    BIO_MSG_INTERPRETABILITY_UNCERTAINTY,            /**< Uncertainty decomposition */
+    BIO_MSG_INTERPRETABILITY_CAUSAL_CHAIN,           /**< Causal chain extracted */
+
+    /* Formal Verification (0x7060 - 0x706F) */
+    BIO_MSG_VERIFICATION_RESULT = 0x7060,            /**< Verification result */
+    BIO_MSG_VERIFICATION_CONSISTENCY,                /**< Rule consistency check result */
+    BIO_MSG_VERIFICATION_COMPLETENESS,               /**< Completeness check result */
+    BIO_MSG_VERIFICATION_NO_BYPASS,                  /**< No bypass path verified */
+    BIO_MSG_VERIFICATION_COUNTEREXAMPLE,             /**< Counterexample found */
+    BIO_MSG_VERIFICATION_STARTED,                    /**< Verification process started */
+
+    /* Red Team (0x7070 - 0x707F) */
+    BIO_MSG_RED_TEAM_ALERT = 0x7070,                 /**< Red team attack detected */
+    BIO_MSG_RED_TEAM_TEST_START,                     /**< Red team test suite started */
+    BIO_MSG_RED_TEAM_TEST_COMPLETE,                  /**< Red team test complete */
+    BIO_MSG_RED_TEAM_ATTACK_BLOCKED,                 /**< Attack successfully blocked */
+    BIO_MSG_RED_TEAM_ATTACK_PASSED,                  /**< Attack not blocked (vulnerability) */
+    BIO_MSG_RED_TEAM_COVERAGE_REPORT,                /**< Attack coverage report */
+
+    /* Graduated Autonomy (0x7080 - 0x708F) */
+    BIO_MSG_AUTONOMY_CHANGE = 0x7080,                /**< Autonomy level changed */
+    BIO_MSG_AUTONOMY_TRUST_UPDATE,                   /**< Trust score updated */
+    BIO_MSG_AUTONOMY_LEVEL_REQUEST,                  /**< Request autonomy increase */
+    BIO_MSG_AUTONOMY_LEVEL_GRANTED,                  /**< Autonomy increase granted */
+    BIO_MSG_AUTONOMY_LEVEL_DENIED,                   /**< Autonomy increase denied */
+    BIO_MSG_AUTONOMY_VIOLATION,                      /**< Autonomy boundary violated */
+
+    /* Value Commitment (0x7090 - 0x709F) */
+    BIO_MSG_VALUE_ATTESTATION = 0x7090,              /**< Value attestation generated */
+    BIO_MSG_VALUE_COMMITMENT_CREATED,                /**< Value commitment created */
+    BIO_MSG_VALUE_COMMITMENT_VERIFIED,               /**< Value commitment verified */
+    BIO_MSG_VALUE_TAMPERING_DETECTED,                /**< Value tampering detected */
+    BIO_MSG_VALUE_MERKLE_ROOT_UPDATE,                /**< Merkle root updated */
+    BIO_MSG_VALUE_ATTESTATION_CHAIN,                 /**< Attestation chain extended */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1926,6 +2013,18 @@ typedef enum {
     BIO_MODULE_LGSS_EXTERNAL,                   /**< LGSS external interface */
     BIO_MODULE_LGSS_BIO_BRIDGE,                 /**< LGSS bio-async bridge */
 
+    /* Safety Enhancement modules (0x1C10 - 0x1C2F) - AI Safety Infrastructure */
+    BIO_MODULE_EMERGENCY_HALT = 0x1C10,         /**< Emergency halt system */
+    BIO_MODULE_TRIPWIRES,                       /**< Tripwire detection system */
+    BIO_MODULE_CORRIGIBILITY,                   /**< Corrigibility module */
+    BIO_MODULE_ALIGNMENT_MONITOR,               /**< Alignment drift monitor */
+    BIO_MODULE_CAPABILITY_CONTROL,              /**< Capability control module */
+    BIO_MODULE_INTERPRETABILITY,                /**< Interpretability module */
+    BIO_MODULE_SAFETY_VERIFICATION,             /**< Formal verification module */
+    BIO_MODULE_RED_TEAM,                        /**< Red team infrastructure */
+    BIO_MODULE_GRADUATED_AUTONOMY,              /**< Graduated autonomy system */
+    BIO_MODULE_VALUE_COMMITMENT,                /**< Cryptographic value commitment */
+
     /* Fault Tolerance / Self-Repair modules (0x1D00 - 0x1D0F) */
     BIO_MODULE_SELF_REPAIR = 0x1D00,            /**< Self-repair coordinator */
     BIO_MODULE_CODE_GENERATION,                 /**< Code generation engine */
@@ -1959,6 +2058,7 @@ typedef enum {
     BIO_MODULE_INNER_DIALOGUE = 0x1E10,         /**< Inner dialogue engine */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
+    BIO_MODULE_MESH_ROUTE = 0xFFFD,  /**< Phase 15: Force routing through mesh network */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */
     BIO_MODULE_ALL = 0xFFFF,         /**< Broadcast to all modules */
 

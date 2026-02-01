@@ -65,3 +65,70 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_routing_bridge_regression.cpp
     regression
 )
+
+# ============================================================================
+# Phase 15: Bidirectional Integration Regression Tests
+# ============================================================================
+# WHAT: Regression tests for bidirectional mesh integration components
+# WHY:  Catch regressions in registration, routing, and security
+
+# Test 8: Registration Regression - Scale, cycles, memory pressure, invalid pointers
+add_test_binary(
+    test_mesh_registration_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_registration_regression.cpp
+    regression
+)
+
+# Test 9: Routing Regression - High volume, cross-channel, concurrency, failures
+add_test_binary(
+    test_mesh_routing_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_routing_regression.cpp
+    regression
+)
+
+# Test 10: Security Regression - Exception flood, BBB attack, quarantine at scale
+add_test_binary(
+    test_mesh_security_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_security_regression.cpp
+    regression
+)
+
+# ============================================================================
+# Legacy Deep Integration Regression Tests
+# ============================================================================
+# WHAT: Legacy regression tests for deep integration components
+# WHY:  Catch regressions in brain, security, and resilience mesh integration
+
+# Test 11: Brain Integration Regression - Brain-mesh stability and edge cases
+add_test_binary(
+    test_mesh_brain_integration_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_brain_integration_regression.cpp
+    regression
+)
+
+# Test 12: Security Integration Regression - Security mesh stability and edge cases
+add_test_binary(
+    test_mesh_security_integration_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_security_integration_regression.cpp
+    regression
+)
+
+# Test 13: Resilience Integration Regression - Fault tolerance stability and edge cases
+add_test_binary(
+    test_mesh_resilience_integration_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_resilience_integration_regression.cpp
+    regression
+)
+
+# ============================================================================
+# Phase 16: Cycle Coordinator Regression Tests
+# ============================================================================
+# WHAT: Regression tests for mesh-cycle coordinator integration
+# WHY:  Catch regressions in brain oscillation synchronization and timing
+
+# Test 14: Cycle Coordinator Regression - Timing drift, phase lock stability, edge cases
+add_test_binary(
+    test_mesh_cycle_coordinator_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator_regression.cpp
+    regression
+)

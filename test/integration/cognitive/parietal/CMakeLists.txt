@@ -200,3 +200,36 @@ gtest_discover_tests(integration_parietal_financial_investment
 
 # Financial Cognitive Integration Tests (Check Framework)
 add_subdirectory(financial)
+
+# ----------------------------------------------------------------------------
+# Linguistics Fuzzy & Statistics Integration Test (Phase 2)
+# Tests fuzzy bridge and statistics bridge with mesh integration
+# ----------------------------------------------------------------------------
+add_executable(integration_linguistics_fuzzy_stats
+    linguistics/test_linguistics_fuzzy_stats_integration.cpp
+)
+
+target_link_libraries(integration_linguistics_fuzzy_stats
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_linguistics_fuzzy_stats
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_linguistics_fuzzy_stats PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_linguistics_fuzzy_stats
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;parietal;linguistics;fuzzy;statistics"
+        TIMEOUT 180
+)

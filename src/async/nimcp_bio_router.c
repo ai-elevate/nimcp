@@ -25,6 +25,7 @@
 
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_kg.h"  /* Phase 7: KG-driven dispatch */
+#include "mesh/nimcp_mesh_bio_integration.h"  /* Phase 15: Mesh integration */
 #include "async/nimcp_predictive_protocol.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
@@ -1237,11 +1238,74 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
         LOG_TRACE("BBB validation passed for message type=0x%04X", header->type);
     }
 
+    /* Phase 15: Mesh integration hook - try mesh routing first if available
+     * WHAT: Route messages through mesh network for consensus-based delivery
+     * WHY:  Enable distributed consensus for inter-module messages
+     * HOW:  Check global mesh integration, route if available, fall back if not
+     */
+    if (mesh_bio_integration_global_available()) {
+        nimcp_error_t mesh_result = mesh_bio_integration_route_message(
+            mesh_bio_integration_get_global(),
+            msg, msg_size, NULL, NULL);
+
+        if (mesh_result == NIMCP_SUCCESS) {
+            /* Message routed through mesh - update stats and return */
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_routed++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+            if (ctx && ctx->entry) {
+                ctx->entry->messages_sent++;
+            }
+
+            LOG_TRACE("Message type=0x%04X routed through mesh", header->type);
+            return NIMCP_SUCCESS;
+        }
+        /* mesh_result == NIMCP_ERROR_NOT_FOUND means fall through to direct routing */
+        else if (mesh_result != NIMCP_ERROR_NOT_FOUND) {
+            LOG_WARN("Mesh routing failed for type=0x%04X: %d, falling back",
+                    header->type, mesh_result);
+        }
+        /* Fall through to normal routing */
+    }
+
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
 
     nimcp_error_t result = NIMCP_SUCCESS;
 
-    if (target_id == BIO_MODULE_KG_DISPATCH) {
+    if (target_id == BIO_MODULE_MESH_ROUTE) {
+        /* Phase 15: Explicit mesh routing - MUST route through mesh */
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+        if (!mesh_bio_integration_global_available()) {
+            LOG_ERROR("Mesh routing requested but mesh integration not available");
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+            NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED,
+                        "bio_router_send: mesh routing requested but not available");
+        }
+
+        result = mesh_bio_integration_route_message(
+            mesh_bio_integration_get_global(),
+            msg, msg_size, NULL, NULL);
+
+        if (result != NIMCP_SUCCESS) {
+            LOG_ERROR("Mesh routing failed for type=0x%04X: %d", header->type, result);
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+            return result;
+        }
+
+        nimcp_platform_mutex_lock(&g_router->stats_mutex);
+        g_router->stats.messages_routed++;
+        nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+        LOG_DEBUG("Mesh route: msg type 0x%04X successfully routed", header->type);
+        return NIMCP_SUCCESS;
+
+    } else if (target_id == BIO_MODULE_KG_DISPATCH) {
         /* Phase 7: KG-driven dispatch - route to all handlers for message type */
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
 

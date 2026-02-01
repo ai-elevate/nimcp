@@ -3000,6 +3000,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
     add_subdirectory(statistics)
 endif()
 
+# Include Mesh Network E2E test subdirectory (Hyperledger-inspired architecture)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mesh/CMakeLists.txt)
+    message(STATUS "Adding Mesh Network E2E tests...")
+    add_subdirectory(mesh)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

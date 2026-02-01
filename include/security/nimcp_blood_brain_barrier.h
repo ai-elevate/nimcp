@@ -60,7 +60,10 @@ extern "C" {
 // Forward Declarations
 //=============================================================================
 
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
 typedef struct bbb_system_struct* bbb_system_t;
+#endif
 typedef struct bbb_input_gate_struct* bbb_input_gate_t;
 typedef struct bbb_code_signer_struct* bbb_code_signer_t;
 typedef struct bbb_memory_boundary_struct* bbb_memory_boundary_t;

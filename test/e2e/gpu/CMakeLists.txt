@@ -62,5 +62,8 @@ add_gpu_e2e_test(test_e2e_fuzzy_controller_gpu)
 # GPU Financial Workflow E2E test
 add_gpu_e2e_test(test_e2e_financial_workflow_gpu)
 
+# GPU Financial Complete E2E test (comprehensive scenarios)
+add_gpu_e2e_test(test_e2e_financial_complete)
+
 # GPU Recovery Pipeline E2E test
 add_gpu_e2e_test(test_e2e_gpu_recovery_pipeline)

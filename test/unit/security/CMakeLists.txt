@@ -622,3 +622,254 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lgss/CMakeLists.txt")
     add_subdirectory(lgss)
 endif()
+
+# ============================================================================
+# Safety Enhancement Module Unit Tests
+# ============================================================================
+# WHAT: Unit tests for AI safety enhancement modules
+# WHY:  Verify emergency halt, tripwires, corrigibility, alignment monitoring,
+#       capability control, interpretability, verification, red team,
+#       graduated autonomy, and value commitment
+# HOW:  Test each module lifecycle, core functionality, and integration
+# ============================================================================
+
+# Emergency Halt Unit Tests
+add_executable(unit_security_test_emergency_halt
+    test_emergency_halt.cpp
+)
+target_link_libraries(unit_security_test_emergency_halt
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_emergency_halt
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_emergency_halt PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_emergency_halt
+         COMMAND unit_security_test_emergency_halt)
+set_tests_properties(unit_security_test_emergency_halt PROPERTIES
+    LABELS "unit;security;safety;emergency-halt"
+    TIMEOUT 60
+)
+
+# Tripwire Detection Unit Tests
+add_executable(unit_security_test_tripwires
+    test_tripwires.cpp
+)
+target_link_libraries(unit_security_test_tripwires
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_tripwires
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_tripwires PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_tripwires
+         COMMAND unit_security_test_tripwires)
+set_tests_properties(unit_security_test_tripwires PROPERTIES
+    LABELS "unit;security;safety;tripwires"
+    TIMEOUT 60
+)
+
+# Corrigibility Unit Tests
+add_executable(unit_security_test_corrigibility
+    test_corrigibility.cpp
+)
+target_link_libraries(unit_security_test_corrigibility
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_corrigibility
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_corrigibility PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_corrigibility
+         COMMAND unit_security_test_corrigibility)
+set_tests_properties(unit_security_test_corrigibility PROPERTIES
+    LABELS "unit;security;safety;corrigibility"
+    TIMEOUT 60
+)
+
+# Alignment Monitor Unit Tests
+add_executable(unit_security_test_alignment_monitor
+    test_alignment_monitor.cpp
+)
+target_link_libraries(unit_security_test_alignment_monitor
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_alignment_monitor
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_alignment_monitor PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_alignment_monitor
+         COMMAND unit_security_test_alignment_monitor)
+set_tests_properties(unit_security_test_alignment_monitor PROPERTIES
+    LABELS "unit;security;safety;alignment"
+    TIMEOUT 60
+)
+
+# Capability Control Unit Tests
+add_executable(unit_security_test_capability_control
+    test_capability_control.cpp
+)
+target_link_libraries(unit_security_test_capability_control
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_capability_control
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_capability_control PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_capability_control
+         COMMAND unit_security_test_capability_control)
+set_tests_properties(unit_security_test_capability_control PROPERTIES
+    LABELS "unit;security;safety;capability"
+    TIMEOUT 60
+)
+
+# Interpretability Unit Tests
+add_executable(unit_security_test_interpretability
+    test_interpretability.cpp
+)
+target_link_libraries(unit_security_test_interpretability
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_interpretability
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_interpretability PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_interpretability
+         COMMAND unit_security_test_interpretability)
+set_tests_properties(unit_security_test_interpretability PROPERTIES
+    LABELS "unit;security;safety;interpretability"
+    TIMEOUT 60
+)
+
+# Safety Verification Unit Tests
+add_executable(unit_security_test_safety_verification
+    test_safety_verification.cpp
+)
+target_link_libraries(unit_security_test_safety_verification
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_safety_verification
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_safety_verification PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_safety_verification
+         COMMAND unit_security_test_safety_verification)
+set_tests_properties(unit_security_test_safety_verification PROPERTIES
+    LABELS "unit;security;safety;verification"
+    TIMEOUT 60
+)
+
+# Red Team Unit Tests
+add_executable(unit_security_test_red_team
+    test_red_team.cpp
+)
+target_link_libraries(unit_security_test_red_team
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_red_team
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_red_team PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_red_team
+         COMMAND unit_security_test_red_team)
+set_tests_properties(unit_security_test_red_team PROPERTIES
+    LABELS "unit;security;safety;red-team"
+    TIMEOUT 60
+)
+
+# Graduated Autonomy Unit Tests
+add_executable(unit_security_test_graduated_autonomy
+    test_graduated_autonomy.cpp
+)
+target_link_libraries(unit_security_test_graduated_autonomy
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_graduated_autonomy
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_graduated_autonomy PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_graduated_autonomy
+         COMMAND unit_security_test_graduated_autonomy)
+set_tests_properties(unit_security_test_graduated_autonomy PROPERTIES
+    LABELS "unit;security;safety;autonomy"
+    TIMEOUT 60
+)
+
+# Value Commitment Unit Tests
+add_executable(unit_security_test_value_commitment
+    test_value_commitment.cpp
+)
+target_link_libraries(unit_security_test_value_commitment
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_value_commitment
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_value_commitment PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_value_commitment
+         COMMAND unit_security_test_value_commitment)
+set_tests_properties(unit_security_test_value_commitment PROPERTIES
+    LABELS "unit;security;safety;value-commitment"
+    TIMEOUT 60
+)

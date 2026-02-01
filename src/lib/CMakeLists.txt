@@ -1687,6 +1687,18 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/cognitive/nimcp_lgss_attention_guard.c                    # Attention guard
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/cognitive/nimcp_lgss_working_memory_guard.c               # Working memory guard
 
+    # Safety Enhancement Modules (Phase SAFE: 10 Critical AI Safety Components)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_emergency_halt.c                                         # Emergency halt system (watchdog, kill phrase, dead man's switch)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_tripwires.c                                              # Tripwire detection (deception, goal drift, sandbagging)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_corrigibility.c                                          # Corrigibility enforcement (shutdown acceptance, goal modification)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_alignment_monitor.c                                      # Alignment drift monitoring (KL divergence, value tracking)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_capability_control.c                                     # Capability control (envelope enforcement, resource limits)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_interpretability.c                                       # Interpretability (decision factors, counterfactuals, fidelity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_safety_verification.c                                    # Formal verification (consistency, completeness, no-bypass)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_red_team.c                                               # Red team infrastructure (attack generation, defense testing)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_graduated_autonomy.c                                     # Graduated autonomy (Bayesian trust, level management)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_value_commitment.c                                       # Value commitment (cryptographic attestation, tampering detection)
+
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c
@@ -2766,6 +2778,20 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_pattern_cache.c                              # CoW pattern cache using nimcp_cache
     # Phase 13: KG-Mesh Routing Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_kg_routing_bridge.c                          # Hybrid KG + pattern routing
+    # Phase 14: Full Bidirectional Mesh Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_module_registry.c                            # Type-safe module registration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_bio_bridge.c                                 # Bio-async to mesh translation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_receptive_fields.c                           # Pre-defined receptive field patterns
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_exception_bridge.c                           # Exception to immune routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_health_bridge.c                              # Distributed health monitoring
+    # Phase 15: Deep Integration Components
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_brain_integration.c                          # Brain-mesh bidirectional communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_bio_integration.c                            # Bio-async subsystem mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_security_integration.c                       # Security subsystem mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_kg_integration.c                             # Knowledge graph mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_resilience_integration.c                     # Fault tolerance and resilience mesh integration
+    # Phase 16: Cycle Coordinator Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_cycle_coordinator.c                          # Mesh-cycle coordinator for brain oscillation sync
 )
 
 # Core library

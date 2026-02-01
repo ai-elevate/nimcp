@@ -24,6 +24,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration for mesh integration - full type in nimcp_mesh_brain_integration.h */
+struct mesh_brain_integration;
+typedef struct mesh_brain_integration mesh_brain_integration_t;
+
 /**
  * @brief Allocate brain structure and initialize basic fields
  *
@@ -76,6 +80,56 @@ bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
  * @return true if initialization successful, false on error
  */
 bool nimcp_brain_factory_init_event_bus(brain_t brain);
+
+/* ============================================================================
+ * Mesh Network Integration (Phase 15: Brain-Mesh Integration)
+ * ============================================================================ */
+
+/**
+ * @brief Set mesh brain integration for automatic module registration
+ *
+ * WHAT: Configures brain factory to auto-register modules with mesh
+ * WHY:  Enables real brain modules to participate in mesh consensus
+ * HOW:  Stores integration handle, used during brain init
+ *
+ * Call this before creating brains to enable mesh integration.
+ * After brain creation, modules will be automatically registered.
+ *
+ * @param integration Mesh brain integration handle (NULL to disable)
+ */
+void nimcp_brain_factory_set_mesh_integration(mesh_brain_integration_t* integration);
+
+/**
+ * @brief Get current mesh brain integration handle
+ *
+ * @return Current integration handle or NULL if not set
+ */
+mesh_brain_integration_t* nimcp_brain_factory_get_mesh_integration(void);
+
+/**
+ * @brief Register brain modules with mesh network
+ *
+ * WHAT: Registers all available brain modules with the mesh network
+ * WHY:  Enables real module instances to participate in mesh consensus
+ * HOW:  Iterates brain subsystems, registers non-NULL modules
+ *
+ * BRAIN MODULES REGISTERED:
+ * - Security: BBB (blood-brain barrier), immune system
+ * - Cognitive: FEP orchestrator, working memory, executive controller
+ * - Memory: Hippocampus (if present via hippocampus_context)
+ * - Plasticity: Plasticity coordinator
+ * - System: Bio-async orchestrator, global workspace
+ *
+ * Each module is assigned:
+ * - Mesh adapter category (cognitive, memory, security, etc.)
+ * - Receptive field based on brain region (for pattern-based routing)
+ * - Endorser role (REQUIRED, PREFERRED, or OPTIONAL)
+ * - Health agent wiring (if configured)
+ *
+ * @param brain Brain instance with initialized modules
+ * @return true if registration successful, false on error
+ */
+bool nimcp_brain_factory_register_with_mesh(brain_t brain);
 
 #ifdef __cplusplus
 }

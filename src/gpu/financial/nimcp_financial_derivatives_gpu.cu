@@ -66,12 +66,15 @@ __device__ __forceinline__ float norm_pdf_device(float x) {
  * @brief Standard normal CDF (Abramowitz and Stegun approximation)
  */
 __device__ __forceinline__ float norm_cdf_device(float x) {
+    // Abramowitz & Stegun approximation using erf coefficients
+    // Note: These coefficients are for erf(x), so we compute erf(x/sqrt(2)) for normal CDF
     const float a1 =  0.254829592f;
     const float a2 = -0.284496736f;
     const float a3 =  1.421413741f;
     const float a4 = -1.453152027f;
     const float a5 =  1.061405429f;
     const float p  =  0.3275911f;
+    const float SQRT2_INV = 0.7071067811865475f;  // 1/sqrt(2)
 
     float sign = 1.0f;
     if (x < 0.0f) {
@@ -79,8 +82,10 @@ __device__ __forceinline__ float norm_cdf_device(float x) {
         x = -x;
     }
 
-    float t = 1.0f / (1.0f + p * x);
-    float y = 1.0f - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * expf(-x*x/2.0f);
+    // Scale by 1/sqrt(2) for erf -> normal CDF conversion
+    float z = x * SQRT2_INV;
+    float t = 1.0f / (1.0f + p * z);
+    float y = 1.0f - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * expf(-z*z);
 
     return 0.5f * (1.0f + sign * y);
 }
@@ -525,6 +530,35 @@ bool fin_derivatives_gpu_binomial_tree(
     cudaMemcpy(&h_price, current, sizeof(float), cudaMemcpyDeviceToHost);
 
     result->price = h_price;
+
+    // Compute early exercise premium for American options
+    if (is_american) {
+        // Also compute European price using same tree for comparison
+        // Reset to terminal payoffs
+        kernel_binomial_init_payoffs<<<grid_size, block_size, 0, stream>>>(
+            d_values_a, params->spot, u, d, params->strike, is_call, N);
+
+        float* euro_current = d_values_a;
+        float* euro_next = d_values_b;
+
+        for (int level = N - 1; level >= 0; level--) {
+            uint32_t level_grid = NIMCP_CUDA_GRID_SIZE(level + 1, block_size);
+            // Use European step (no early exercise)
+            kernel_binomial_european_step<<<level_grid, block_size, 0, stream>>>(
+                euro_next, euro_current, p, discount, level);
+            float* tmp = euro_current;
+            euro_current = euro_next;
+            euro_next = tmp;
+        }
+
+        float euro_price;
+        cudaMemcpy(&euro_price, euro_current, sizeof(float), cudaMemcpyDeviceToHost);
+
+        // Early exercise premium = American price - European price
+        result->early_exercise_premium = h_price - euro_price;
+    } else {
+        result->early_exercise_premium = 0.0f;
+    }
 
     // Compute Greeks using finite difference on tree
     if (params->compute_greeks) {
@@ -1923,13 +1957,14 @@ float fin_deriv_gpu_black_scholes(
 float fin_deriv_gpu_norm_cdf(float x)
 {
     // Host-side cumulative normal distribution
-    // Using Abramowitz and Stegun approximation
+    // Using Abramowitz & Stegun erf approximation converted to normal CDF
     const float a1 =  0.254829592f;
     const float a2 = -0.284496736f;
     const float a3 =  1.421413741f;
     const float a4 = -1.453152027f;
     const float a5 =  1.061405429f;
     const float p  =  0.3275911f;
+    const float SQRT2_INV = 0.7071067811865475f;  // 1/sqrt(2)
 
     float sign = 1.0f;
     if (x < 0.0f) {
@@ -1937,8 +1972,10 @@ float fin_deriv_gpu_norm_cdf(float x)
         x = -x;
     }
 
-    float t = 1.0f / (1.0f + p * x);
-    float y = 1.0f - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * expf(-x*x/2.0f);
+    // Scale by 1/sqrt(2) for erf -> normal CDF conversion
+    float z = x * SQRT2_INV;
+    float t = 1.0f / (1.0f + p * z);
+    float y = 1.0f - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * expf(-z*z);
 
     return 0.5f * (1.0f + sign * y);
 }

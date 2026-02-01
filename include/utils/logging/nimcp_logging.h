@@ -1021,6 +1021,16 @@ NIMCP_EXPORT bool nimcp_log_is_tty(void);
     nimcp_log_write(NULL, LOG_LEVEL_ERROR, NULL, __FILE__, __LINE__, \
                     "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
 
+/**
+ * @brief Get a named logger (alias for nimcp_log_get_global for compatibility)
+ * @param name Logger name (currently ignored)
+ * @return Global logger
+ */
+static inline nimcp_logger_t nimcp_logger_get(const char* name) {
+    (void)name;
+    return nimcp_log_get_global();
+}
+
 #ifdef __cplusplus
 }
 #endif
