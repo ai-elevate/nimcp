@@ -54,3 +54,14 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_enhanced_routing_regression.cpp
     regression
 )
+
+# ============================================================================
+# KG-Mesh Routing Bridge Regression Tests
+# ============================================================================
+
+# Test 7: KG Routing Bridge Regression - Hybrid routing stability and edge cases
+add_test_binary(
+    test_mesh_kg_routing_bridge_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_routing_bridge_regression.cpp
+    regression
+)

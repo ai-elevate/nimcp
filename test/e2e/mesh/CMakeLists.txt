@@ -58,3 +58,16 @@ add_e2e_test(
 
 add_test(NAME e2e_mesh_enhanced_routing COMMAND e2e_test_mesh_enhanced_routing)
 set_tests_properties(e2e_mesh_enhanced_routing PROPERTIES LABELS "e2e;mesh;routing")
+
+# ============================================================================
+# KG-Mesh Routing Bridge E2E Tests
+# ============================================================================
+
+# Test 6: KG Routing Bridge E2E - Full hybrid routing pipeline
+add_e2e_test(
+    e2e_test_mesh_kg_routing_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_routing_bridge_e2e.cpp
+)
+
+add_test(NAME e2e_mesh_kg_routing_bridge COMMAND e2e_test_mesh_kg_routing_bridge)
+set_tests_properties(e2e_mesh_kg_routing_bridge PROPERTIES LABELS "e2e;mesh;routing;kg")

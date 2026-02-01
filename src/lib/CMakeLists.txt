@@ -1340,6 +1340,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_snn_bridge.c  # SNN integration for parietal
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_plasticity_bridge.c  # Plasticity integration for parietal
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_training_bridge.c  # Training integration for parietal
+    # Parietal Linguistics Module
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/nimcp_parietal_spatial_language.c  # Spatial language processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/nimcp_parietal_numerical_language.c  # Number word processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/nimcp_parietal_phonological_wm.c  # Phonological working memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/nimcp_parietal_linguistics_mesh.c  # Mesh coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_fuzzy_bridge.c  # Fuzzy logic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_statistics_bridge.c  # Statistics/HMM integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_snn_bridge.c  # SNN integration for linguistics
+    # TODO: Fix API mismatches in plasticity bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_plasticity_bridge.c  # Plasticity integration for linguistics
     # Personality SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_snn_bridge.c  # SNN integration for personality
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_plasticity_bridge.c  # Plasticity integration for personality
@@ -2722,6 +2732,40 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c         # Turn history circular buffer and analysis helpers
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c  # Perspective registry, scheduling, built-in stubs
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c  # Convergence/deadlock/rumination detection
+
+    # Mesh Network (Hyperledger-inspired architecture with hierarchical coordinator pools)
+    # Phase 1: Foundation & Types
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_participant.c                                # Participant registry and credential management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_transaction.c                                # Transaction lifecycle (Execute-Order-Validate)
+    # Phase 2: Channels & World State
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_channel.c                                    # Channel creation, world state, private data
+    # Phase 3: Coordinator Pools
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_coordinator.c                                # Single coordinator implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_coordinator_pool.c                           # Pool management, BFT election, load balancing
+    # Phase 4: Ordering Service
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_ordering.c                                   # Raft-based ordering service, batching, blocks
+    # Phase 5: MSP & Endorsement
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_msp.c                                        # Membership Service Provider, identity, quarantine
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_endorsement.c                                # Endorsement policies, collection, validation
+    # Phase 6: Topology & Timing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_topology.c                                   # Hub detection, centrality, coordinator placement
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_timing.c                                     # Hierarchical pink noise timing
+    # Phase 7: GPU Channel
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_gpu.c                                        # GPU channel, batch processing, multi-GPU
+    # Phase 8: Cross-Channel & System Coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_cross_channel.c                              # Cross-channel routing, arbitration
+    # Phase 9: Adapter Framework & Integration Manager
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_adapter.c                                    # Generic adapter for module integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_integration.c                                # Central integration manager
+    # Phase 10: Full System Bootstrap
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_bootstrap.c                                  # Complete NIMCP system mesh bootstrap
+    # Phase 11: Brain-Inspired Pattern Routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_pattern_routing.c                            # Pattern-based self-selection, receptive fields
+    # Phase 12: Enhanced Pattern Routing Components
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_sat_solver.c                                 # DPLL-based SAT solver for endorsement constraints
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_pattern_cache.c                              # CoW pattern cache using nimcp_cache
+    # Phase 13: KG-Mesh Routing Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_kg_routing_bridge.c                          # Hybrid KG + pattern routing
 )
 
 # Core library

@@ -54,3 +54,14 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_enhanced_routing_integration.cpp
     integration
 )
+
+# ============================================================================
+# KG-Mesh Routing Bridge Integration Tests
+# ============================================================================
+
+# Test 7: KG Routing Bridge Integration - Hybrid routing with brain topology
+add_test_binary(
+    test_mesh_kg_routing_bridge_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_kg_routing_bridge_integration.cpp
+    integration
+)
