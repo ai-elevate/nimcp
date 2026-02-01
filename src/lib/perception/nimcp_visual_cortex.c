@@ -18,6 +18,7 @@
 #include "utils/gabor/nimcp_gabor.h"    /* Shared Gabor filter library */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"  /* KG reader for self-awareness */
 
 #include "utils/memory/nimcp_unified_memory.h"
@@ -1187,13 +1188,42 @@ bool visual_cortex_process(
     uint32_t channels,
     float* features)
 {
-    // Guard: Validate inputs
+    // Guard: Validate inputs with basic pointer checks
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(image, "image") ||
         !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
+    // BBB: Validate external image input (SECURITY CRITICAL)
+    // This is external sensory data that could be adversarial/corrupted
+    if (!bbb_check_pointer(image, "visual_cortex_process")) {
+        bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "invalid_image_ptr",
+                      "NULL image pointer rejected");
+        return false;
+    }
+
+    // BBB: Validate image dimensions are within safe bounds
+    // Prevent integer overflow and excessive memory allocation
+    const uint32_t MAX_DIMENSION = 16384;  // 16K max dimension
+    const uint32_t MAX_CHANNELS = 4;       // RGBA max
+    if (!bbb_validate_range_u(width, 1, MAX_DIMENSION, "visual_cortex_process") ||
+        !bbb_validate_range_u(height, 1, MAX_DIMENSION, "visual_cortex_process") ||
+        !bbb_validate_range_u(channels, 1, MAX_CHANNELS, "visual_cortex_process")) {
+        bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "invalid_dimensions",
+                      "width=%u height=%u channels=%u rejected", width, height, channels);
+        return false;
+    }
+
+    // BBB: Validate buffer size doesn't overflow
+    uint64_t expected_size = (uint64_t)width * height * channels;
+    if (expected_size > (uint64_t)UINT32_MAX) {
+        bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "size_overflow",
+                      "Image size %llu exceeds maximum", (unsigned long long)expected_size);
+        return false;
+    }
+
+    // Standard dimension check
     if (width != cortex->input_width || height != cortex->input_height || channels == 0) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid image dimensions: %ux%ux%u (expected %ux%ux>0)",
                            width, height, channels, cortex->input_width, cortex->input_height);

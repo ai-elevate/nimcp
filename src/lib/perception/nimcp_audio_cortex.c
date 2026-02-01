@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"  /* KG reader for self-awareness */
 
 #include "utils/memory/nimcp_unified_memory.h"
@@ -936,6 +937,41 @@ bool audio_cortex_process(
         !nimcp_validate_pointer(audio_data, "audio_data") ||
         !nimcp_validate_pointer(features, "features")) {
         return false;
+    }
+
+    // BBB: Validate external audio input (SECURITY CRITICAL)
+    // This is external sensory data that could be adversarial/corrupted
+    if (!bbb_check_pointer(audio_data, "audio_cortex_process")) {
+        bbb_audit_log(BBB_AUDIT_WARNING, AUDIO_LOG_MODULE, "invalid_audio_ptr",
+                      "NULL audio pointer rejected");
+        return false;
+    }
+
+    // BBB: Validate audio parameters are within safe bounds
+    const uint32_t MAX_SAMPLES = 48000 * 60;  // Max 1 minute of audio at 48kHz
+    const uint8_t MAX_CHANNELS = 8;           // 7.1 surround max
+    if (!bbb_validate_range_u(num_samples, 1, MAX_SAMPLES, "audio_cortex_process") ||
+        !bbb_validate_range_u(num_channels, 1, MAX_CHANNELS, "audio_cortex_process")) {
+        bbb_audit_log(BBB_AUDIT_WARNING, AUDIO_LOG_MODULE, "invalid_audio_params",
+                      "samples=%u channels=%u rejected", num_samples, num_channels);
+        return false;
+    }
+
+    // BBB: Validate buffer size doesn't overflow
+    uint64_t expected_size = (uint64_t)num_samples * num_channels * sizeof(float);
+    if (expected_size > (uint64_t)UINT32_MAX) {
+        bbb_audit_log(BBB_AUDIT_WARNING, AUDIO_LOG_MODULE, "size_overflow",
+                      "Audio buffer size %llu exceeds maximum", (unsigned long long)expected_size);
+        return false;
+    }
+
+    // BBB: Check for NaN/Inf in first few samples (adversarial detection)
+    for (uint32_t i = 0; i < (num_samples < 16 ? num_samples : 16); i++) {
+        if (!isfinite(audio_data[i])) {
+            bbb_audit_log(BBB_AUDIT_WARNING, AUDIO_LOG_MODULE, "invalid_audio_data",
+                          "NaN/Inf detected at sample %u", i);
+            return false;
+        }
     }
 
     if (num_samples != cortex->config.frame_size) {

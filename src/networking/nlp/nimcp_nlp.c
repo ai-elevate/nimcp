@@ -94,6 +94,30 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
 static int nlp_send_raw(nlp_node_t node, uint32_t peer_id, const uint8_t* data, size_t len);
 static void nlp_auto_mode_check(nlp_node_t node);
 
+/**
+ * @brief Thread-safe check if threads should continue running
+ * @param node NLP node
+ * @return true if threads should continue, false if shutdown requested
+ */
+static inline bool nlp_should_continue(nlp_node_t node) {
+    nimcp_mutex_lock(&node->state_mutex);
+    bool running = node->threads_running;
+    nimcp_mutex_unlock(&node->state_mutex);
+    return running;
+}
+
+/**
+ * @brief Thread-safe check if node is in stealth mode and running
+ * @param node NLP node
+ * @return true if in stealth mode and running
+ */
+static inline bool nlp_stealth_active(nlp_node_t node) {
+    nimcp_mutex_lock(&node->state_mutex);
+    bool active = node->threads_running && node->current_mode == NLP_MODE_STEALTH;
+    nimcp_mutex_unlock(&node->state_mutex);
+    return active;
+}
+
 //=============================================================================
 // Bio-Async Integration
 //=============================================================================
@@ -548,7 +572,8 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     memcpy(node->psk_slots, node->config.psk, sizeof(node->psk_slots));
 
     // Initialize mutexes
-    if (nimcp_mutex_init(&node->peer_mutex, NULL) != NIMCP_SUCCESS ||
+    if (nimcp_mutex_init(&node->state_mutex, NULL) != NIMCP_SUCCESS ||
+        nimcp_mutex_init(&node->peer_mutex, NULL) != NIMCP_SUCCESS ||
         nimcp_mutex_init(&node->key_mutex, NULL) != NIMCP_SUCCESS ||
         nimcp_mutex_init(&node->env_mutex, NULL) != NIMCP_SUCCESS ||
         nimcp_mutex_init(&node->stats_mutex, NULL) != NIMCP_SUCCESS ||
@@ -679,29 +704,40 @@ int nlp_node_start(nlp_node_t node) {
         return -errno;
     }
 
+    nimcp_mutex_lock(&node->state_mutex);
     node->running = true;
     node->threads_running = true;
+    nimcp_mutex_unlock(&node->state_mutex);
 
     // Start receive thread
-    if (pthread_create(&node->recv_thread, NULL, nlp_recv_thread, node) != 0) {
+    if (nimcp_thread_create(&node->recv_thread, nlp_recv_thread, node, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to create recv thread");
+        nimcp_mutex_lock(&node->state_mutex);
         node->running = false;
+        node->threads_running = false;
+        nimcp_mutex_unlock(&node->state_mutex);
         close(node->socket_fd);
         return -ENOMEM;
     }
 
     // Start heartbeat thread
-    if (pthread_create(&node->heartbeat_thread, NULL, nlp_heartbeat_thread, node) != 0) {
+    if (nimcp_thread_create(&node->heartbeat_thread, nlp_heartbeat_thread, node, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to create heartbeat thread");
+        nimcp_mutex_lock(&node->state_mutex);
         node->running = false;
-        pthread_join(node->recv_thread, NULL);
+        node->threads_running = false;
+        nimcp_mutex_unlock(&node->state_mutex);
+        nimcp_thread_join(node->recv_thread, NULL);
         close(node->socket_fd);
         return -ENOMEM;
     }
 
     // Start stealth thread if in stealth mode
-    if (node->current_mode == NLP_MODE_STEALTH) {
-        if (pthread_create(&node->stealth_thread, NULL, nlp_stealth_thread, node) != 0) {
+    nimcp_mutex_lock(&node->state_mutex);
+    bool start_stealth = (node->current_mode == NLP_MODE_STEALTH);
+    nimcp_mutex_unlock(&node->state_mutex);
+    if (start_stealth) {
+        if (nimcp_thread_create(&node->stealth_thread, nlp_stealth_thread, node, NULL) != NIMCP_SUCCESS) {
             NIMCP_LOGGING_WARN(NLP_MODULE_NAME, "Failed to create stealth thread");
         }
     }
@@ -720,12 +756,16 @@ int nlp_node_stop(nlp_node_t node) {
         return -EINVAL;
     }
 
+    nimcp_mutex_lock(&node->state_mutex);
     if (!node->running) {
+        nimcp_mutex_unlock(&node->state_mutex);
         return 0;
     }
 
     node->running = false;
     node->threads_running = false;
+    bool was_stealth = (node->current_mode == NLP_MODE_STEALTH);
+    nimcp_mutex_unlock(&node->state_mutex);
 
     // Wake up threads
     if (node->socket_fd >= 0) {
@@ -733,10 +773,10 @@ int nlp_node_stop(nlp_node_t node) {
     }
 
     // Wait for threads
-    pthread_join(node->recv_thread, NULL);
-    pthread_join(node->heartbeat_thread, NULL);
-    if (node->current_mode == NLP_MODE_STEALTH) {
-        pthread_join(node->stealth_thread, NULL);
+    nimcp_thread_join(node->recv_thread, NULL);
+    nimcp_thread_join(node->heartbeat_thread, NULL);
+    if (was_stealth) {
+        nimcp_thread_join(node->stealth_thread, NULL);
     }
 
     // Close socket
@@ -1828,7 +1868,7 @@ static void* nlp_recv_thread(void* arg) {
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Receive thread started");
 
-    while (node->threads_running) {
+    while (nlp_should_continue(node)) {
         from_len = sizeof(from);
 
         fd_set read_fds;
@@ -1847,7 +1887,7 @@ static void* nlp_recv_thread(void* arg) {
 
         if (len < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
-            if (!node->threads_running) break;
+            if (!nlp_should_continue(node)) break;
             NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "recvfrom error: %s", strerror(errno));
             continue;
         }
@@ -1872,10 +1912,10 @@ static void* nlp_heartbeat_thread(void* arg) {
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Heartbeat thread started");
 
-    while (node->threads_running) {
+    while (nlp_should_continue(node)) {
         usleep(node->config.heartbeat_interval_ms * NIMCP_US_PER_MS);
 
-        if (!node->threads_running) break;
+        if (!nlp_should_continue(node)) break;
 
         uint64_t now = nimcp_platform_time_monotonic_ms();
 
@@ -1918,7 +1958,7 @@ static void* nlp_stealth_thread(void* arg) {
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Stealth thread started");
 
-    while (node->threads_running && node->current_mode == NLP_MODE_STEALTH) {
+    while (nlp_stealth_active(node)) {
         uint64_t now = nimcp_platform_time_monotonic_ms();
 
         // Check if it's time for a burst

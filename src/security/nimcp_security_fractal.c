@@ -268,8 +268,15 @@ nimcp_result_t nimcp_fractal_security_protect(
         branch->max_children = fsc->config.branching_factor;
 
         // Add branch to parent
-        parent->children = realloc(parent->children,
+        nimcp_fsc_node_t** new_children = realloc(parent->children,
                                    (parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+        if (!new_children) {
+            nimcp_free(leaf);
+            nimcp_free(branch);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        parent->children = new_children;
         parent->children[parent->num_children++] = branch;
 
         // Add leaf to branch
@@ -282,17 +289,31 @@ nimcp_result_t nimcp_fractal_security_protect(
         fsc->stats.total_nodes += 2;
     } else {
         // Add directly to parent
-        parent->children = realloc(parent->children,
+        nimcp_fsc_node_t** new_children = realloc(parent->children,
                                    (parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+        if (!new_children) {
+            nimcp_free(leaf);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        parent->children = new_children;
         parent->children[parent->num_children++] = leaf;
         fsc->stats.total_nodes++;
     }
 
     // Add to lookup table
     if (fsc->lookup_count >= fsc->lookup_capacity) {
-        fsc->lookup_capacity *= 2;
-        fsc->node_lookup = realloc(fsc->node_lookup,
-                                   fsc->lookup_capacity * sizeof(nimcp_fsc_node_t*));
+        uint32_t new_capacity = fsc->lookup_capacity * 2;
+        nimcp_fsc_node_t** new_lookup = realloc(fsc->node_lookup,
+                                   new_capacity * sizeof(nimcp_fsc_node_t*));
+        if (!new_lookup) {
+            // Leaf already added to tree, just skip lookup expansion
+            LOG_WARN("nimcp_fractal_security_protect: lookup table expansion failed");
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_SUCCESS;  // Node added but lookup not expanded
+        }
+        fsc->node_lookup = new_lookup;
+        fsc->lookup_capacity = new_capacity;
     }
     fsc->node_lookup[fsc->lookup_count++] = leaf;
 
@@ -608,8 +629,14 @@ nimcp_result_t nimcp_fractal_security_place_guardian(
 
         // Add to parent
         if (node->parent) {
-            node->parent->children = realloc(node->parent->children,
+            nimcp_fsc_node_t** new_children = realloc(node->parent->children,
                 (node->parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+            if (!new_children) {
+                nimcp_free(guardian);
+                nimcp_mutex_unlock(&fsc->lock);
+                return NIMCP_NO_MEMORY;
+            }
+            node->parent->children = new_children;
             node->parent->children[node->parent->num_children++] = guardian;
         }
 

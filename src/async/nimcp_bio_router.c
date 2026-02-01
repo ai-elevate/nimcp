@@ -189,9 +189,22 @@ static struct bio_async_orchestrator* g_router_orchestrator = NULL;
 
 /* Brain KG reference for Phase 7: Runtime Message Orchestration */
 static struct brain_kg* g_router_brain_kg = NULL;
+static nimcp_platform_mutex_t g_router_brain_kg_mutex;
+static bool g_router_brain_kg_mutex_initialized = false;
 
 /* Forward declaration for Phase 7: KG dispatch */
 static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uint32_t timeout_ms);
+
+/**
+ * @brief Thread-safe accessor for brain KG pointer
+ */
+static struct brain_kg* get_router_brain_kg_safe(void) {
+    if (!g_router_brain_kg_mutex_initialized) return NULL;
+    nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
+    struct brain_kg* kg = g_router_brain_kg;
+    nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
+    return kg;
+}
 
 /**
  * WHAT: One-time initialization of router init mutex
@@ -200,6 +213,8 @@ static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uin
  */
 static void init_router_mutex_once(void) {
     nimcp_platform_mutex_init(&g_router_init_mutex, false);
+    nimcp_platform_mutex_init(&g_router_brain_kg_mutex, false);
+    g_router_brain_kg_mutex_initialized = true;
 }
 
 /*=============================================================================
@@ -2580,7 +2595,13 @@ nimcp_error_t bio_router_register_wiring_callback(
  *============================================================================*/
 
 nimcp_error_t bio_router_set_brain_kg(struct brain_kg* kg) {
+    /* Ensure mutex is initialized */
+    nimcp_platform_once(&g_router_init_once, init_router_mutex_once);
+
+    nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
     g_router_brain_kg = kg;
+    nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
+
     if (kg) {
         LOG_INFO("bio_router_set_brain_kg: brain KG linked for message-type dispatch");
     } else {
@@ -2590,11 +2611,11 @@ nimcp_error_t bio_router_set_brain_kg(struct brain_kg* kg) {
 }
 
 struct brain_kg* bio_router_get_brain_kg(void) {
-    return g_router_brain_kg;
+    return get_router_brain_kg_safe();
 }
 
 bool bio_router_kg_dispatch_available(void) {
-    return (g_router_brain_kg != NULL);
+    return (get_router_brain_kg_safe() != NULL);
 }
 
 /**
@@ -2619,13 +2640,14 @@ static int bio_router_kg_dispatch_internal(
     uint32_t timeout_ms
 ) {
     /* Internal function returns -1 on error, >= 0 for handler count */
-    if (!g_router_brain_kg || !msg) return -1;
+    struct brain_kg* kg = get_router_brain_kg_safe();
+    if (!kg || !msg) return -1;
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
 
     /* Query KG for handlers of this message type */
     brain_kg_handler_list_t* handlers = brain_kg_get_handlers_for_message_type(
-        g_router_brain_kg,
+        kg,
         header->type
     );
 

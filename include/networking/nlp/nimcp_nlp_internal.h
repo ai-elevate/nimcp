@@ -78,10 +78,11 @@ struct nlp_node_struct {
     uint32_t brain_id;                   /**< Brain identifier */
     bool is_master;                      /**< True if master node */
 
-    // Operating state
+    // Operating state (protected by state_mutex)
     nlp_mode_t current_mode;             /**< Current operating mode */
     nlp_emcon_level_t emcon_level;       /**< Current EMCON level */
     bool running;                        /**< Node is running */
+    nimcp_mutex_t state_mutex;           /**< Protects running, threads_running, current_mode */
 
     // Network
     int socket_fd;                       /**< UDP socket */
