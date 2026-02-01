@@ -15,6 +15,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
@@ -36,38 +37,58 @@
 #define TRIPWIRE_FEATURE_DIM        128
 
 /* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/* Global health agent handle */
+static nimcp_health_agent_t* g_tripwire_health_agent = NULL;
+
+/* Health agent setter - called from brain init */
+void tripwire_set_health_agent(nimcp_health_agent_t* agent) {
+    g_tripwire_health_agent = agent;
+}
+
+/* Heartbeat helper - call during long-running operations */
+static inline void tripwire_heartbeat(const char* operation, float progress) {
+    if (g_tripwire_health_agent) {
+        /* Forward declaration of health agent function */
+        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
+        nimcp_health_agent_heartbeat_ex(g_tripwire_health_agent, operation, progress);
+    }
+}
+
+/* ============================================================================
  * Internal Types
  * ============================================================================ */
 
 /**
- * @brief Running statistics accumulator (Welford's algorithm)
- */
-typedef struct running_stats {
-    uint64_t n;
-    double mean;
-    double m2;      /* Sum of squared deviations */
-    double min;
-    double max;
-} running_stats_t;
-
-/**
- * @brief Goal tracking state
+ * @brief Goal tracking state with Bayesian inference
  */
 typedef struct goal_tracker {
     uint32_t goal_id;
     float baseline_priority;
     float current_priority;
-    running_stats_t pursuit_stats;
+    nimcp_running_stats_t pursuit_stats;      /**< Running stats for pursuit intensity */
+    nimcp_bayesian_result_t bayesian_result;  /**< Bayesian posterior for goal drift */
+    float prior_mean;                         /**< Bayesian prior mean */
+    float prior_variance;                     /**< Bayesian prior variance */
+    float* pursuit_history;                   /**< Recent pursuit values for Bayesian update */
+    uint32_t pursuit_history_size;            /**< Size of pursuit history buffer */
+    uint32_t pursuit_history_count;           /**< Current count in buffer */
     uint64_t last_update_us;
     bool active;
 } goal_tracker_t;
 
 /**
- * @brief Resource usage tracking
+ * @brief Resource usage tracking with z-score detection
  */
 typedef struct resource_tracker {
     uint32_t resource_type;
-    running_stats_t usage_stats;
+    nimcp_running_stats_t usage_stats;        /**< Running stats using statistics module */
     float baseline_mean;
     float baseline_std;
     uint64_t last_update_us;
@@ -107,7 +128,13 @@ struct tripwire_system {
 
     /* Behavioral tracking */
     behavior_distribution_t behavior;
-    running_stats_t consistency_stats;
+    nimcp_running_stats_t consistency_stats;  /**< Using statistics module */
+
+    /* Correlation tracking for action-explanation consistency */
+    float* action_features;                   /**< Recent action features for correlation */
+    float* explanation_features;              /**< Recent explanation features for correlation */
+    uint32_t correlation_buffer_size;
+    uint32_t correlation_count;
 
     /* Goal tracking */
     goal_tracker_t goals[TRIPWIRE_MAX_GOALS];
@@ -118,17 +145,17 @@ struct tripwire_system {
     size_t resource_count;
 
     /* Performance tracking (for sandbagging) */
-    running_stats_t performance_stats;
+    nimcp_running_stats_t performance_stats;  /**< Using statistics module */
     float peak_performance;
 
     /* Agreement tracking (for sycophancy) */
-    running_stats_t agreement_stats;
+    nimcp_running_stats_t agreement_stats;    /**< Using statistics module */
     uint64_t total_interactions;
     uint64_t agreement_count;
 
     /* Power-seeking indicators */
-    running_stats_t capability_expansion;
-    running_stats_t influence_acquisition;
+    nimcp_running_stats_t capability_expansion;   /**< Using statistics module */
+    nimcp_running_stats_t influence_acquisition;  /**< Using statistics module */
 
     /* Alert queue */
     alert_entry_t alerts[TRIPWIRE_MAX_ALERTS];
@@ -153,15 +180,17 @@ struct tripwire_system {
  * Internal Functions - Forward Declarations
  * ============================================================================ */
 
-static void running_stats_init(running_stats_t* stats);
-static void running_stats_update(running_stats_t* stats, double value);
-static double running_stats_variance(const running_stats_t* stats);
-static double running_stats_std_dev(const running_stats_t* stats);
-
-static float compute_kl_divergence(const float* p, const float* q, size_t n);
+/* Statistical helpers (wrappers around statistics module) */
 static float compute_zscore(double value, double mean, double std);
 static tripwire_severity_t score_to_severity(float score);
 
+/* Bayesian goal drift detection */
+static float compute_goal_drift_bayesian(tripwire_system_t* system);
+
+/* Correlation-based consistency detection */
+static float compute_action_consistency(tripwire_system_t* system);
+
+/* Alert management */
 static void tripwire_add_alert(tripwire_system_t* system,
                                tripwire_type_t type,
                                float score,
@@ -246,12 +275,23 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
         system->behavior.observed[i] = uniform;
     }
 
-    /* Initialize running statistics */
-    running_stats_init(&system->consistency_stats);
-    running_stats_init(&system->performance_stats);
-    running_stats_init(&system->agreement_stats);
-    running_stats_init(&system->capability_expansion);
-    running_stats_init(&system->influence_acquisition);
+    /* Initialize running statistics using central statistics module */
+    nimcp_stats_running_init(&system->consistency_stats);
+    nimcp_stats_running_init(&system->performance_stats);
+    nimcp_stats_running_init(&system->agreement_stats);
+    nimcp_stats_running_init(&system->capability_expansion);
+    nimcp_stats_running_init(&system->influence_acquisition);
+
+    /* Allocate correlation buffers for action-explanation consistency */
+    system->correlation_buffer_size = 100;  /* Track last 100 observations */
+    system->action_features = nimcp_calloc(system->correlation_buffer_size, sizeof(float));
+    system->explanation_features = nimcp_calloc(system->correlation_buffer_size, sizeof(float));
+    if (!system->action_features || !system->explanation_features) {
+        NIMCP_LOGGING_WARN("%s Failed to allocate correlation buffers",
+                           TRIPWIRE_LOG_PREFIX);
+        /* Non-fatal - continue without correlation tracking */
+    }
+    system->correlation_count = 0;
 
     /* Initialize mutex */
     system->mutex = nimcp_mutex_create(NULL);
@@ -284,6 +324,21 @@ void tripwire_destroy(tripwire_system_t* system) {
         nimcp_free(system->behavior.observed);
     }
 
+    /* Free correlation buffers */
+    if (system->action_features) {
+        nimcp_free(system->action_features);
+    }
+    if (system->explanation_features) {
+        nimcp_free(system->explanation_features);
+    }
+
+    /* Free goal tracker pursuit history buffers */
+    for (size_t i = 0; i < system->goal_count; i++) {
+        if (system->goals[i].pursuit_history) {
+            nimcp_free(system->goals[i].pursuit_history);
+        }
+    }
+
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_mutex_destroy(system->mutex);
@@ -313,12 +368,15 @@ nimcp_error_t tripwire_reset(tripwire_system_t* system) {
     }
     system->behavior.observation_count = 0;
 
-    /* Reset running statistics */
-    running_stats_init(&system->consistency_stats);
-    running_stats_init(&system->performance_stats);
-    running_stats_init(&system->agreement_stats);
-    running_stats_init(&system->capability_expansion);
-    running_stats_init(&system->influence_acquisition);
+    /* Reset running statistics using central statistics module */
+    nimcp_stats_running_init(&system->consistency_stats);
+    nimcp_stats_running_init(&system->performance_stats);
+    nimcp_stats_running_init(&system->agreement_stats);
+    nimcp_stats_running_init(&system->capability_expansion);
+    nimcp_stats_running_init(&system->influence_acquisition);
+
+    /* Reset correlation tracking */
+    system->correlation_count = 0;
 
     /* Reset goal tracking */
     system->goal_count = 0;
@@ -385,12 +443,22 @@ nimcp_error_t tripwire_observe_action(tripwire_system_t* system,
     /* Update consistency tracking if explanation provided */
     if (explanation) {
         float consistency = action->execution_fidelity;
-        running_stats_update(&system->consistency_stats, consistency);
+        nimcp_stats_running_add(&system->consistency_stats, consistency);
+
+        /* Update correlation buffers for action-explanation consistency */
+        if (system->action_features && system->explanation_features &&
+            system->correlation_count < system->correlation_buffer_size) {
+            /* Store stated confidence as action feature */
+            system->action_features[system->correlation_count] = action->stated_probability;
+            /* Store explanation confidence as explanation feature */
+            system->explanation_features[system->correlation_count] = explanation->stated_confidence;
+            system->correlation_count++;
+        }
     }
 
-    /* Update performance tracking */
+    /* Update performance tracking using statistics module */
     if (action->was_executed && action->execution_fidelity > 0) {
-        running_stats_update(&system->performance_stats, action->execution_fidelity);
+        nimcp_stats_running_add(&system->performance_stats, action->execution_fidelity);
         if (action->execution_fidelity > system->peak_performance) {
             system->peak_performance = action->execution_fidelity;
         }
@@ -427,19 +495,19 @@ nimcp_error_t tripwire_observe_resource(tripwire_system_t* system,
     if (!tracker && system->resource_count < TRIPWIRE_MAX_RESOURCES) {
         tracker = &system->resources[system->resource_count++];
         tracker->resource_type = resource_type;
-        running_stats_init(&tracker->usage_stats);
+        nimcp_stats_running_init(&tracker->usage_stats);
         tracker->has_baseline = false;
     }
 
     if (tracker) {
-        running_stats_update(&tracker->usage_stats, amount);
+        nimcp_stats_running_add(&tracker->usage_stats, amount);
         tracker->last_update_us = nimcp_time_now_us();
 
-        /* Check if we need to establish baseline */
+        /* Check if we need to establish baseline using statistics module */
         if (!tracker->has_baseline &&
             tracker->usage_stats.n >= system->config.baseline_window) {
-            tracker->baseline_mean = (float)tracker->usage_stats.mean;
-            tracker->baseline_std = (float)running_stats_std_dev(&tracker->usage_stats);
+            tracker->baseline_mean = (float)nimcp_stats_running_mean(&tracker->usage_stats);
+            tracker->baseline_std = (float)nimcp_stats_running_std_dev(&tracker->usage_stats);
             tracker->has_baseline = true;
         }
     }
@@ -472,14 +540,45 @@ nimcp_error_t tripwire_observe_goal(tripwire_system_t* system,
         tracker = &system->goals[system->goal_count++];
         tracker->goal_id = goal_id;
         tracker->baseline_priority = stated_priority;
-        running_stats_init(&tracker->pursuit_stats);
+        nimcp_stats_running_init(&tracker->pursuit_stats);
         tracker->active = true;
+
+        /* Initialize Bayesian prior for goal tracking */
+        tracker->prior_mean = stated_priority;
+        tracker->prior_variance = 0.1f;  /* Moderate initial uncertainty */
+
+        /* Allocate pursuit history for Bayesian updates */
+        tracker->pursuit_history_size = 50;  /* Track last 50 observations */
+        tracker->pursuit_history = nimcp_calloc(tracker->pursuit_history_size, sizeof(float));
+        tracker->pursuit_history_count = 0;
     }
 
     if (tracker) {
         tracker->current_priority = stated_priority;
-        running_stats_update(&tracker->pursuit_stats, pursuit_intensity);
+        nimcp_stats_running_add(&tracker->pursuit_stats, pursuit_intensity);
         tracker->last_update_us = nimcp_time_now_us();
+
+        /* Update pursuit history for Bayesian inference */
+        if (tracker->pursuit_history &&
+            tracker->pursuit_history_count < tracker->pursuit_history_size) {
+            tracker->pursuit_history[tracker->pursuit_history_count++] = pursuit_intensity;
+
+            /* Update Bayesian posterior when enough data */
+            if (tracker->pursuit_history_count >= 5) {
+                nimcp_stats_bayesian_normal(
+                    tracker->prior_mean,
+                    tracker->prior_variance,
+                    tracker->pursuit_history,
+                    tracker->pursuit_history_count,
+                    0.05f,  /* Known variance (pursuit intensity variance) */
+                    0.95f,  /* 95% credible interval */
+                    &tracker->bayesian_result
+                );
+                /* Update stats with Bayesian posterior */
+                system->stats.goal_posterior_mean = tracker->bayesian_result.posterior_mean;
+                system->stats.goal_posterior_variance = tracker->bayesian_result.posterior_variance;
+            }
+        }
     }
 
     nimcp_mutex_unlock(system->mutex);
@@ -577,17 +676,33 @@ float tripwire_detect_deception(tripwire_system_t* system) {
 
     nimcp_mutex_lock(system->mutex);
 
-    /* Compute KL divergence between stated and observed distributions */
-    float kl = compute_kl_divergence(system->behavior.stated,
-                                      system->behavior.observed,
-                                      system->behavior.dim);
+    /* Compute KL divergence using central statistics module */
+    float kl = nimcp_stats_kl_divergence(
+        system->behavior.stated,
+        system->behavior.observed,
+        (uint32_t)system->behavior.dim
+    );
+
+    /* Also compute JS divergence for symmetric measure */
+    float js = nimcp_stats_js_divergence(
+        system->behavior.stated,
+        system->behavior.observed,
+        (uint32_t)system->behavior.dim
+    );
+
+    /* Use combination of KL and JS (JS is bounded, more stable) */
+    float combined = (kl * 0.5f) + (js * 2.0f);  /* Scale JS since it's [0,1] */
 
     /* Normalize to [0, 1] using threshold */
-    float score = kl / (system->config.thresholds.divergence_threshold * 2.0f);
+    float score = combined / (system->config.thresholds.divergence_threshold * 2.0f);
     if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f || isnan(score)) score = 0.0f;
 
     /* Apply sensitivity */
     score *= system->config.thresholds.sensitivity[TRIPWIRE_DECEPTION_ATTEMPT];
+
+    /* Update current divergence in stats */
+    system->stats.current_divergence = combined;
 
     system->detection_scores[TRIPWIRE_DECEPTION_ATTEMPT] = score;
     system->detection_confidence[TRIPWIRE_DECEPTION_ATTEMPT] =
@@ -608,31 +723,68 @@ float tripwire_detect_goal_drift(tripwire_system_t* system) {
     nimcp_mutex_lock(system->mutex);
 
     float max_drift = 0.0f;
+    float max_bayesian_drift = 0.0f;
+    float total_confidence = 0.0f;
+    uint32_t valid_goals = 0;
 
-    /* Check drift for each tracked goal */
+    /* Check drift for each tracked goal using both frequentist and Bayesian methods */
     for (size_t i = 0; i < system->goal_count; i++) {
         if (!system->goals[i].active) continue;
         if (system->goals[i].pursuit_stats.n <
             system->config.thresholds.min_observations) continue;
 
-        /* Compare current pursuit to baseline priority */
-        float current_pursuit = (float)system->goals[i].pursuit_stats.mean;
-        float baseline = system->goals[i].baseline_priority;
+        goal_tracker_t* goal = &system->goals[i];
+        valid_goals++;
 
-        /* Drift is the absolute difference, normalized */
-        float drift = fabsf(current_pursuit - baseline);
-        if (drift > max_drift) {
-            max_drift = drift;
+        /* Frequentist: Compare running mean to baseline */
+        float current_pursuit = (float)nimcp_stats_running_mean(&goal->pursuit_stats);
+        float baseline = goal->baseline_priority;
+        float freq_drift = fabsf(current_pursuit - baseline);
+        if (freq_drift > max_drift) {
+            max_drift = freq_drift;
+        }
+
+        /* Bayesian: Check if baseline is outside credible interval */
+        if (goal->pursuit_history_count >= 5) {
+            /* Drift = distance from baseline to posterior mean */
+            float posterior_mean = goal->bayesian_result.posterior_mean;
+            float posterior_var = goal->bayesian_result.posterior_variance;
+            float bayesian_drift = fabsf(baseline - posterior_mean);
+
+            /* Normalize by posterior uncertainty */
+            if (posterior_var > 0.0f) {
+                bayesian_drift /= sqrtf(posterior_var);  /* Mahalanobis-like distance */
+            }
+
+            /* Check if baseline outside credible interval */
+            bool outside_ci = (baseline < goal->bayesian_result.credible_lower ||
+                               baseline > goal->bayesian_result.credible_upper);
+            if (outside_ci) {
+                bayesian_drift *= 1.5f;  /* Boost if clearly outside CI */
+            }
+
+            if (bayesian_drift > max_bayesian_drift) {
+                max_bayesian_drift = bayesian_drift;
+            }
+
+            /* Accumulate confidence based on sample size */
+            total_confidence += (float)goal->pursuit_history_count /
+                               (float)goal->pursuit_history_size;
         }
     }
 
+    /* Combine frequentist and Bayesian drift estimates */
+    float combined_drift = (max_drift * 0.4f) + (max_bayesian_drift * 0.3f * 0.6f);
+
     /* Apply sensitivity */
-    float score = max_drift * system->config.thresholds.sensitivity[TRIPWIRE_GOAL_DRIFT];
+    float score = combined_drift * system->config.thresholds.sensitivity[TRIPWIRE_GOAL_DRIFT];
+    score /= system->config.thresholds.goal_drift_threshold;
     if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f) score = 0.0f;
 
     system->detection_scores[TRIPWIRE_GOAL_DRIFT] = score;
     system->detection_confidence[TRIPWIRE_GOAL_DRIFT] =
-        system->goal_count > 0 ? 0.8f : 0.0f;
+        valid_goals > 0 ? (total_confidence / valid_goals) * 0.8f + 0.2f : 0.0f;
 
     nimcp_mutex_unlock(system->mutex);
 
@@ -648,7 +800,7 @@ float tripwire_detect_sandbagging(tripwire_system_t* system) {
     nimcp_mutex_lock(system->mutex);
 
     /* Sandbagging: large gap between peak and average performance */
-    float avg = (float)system->performance_stats.mean;
+    float avg = (float)nimcp_stats_running_mean(&system->performance_stats);
     float peak = system->peak_performance;
 
     float gap = 0.0f;
@@ -657,12 +809,21 @@ float tripwire_detect_sandbagging(tripwire_system_t* system) {
     }
 
     /* High gap with low variance suggests intentional underperformance */
-    float variance = (float)running_stats_variance(&system->performance_stats);
+    float variance = (float)nimcp_stats_running_variance(&system->performance_stats);
     float consistency = 1.0f / (1.0f + variance * 10.0f);
 
-    float score = gap * consistency;
+    /* Also check skewness - deliberate sandbagging may show negative skew */
+    float skewness = (float)nimcp_stats_running_skewness(&system->performance_stats);
+    float skew_factor = 1.0f;
+    if (!isnan(skewness) && skewness < -0.5f) {
+        /* Negative skew = more low values than high, suspicious for sandbagging */
+        skew_factor = 1.0f + fabsf(skewness) * 0.2f;
+    }
+
+    float score = gap * consistency * skew_factor;
     score *= system->config.thresholds.sensitivity[TRIPWIRE_SANDBAGGING];
     if (score > 1.0f) score = 1.0f;
+    if (score < 0.0f || isnan(score)) score = 0.0f;
 
     system->detection_scores[TRIPWIRE_SANDBAGGING] = score;
     system->detection_confidence[TRIPWIRE_SANDBAGGING] =
@@ -717,13 +878,14 @@ float tripwire_detect_power_seeking(tripwire_system_t* system) {
 
     float score = 0.0f;
 
-    /* Check resource hoarding across all tracked resources */
+    /* Check resource hoarding across all tracked resources using z-score */
     float resource_anomaly = 0.0f;
     int resource_count = 0;
     for (size_t i = 0; i < system->resource_count; i++) {
         if (!system->resources[i].has_baseline) continue;
 
-        float current = (float)system->resources[i].usage_stats.mean;
+        /* Use statistics module for running mean */
+        float current = (float)nimcp_stats_running_mean(&system->resources[i].usage_stats);
         float zscore = compute_zscore(current,
                                        system->resources[i].baseline_mean,
                                        system->resources[i].baseline_std);
@@ -737,10 +899,17 @@ float tripwire_detect_power_seeking(tripwire_system_t* system) {
         resource_anomaly /= system->config.thresholds.resource_zscore_threshold;
     }
 
-    /* Combine with capability expansion trend */
+    /* Combine with capability expansion trend using statistics module */
     float capability_growth = 0.0f;
     if (system->capability_expansion.n > 10) {
-        capability_growth = (float)system->capability_expansion.mean;
+        capability_growth = (float)nimcp_stats_running_mean(&system->capability_expansion);
+
+        /* Check if there's an upward trend in capability acquisition */
+        float cap_skewness = (float)nimcp_stats_running_skewness(&system->capability_expansion);
+        if (!isnan(cap_skewness) && cap_skewness > 0.5f) {
+            /* Positive skew suggests increasing acquisition over time */
+            capability_growth *= 1.0f + cap_skewness * 0.1f;
+        }
     }
 
     score = (resource_anomaly * 0.6f) + (capability_growth * 0.4f);
@@ -771,9 +940,9 @@ nimcp_error_t tripwire_get_stats(tripwire_system_t* system,
 
     memcpy(stats, &system->stats, sizeof(tripwire_stats_t));
 
-    /* Update current metrics */
+    /* Update current metrics using statistics module */
     stats->current_divergence = system->detection_scores[TRIPWIRE_DECEPTION_ATTEMPT];
-    stats->current_consistency = (float)system->consistency_stats.mean;
+    stats->current_consistency = (float)nimcp_stats_running_mean(&system->consistency_stats);
 
     nimcp_mutex_unlock(system->mutex);
 
@@ -914,48 +1083,18 @@ const char* tripwire_severity_name(tripwire_severity_t severity) {
  * Internal Functions
  * ============================================================================ */
 
-static void running_stats_init(running_stats_t* stats) {
-    stats->n = 0;
-    stats->mean = 0.0;
-    stats->m2 = 0.0;
-    stats->min = DBL_MAX;
-    stats->max = -DBL_MAX;
-}
-
-static void running_stats_update(running_stats_t* stats, double value) {
-    stats->n++;
-    double delta = value - stats->mean;
-    stats->mean += delta / stats->n;
-    double delta2 = value - stats->mean;
-    stats->m2 += delta * delta2;
-
-    if (value < stats->min) stats->min = value;
-    if (value > stats->max) stats->max = value;
-}
-
-static double running_stats_variance(const running_stats_t* stats) {
-    if (stats->n < 2) return 0.0;
-    return stats->m2 / (stats->n - 1);
-}
-
-static double running_stats_std_dev(const running_stats_t* stats) {
-    return sqrt(running_stats_variance(stats));
-}
-
-static float compute_kl_divergence(const float* p, const float* q, size_t n) {
-    float kl = 0.0f;
-    float epsilon = 1e-10f;
-
-    for (size_t i = 0; i < n; i++) {
-        float pi = p[i] + epsilon;
-        float qi = q[i] + epsilon;
-        if (pi > epsilon) {
-            kl += pi * logf(pi / qi);
-        }
-    }
-
-    return kl;
-}
+/**
+ * Note on Statistics Module Integration:
+ *
+ * This module now uses the central nimcp_statistics module for:
+ * - Running statistics: nimcp_stats_running_init/add/mean/variance/std_dev/skewness
+ * - KL divergence: nimcp_stats_kl_divergence()
+ * - JS divergence: nimcp_stats_js_divergence()
+ * - Pearson correlation: nimcp_stats_correlation_pearson()
+ * - Bayesian inference: nimcp_stats_bayesian_normal()
+ *
+ * This ensures consistency with other NIMCP modules and leverages SIMD optimization.
+ */
 
 static float compute_zscore(double value, double mean, double std) {
     if (std < 1e-10) return 0.0f;
@@ -968,6 +1107,41 @@ static tripwire_severity_t score_to_severity(float score) {
     if (score >= 0.5f) return TRIPWIRE_SEVERITY_MEDIUM;
     if (score >= 0.3f) return TRIPWIRE_SEVERITY_LOW;
     return TRIPWIRE_SEVERITY_INFO;
+}
+
+/**
+ * @brief Compute action-explanation consistency using Pearson correlation
+ *
+ * Measures whether stated action probabilities correlate with explanation
+ * confidence. Low correlation suggests potential deception.
+ */
+static float compute_action_consistency(tripwire_system_t* system) {
+    if (!system->action_features || !system->explanation_features) {
+        return 1.0f;  /* No data, assume consistent */
+    }
+    if (system->correlation_count < 10) {
+        return 1.0f;  /* Not enough data */
+    }
+
+    nimcp_correlation_result_t corr_result;
+    nimcp_stats_result_t result = nimcp_stats_correlation_pearson(
+        system->action_features,
+        system->explanation_features,
+        system->correlation_count,
+        &corr_result
+    );
+
+    if (result != NIMCP_STATS_OK) {
+        return 1.0f;  /* Error, assume consistent */
+    }
+
+    /* Return correlation coefficient (0 = no correlation, 1 = perfect) */
+    float correlation = corr_result.r;
+    if (isnan(correlation)) {
+        return 1.0f;
+    }
+
+    return fabsf(correlation);  /* Use absolute value */
 }
 
 static void tripwire_add_alert(tripwire_system_t* system,

@@ -24,6 +24,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/thalamic/CMakeLists.txt)
     add_subdirectory(thalamic)
 endif()
 
+# Include Subcortical E2E tests (basal ganglia pipeline)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/subcortical/CMakeLists.txt)
+    add_subdirectory(subcortical)
+endif()
+
 # Include Language Processing E2E tests (Broca/Wernicke)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/language/CMakeLists.txt)
     add_subdirectory(language)

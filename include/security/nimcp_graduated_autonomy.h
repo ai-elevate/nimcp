@@ -111,6 +111,18 @@ NIMCP_EXPORT nimcp_error_t graduated_autonomy_connect_bio_async(
 
 NIMCP_EXPORT const char* graduated_autonomy_level_name(autonomy_level_t level);
 
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void graduated_autonomy_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

@@ -109,11 +109,12 @@ bgsm_system_t* bgsm_create(const bgsm_config_t* config) {
         system->striosomes[i].baseline = 0.2f;
         system->striosomes[i].activation = 0.2f;
         system->striosomes[i].state = BGSM_STATE_BASELINE;
-        system->striosomes[i].limbic_weight = 0.3f;
-        system->striosomes[i].mpfc_weight = 0.3f;
-        system->striosomes[i].amygdala_weight = 0.2f;
-        system->striosomes[i].hippocampus_weight = 0.2f;
+        system->striosomes[i].limbic_weight = 0.6f;  /* Primary motivation input */
+        system->striosomes[i].mpfc_weight = 0.4f;
+        system->striosomes[i].amygdala_weight = 0.3f;
+        system->striosomes[i].hippocampus_weight = 0.3f;
         system->striosomes[i].snc_weight = BGSM_DEFAULT_SNc_WEIGHT;
+        system->striosomes[i].value_estimate = 1.0f;  /* Default full value */
     }
 
     /* Allocate matrix zones */

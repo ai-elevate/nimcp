@@ -22,6 +22,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,16 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+
+/* BBB Integration (Security) */
+#include "security/nimcp_blood_brain_barrier.h"
+#include "core/medulla/nimcp_medulla_bbb.h"
+
+//=============================================================================
+// Magic Number for Validation
+//=============================================================================
+#define MEDULLA_MAGIC 0x4D454455
+
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -45,7 +56,7 @@ static nimcp_health_agent_t* g_medulla_health_agent = NULL;
  * @brief Set health agent for medulla heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void medulla_set_health_agent(nimcp_health_agent_t* agent) {
+void medulla_set_health_agent(struct nimcp_health_agent* agent) {
     g_medulla_health_agent = agent;
 }
 
@@ -54,6 +65,174 @@ static inline void medulla_heartbeat(const char* operation, float progress) {
     if (g_medulla_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_medulla_health_agent, operation, progress);
     }
+}
+
+//=============================================================================
+// BBB Integration (Blood-Brain Barrier)
+//=============================================================================
+
+/** Global BBB system for medulla input validation */
+static bbb_system_t g_medulla_bbb = NULL;
+
+/** Global BBB configuration for medulla-specific validation */
+static medulla_bbb_config_t g_medulla_bbb_config;
+static bool g_medulla_bbb_config_initialized = false;
+
+void medulla_set_bbb(bbb_system_t bbb) {
+    g_medulla_bbb = bbb;
+    NIMCP_LOGGING_INFO("Medulla BBB %s", bbb ? "enabled" : "disabled");
+}
+
+void medulla_bbb_set_system(bbb_system_t bbb) {
+    medulla_set_bbb(bbb);
+}
+
+medulla_bbb_config_t medulla_bbb_default_config(void) {
+    medulla_bbb_config_t config;
+    config.max_arousal_delta = 0.5f;
+    config.min_health_score = 0.0f;
+    config.max_health_score = 100.0f;
+    config.max_neuromodulator_level = 2.0f;
+    config.strict_mode = true;
+    config.enable_logging = true;
+    return config;
+}
+
+void medulla_bbb_set_config(const medulla_bbb_config_t* config) {
+    if (config) {
+        g_medulla_bbb_config = *config;
+    } else {
+        g_medulla_bbb_config = medulla_bbb_default_config();
+    }
+    g_medulla_bbb_config_initialized = true;
+}
+
+static medulla_bbb_config_t* get_medulla_bbb_config(void) {
+    if (!g_medulla_bbb_config_initialized) {
+        g_medulla_bbb_config = medulla_bbb_default_config();
+        g_medulla_bbb_config_initialized = true;
+    }
+    return &g_medulla_bbb_config;
+}
+
+bool medulla_bbb_validate_arousal_input(float delta, bool is_boost,
+                                         medulla_bbb_validation_result_t* result) {
+    medulla_bbb_validation_result_t local_result;
+    if (!result) result = &local_result;
+    result->valid = true;
+    result->reason[0] = '\0';
+    result->has_safe_value = false;
+    if (!g_medulla_bbb) return true;
+    medulla_bbb_config_t* config = get_medulla_bbb_config();
+    if (isnan(delta) || isinf(delta)) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Arousal delta is NaN or Inf");
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected arousal: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    if (is_boost && delta < 0.0f) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Boost delta must be non-negative (got %.3f)", delta);
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected arousal: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    float abs_delta = delta < 0 ? -delta : delta;
+    if (abs_delta > config->max_arousal_delta) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Arousal delta %.3f exceeds max %.3f", abs_delta, config->max_arousal_delta);
+        result->safe_value = is_boost ? config->max_arousal_delta : -config->max_arousal_delta;
+        result->has_safe_value = true;
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected arousal: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    bbb_validation_result_t bbb_result;
+    bool valid = bbb_validate_input(g_medulla_bbb, &delta, sizeof(float), &bbb_result);
+    if (!valid) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "%s", bbb_result.reason);
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected arousal: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    return true;
+}
+
+bool medulla_bbb_validate_health_alert(float health_score, medulla_bbb_validation_result_t* result) {
+    medulla_bbb_validation_result_t local_result;
+    if (!result) result = &local_result;
+    result->valid = true;
+    result->reason[0] = '\0';
+    result->has_safe_value = false;
+    if (!g_medulla_bbb) return true;
+    medulla_bbb_config_t* config = get_medulla_bbb_config();
+    if (isnan(health_score) || isinf(health_score)) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Health score is NaN or Inf");
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected health: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    if (health_score < config->min_health_score || health_score > config->max_health_score) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Health score %.2f out of range [%.2f, %.2f]",
+                 health_score, config->min_health_score, config->max_health_score);
+        result->safe_value = (health_score < config->min_health_score) ? config->min_health_score : config->max_health_score;
+        result->has_safe_value = true;
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected health: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    bbb_validation_result_t bbb_result;
+    bool valid = bbb_validate_input(g_medulla_bbb, &health_score, sizeof(float), &bbb_result);
+    if (!valid) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "%s", bbb_result.reason);
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected health: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    return true;
+}
+
+bool medulla_bbb_validate_neuromod_input(float level, uint32_t neuromod_type,
+                                          medulla_bbb_validation_result_t* result) {
+    medulla_bbb_validation_result_t local_result;
+    if (!result) result = &local_result;
+    result->valid = true;
+    result->reason[0] = '\0';
+    result->has_safe_value = false;
+    if (!g_medulla_bbb) return true;
+    medulla_bbb_config_t* config = get_medulla_bbb_config();
+    if (isnan(level) || isinf(level)) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Neuromodulator level (type %u) is NaN or Inf", neuromod_type);
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected neuromod: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    if (level < 0.0f || level > config->max_neuromodulator_level) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "Neuromodulator level %.3f (type %u) out of range [0, %.3f]",
+                 level, neuromod_type, config->max_neuromodulator_level);
+        result->safe_value = (level < 0.0f) ? 0.0f : config->max_neuromodulator_level;
+        result->has_safe_value = true;
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected neuromod: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    bbb_validation_result_t bbb_result;
+    bool valid = bbb_validate_input(g_medulla_bbb, &level, sizeof(float), &bbb_result);
+    if (!valid) {
+        result->valid = false;
+        snprintf(result->reason, sizeof(result->reason), "%s", bbb_result.reason);
+        if (config->enable_logging) NIMCP_LOGGING_WARN("BBB rejected neuromod: %s", result->reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT, result->reason);
+        return false;
+    }
+    return true;
 }
 
 
@@ -65,14 +244,17 @@ static inline void medulla_heartbeat(const char* operation, float progress) {
  * @brief Internal medulla structure
  */
 struct medulla_struct {
+    // Magic number for validation (must be first field)
+    uint32_t magic;
+
     // Configuration
     medulla_config_t config;
 
     // Subsystems (Phase 1.2-1.5 - placeholders for now)
-    arousal_state_t arousal;
-    protective_cutoff_t protection;
-    brainstem_coupling_t coupling;
-    circadian_rhythm_t circadian;
+    struct arousal_state_struct* arousal;
+    struct protective_cutoff_struct* protection;
+    struct brainstem_coupling_struct* coupling;
+    struct circadian_rhythm_struct* circadian;
 
     // External system connections
     health_monitor_t health_monitor;
@@ -108,6 +290,15 @@ struct medulla_struct {
 //=============================================================================
 // Helper Functions
 //=============================================================================
+
+/**
+ * WHAT: Validate medulla pointer using magic number
+ * WHY:  Detect use-after-free and invalid pointers
+ * HOW:  Check non-null and magic number match
+ */
+static inline bool is_valid_medulla(const medulla_t medulla) {
+    return medulla != NULL && medulla->magic == MEDULLA_MAGIC;
+}
 
 /**
  * WHAT: Get current timestamp in microseconds
@@ -204,6 +395,9 @@ static float apply_protection_modulation(float arousal, protection_level_t prote
     return arousal * factor;
 }
 
+/* Forward declaration for broadcast helper */
+static void medulla_broadcast_state_change(medulla_t medulla, bio_message_type_t type);
+
 /**
  * WHAT: Update circadian rhythm
  * WHY:  Progress circadian time
@@ -213,6 +407,9 @@ static void update_circadian(medulla_t medulla, float dt) {
     if (!medulla || !medulla->config.circadian.enable_synchronization) {
         return;
     }
+
+    /* Store previous phase for change detection */
+    circadian_phase_t prev_phase = medulla->circadian_phase;
 
     // Progress time (hours)
     float dt_hours = dt / 3600.0f;
@@ -228,6 +425,11 @@ static void update_circadian(medulla_t medulla, float dt) {
     // Update phase
     medulla->circadian_phase = classify_circadian_phase(medulla->current_circadian_time);
     medulla->stats.circadian_time_hours = medulla->current_circadian_time;
+
+    /* Broadcast if phase changed */
+    if (medulla->circadian_phase != prev_phase) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_CIRCADIAN_CHANGED);
+    }
 }
 
 /**
@@ -237,6 +439,10 @@ static void update_circadian(medulla_t medulla, float dt) {
  */
 static void update_arousal(medulla_t medulla, float dt) {
     if (!medulla) return;
+
+    /* Store previous level for change detection */
+    arousal_level_t prev_level = medulla->arousal_level;
+    float prev_arousal = medulla->current_arousal;
 
     // Get circadian target
     float target = get_circadian_arousal_target(medulla->circadian_phase);
@@ -267,6 +473,12 @@ static void update_arousal(medulla_t medulla, float dt) {
     medulla->stats.arousal_updates++;
     medulla->stats.avg_arousal = (medulla->stats.avg_arousal * (medulla->stats.arousal_updates - 1) +
                                    medulla->current_arousal) / medulla->stats.arousal_updates;
+
+    /* Broadcast if arousal level category changed or significant value change (>0.1) */
+    if (medulla->arousal_level != prev_level ||
+        fabsf(medulla->current_arousal - prev_arousal) > 0.1f) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_AROUSAL_CHANGED);
+    }
 }
 
 /**
@@ -282,15 +494,24 @@ static void update_protection(medulla_t medulla) {
     // Get health score
     float health_score = health_monitor_get_score(medulla->health_monitor);
 
+    // BBB validation of health score before using it for protection decisions
+    if (!medulla_bbb_validate_health_alert(health_score, NULL)) {
+        NIMCP_LOGGING_WARN("BBB rejected health score %.2f, skipping protection update", health_score);
+        return;
+    }
+
     // Determine new protection level
     protection_level_t new_level = determine_protection_level(health_score);
 
-    // Track state changes
+    // Track state changes and broadcast
     if (new_level != medulla->protection_level) {
         if (new_level > PROTECTION_LEVEL_NORMAL) {
             medulla->stats.protection_activations++;
         }
         medulla->protection_level = new_level;
+
+        /* Broadcast protection level change */
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_PROTECTION_CHANGED);
     }
 
     // Emergency shutdown if critical
@@ -353,11 +574,23 @@ static void apply_neuromodulator_modulation(medulla_t medulla) {
         NEUROMOD_NOREPINEPHRINE
     );
 
+    // BBB validation of norepinephrine level
+    if (!medulla_bbb_validate_neuromod_input(norepinephrine, NEUROMOD_NOREPINEPHRINE, NULL)) {
+        NIMCP_LOGGING_WARN("BBB rejected norepinephrine level %.3f", norepinephrine);
+        norepinephrine = 0.0f;  /* Use safe default */
+    }
+
     // Get acetylcholine (alertness)
     float acetylcholine = neuromodulator_get_level(
         medulla->neuromodulators,
         NEUROMOD_ACETYLCHOLINE
     );
+
+    // BBB validation of acetylcholine level
+    if (!medulla_bbb_validate_neuromod_input(acetylcholine, NEUROMOD_ACETYLCHOLINE, NULL)) {
+        NIMCP_LOGGING_WARN("BBB rejected acetylcholine level %.3f", acetylcholine);
+        acetylcholine = 0.0f;  /* Use safe default */
+    }
 
     // Modulate arousal
     float boost = (norepinephrine + acetylcholine) * 0.1f;
@@ -426,6 +659,9 @@ medulla_t medulla_create(const medulla_config_t* config) {
         return NULL;
     }
 
+    // Set magic number for validation
+    medulla->magic = MEDULLA_MAGIC;
+
     // Copy config
     if (config) {
         medulla->config = *config;
@@ -485,7 +721,7 @@ medulla_t medulla_create(const medulla_config_t* config) {
 }
 
 void medulla_destroy(medulla_t medulla) {
-    if (!medulla) {
+    if (!is_valid_medulla(medulla)) {
         return;
     }
 
@@ -505,6 +741,9 @@ void medulla_destroy(medulla_t medulla) {
     // brainstem_coupling_destroy(medulla->coupling);
     // circadian_rhythm_destroy(medulla->circadian);
 
+    // Clear magic number before destruction
+    medulla->magic = 0;
+
     // Destroy mutex
     if (medulla->mutex) {
         nimcp_platform_mutex_destroy(medulla->mutex);
@@ -521,8 +760,8 @@ void medulla_destroy(medulla_t medulla) {
 //=============================================================================
 
 int medulla_start(medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_start: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_start: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -550,13 +789,16 @@ int medulla_start(medulla_t medulla) {
 
     nimcp_platform_mutex_unlock(medulla->mutex);
 
+    /* Heartbeat when started */
+    medulla_heartbeat("medulla_started", 1.0f);
+
     NIMCP_LOGGING_INFO("Medulla orchestrator started");
     return 0;
 }
 
 int medulla_stop(medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_stop: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_stop: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -580,15 +822,21 @@ int medulla_stop(medulla_t medulla) {
 
     nimcp_platform_mutex_unlock(medulla->mutex);
 
+    /* Heartbeat when stopped */
+    medulla_heartbeat("medulla_stopped", 1.0f);
+
     NIMCP_LOGGING_INFO("Medulla orchestrator stopped");
     return 0;
 }
 
 int medulla_update(medulla_t medulla, float dt) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_update: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_update: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Heartbeat at start of update */
+    medulla_heartbeat("medulla_update_start", 0.0f);
 
     nimcp_platform_mutex_lock(medulla->mutex);
 
@@ -641,14 +889,21 @@ int medulla_update(medulla_t medulla, float dt) {
     medulla->last_update_us = end_us;
 
     nimcp_platform_mutex_unlock(medulla->mutex);
+
+    /* Heartbeat at end of update */
+    medulla_heartbeat("medulla_update_complete", 1.0f);
+
     return 0;
 }
 
 int medulla_emergency_shutdown(medulla_t medulla, const char* reason) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_emergency_shutdown: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_emergency_shutdown: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Heartbeat for emergency */
+    medulla_heartbeat("medulla_emergency", 0.0f);
 
     nimcp_platform_mutex_lock(medulla->mutex);
 
@@ -671,12 +926,16 @@ int medulla_emergency_shutdown(medulla_t medulla, const char* reason) {
     }
 
     nimcp_platform_mutex_unlock(medulla->mutex);
+
+    /* Broadcast emergency shutdown to all modules */
+    medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_EMERGENCY_SHUTDOWN);
+
     return 0;
 }
 
 int medulla_request_state_change(medulla_t medulla, medulla_state_t new_state) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_request_state_change: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_request_state_change: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -705,8 +964,8 @@ int medulla_request_state_change(medulla_t medulla, medulla_state_t new_state) {
 //=============================================================================
 
 int medulla_connect_health_monitor(medulla_t medulla, health_monitor_t health_monitor) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_health_monitor: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_health_monitor: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -719,8 +978,8 @@ int medulla_connect_health_monitor(medulla_t medulla, health_monitor_t health_mo
 }
 
 int medulla_connect_recovery_system(medulla_t medulla, nimcp_recovery_t recovery) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_recovery_system: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_recovery_system: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -733,8 +992,8 @@ int medulla_connect_recovery_system(medulla_t medulla, nimcp_recovery_t recovery
 }
 
 int medulla_connect_sleep_wake(medulla_t medulla, sleep_system_t sleep_wake) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_sleep_wake: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_sleep_wake: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -747,8 +1006,8 @@ int medulla_connect_sleep_wake(medulla_t medulla, sleep_system_t sleep_wake) {
 }
 
 int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t neuromodulators) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_neuromodulators: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_neuromodulators: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -765,23 +1024,34 @@ int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t n
 //=============================================================================
 
 float medulla_get_arousal_level(const medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_arousal_level: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_arousal_level: medulla is NULL or invalid");
         return -1.0f;
     }
 
-    return medulla->current_arousal;
+    nimcp_platform_mutex_lock(medulla->mutex);
+    float arousal = medulla->current_arousal;
+    nimcp_platform_mutex_unlock(medulla->mutex);
+
+    return arousal;
 }
 
 int medulla_boost_arousal(medulla_t medulla, float delta) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_boost_arousal: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_boost_arousal: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (delta < 0.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_boost_arousal: delta must be non-negative");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* BBB validation of arousal delta */
+    if (!medulla_bbb_validate_arousal_input(delta, true, NULL)) {
+        return NIMCP_ERROR_SECURITY_THREAT;
+    }
+
+    nimcp_platform_mutex_lock(medulla->mutex);
 
     float new_arousal = medulla->current_arousal + delta;
 
@@ -791,18 +1061,27 @@ int medulla_boost_arousal(medulla_t medulla, float delta) {
     }
 
     medulla->current_arousal = new_arousal;
+
+    nimcp_platform_mutex_unlock(medulla->mutex);
     return 0;
 }
 
 int medulla_reduce_arousal(medulla_t medulla, float delta) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_reduce_arousal: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_reduce_arousal: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (delta < 0.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_reduce_arousal: delta must be non-negative");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* BBB validation of arousal delta (reduce uses negative internally but API expects positive) */
+    if (!medulla_bbb_validate_arousal_input(delta, false, NULL)) {
+        return NIMCP_ERROR_SECURITY_THREAT;
+    }
+
+    nimcp_platform_mutex_lock(medulla->mutex);
 
     float new_arousal = medulla->current_arousal - delta;
 
@@ -812,30 +1091,40 @@ int medulla_reduce_arousal(medulla_t medulla, float delta) {
     }
 
     medulla->current_arousal = new_arousal;
+
+    nimcp_platform_mutex_unlock(medulla->mutex);
     return 0;
 }
 
 protection_level_t medulla_get_protection_level(const medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_protection_level: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_protection_level: medulla is NULL or invalid");
         return PROTECTION_LEVEL_NORMAL;
     }
 
-    return medulla->protection_level;
+    nimcp_platform_mutex_lock(medulla->mutex);
+    protection_level_t level = medulla->protection_level;
+    nimcp_platform_mutex_unlock(medulla->mutex);
+
+    return level;
 }
 
 circadian_phase_t medulla_get_circadian_phase(const medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_circadian_phase: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_circadian_phase: medulla is NULL or invalid");
         return CIRCADIAN_PHASE_MORNING;
     }
 
-    return medulla->circadian_phase;
+    nimcp_platform_mutex_lock(medulla->mutex);
+    circadian_phase_t phase = medulla->circadian_phase;
+    nimcp_platform_mutex_unlock(medulla->mutex);
+
+    return phase;
 }
 
 int medulla_get_stats(const medulla_t medulla, medulla_stats_t* stats) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_stats: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_stats: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!stats) {
@@ -854,51 +1143,242 @@ int medulla_get_stats(const medulla_t medulla, medulla_stats_t* stats) {
 // Bio-Async Integration
 //=============================================================================
 
+/**
+ * @brief Message payload for medulla state broadcasts
+ */
+typedef struct {
+    bio_message_header_t header;
+    float arousal;                      /**< Current arousal level [0-1] */
+    protection_level_t protection;      /**< Current protection level */
+    circadian_phase_t phase;            /**< Current circadian phase */
+    arousal_level_t arousal_level;      /**< Classified arousal level */
+    medulla_state_t state;              /**< Current medulla state */
+} bio_msg_medulla_state_t;
+
+/**
+ * @brief Broadcast medulla state change via bio-async
+ *
+ * WHAT: Notify other modules of medulla state changes
+ * WHY:  Enables reactive coordination without tight coupling
+ * HOW:  Send typed message via bio-async router
+ *
+ * @param medulla Medulla instance
+ * @param type Message type indicating what changed
+ */
+static void medulla_broadcast_state_change(medulla_t medulla, bio_message_type_t type) {
+    if (!medulla || !medulla->bio_async_enabled || !medulla->bio_ctx) {
+        return;
+    }
+
+    bio_msg_medulla_state_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    /* Initialize header */
+    bio_msg_init_header(&msg.header, type, BIO_MODULE_MEDULLA, 0, sizeof(msg));
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    /* Fill payload with current state */
+    msg.arousal = medulla->current_arousal;
+    msg.protection = medulla->protection_level;
+    msg.phase = medulla->circadian_phase;
+    msg.arousal_level = medulla->arousal_level;
+    msg.state = medulla->state;
+
+    bio_router_broadcast(medulla->bio_ctx, &msg, sizeof(msg));
+
+    NIMCP_LOGGING_DEBUG("Medulla broadcast: type=0x%04X arousal=%.2f protection=%d phase=%d",
+                        type, msg.arousal, msg.protection, msg.phase);
+}
+
+/**
+ * @brief Bio-async message handler for medulla
+ *
+ * WHAT: Handle incoming bio-async messages for medulla module
+ * WHY:  Process state requests and commands from other modules
+ * HOW:  Dispatch by message type
+ *
+ * @param msg Pointer to message (header + payload)
+ * @param msg_size Total message size
+ * @param response_promise Promise to complete with response (may be NULL)
+ * @param user_data Medulla instance
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t medulla_bio_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)response_promise;  /* Response not needed for current message types */
+    medulla_t medulla = (medulla_t)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    if (!medulla || !header || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    switch (header->type) {
+        case BIO_MSG_MEDULLA_STATE_REQUEST:
+            /* Respond with current state */
+            medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_STATE);
+            break;
+
+        case BIO_MSG_MEDULLA_AROUSAL_SET:
+            /* Handle arousal set command from hypothalamus */
+            /* Extract arousal value from payload if present */
+            if (msg_size > sizeof(bio_message_header_t)) {
+                const float* arousal_ptr = (const float*)((const char*)msg + sizeof(bio_message_header_t));
+                nimcp_platform_mutex_lock(medulla->mutex);
+                medulla->current_arousal = *arousal_ptr;
+                if (medulla->current_arousal < medulla->config.arousal.min_arousal) {
+                    medulla->current_arousal = medulla->config.arousal.min_arousal;
+                }
+                if (medulla->current_arousal > medulla->config.arousal.max_arousal) {
+                    medulla->current_arousal = medulla->config.arousal.max_arousal;
+                }
+                medulla->arousal_level = classify_arousal_level(medulla->current_arousal);
+                nimcp_platform_mutex_unlock(medulla->mutex);
+            }
+            break;
+
+        case BIO_MSG_MEDULLA_PROTECTION_SET:
+            /* Handle protection set command */
+            if (msg_size > sizeof(bio_message_header_t)) {
+                const protection_level_t* level_ptr = (const protection_level_t*)((const char*)msg + sizeof(bio_message_header_t));
+                nimcp_platform_mutex_lock(medulla->mutex);
+                medulla->protection_level = *level_ptr;
+                nimcp_platform_mutex_unlock(medulla->mutex);
+            }
+            break;
+
+        case BIO_MSG_MEDULLA_EMERGENCY_REQUEST:
+            /* Handle emergency shutdown request */
+            medulla_emergency_shutdown(medulla, "Bio-async emergency request");
+            break;
+
+        default:
+            /* Unknown message type - ignore */
+            break;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
 int medulla_connect_bio_async(medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_bio_async: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_bio_async: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (medulla->bio_async_enabled) {
-        return 0;  // Already connected
+        return 0;  /* Already connected */
     }
 
-    // TODO: Register with bio-async router when module ID is assigned
-    // This will be implemented in Phase 1.2+ when bio-async module IDs are defined
+    /* Check if router is initialized */
+    if (!bio_router_is_initialized()) {
+        NIMCP_LOGGING_WARN("Bio-async router not initialized, skipping medulla registration");
+        return 0;
+    }
 
-    medulla->bio_async_enabled = false;  // Set to true when implemented
+    /* Register module with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_MEDULLA,
+        .module_name = "medulla",
+        .inbox_capacity = medulla->config.inbox_capacity > 0 ? medulla->config.inbox_capacity : 64,
+        .user_data = medulla
+    };
 
-    NIMCP_LOGGING_INFO("Bio-async connection attempted (not yet implemented)");
-    return 0;
+    medulla->bio_ctx = bio_router_register_module(&info);
+    if (!medulla->bio_ctx) {
+        NIMCP_LOGGING_ERROR("Failed to register medulla with bio-async router");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Register message handlers */
+    bio_router_register_handler(medulla->bio_ctx, BIO_MSG_MEDULLA_STATE_REQUEST, medulla_bio_handler);
+    bio_router_register_handler(medulla->bio_ctx, BIO_MSG_MEDULLA_AROUSAL_SET, medulla_bio_handler);
+    bio_router_register_handler(medulla->bio_ctx, BIO_MSG_MEDULLA_PROTECTION_SET, medulla_bio_handler);
+    bio_router_register_handler(medulla->bio_ctx, BIO_MSG_MEDULLA_EMERGENCY_REQUEST, medulla_bio_handler);
+
+    medulla->bio_async_enabled = true;
+
+    NIMCP_LOGGING_INFO("Medulla connected to bio-async router");
+    return NIMCP_SUCCESS;
 }
 
 int medulla_disconnect_bio_async(medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_disconnect_bio_async: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_disconnect_bio_async: medulla is NULL or invalid");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!medulla->bio_async_enabled) {
-        return 0;  // Not connected
+        return 0;  /* Not connected */
     }
 
-    // TODO: Unregister from bio-async router
+    /* Unregister from bio-async router */
+    if (medulla->bio_ctx) {
+        bio_router_unregister_module(medulla->bio_ctx);
+    }
 
     medulla->bio_async_enabled = false;
     medulla->bio_ctx = NULL;
 
-    NIMCP_LOGGING_INFO("Bio-async disconnected");
+    NIMCP_LOGGING_INFO("Medulla disconnected from bio-async router");
     return 0;
 }
 
 bool medulla_is_bio_async_connected(const medulla_t medulla) {
-    if (!medulla) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_is_bio_async_connected: medulla is NULL");
+    if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_is_bio_async_connected: medulla is NULL or invalid");
         return false;
     }
 
     return medulla->bio_async_enabled;
+}
+
+/**
+ * @brief Notify arousal level change via bio-async
+ *
+ * Called when arousal level changes significantly.
+ */
+void medulla_notify_arousal_changed(medulla_t medulla) {
+    if (is_valid_medulla(medulla)) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_AROUSAL_CHANGED);
+    }
+}
+
+/**
+ * @brief Notify protection level change via bio-async
+ *
+ * Called when protection level changes.
+ */
+void medulla_notify_protection_changed(medulla_t medulla) {
+    if (is_valid_medulla(medulla)) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_PROTECTION_CHANGED);
+    }
+}
+
+/**
+ * @brief Notify circadian phase change via bio-async
+ *
+ * Called when circadian phase changes.
+ */
+void medulla_notify_circadian_changed(medulla_t medulla) {
+    if (is_valid_medulla(medulla)) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_CIRCADIAN_CHANGED);
+    }
+}
+
+/**
+ * @brief Notify emergency shutdown via bio-async
+ *
+ * Called when emergency shutdown is initiated.
+ */
+void medulla_notify_emergency_shutdown(medulla_t medulla) {
+    if (is_valid_medulla(medulla)) {
+        medulla_broadcast_state_change(medulla, BIO_MSG_MEDULLA_EMERGENCY_SHUTDOWN);
+    }
 }
 
 //=============================================================================
@@ -961,7 +1441,7 @@ const char* medulla_state_to_string(medulla_state_t state) {
 //=============================================================================
 
 int medulla_test_set_arousal(medulla_t medulla, float level) {
-    if (!medulla) {
+    if (!is_valid_medulla(medulla)) {
         return -1;
     }
 
@@ -991,12 +1471,16 @@ int medulla_test_set_arousal(medulla_t medulla, float level) {
         medulla->arousal_level = AROUSAL_LEVEL_HYPERAROUSAL;
     }
 
+    /* Also update stats for test visibility */
+    medulla->stats.arousal_level = medulla->arousal_level;
+    medulla->stats.current_arousal = medulla->current_arousal;
+
     nimcp_platform_mutex_unlock(medulla->mutex);
     return 0;
 }
 
 int medulla_test_set_protection(medulla_t medulla, protection_level_t level) {
-    if (!medulla) {
+    if (!is_valid_medulla(medulla)) {
         return -1;
     }
 
@@ -1011,7 +1495,7 @@ int medulla_test_set_protection(medulla_t medulla, protection_level_t level) {
 }
 
 int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase) {
-    if (!medulla) {
+    if (!is_valid_medulla(medulla)) {
         return -1;
     }
 

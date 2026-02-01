@@ -388,6 +388,8 @@ TEST_F(StriosomeMatrixTest, BidirectionalMatrixThroughPathways) {
 }
 
 TEST_F(StriosomeMatrixTest, CrossCompartmentModulation) {
+    ASSERT_NE(system, nullptr);
+
     // Set up striosomes (motivation/value)
     std::vector<float> limbic_input(config.num_striosomes, 0.9f);
     bgsm_set_striosome_input(system, BGSM_INPUT_LIMBIC, limbic_input.data());

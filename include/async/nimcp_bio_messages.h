@@ -526,6 +526,11 @@ typedef enum {
     BIO_MSG_MEDULLA_VITAL_STATUS,                 /**< Vital status report */
     BIO_MSG_MEDULLA_EMERGENCY_REQUEST,            /**< Emergency shutdown request */
     BIO_MSG_MEDULLA_SLEEP_PRESSURE,               /**< Sleep pressure from fatigue */
+    BIO_MSG_MEDULLA_AROUSAL_CHANGED,              /**< Medulla: Arousal level changed significantly */
+    BIO_MSG_MEDULLA_PROTECTION_CHANGED,           /**< Medulla: Protection level changed */
+    BIO_MSG_MEDULLA_CIRCADIAN_CHANGED,            /**< Medulla: Circadian phase changed */
+    BIO_MSG_MEDULLA_EMERGENCY_SHUTDOWN,           /**< Medulla: Emergency shutdown initiated */
+    BIO_MSG_MEDULLA_STATE_REQUEST,                /**< Request medulla state information */
 
     /* Hippocampus cognitive bridge messages (0x11A0 - 0x11AF) - Memory-Drive Integration */
     BIO_MSG_HIPPOCAMPUS_ENCODING_PRIORITY = 0x11A0, /**< Hypothalamus → Hippocampus encoding priority */

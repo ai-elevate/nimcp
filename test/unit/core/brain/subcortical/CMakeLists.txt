@@ -100,3 +100,24 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_executive_bridge.cpp
     unit
 )
+
+# Test: Basal Ganglia Striosome-Matrix Tests (value/motivation + motor)
+add_test_binary(
+    unit_core_brain_subcortical_bg_striosome_matrix_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_bg_striosome_matrix.cpp
+    unit
+)
+
+# Test: Basal Ganglia Sequence Chunking Tests (skill learning)
+add_test_binary(
+    unit_core_brain_subcortical_bg_sequence_chunking_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_bg_sequence_chunking.cpp
+    unit
+)
+
+# Test: Basal Ganglia Vigor/Effort Tests (action intensity)
+add_test_binary(
+    unit_core_brain_subcortical_bg_vigor_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_bg_vigor.cpp
+    unit
+)

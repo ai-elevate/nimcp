@@ -92,3 +92,30 @@ set_tests_properties(regression_core_brain_subcortical_amygdala_test PROPERTIES 
 set_tests_properties(regression_core_brain_subcortical_amygdala_test PROPERTIES TIMEOUT 120)
 
 gtest_discover_tests(regression_core_brain_subcortical_amygdala_test)
+
+# Basal Ganglia Regression Tests (bug fixes and enhancements)
+add_executable(regression_core_brain_subcortical_basal_ganglia_test
+    test_basal_ganglia_regression.cpp
+)
+
+target_link_libraries(regression_core_brain_subcortical_basal_ganglia_test
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_core_brain_subcortical_basal_ganglia_test
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME regression_core_brain_subcortical_basal_ganglia_test
+         COMMAND regression_core_brain_subcortical_basal_ganglia_test)
+set_tests_properties(regression_core_brain_subcortical_basal_ganglia_test PROPERTIES LABELS "regression")
+set_tests_properties(regression_core_brain_subcortical_basal_ganglia_test PROPERTIES TIMEOUT 120)
+
+gtest_discover_tests(regression_core_brain_subcortical_basal_ganglia_test)

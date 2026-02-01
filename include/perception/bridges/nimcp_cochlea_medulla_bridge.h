@@ -38,7 +38,8 @@ extern "C" {
 //=============================================================================
 
 typedef struct medulla medulla_t;
-typedef struct arousal_state arousal_state_t;
+// arousal_state_t defined in core/medulla/nimcp_arousal_state.h
+struct arousal_state_struct;
 typedef struct circadian_clock circadian_clock_t;
 
 //=============================================================================

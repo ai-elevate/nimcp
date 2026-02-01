@@ -25601,6 +25601,54 @@ __/core/brain/subcortical/nimcp_bg_outcome_devaluation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_outcome_devaluation.c.s
 .PHONY : __/core/brain/subcortical/nimcp_bg_outcome_devaluation.c.s
 
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.o: __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.o
+
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.i: __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.i
+
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.s: __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_sequence_chunking.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_sequence_chunking.c.s
+
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.o: __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.o
+
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.i: __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.i
+
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.s: __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_striosome_matrix.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_striosome_matrix.c.s
+
 __/core/brain/subcortical/nimcp_bg_temporal_credit.o: __/core/brain/subcortical/nimcp_bg_temporal_credit.c.o
 .PHONY : __/core/brain/subcortical/nimcp_bg_temporal_credit.o
 
@@ -25624,6 +25672,30 @@ __/core/brain/subcortical/nimcp_bg_temporal_credit.s: __/core/brain/subcortical/
 __/core/brain/subcortical/nimcp_bg_temporal_credit.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_temporal_credit.c.s
 .PHONY : __/core/brain/subcortical/nimcp_bg_temporal_credit.c.s
+
+__/core/brain/subcortical/nimcp_bg_vigor.o: __/core/brain/subcortical/nimcp_bg_vigor.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_bg_vigor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_vigor.c.o
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.c.o
+
+__/core/brain/subcortical/nimcp_bg_vigor.i: __/core/brain/subcortical/nimcp_bg_vigor.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_bg_vigor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_vigor.c.i
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.c.i
+
+__/core/brain/subcortical/nimcp_bg_vigor.s: __/core/brain/subcortical/nimcp_bg_vigor.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_bg_vigor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_bg_vigor.c.s
+.PHONY : __/core/brain/subcortical/nimcp_bg_vigor.c.s
 
 __/core/brain/subcortical/nimcp_globus_pallidus.o: __/core/brain/subcortical/nimcp_globus_pallidus.c.o
 .PHONY : __/core/brain/subcortical/nimcp_globus_pallidus.o
@@ -27520,6 +27592,30 @@ __/core/medulla/nimcp_medulla_immune_bridge.s: __/core/medulla/nimcp_medulla_imm
 __/core/medulla/nimcp_medulla_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_immune_bridge.c.s
 .PHONY : __/core/medulla/nimcp_medulla_immune_bridge.c.s
+
+__/core/medulla/nimcp_medulla_kg_wiring.o: __/core/medulla/nimcp_medulla_kg_wiring.c.o
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.o
+
+# target to build an object file
+__/core/medulla/nimcp_medulla_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_kg_wiring.c.o
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.c.o
+
+__/core/medulla/nimcp_medulla_kg_wiring.i: __/core/medulla/nimcp_medulla_kg_wiring.c.i
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_medulla_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_kg_wiring.c.i
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.c.i
+
+__/core/medulla/nimcp_medulla_kg_wiring.s: __/core/medulla/nimcp_medulla_kg_wiring.c.s
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_medulla_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_kg_wiring.c.s
+.PHONY : __/core/medulla/nimcp_medulla_kg_wiring.c.s
 
 __/core/medulla/nimcp_protective_cutoff.o: __/core/medulla/nimcp_protective_cutoff.c.o
 .PHONY : __/core/medulla/nimcp_protective_cutoff.o
@@ -34216,6 +34312,30 @@ __/mesh/nimcp_mesh_kg_routing_bridge.s: __/mesh/nimcp_mesh_kg_routing_bridge.c.s
 __/mesh/nimcp_mesh_kg_routing_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/mesh/nimcp_mesh_kg_routing_bridge.c.s
 .PHONY : __/mesh/nimcp_mesh_kg_routing_bridge.c.s
+
+__/mesh/nimcp_mesh_medulla_integration.o: __/mesh/nimcp_mesh_medulla_integration.c.o
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.o
+
+# target to build an object file
+__/mesh/nimcp_mesh_medulla_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/mesh/nimcp_mesh_medulla_integration.c.o
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.c.o
+
+__/mesh/nimcp_mesh_medulla_integration.i: __/mesh/nimcp_mesh_medulla_integration.c.i
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.i
+
+# target to preprocess a source file
+__/mesh/nimcp_mesh_medulla_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/mesh/nimcp_mesh_medulla_integration.c.i
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.c.i
+
+__/mesh/nimcp_mesh_medulla_integration.s: __/mesh/nimcp_mesh_medulla_integration.c.s
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.s
+
+# target to generate assembly for a file
+__/mesh/nimcp_mesh_medulla_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/mesh/nimcp_mesh_medulla_integration.c.s
+.PHONY : __/mesh/nimcp_mesh_medulla_integration.c.s
 
 __/mesh/nimcp_mesh_module_registry.o: __/mesh/nimcp_mesh_module_registry.c.o
 .PHONY : __/mesh/nimcp_mesh_module_registry.o
@@ -52576,9 +52696,18 @@ help:
 	@echo "... __/core/brain/subcortical/nimcp_bg_outcome_devaluation.o"
 	@echo "... __/core/brain/subcortical/nimcp_bg_outcome_devaluation.i"
 	@echo "... __/core/brain/subcortical/nimcp_bg_outcome_devaluation.s"
+	@echo "... __/core/brain/subcortical/nimcp_bg_sequence_chunking.o"
+	@echo "... __/core/brain/subcortical/nimcp_bg_sequence_chunking.i"
+	@echo "... __/core/brain/subcortical/nimcp_bg_sequence_chunking.s"
+	@echo "... __/core/brain/subcortical/nimcp_bg_striosome_matrix.o"
+	@echo "... __/core/brain/subcortical/nimcp_bg_striosome_matrix.i"
+	@echo "... __/core/brain/subcortical/nimcp_bg_striosome_matrix.s"
 	@echo "... __/core/brain/subcortical/nimcp_bg_temporal_credit.o"
 	@echo "... __/core/brain/subcortical/nimcp_bg_temporal_credit.i"
 	@echo "... __/core/brain/subcortical/nimcp_bg_temporal_credit.s"
+	@echo "... __/core/brain/subcortical/nimcp_bg_vigor.o"
+	@echo "... __/core/brain/subcortical/nimcp_bg_vigor.i"
+	@echo "... __/core/brain/subcortical/nimcp_bg_vigor.s"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.o"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.i"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.s"
@@ -52816,6 +52945,9 @@ help:
 	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.o"
 	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.i"
 	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.s"
+	@echo "... __/core/medulla/nimcp_medulla_kg_wiring.o"
+	@echo "... __/core/medulla/nimcp_medulla_kg_wiring.i"
+	@echo "... __/core/medulla/nimcp_medulla_kg_wiring.s"
 	@echo "... __/core/medulla/nimcp_protective_cutoff.o"
 	@echo "... __/core/medulla/nimcp_protective_cutoff.i"
 	@echo "... __/core/medulla/nimcp_protective_cutoff.s"
@@ -53653,6 +53785,9 @@ help:
 	@echo "... __/mesh/nimcp_mesh_kg_routing_bridge.o"
 	@echo "... __/mesh/nimcp_mesh_kg_routing_bridge.i"
 	@echo "... __/mesh/nimcp_mesh_kg_routing_bridge.s"
+	@echo "... __/mesh/nimcp_mesh_medulla_integration.o"
+	@echo "... __/mesh/nimcp_mesh_medulla_integration.i"
+	@echo "... __/mesh/nimcp_mesh_medulla_integration.s"
 	@echo "... __/mesh/nimcp_mesh_module_registry.o"
 	@echo "... __/mesh/nimcp_mesh_module_registry.i"
 	@echo "... __/mesh/nimcp_mesh_module_registry.s"

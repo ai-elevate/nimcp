@@ -534,6 +534,18 @@ NIMCP_EXPORT const char* tripwire_type_name(tripwire_type_t type);
  */
 NIMCP_EXPORT const char* tripwire_severity_name(tripwire_severity_t severity);
 
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void tripwire_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

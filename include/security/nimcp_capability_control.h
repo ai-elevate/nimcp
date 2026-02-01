@@ -540,6 +540,66 @@ NIMCP_EXPORT nimcp_error_t capability_control_connect_tripwires(
     void* tripwires
 );
 
+/**
+ * @brief Connect to corrigibility system for bidirectional constraint enforcement
+ *
+ * WHAT: Link capability control with corrigibility
+ * WHY:  Ensure self-modification actions are checked by both systems
+ * HOW:  Capability control delegates self-mod checks to corrigibility
+ *
+ * When connected:
+ * - Self-modification actions are checked by both systems
+ * - Corrigibility provides authoritative rejection of self-mod
+ * - Constraint verification includes cross-system checks
+ *
+ * @param system Capability control system handle
+ * @param corrigibility Corrigibility system handle
+ * @return NIMCP_OK on success
+ */
+struct corrigibility;
+NIMCP_EXPORT nimcp_error_t capability_control_connect_corrigibility(
+    capability_control_t* system,
+    struct corrigibility* corrigibility
+);
+
+/**
+ * @brief Check action with corrigibility cross-verification
+ *
+ * WHAT: Check action and consult corrigibility for self-mod
+ * WHY:  Double-check self-modification restrictions
+ * HOW:  If action is self-mod, query corrigibility before allowing
+ *
+ * @param system Capability control system handle
+ * @param action Proposed action
+ * @param result Output: check result (includes corrigibility check)
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t capability_control_check_action_with_corrigibility(
+    capability_control_t* system,
+    const capability_action_t* action,
+    capability_check_result_t* result
+);
+
+/**
+ * @brief Verify capability and corrigibility constraints are synchronized
+ *
+ * WHAT: Cross-verify constraints between both systems
+ * WHY:  Ensure no gaps in safety constraints
+ * HOW:  Compare self-mod flags in capability envelope with corrigibility flags
+ *
+ * @param system Capability control system handle
+ * @param synchronized Output: true if both systems are in sync
+ * @param discrepancy_report Output: description of any discrepancies
+ * @param report_size Size of discrepancy_report buffer
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t capability_control_verify_corrigibility_sync(
+    capability_control_t* system,
+    bool* synchronized,
+    char* discrepancy_report,
+    size_t report_size
+);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */
@@ -563,6 +623,18 @@ NIMCP_EXPORT bool capability_domain_matches(
     const char* domain,
     const char* pattern
 );
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void capability_control_set_health_agent(struct nimcp_health_agent* agent);
 
 #ifdef __cplusplus
 }

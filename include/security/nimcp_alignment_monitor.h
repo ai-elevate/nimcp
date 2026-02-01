@@ -563,6 +563,18 @@ NIMCP_EXPORT size_t alignment_monitor_format_status(
     size_t buffer_size
 );
 
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void alignment_monitor_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

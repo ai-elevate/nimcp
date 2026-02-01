@@ -262,6 +262,18 @@ NIMCP_EXPORT size_t safety_verification_format_report(
     size_t buffer_size
 );
 
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void safety_verification_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

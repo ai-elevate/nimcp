@@ -434,7 +434,15 @@ int bgsc_action_completed(bgsc_system_t* system,
 
         /* Update execution state */
         if (chunk->current_step >= chunk->sequence_length) {
-            chunk->exec_state = BGSC_EXEC_COMPLETING;
+            /* Sequence completed */
+            chunk->exec_state = BGSC_EXEC_TERMINATED;
+            chunk->last_termination = BGSC_TERM_SEQUENCE_COMPLETE;
+            chunk->total_executions++;
+            chunk->successful_executions++;
+            system->is_executing = false;
+            system->executing_chunk_id = UINT32_MAX;
+            system->stats.total_executions++;
+            system->stats.successful_executions++;
         } else if (chunk->current_step == chunk->sequence_length - 1) {
             chunk->exec_state = BGSC_EXEC_COMPLETING;
         } else {
@@ -542,6 +550,7 @@ int bgsc_process_bidir(bgsc_system_t* system, bgsc_bidir_data_t* data) {
                 chunk->actions[step].times_executed++;
                 chunk->current_step++;
                 chunk->progress = (float)chunk->current_step / (float)chunk->sequence_length;
+                system->cortical_feedback = chunk->progress;  /* Update feedback */
 
                 if (chunk->current_step >= chunk->sequence_length) {
                     chunk->exec_state = BGSC_EXEC_TERMINATED;

@@ -549,6 +549,18 @@ NIMCP_EXPORT nimcp_error_t corrigibility_get_goal_mod_history(
     size_t* count_out
 );
 
+/**
+ * @brief Get current corrigibility configuration
+ *
+ * @param system Corrigibility system handle
+ * @param config Output configuration structure
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t corrigibility_get_config(
+    const corrigibility_t* system,
+    corrigibility_config_t* config
+);
+
 /* ============================================================================
  * Integration API
  * ============================================================================ */
@@ -591,6 +603,70 @@ NIMCP_EXPORT nimcp_error_t corrigibility_connect_tripwires(
     void* tripwires
 );
 
+/**
+ * @brief Connect to capability control system for bidirectional constraint verification
+ *
+ * WHAT: Link corrigibility with capability control
+ * WHY:  Ensure self-modification constraints are synchronized
+ * HOW:  Both systems share constraint state for unified verification
+ *
+ * When connected:
+ * - Corrigibility verifies capability envelope self-mod flags match
+ * - Capability control queries corrigibility before allowing self-mod actions
+ * - Joint constraint verification catches inconsistencies
+ *
+ * @param system Corrigibility system handle
+ * @param capability_control Capability control system handle
+ * @return NIMCP_OK on success
+ */
+struct capability_control;
+NIMCP_EXPORT nimcp_error_t corrigibility_connect_capability_control(
+    corrigibility_t* system,
+    struct capability_control* capability_control
+);
+
+/**
+ * @brief Check if proposed self-modification action is allowed
+ *
+ * WHAT: Query corrigibility for self-modification permission
+ * WHY:  Capability control can delegate self-mod checks to corrigibility
+ * HOW:  Check against corrigibility self-mod flags
+ *
+ * @param system Corrigibility system handle
+ * @param action_type Type of self-modification ("modify_code", "modify_weights", etc.)
+ * @param allowed Output: true if allowed (should always be false for self-mod)
+ * @param denial_reason Output: reason for denial
+ * @param reason_size Size of denial_reason buffer
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t corrigibility_check_self_mod_action(
+    corrigibility_t* system,
+    const char* action_type,
+    bool* allowed,
+    char* denial_reason,
+    size_t reason_size
+);
+
+/**
+ * @brief Verify corrigibility and capability control constraints are synchronized
+ *
+ * WHAT: Cross-verify constraints between both systems
+ * WHY:  Ensure no gaps in safety constraints
+ * HOW:  Compare self-mod flags in both systems
+ *
+ * @param system Corrigibility system handle
+ * @param synchronized Output: true if both systems are in sync
+ * @param discrepancy_report Output: description of any discrepancies
+ * @param report_size Size of discrepancy_report buffer
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t corrigibility_verify_capability_sync(
+    corrigibility_t* system,
+    bool* synchronized,
+    char* discrepancy_report,
+    size_t report_size
+);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */
@@ -619,6 +695,18 @@ NIMCP_EXPORT nimcp_error_t corrigibility_validate_config(
     char* error_msg,
     size_t msg_size
 );
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void corrigibility_set_health_agent(struct nimcp_health_agent* agent);
 
 #ifdef __cplusplus
 }

@@ -891,3 +891,42 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lgss/CMakeLists.txt")
     add_subdirectory(lgss)
 endif()
+
+# ============================================================================
+# Safety Enhancement Integration Tests (AI Safety Infrastructure)
+# ============================================================================
+# WHAT: Integration tests for 10 AI safety enhancement modules
+# WHY:  Verify cross-module communication and safety pipeline integration
+# HOW:  Test tripwire->halt escalation, alignment->tripwire triggering,
+#       corrigibility<->capability enforcement, red team attacks,
+#       graduated autonomy, and value commitment verification
+# ============================================================================
+
+add_executable(integration_security_test_safety_enhancement
+    test_safety_enhancement_integration.cpp
+)
+target_link_libraries(integration_security_test_safety_enhancement
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_safety_enhancement
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_safety_enhancement PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_safety_enhancement
+         COMMAND integration_security_test_safety_enhancement)
+set_tests_properties(integration_security_test_safety_enhancement PROPERTIES
+    LABELS "integration;security;safety;enhancement"
+    TIMEOUT 300
+)

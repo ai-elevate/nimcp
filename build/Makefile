@@ -9922,6 +9922,32 @@ run_thalamic_e2e_tests/fast:
 .PHONY : run_thalamic_e2e_tests/fast
 
 #=============================================================================
+# Target rules for targets named test_basal_ganglia_pipeline_e2e
+
+# Build rule for target.
+test_basal_ganglia_pipeline_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_basal_ganglia_pipeline_e2e
+.PHONY : test_basal_ganglia_pipeline_e2e
+
+# fast build rule for target.
+test_basal_ganglia_pipeline_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/brain/subcortical/CMakeFiles/test_basal_ganglia_pipeline_e2e.dir/build.make test/e2e/core/brain/subcortical/CMakeFiles/test_basal_ganglia_pipeline_e2e.dir/build
+.PHONY : test_basal_ganglia_pipeline_e2e/fast
+
+#=============================================================================
+# Target rules for targets named run_subcortical_e2e_tests
+
+# Build rule for target.
+run_subcortical_e2e_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_subcortical_e2e_tests
+.PHONY : run_subcortical_e2e_tests
+
+# fast build rule for target.
+run_subcortical_e2e_tests/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/brain/subcortical/CMakeFiles/run_subcortical_e2e_tests.dir/build.make test/e2e/core/brain/subcortical/CMakeFiles/run_subcortical_e2e_tests.dir/build
+.PHONY : run_subcortical_e2e_tests/fast
+
+#=============================================================================
 # Target rules for targets named test_speech_production_e2e
 
 # Build rule for target.
@@ -10102,6 +10128,19 @@ test_medulla_exception_e2e: cmake_check_build_system
 test_medulla_exception_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/core/medulla/CMakeFiles/test_medulla_exception_e2e.dir/build.make test/e2e/core/medulla/CMakeFiles/test_medulla_exception_e2e.dir/build
 .PHONY : test_medulla_exception_e2e/fast
+
+#=============================================================================
+# Target rules for targets named test_medulla_mesh_e2e
+
+# Build rule for target.
+test_medulla_mesh_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_mesh_e2e
+.PHONY : test_medulla_mesh_e2e
+
+# fast build rule for target.
+test_medulla_mesh_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/medulla/CMakeFiles/test_medulla_mesh_e2e.dir/build.make test/e2e/core/medulla/CMakeFiles/test_medulla_mesh_e2e.dir/build
+.PHONY : test_medulla_mesh_e2e/fast
 
 #=============================================================================
 # Target rules for targets named e2e_snn_bridge_exception
@@ -10362,6 +10401,19 @@ e2e_test_mesh_cycle_coordinator: cmake_check_build_system
 e2e_test_mesh_cycle_coordinator/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/mesh/CMakeFiles/e2e_test_mesh_cycle_coordinator.dir/build.make test/e2e/mesh/CMakeFiles/e2e_test_mesh_cycle_coordinator.dir/build
 .PHONY : e2e_test_mesh_cycle_coordinator/fast
+
+#=============================================================================
+# Target rules for targets named e2e_security_test_safety_enhancement
+
+# Build rule for target.
+e2e_security_test_safety_enhancement: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_security_test_safety_enhancement
+.PHONY : e2e_security_test_safety_enhancement
+
+# fast build rule for target.
+e2e_security_test_safety_enhancement/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/security/CMakeFiles/e2e_security_test_safety_enhancement.dir/build.make test/e2e/security/CMakeFiles/e2e_security_test_safety_enhancement.dir/build
+.PHONY : e2e_security_test_safety_enhancement/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -12364,6 +12416,32 @@ test_medulla_exception_integration: cmake_check_build_system
 test_medulla_exception_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/core/medulla/CMakeFiles/test_medulla_exception_integration.dir/build.make test/integration/core/medulla/CMakeFiles/test_medulla_exception_integration.dir/build
 .PHONY : test_medulla_exception_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_medulla_mesh_integration
+
+# Build rule for target.
+test_medulla_mesh_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_mesh_integration
+.PHONY : test_medulla_mesh_integration
+
+# fast build rule for target.
+test_medulla_mesh_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/medulla/CMakeFiles/test_medulla_mesh_integration.dir/build.make test/integration/core/medulla/CMakeFiles/test_medulla_mesh_integration.dir/build
+.PHONY : test_medulla_mesh_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_medulla_bbb_integration
+
+# Build rule for target.
+test_medulla_bbb_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_bbb_integration
+.PHONY : test_medulla_bbb_integration
+
+# fast build rule for target.
+test_medulla_bbb_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/medulla/CMakeFiles/test_medulla_bbb_integration.dir/build.make test/integration/core/medulla/CMakeFiles/test_medulla_bbb_integration.dir/build
+.PHONY : test_medulla_bbb_integration/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_medulla
@@ -17631,6 +17709,19 @@ integration_core_brain_subcortical_amygdala_test/fast:
 .PHONY : integration_core_brain_subcortical_amygdala_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_subcortical_basal_ganglia_test
+
+# Build rule for target.
+integration_core_brain_subcortical_basal_ganglia_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_subcortical_basal_ganglia_test
+.PHONY : integration_core_brain_subcortical_basal_ganglia_test
+
+# fast build rule for target.
+integration_core_brain_subcortical_basal_ganglia_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_basal_ganglia_test.dir/build.make test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_basal_ganglia_test.dir/build
+.PHONY : integration_core_brain_subcortical_basal_ganglia_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
 
 # Build rule for target.
@@ -18682,6 +18773,19 @@ regression_core_brain_subcortical_amygdala_test: cmake_check_build_system
 regression_core_brain_subcortical_amygdala_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build.make test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build
 .PHONY : regression_core_brain_subcortical_amygdala_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_subcortical_basal_ganglia_test
+
+# Build rule for target.
+regression_core_brain_subcortical_basal_ganglia_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_subcortical_basal_ganglia_test
+.PHONY : regression_core_brain_subcortical_basal_ganglia_test
+
+# fast build rule for target.
+regression_core_brain_subcortical_basal_ganglia_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_basal_ganglia_test.dir/build.make test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_basal_ganglia_test.dir/build
+.PHONY : regression_core_brain_subcortical_basal_ganglia_test/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_brain_regions_broca_test_nimcp_broca_regression
@@ -20892,6 +20996,45 @@ unit_core_brain_subcortical_basal_ganglia_executive_bridge_test: cmake_check_bui
 unit_core_brain_subcortical_basal_ganglia_executive_bridge_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_executive_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_executive_bridge_test.dir/build
 .PHONY : unit_core_brain_subcortical_basal_ganglia_executive_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_bg_striosome_matrix_test
+
+# Build rule for target.
+unit_core_brain_subcortical_bg_striosome_matrix_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_bg_striosome_matrix_test
+.PHONY : unit_core_brain_subcortical_bg_striosome_matrix_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_bg_striosome_matrix_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_striosome_matrix_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_striosome_matrix_test.dir/build
+.PHONY : unit_core_brain_subcortical_bg_striosome_matrix_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_bg_sequence_chunking_test
+
+# Build rule for target.
+unit_core_brain_subcortical_bg_sequence_chunking_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_bg_sequence_chunking_test
+.PHONY : unit_core_brain_subcortical_bg_sequence_chunking_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_bg_sequence_chunking_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_sequence_chunking_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_sequence_chunking_test.dir/build
+.PHONY : unit_core_brain_subcortical_bg_sequence_chunking_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_bg_vigor_test
+
+# Build rule for target.
+unit_core_brain_subcortical_bg_vigor_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_bg_vigor_test
+.PHONY : unit_core_brain_subcortical_bg_vigor_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_bg_vigor_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_vigor_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_vigor_test.dir/build
+.PHONY : unit_core_brain_subcortical_bg_vigor_test/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_math_test_complex_math
@@ -28200,6 +28343,19 @@ integration_security_test_orchestrator/fast:
 .PHONY : integration_security_test_orchestrator/fast
 
 #=============================================================================
+# Target rules for targets named integration_security_test_safety_enhancement
+
+# Build rule for target.
+integration_security_test_safety_enhancement: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_safety_enhancement
+.PHONY : integration_security_test_safety_enhancement
+
+# fast build rule for target.
+integration_security_test_safety_enhancement/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_safety_enhancement.dir/build.make test/integration/security/CMakeFiles/integration_security_test_safety_enhancement.dir/build
+.PHONY : integration_security_test_safety_enhancement/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
 
 # Build rule for target.
@@ -28588,6 +28744,19 @@ regression_security_hippocampus: cmake_check_build_system
 regression_security_hippocampus/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_hippocampus.dir/build.make test/regression/security/CMakeFiles/regression_security_hippocampus.dir/build
 .PHONY : regression_security_hippocampus/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_safety_enhancement
+
+# Build rule for target.
+regression_security_safety_enhancement: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_safety_enhancement
+.PHONY : regression_security_safety_enhancement
+
+# fast build rule for target.
+regression_security_safety_enhancement/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_safety_enhancement.dir/build.make test/regression/security/CMakeFiles/regression_security_safety_enhancement.dir/build
+.PHONY : regression_security_safety_enhancement/fast
 
 #=============================================================================
 # Target rules for targets named unit_language_orchestrator
@@ -38222,6 +38391,7 @@ help:
 	@echo "... run_hemispheric_e2e_tests"
 	@echo "... run_language_e2e_tests"
 	@echo "... run_language_regression"
+	@echo "... run_subcortical_e2e_tests"
 	@echo "... run_thalamic_e2e_tests"
 	@echo "... run_wernicke_regression"
 	@echo "... ternary_e2e_tests"
@@ -38350,6 +38520,7 @@ help:
 	@echo "... e2e_parietal_financial_investment"
 	@echo "... e2e_plasticity_eligibility_utils_quantum"
 	@echo "... e2e_plasticity_module_exception"
+	@echo "... e2e_security_test_safety_enhancement"
 	@echo "... e2e_snn_bridge_exception"
 	@echo "... e2e_statistics_test_information_theory_e2e"
 	@echo "... e2e_statistics_test_ml_statistics_e2e"
@@ -38746,6 +38917,7 @@ help:
 	@echo "... integration_core_brain_regions_retrosplenial_test_retrosplenial_brain_init_integration"
 	@echo "... integration_core_brain_regions_sensory_test_sensory_integration"
 	@echo "... integration_core_brain_subcortical_amygdala_test"
+	@echo "... integration_core_brain_subcortical_basal_ganglia_test"
 	@echo "... integration_core_brain_subcortical_test"
 	@echo "... integration_core_brain_subcortical_thalamus_test"
 	@echo "... integration_core_cortical_columns_substrate_bridge"
@@ -39014,6 +39186,7 @@ help:
 	@echo "... integration_security_test_module_integration"
 	@echo "... integration_security_test_orchestrator"
 	@echo "... integration_security_test_pattern_db"
+	@echo "... integration_security_test_safety_enhancement"
 	@echo "... integration_security_test_security_async"
 	@echo "... integration_security_test_security_immune"
 	@echo "... integration_security_test_security_logging"
@@ -39250,6 +39423,7 @@ help:
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
 	@echo "... regression_core_brain_regions_test_visual_cortex_regression"
 	@echo "... regression_core_brain_subcortical_amygdala_test"
+	@echo "... regression_core_brain_subcortical_basal_ganglia_test"
 	@echo "... regression_core_brain_subcortical_test"
 	@echo "... regression_core_brain_subcortical_thalamus_test"
 	@echo "... regression_core_cortical_columns_substrate_bridge"
@@ -39495,6 +39669,7 @@ help:
 	@echo "... regression_security_knowledge_graph"
 	@echo "... regression_security_module"
 	@echo "... regression_security_module_bridges"
+	@echo "... regression_security_safety_enhancement"
 	@echo "... regression_security_sleep_bridges"
 	@echo "... regression_security_test_anomaly_detector"
 	@echo "... regression_security_test_bbb_regression"
@@ -39589,6 +39764,7 @@ help:
 	@echo "... test_attention_bioasync"
 	@echo "... test_autobiographical_fep_bridge_integration"
 	@echo "... test_backward_chaining"
+	@echo "... test_basal_ganglia_pipeline_e2e"
 	@echo "... test_basal_ganglia_thalamus_e2e"
 	@echo "... test_brain_quantum_reasoning"
 	@echo "... test_brain_reasoning_api"
@@ -39631,11 +39807,14 @@ help:
 	@echo "... test_lgss_e2e"
 	@echo "... test_lgss_integration"
 	@echo "... test_lgss_unit"
+	@echo "... test_medulla_bbb_integration"
 	@echo "... test_medulla_cerebellum_bridge_integration"
 	@echo "... test_medulla_cerebellum_bridge_regression"
 	@echo "... test_medulla_exception_e2e"
 	@echo "... test_medulla_exception_integration"
 	@echo "... test_medulla_exception_regression"
+	@echo "... test_medulla_mesh_e2e"
+	@echo "... test_medulla_mesh_integration"
 	@echo "... test_mesh_bio_bridge"
 	@echo "... test_mesh_bio_flow_integration"
 	@echo "... test_mesh_bio_integration"
@@ -40296,6 +40475,9 @@ help:
 	@echo "... unit_core_brain_subcortical_basal_ganglia_test"
 	@echo "... unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test"
 	@echo "... unit_core_brain_subcortical_basal_ganglia_training_bridge_test"
+	@echo "... unit_core_brain_subcortical_bg_sequence_chunking_test"
+	@echo "... unit_core_brain_subcortical_bg_striosome_matrix_test"
+	@echo "... unit_core_brain_subcortical_bg_vigor_test"
 	@echo "... unit_core_brain_subcortical_thalamus_test"
 	@echo "... unit_core_brain_test_brain_100_percent_coverage"
 	@echo "... unit_core_brain_test_brain_accessors_and_utilities"

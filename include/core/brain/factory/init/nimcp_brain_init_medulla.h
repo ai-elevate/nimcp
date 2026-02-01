@@ -21,10 +21,11 @@
  * - Neuromodulators: Arousal modulates catecholamine release
  * - Immune System: Inflammation affects arousal, triggers protection
  * - Bio-Async: Publishes state changes for system coordination
+ * - Mesh Network: Coordinates arousal/protection via distributed consensus
  *
- * @version 2.7.0
+ * @version 2.7.1
  * @author NIMCP Development Team
- * @date 2025-12-17
+ * @date 2025-02-01
  */
 
 #ifndef NIMCP_BRAIN_INIT_MEDULLA_H
@@ -37,6 +38,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//=============================================================================
+// Mesh Network Integration Forward Declarations
+//=============================================================================
+
+struct mesh_bootstrap;
+typedef struct mesh_bootstrap mesh_bootstrap_t;
+
+struct mesh_medulla_integration;
+typedef struct mesh_medulla_integration mesh_medulla_integration_t;
 
 //=============================================================================
 // Medulla Subsystem Lifecycle Functions
@@ -181,6 +192,45 @@ int nimcp_brain_trigger_emergency(brain_t brain, const char* reason);
  * @return 0 on success, negative error code on failure
  */
 int nimcp_brain_request_medulla_state(brain_t brain, medulla_state_t new_state);
+
+//=============================================================================
+// Mesh Network Integration Functions
+//=============================================================================
+
+/**
+ * @brief Set the mesh bootstrap handle for medulla mesh registration
+ *
+ * WHAT: Configures medulla init to register with mesh network
+ * WHY:  Enable coordinated arousal/protection via mesh consensus
+ * HOW:  Stores bootstrap handle, used during medulla init
+ *
+ * When set before nimcp_brain_factory_init_medulla_subsystem is called,
+ * the medulla will automatically register as a subcortical participant
+ * in the mesh network and can coordinate arousal/protection changes
+ * through distributed consensus.
+ *
+ * @param bootstrap Mesh bootstrap handle (NULL to disable)
+ */
+void nimcp_brain_medulla_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap);
+
+/**
+ * @brief Get the medulla mesh integration handle
+ *
+ * WHAT: Returns the current mesh integration for the medulla
+ * WHY:  Allows external code to interact with medulla via mesh
+ * HOW:  Returns cached integration handle
+ *
+ * @return Current mesh integration or NULL if not registered
+ */
+mesh_medulla_integration_t* nimcp_brain_medulla_get_mesh_integration(void);
+
+/**
+ * @brief Get medulla module from brain (for mesh registration)
+ *
+ * @param brain The brain instance
+ * @return Medulla handle or NULL if not initialized
+ */
+medulla_t brain_get_medulla(brain_t brain);
 
 #ifdef __cplusplus
 }

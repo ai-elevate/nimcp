@@ -451,6 +451,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_outcome_devaluation.c  # Outcome devaluation (goal vs habit)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_temporal_credit.c      # Temporal credit assignment (TD-lambda)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_enhanced.c  # Unified enhanced BG system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_striosome_matrix.c     # Striosome-matrix compartmentalization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_sequence_chunking.c    # Action sequence chunking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_vigor.c                # Vigor/effort modulation
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -2484,6 +2487,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla.c                 # Main orchestrator
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_immune_bridge.c   # Medulla-immune integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_cerebellum_bridge.c # Medulla-cerebellum inferior olive bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_kg_wiring.c     # Medulla KG wiring for state tracking
 
     # Brain factory medulla initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_medulla.c  # Medulla subsystem init
@@ -2792,6 +2796,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_resilience_integration.c                     # Fault tolerance and resilience mesh integration
     # Phase 16: Cycle Coordinator Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_cycle_coordinator.c                          # Mesh-cycle coordinator for brain oscillation sync
+    # Phase 17: Medulla Mesh Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_medulla_integration.c                        # Medulla oblongata mesh integration
 )
 
 # Core library

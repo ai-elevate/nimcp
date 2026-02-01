@@ -49,6 +49,11 @@ extern "C" {
 #endif
 
 //=============================================================================
+// Forward Declaration - Health Agent
+//=============================================================================
+struct nimcp_health_agent;
+
+//=============================================================================
 // Forward Declarations (Subsystems - Phase 1.2-1.5)
 //=============================================================================
 
@@ -57,7 +62,8 @@ extern "C" {
  *
  * BIOLOGICAL: Reticular activating system - modulates consciousness level
  */
-typedef struct arousal_state_struct* arousal_state_t;
+// arousal_state_t defined in nimcp_arousal_state.h
+struct arousal_state_struct;
 
 /**
  * @brief Protective cutoff system (Phase 1.3)
@@ -469,6 +475,22 @@ int medulla_connect_sleep_wake(medulla_t medulla, sleep_system_t sleep_wake);
 int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t neuromodulators);
 
 //=============================================================================
+// Health Agent Integration
+//=============================================================================
+
+/**
+ * WHAT: Set health agent for medulla heartbeats
+ * WHY:  Enable health monitoring integration
+ * HOW:  Store health agent reference for heartbeat calls
+ *
+ * @param agent Health agent pointer (can be NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void medulla_set_health_agent(struct nimcp_health_agent* agent);
+
+//=============================================================================
 // Query Functions
 //=============================================================================
 
@@ -639,6 +661,30 @@ const char* medulla_circadian_phase_to_string(circadian_phase_t phase);
  * @return String representation
  */
 const char* medulla_state_to_string(medulla_state_t state);
+
+//=============================================================================
+// BBB Integration (Blood-Brain Barrier)
+//=============================================================================
+
+/* Forward declaration for BBB system type */
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+/**
+ * WHAT: Set BBB system for medulla input validation
+ * WHY:  Enable security validation of all external inputs
+ * HOW:  Store BBB reference, use in validation functions
+ *
+ * @param bbb BBB system handle (NULL to disable validation)
+ *
+ * NOTE: When bbb is NULL, all validation passes (permissive mode)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void medulla_set_bbb(bbb_system_t bbb);
 
 //=============================================================================
 // Test Helper Functions (for integration testing only)

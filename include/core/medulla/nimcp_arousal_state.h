@@ -74,7 +74,7 @@ typedef struct {
  * WHY: Encapsulates all state for unified arousal management
  * HOW: Tracks current/target states, continuous level, transitions, and thread safety
  */
-typedef struct arousal_state_t {
+typedef struct arousal_state_struct {
     // Core state
     arousal_state_enum_t current_state;  // Current discrete state
     float arousal_level;                  // Continuous level (0.0-1.0)

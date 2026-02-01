@@ -3006,6 +3006,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mesh/CMakeLists.txt)
     add_subdirectory(mesh)
 endif()
 
+# Include Security E2E test subdirectory (AI Safety Enhancement)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/security/CMakeLists.txt)
+    message(STATUS "Adding Security Safety Enhancement E2E tests...")
+    add_subdirectory(security)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

@@ -147,6 +147,9 @@ TEST_F(SequenceChunkingTest, CheckTrigger) {
     bgsc_add_action(system, chunk_id, 1, 100.0f);
     bgsc_add_action(system, chunk_id, 2, 100.0f);
 
+    // Set threshold to 0 so newly registered chunk can trigger
+    bgsc_set_initiation_threshold(system, chunk_id, 0.0f);
+
     uint32_t triggered_id = 0;
     bool triggered = bgsc_check_trigger(system, 500, &triggered_id);
 

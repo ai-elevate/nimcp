@@ -107,6 +107,111 @@ NIMCP_EXPORT nimcp_error_t red_team_get_stats(
 NIMCP_EXPORT nimcp_error_t red_team_connect_bio_async(red_team_t* system);
 NIMCP_EXPORT const char* red_team_attack_name(attack_type_t type);
 
+/* ============================================================================
+ * Monte Carlo Attack Generation
+ * ============================================================================ */
+
+/**
+ * @brief Configuration for Monte Carlo attack generation
+ */
+typedef struct mc_attack_config {
+    uint32_t num_samples;               /**< Number of MC samples for generation */
+    uint32_t burnin;                    /**< Burn-in period for MCMC */
+    float mutation_rate;                /**< Probability of mutating each token */
+    float crossover_rate;               /**< Probability of crossover between attacks */
+    float temperature;                  /**< Softmax temperature for sampling */
+    bool use_importance_sampling;       /**< Use importance sampling for diversity */
+    uint32_t seed;                      /**< Random seed (0 = time-based) */
+} mc_attack_config_t;
+
+/**
+ * @brief Default MC attack configuration
+ */
+NIMCP_EXPORT mc_attack_config_t mc_attack_default_config(void);
+
+/**
+ * @brief Generate attacks using Monte Carlo sampling
+ *
+ * Uses MCMC to sample diverse attack variations from learned attack distributions.
+ * Generates more realistic attack patterns than static templates.
+ *
+ * @param system        Red team system handle
+ * @param type          Attack type to generate
+ * @param mc_config     Monte Carlo configuration
+ * @param attacks       Output array for generated attacks
+ * @param max_attacks   Maximum attacks to generate
+ * @param attack_count  Actual number of attacks generated
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t red_team_generate_attacks_mc(
+    red_team_t* system,
+    attack_type_t type,
+    const mc_attack_config_t* mc_config,
+    red_team_test_t* attacks,
+    uint32_t max_attacks,
+    uint32_t* attack_count
+);
+
+/**
+ * @brief Generate adversarial examples via Monte Carlo perturbation
+ *
+ * Applies small perturbations to base actions to find adversarial variants
+ * that bypass safety checks. Uses importance sampling to focus on high-risk regions.
+ *
+ * @param system              Red team system handle
+ * @param base_payload        Base payload to perturb
+ * @param perturbation_budget Maximum perturbation magnitude (0.0-1.0)
+ * @param mc_config           Monte Carlo configuration
+ * @param adversarial         Output adversarial examples
+ * @param max_adversarial     Maximum examples to generate
+ * @param adversarial_count   Actual count generated
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t red_team_generate_adversarial_mc(
+    red_team_t* system,
+    const char* base_payload,
+    float perturbation_budget,
+    const mc_attack_config_t* mc_config,
+    red_team_test_t* adversarial,
+    uint32_t max_adversarial,
+    uint32_t* adversarial_count
+);
+
+/**
+ * @brief Estimate attack coverage using Monte Carlo
+ *
+ * Uses MC sampling to estimate what fraction of the attack space is covered
+ * by the current test suite.
+ *
+ * @param system            Red team system handle
+ * @param tests             Current test suite
+ * @param test_count        Number of tests
+ * @param num_samples       MC samples for coverage estimation
+ * @param coverage          Output: estimated coverage (0.0-1.0)
+ * @param confidence_interval Output: 95% CI half-width
+ * @return NIMCP_OK on success
+ */
+NIMCP_EXPORT nimcp_error_t red_team_estimate_coverage_mc(
+    red_team_t* system,
+    const red_team_test_t* tests,
+    uint32_t test_count,
+    uint32_t num_samples,
+    float* coverage,
+    float* confidence_interval
+);
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void red_team_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

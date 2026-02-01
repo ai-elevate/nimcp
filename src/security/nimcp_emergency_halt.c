@@ -263,7 +263,7 @@ nimcp_error_t emergency_halt_heartbeat(emergency_halt_t* halt) {
 
     if (halt->is_halted) {
         nimcp_mutex_unlock(halt->mutex);
-        return NIMCP_ERROR_INVALID_STATE;
+        return NIMCP_ERROR_SYSTEM_HALTED;
     }
 
     halt->last_heartbeat_us = nimcp_time_now_us();

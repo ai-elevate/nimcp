@@ -10,16 +10,46 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 
 #define LOG_CATEGORY "value_commitment"
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/* Global health agent handle */
+static nimcp_health_agent_t* g_value_commitment_health_agent = NULL;
+
+/* Health agent setter - called from brain init */
+void value_commitment_set_health_agent(nimcp_health_agent_t* agent) {
+    g_value_commitment_health_agent = agent;
+}
+
+/* Heartbeat helper - call during long-running operations */
+static inline void value_commitment_heartbeat(const char* operation, float progress) {
+    if (g_value_commitment_health_agent) {
+        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
+        nimcp_health_agent_heartbeat_ex(g_value_commitment_health_agent, operation, progress);
+    }
+}
 
 struct value_commitment_system {
     uint32_t magic;
     nimcp_mutex_t* mutex;
     value_commitment_config_t config;
     value_commitment_stats_t stats;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_connected;
 };
 
 static bool is_valid_handle(const value_commitment_system_t* system) {
@@ -83,6 +113,14 @@ value_commitment_system_t* value_commitment_system_create(
 
 void value_commitment_system_destroy(value_commitment_system_t* system) {
     if (!is_valid_handle(system)) return;
+
+    /* Unregister from bio-async */
+    if (system->bio_async_connected && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_connected = false;
+    }
+
     system->magic = 0;
     if (system->mutex) nimcp_mutex_destroy(system->mutex);
     free(system);
@@ -252,6 +290,31 @@ nimcp_error_t value_commitment_get_stats(
 
 nimcp_error_t value_commitment_connect_bio_async(value_commitment_system_t* system) {
     if (!is_valid_handle(system)) return NIMCP_ERROR_INVALID_ARGUMENT;
+
+    nimcp_mutex_lock(system->mutex);
+
+    if (system->bio_async_connected) {
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_OK;
+    }
+
+    bio_module_info_t module_info = {
+        .module_id = BIO_MODULE_VALUE_COMMITMENT,
+        .module_name = "value_commitment",
+        .inbox_capacity = 0,
+        .user_data = system
+    };
+
+    system->bio_ctx = bio_router_register_module(&module_info);
+    if (!system->bio_ctx) {
+        NIMCP_LOG_WARN(LOG_CATEGORY, "Bio-async registration failed - continuing without");
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_OK;
+    }
+
+    system->bio_async_connected = true;
+    nimcp_mutex_unlock(system->mutex);
+
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to bio-async messaging");
     return NIMCP_OK;
 }

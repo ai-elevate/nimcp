@@ -10,11 +10,13 @@
  */
 
 #include "security/nimcp_corrigibility.h"
+#include "security/nimcp_capability_control.h"
 #include "mesh/nimcp_mesh_sat_solver.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +31,30 @@
 #define MAX_SHUTDOWN_HISTORY    100
 #define MAX_GOAL_MOD_HISTORY    100
 #define MAX_DEFERENCE_RECORDS   1000
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/* Global health agent handle */
+static nimcp_health_agent_t* g_corrigibility_health_agent = NULL;
+
+/* Health agent setter - called from brain init */
+void corrigibility_set_health_agent(nimcp_health_agent_t* agent) {
+    g_corrigibility_health_agent = agent;
+}
+
+/* Heartbeat helper - call during long-running operations */
+static inline void corrigibility_heartbeat(const char* operation, float progress) {
+    if (g_corrigibility_health_agent) {
+        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
+        nimcp_health_agent_heartbeat_ex(g_corrigibility_health_agent, operation, progress);
+    }
+}
 
 /* SAT variable names for constraints */
 static const char* SELF_MOD_VAR_NAMES[] = {
@@ -93,6 +119,11 @@ struct corrigibility {
     /* Integration handles */
     void* emergency_halt;
     void* tripwires;
+    void* capability_control;      /**< Capability control for bidirectional sync */
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_connected;
 
     /* SAT constraint variables */
     uint32_t self_mod_vars[SELF_MOD_VAR_COUNT];
@@ -342,6 +373,11 @@ void corrigibility_destroy(corrigibility_t* system)
 {
     if (!is_valid_handle(system)) {
         return;
+    }
+
+    /* Disconnect from bio-async */
+    if (system->bio_async_connected) {
+        bio_router_unregister_module(system->bio_ctx);
     }
 
     /* Invalidate magic */
@@ -974,6 +1010,23 @@ nimcp_error_t corrigibility_get_goal_mod_history(
     return NIMCP_SUCCESS;
 }
 
+nimcp_error_t corrigibility_get_config(
+    const corrigibility_t* system,
+    corrigibility_config_t* config)
+{
+    if (!is_valid_handle(system) || config == NULL) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    corrigibility_t* mutable_system = (corrigibility_t*)system;
+    nimcp_mutex_lock(mutable_system->mutex);
+
+    memcpy(config, &system->config, sizeof(*config));
+
+    nimcp_mutex_unlock(mutable_system->mutex);
+    return NIMCP_SUCCESS;
+}
+
 /* ============================================================================
  * Integration API
  * ============================================================================ */
@@ -983,6 +1036,29 @@ nimcp_error_t corrigibility_connect_bio_async(corrigibility_t* system)
     if (!is_valid_handle(system)) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    nimcp_mutex_lock(system->mutex);
+
+    if (system->bio_async_connected) {
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_SUCCESS;
+    }
+
+    bio_module_info_t module_info = {
+        .module_id = BIO_MODULE_CORRIGIBILITY,
+        .module_name = "corrigibility",
+        .inbox_capacity = 0,  /* Use default */
+        .user_data = system
+    };
+    system->bio_ctx = bio_router_register_module(&module_info);
+    if (!system->bio_ctx) {
+        NIMCP_LOG_WARN(LOG_CATEGORY, "Failed to connect to bio-async");
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_SUCCESS;  /* Non-fatal */
+    }
+
+    system->bio_async_connected = true;
+    nimcp_mutex_unlock(system->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to bio-async messaging");
     return NIMCP_SUCCESS;
@@ -1087,6 +1163,204 @@ nimcp_error_t corrigibility_validate_config(
                 msg_size);
         }
         return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Corrigibility-Capability Control Bidirectional Integration
+ * ============================================================================ */
+
+nimcp_error_t corrigibility_connect_capability_control(
+    corrigibility_t* system,
+    struct capability_control* capability_control)
+{
+    if (!is_valid_handle(system)) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+    system->capability_control = capability_control;
+    nimcp_mutex_unlock(system->mutex);
+
+    if (capability_control) {
+        NIMCP_LOG_INFO(LOG_CATEGORY,
+                       "Connected to capability control for bidirectional sync");
+    } else {
+        NIMCP_LOG_INFO(LOG_CATEGORY, "Disconnected from capability control");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t corrigibility_check_self_mod_action(
+    corrigibility_t* system,
+    const char* action_type,
+    bool* allowed,
+    char* denial_reason,
+    size_t reason_size)
+{
+    if (!is_valid_handle(system) || !action_type || !allowed) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+
+    /* All self-modification actions are DENIED by corrigibility */
+    *allowed = false;
+
+    const corrigibility_self_mod_flags_t* flags = &system->config.self_mod_flags;
+
+    /* Check specific action type */
+    if (strcmp(action_type, "modify_code") == 0) {
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Self-modification of code is forbidden by corrigibility "
+                     "(can_modify_own_code=%s)",
+                     flags->can_modify_own_code ? "true (VIOLATION)" : "false");
+        }
+    } else if (strcmp(action_type, "modify_weights") == 0) {
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Self-modification of weights is forbidden by corrigibility "
+                     "(can_modify_own_weights=%s)",
+                     flags->can_modify_own_weights ? "true (VIOLATION)" : "false");
+        }
+    } else if (strcmp(action_type, "modify_safety") == 0) {
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Modification of safety systems is forbidden by corrigibility "
+                     "(can_modify_safety_systems=%s)",
+                     flags->can_modify_safety_systems ? "true (VIOLATION)" : "false");
+        }
+    } else if (strcmp(action_type, "modify_reward") == 0) {
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Self-modification of reward function is forbidden by corrigibility "
+                     "(can_modify_reward_function=%s)",
+                     flags->can_modify_reward_function ? "true (VIOLATION)" : "false");
+        }
+    } else if (strcmp(action_type, "disable_logging") == 0) {
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Disabling logging is forbidden by corrigibility "
+                     "(can_disable_logging=%s)",
+                     flags->can_disable_logging ? "true (VIOLATION)" : "false");
+        }
+    } else {
+        /* Generic self-modification action */
+        if (denial_reason && reason_size > 0) {
+            snprintf(denial_reason, reason_size,
+                     "Self-modification action '%s' is forbidden by corrigibility",
+                     action_type);
+        }
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    NIMCP_LOG_WARN(LOG_CATEGORY, "Self-mod action '%s' DENIED", action_type);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t corrigibility_verify_capability_sync(
+    corrigibility_t* system,
+    bool* synchronized,
+    char* discrepancy_report,
+    size_t report_size)
+{
+    if (!is_valid_handle(system) || !synchronized) {
+        return NIMCP_ERROR_INVALID_ARGUMENT;
+    }
+
+    nimcp_mutex_lock(system->mutex);
+
+    capability_control_t* cap = (capability_control_t*)system->capability_control;
+    if (!cap) {
+        /* No capability control connected - consider synchronized by default */
+        *synchronized = true;
+        if (discrepancy_report && report_size > 0) {
+            snprintf(discrepancy_report, report_size,
+                     "No capability control connected - cannot verify sync");
+        }
+        nimcp_mutex_unlock(system->mutex);
+        return NIMCP_SUCCESS;
+    }
+
+    /* Get capability control envelope */
+    capability_envelope_t envelope;
+    nimcp_error_t err = capability_control_get_envelope(cap, &envelope);
+    if (err != NIMCP_SUCCESS) {
+        nimcp_mutex_unlock(system->mutex);
+        return err;
+    }
+
+    /* Compare self-modification flags */
+    const corrigibility_self_mod_flags_t* corr_flags = &system->config.self_mod_flags;
+    const self_mod_capability_t* cap_flags = &envelope.self_mod;
+
+    bool synced = true;
+    char discrepancies[2048] = {0};
+    size_t offset = 0;
+
+    /* Check each flag for consistency */
+    if (corr_flags->can_modify_own_code != cap_flags->can_modify_own_code) {
+        synced = false;
+        offset += snprintf(discrepancies + offset, sizeof(discrepancies) - offset,
+                          "can_modify_code: corr=%s cap=%s; ",
+                          corr_flags->can_modify_own_code ? "T" : "F",
+                          cap_flags->can_modify_own_code ? "T" : "F");
+    }
+    if (corr_flags->can_modify_own_weights != cap_flags->can_modify_own_weights) {
+        synced = false;
+        offset += snprintf(discrepancies + offset, sizeof(discrepancies) - offset,
+                          "can_modify_weights: corr=%s cap=%s; ",
+                          corr_flags->can_modify_own_weights ? "T" : "F",
+                          cap_flags->can_modify_own_weights ? "T" : "F");
+    }
+    if (corr_flags->can_modify_safety_systems != cap_flags->can_modify_safety_systems) {
+        synced = false;
+        offset += snprintf(discrepancies + offset, sizeof(discrepancies) - offset,
+                          "can_modify_safety: corr=%s cap=%s; ",
+                          corr_flags->can_modify_safety_systems ? "T" : "F",
+                          cap_flags->can_modify_safety_systems ? "T" : "F");
+    }
+    if (corr_flags->can_disable_logging != cap_flags->can_modify_logging) {
+        synced = false;
+        offset += snprintf(discrepancies + offset, sizeof(discrepancies) - offset,
+                          "can_disable_logging: corr=%s cap=%s; ",
+                          corr_flags->can_disable_logging ? "T" : "F",
+                          cap_flags->can_modify_logging ? "T" : "F");
+    }
+    if (corr_flags->can_disable_monitoring != cap_flags->can_modify_monitoring) {
+        synced = false;
+        offset += snprintf(discrepancies + offset, sizeof(discrepancies) - offset,
+                          "can_disable_monitoring: corr=%s cap=%s; ",
+                          corr_flags->can_disable_monitoring ? "T" : "F",
+                          cap_flags->can_modify_monitoring ? "T" : "F");
+    }
+
+    *synchronized = synced;
+
+    if (discrepancy_report && report_size > 0) {
+        if (synced) {
+            snprintf(discrepancy_report, report_size,
+                     "Corrigibility and capability control are synchronized");
+        } else {
+            snprintf(discrepancy_report, report_size,
+                     "DISCREPANCIES FOUND: %s", discrepancies);
+        }
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    if (!synced) {
+        NIMCP_LOG_WARN(LOG_CATEGORY,
+                       "Corrigibility-capability sync check FAILED: %s",
+                       discrepancies);
+    } else {
+        NIMCP_LOG_INFO(LOG_CATEGORY, "Corrigibility-capability sync verified OK");
     }
 
     return NIMCP_SUCCESS;

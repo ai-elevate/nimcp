@@ -113,6 +113,18 @@ NIMCP_EXPORT nimcp_error_t value_commitment_connect_bio_async(
     value_commitment_system_t* system
 );
 
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/**
+ * @brief Set health agent for heartbeat reporting
+ *
+ * @param agent Health agent handle from brain init
+ */
+struct nimcp_health_agent;
+NIMCP_EXPORT void value_commitment_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

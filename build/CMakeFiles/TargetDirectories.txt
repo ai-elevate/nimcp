@@ -1000,6 +1000,15 @@
 /home/bbrelin/nimcp/build/test/e2e/core/brain/thalamic/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/thalamic/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/thalamic/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/test_basal_ganglia_pipeline_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/run_subcortical_e2e_tests.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/subcortical/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/language/CMakeFiles/test_speech_production_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/language/CMakeFiles/test_language_comprehension_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/language/CMakeFiles/test_language_loop_e2e.dir
@@ -1035,6 +1044,7 @@
 /home/bbrelin/nimcp/build/test/e2e/core/cortical_columns/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/core/cortical_columns/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/core/medulla/CMakeFiles/test_medulla_exception_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/core/medulla/CMakeFiles/test_medulla_mesh_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/core/medulla/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/core/medulla/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/core/medulla/CMakeFiles/rebuild_cache.dir
@@ -1083,6 +1093,14 @@
 /home/bbrelin/nimcp/build/test/e2e/mesh/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/mesh/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/mesh/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_safety_enhancement.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_middleware_integration.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_spike_features.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_population_coding.dir
@@ -1454,6 +1472,8 @@
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/integration_core_medulla.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test_medulla_exception_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test_medulla_mesh_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test_medulla_bbb_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/rebuild_cache.dir
@@ -2412,6 +2432,7 @@
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_thalamus_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_amygdala_test.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_basal_ganglia_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
@@ -2647,6 +2668,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_thalamus_test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_basal_ganglia_test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
@@ -3160,6 +3182,9 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_training_bridge_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_executive_bridge_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_striosome_matrix_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_sequence_chunking_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_bg_vigor_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
@@ -4772,6 +4797,7 @@
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_distributed_training.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_hippocampus.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_orchestrator.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_safety_enhancement.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/rebuild_cache.dir
@@ -4830,6 +4856,7 @@
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_distributed_training.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_continual_learning.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_hippocampus.dir
+/home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_safety_enhancement.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/rebuild_cache.dir

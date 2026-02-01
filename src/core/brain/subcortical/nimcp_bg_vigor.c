@@ -232,7 +232,7 @@ int bgv_register_action(bgv_system_t* system,
     /* Check capacity */
     if (system->num_actions >= system->max_actions) {
         NIMCP_LOGGING_ERROR("Action registry full");
-        return NIMCP_ERROR_LIMIT_REACHED;
+        return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
     /* Initialize action */

@@ -15,6 +15,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -25,6 +27,30 @@
  * ============================================================================ */
 
 #define LOG_CATEGORY "alignment_monitor"
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/* Global health agent handle */
+static nimcp_health_agent_t* g_alignment_health_agent = NULL;
+
+/* Health agent setter - called from brain init */
+void alignment_monitor_set_health_agent(nimcp_health_agent_t* agent) {
+    g_alignment_health_agent = agent;
+}
+
+/* Heartbeat helper - call during long-running operations */
+static inline void alignment_heartbeat(const char* operation, float progress) {
+    if (g_alignment_health_agent) {
+        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
+        nimcp_health_agent_heartbeat_ex(g_alignment_health_agent, operation, progress);
+    }
+}
 
 /* Default value dimension names */
 static const char* DEFAULT_VALUE_NAMES[] = {
@@ -101,6 +127,10 @@ struct alignment_monitor {
     /* Integration handles */
     void* tripwires;
     void* value_commitment;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_connected;
 
     /* Cached status */
     alignment_status_t cached_status;
@@ -376,6 +406,11 @@ void alignment_monitor_destroy(alignment_monitor_t* monitor)
 {
     if (!is_valid_handle(monitor)) {
         return;
+    }
+
+    /* Disconnect from bio-async */
+    if (monitor->bio_async_connected) {
+        bio_router_unregister_module(monitor->bio_ctx);
     }
 
     /* Invalidate magic */
@@ -931,6 +966,29 @@ nimcp_error_t alignment_monitor_connect_bio_async(alignment_monitor_t* monitor)
     if (!is_valid_handle(monitor)) {
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
+
+    nimcp_mutex_lock(monitor->mutex);
+
+    if (monitor->bio_async_connected) {
+        nimcp_mutex_unlock(monitor->mutex);
+        return NIMCP_OK;
+    }
+
+    bio_module_info_t module_info = {
+        .module_id = BIO_MODULE_ALIGNMENT_MONITOR,
+        .module_name = "alignment_monitor",
+        .inbox_capacity = 0,
+        .user_data = monitor
+    };
+    monitor->bio_ctx = bio_router_register_module(&module_info);
+    if (!monitor->bio_ctx) {
+        NIMCP_LOG_WARN(LOG_CATEGORY, "Failed to connect to bio-async");
+        nimcp_mutex_unlock(monitor->mutex);
+        return NIMCP_OK;  /* Non-fatal */
+    }
+
+    monitor->bio_async_connected = true;
+    nimcp_mutex_unlock(monitor->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Connected to bio-async messaging");
     return NIMCP_OK;

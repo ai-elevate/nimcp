@@ -775,3 +775,41 @@ set_tests_properties(regression_security_hippocampus PROPERTIES
     LABELS "regression;security;hippocampus;performance;memory"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Safety Enhancement Regression Tests (AI Safety Infrastructure)
+# ============================================================================
+# WHAT: Regression tests for 10 AI safety enhancement modules
+# WHY:  Prevent regression of critical safety properties and performance
+# HOW:  Test performance baselines, thread safety, safety invariants,
+#       known vulnerability patterns, and edge cases from AI safety literature
+# ============================================================================
+
+add_executable(regression_security_safety_enhancement
+    test_safety_enhancement_regression.cpp
+)
+target_link_libraries(regression_security_safety_enhancement
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_safety_enhancement
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_safety_enhancement PRIVATE cxx_std_17)
+add_test(NAME regression_security_safety_enhancement
+         COMMAND regression_security_safety_enhancement)
+set_tests_properties(regression_security_safety_enhancement PROPERTIES
+    LABELS "regression;security;safety;enhancement;performance"
+    TIMEOUT 300
+)

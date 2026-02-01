@@ -106,11 +106,14 @@ extern "C" {
     )
 
 /**
- * @brief Throw exception if condition is false
+ * @brief Throw exception if condition is true
+ *
+ * Usage: NIMCP_THROW_IF(!ptr, NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+ *        This throws if ptr is NULL.
  */
 #define NIMCP_THROW_IF(cond, code, fmt, ...) \
     do { \
-        if (!(cond)) { \
+        if (cond) { \
             NIMCP_THROW((code), fmt, ##__VA_ARGS__); \
         } \
     } while (0)
