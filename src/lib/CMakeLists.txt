@@ -2799,8 +2799,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_resilience_integration.c                     # Fault tolerance and resilience mesh integration
     # Phase 16: Cycle Coordinator Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_cycle_coordinator.c                          # Mesh-cycle coordinator for brain oscillation sync
-    # Phase 17: Medulla Mesh Integration
+    # Phase 17: Brain Region Mesh Integrations
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_medulla_integration.c                        # Medulla oblongata mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_hippocampus_integration.c                    # Hippocampus mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_amygdala_integration.c                       # Amygdala mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_basal_ganglia_integration.c                  # Basal ganglia mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_thalamus_integration.c                       # Thalamus mesh integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_global_workspace_integration.c               # Global workspace mesh integration
 )
 
 # Core library

@@ -833,7 +833,7 @@ nimcp_error_t mesh_amygdala_issue_veto(
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (!integration->config.enable_veto_capability) {
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     nimcp_mutex_lock(integration->mutex);

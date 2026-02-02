@@ -2138,6 +2138,130 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/statistics")
 endif()
 
 # ============================================================================
+# Brain Region KG Wiring Tests
+# ============================================================================
+# WHAT: Unit, integration, regression, and E2E tests for brain region KG wiring
+# WHY:  Tests hippocampus, amygdala, and PFC knowledge graph registration
+# HOW:  Pure C tests verifying configuration, registration, queries, and state sync
+# ============================================================================
+
+message(STATUS "Adding brain region KG wiring tests...")
+
+# Unit tests - Hippocampus KG wiring
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/brain_regions/kg_wiring/test_hippocampus_kg_wiring.c")
+    add_executable(unit_brain_regions_kg_wiring_hippocampus
+        unit/brain_regions/kg_wiring/test_hippocampus_kg_wiring.c
+    )
+    target_link_libraries(unit_brain_regions_kg_wiring_hippocampus PRIVATE nimcp pthread m)
+    target_include_directories(unit_brain_regions_kg_wiring_hippocampus PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME unit_brain_regions_kg_wiring_hippocampus
+        COMMAND unit_brain_regions_kg_wiring_hippocampus
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_brain_regions_kg_wiring_hippocampus PROPERTIES
+        LABELS "unit;brain_regions;kg_wiring;hippocampus"
+        TIMEOUT 30
+    )
+endif()
+
+# Unit tests - Amygdala KG wiring
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/brain_regions/kg_wiring/test_amygdala_kg_wiring.c")
+    add_executable(unit_brain_regions_kg_wiring_amygdala
+        unit/brain_regions/kg_wiring/test_amygdala_kg_wiring.c
+    )
+    target_link_libraries(unit_brain_regions_kg_wiring_amygdala PRIVATE nimcp pthread m)
+    target_include_directories(unit_brain_regions_kg_wiring_amygdala PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME unit_brain_regions_kg_wiring_amygdala
+        COMMAND unit_brain_regions_kg_wiring_amygdala
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_brain_regions_kg_wiring_amygdala PROPERTIES
+        LABELS "unit;brain_regions;kg_wiring;amygdala"
+        TIMEOUT 30
+    )
+endif()
+
+# Unit tests - PFC KG wiring
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/brain_regions/kg_wiring/test_pfc_kg_wiring.c")
+    add_executable(unit_brain_regions_kg_wiring_pfc
+        unit/brain_regions/kg_wiring/test_pfc_kg_wiring.c
+    )
+    target_link_libraries(unit_brain_regions_kg_wiring_pfc PRIVATE nimcp pthread m)
+    target_include_directories(unit_brain_regions_kg_wiring_pfc PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME unit_brain_regions_kg_wiring_pfc
+        COMMAND unit_brain_regions_kg_wiring_pfc
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_brain_regions_kg_wiring_pfc PROPERTIES
+        LABELS "unit;brain_regions;kg_wiring;pfc"
+        TIMEOUT 30
+    )
+endif()
+
+# Integration tests - Cross-module KG wiring
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/brain_regions/test_kg_wiring_integration.c")
+    add_executable(integration_brain_regions_kg_wiring
+        integration/brain_regions/test_kg_wiring_integration.c
+    )
+    target_link_libraries(integration_brain_regions_kg_wiring PRIVATE nimcp pthread m)
+    target_include_directories(integration_brain_regions_kg_wiring PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME integration_brain_regions_kg_wiring
+        COMMAND integration_brain_regions_kg_wiring
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(integration_brain_regions_kg_wiring PROPERTIES
+        LABELS "integration;brain_regions;kg_wiring"
+        TIMEOUT 60
+    )
+endif()
+
+# Regression tests - KG wiring API stability
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain_regions/test_kg_wiring_regression.c")
+    add_executable(regression_brain_regions_kg_wiring
+        regression/brain_regions/test_kg_wiring_regression.c
+    )
+    target_link_libraries(regression_brain_regions_kg_wiring PRIVATE nimcp pthread m)
+    target_include_directories(regression_brain_regions_kg_wiring PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME regression_brain_regions_kg_wiring
+        COMMAND regression_brain_regions_kg_wiring
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(regression_brain_regions_kg_wiring PROPERTIES
+        LABELS "regression;brain_regions;kg_wiring"
+        TIMEOUT 30
+    )
+endif()
+
+# E2E tests - Full brain region workflows
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/brain_regions/test_kg_wiring_e2e.c")
+    add_executable(e2e_brain_regions_kg_wiring
+        e2e/brain_regions/test_kg_wiring_e2e.c
+    )
+    target_link_libraries(e2e_brain_regions_kg_wiring PRIVATE nimcp pthread m)
+    target_include_directories(e2e_brain_regions_kg_wiring PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME e2e_brain_regions_kg_wiring
+        COMMAND e2e_brain_regions_kg_wiring
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(e2e_brain_regions_kg_wiring PROPERTIES
+        LABELS "e2e;brain_regions;kg_wiring"
+        TIMEOUT 120
+    )
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

@@ -641,7 +641,7 @@ nimcp_error_t mesh_gw_initiate_broadcast(
     if (strength < integration->config.ignition_threshold) {
         LOG_DEBUG("Broadcast rejected: strength %.2f below threshold %.2f",
                   strength, integration->config.ignition_threshold);
-        return NIMCP_ERROR_THRESHOLD_NOT_MET;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     nimcp_mutex_lock(integration->mutex);
