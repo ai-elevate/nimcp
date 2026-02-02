@@ -7,6 +7,13 @@
  * HOW: Create brains with working memory items, save, load, verify persistence
  *
  * TARGET: load_working_memory_item() function and working memory serialization paths
+ *
+ * NOTE: These tests are DISABLED because brain creation with working memory
+ * enabled takes 60+ seconds. They should be run in CI environments with
+ * extended timeouts or marked as slow integration tests.
+ *
+ * To run these tests manually:
+ *   ./test_brain_working_memory_serialization --gtest_also_run_disabled_tests
  */
 
 #include <gtest/gtest.h>

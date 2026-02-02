@@ -231,7 +231,8 @@ static void init_argument_frames(syntactic_comprehension_t* ctx) {
     }
 
     /* Transitive verb: Agent V Patient */
-    strcpy(ctx->arg_frames[0].verb_lemma, "default_transitive");
+    strncpy(ctx->arg_frames[0].verb_lemma, "default_transitive", sizeof(ctx->arg_frames[0].verb_lemma) - 1);
+    ctx->arg_frames[0].verb_lemma[sizeof(ctx->arg_frames[0].verb_lemma) - 1] = '\0';
     ctx->arg_frames[0].roles[0] = ROLE_AGENT;
     ctx->arg_frames[0].roles[1] = ROLE_PATIENT;
     ctx->arg_frames[0].num_roles = 2;
@@ -239,26 +240,30 @@ static void init_argument_frames(syntactic_comprehension_t* ctx) {
     ctx->arg_frames[0].roles_optional[1] = false;
 
     /* Ditransitive: Agent V Theme Goal */
-    strcpy(ctx->arg_frames[1].verb_lemma, "give");
+    strncpy(ctx->arg_frames[1].verb_lemma, "give", sizeof(ctx->arg_frames[1].verb_lemma) - 1);
+    ctx->arg_frames[1].verb_lemma[sizeof(ctx->arg_frames[1].verb_lemma) - 1] = '\0';
     ctx->arg_frames[1].roles[0] = ROLE_AGENT;
     ctx->arg_frames[1].roles[1] = ROLE_THEME;
     ctx->arg_frames[1].roles[2] = ROLE_GOAL;
     ctx->arg_frames[1].num_roles = 3;
 
     /* Motion verb: Agent V Goal */
-    strcpy(ctx->arg_frames[2].verb_lemma, "go");
+    strncpy(ctx->arg_frames[2].verb_lemma, "go", sizeof(ctx->arg_frames[2].verb_lemma) - 1);
+    ctx->arg_frames[2].verb_lemma[sizeof(ctx->arg_frames[2].verb_lemma) - 1] = '\0';
     ctx->arg_frames[2].roles[0] = ROLE_AGENT;
     ctx->arg_frames[2].roles[1] = ROLE_GOAL;
     ctx->arg_frames[2].num_roles = 2;
 
     /* Experiencer verb: Experiencer V Theme */
-    strcpy(ctx->arg_frames[3].verb_lemma, "see");
+    strncpy(ctx->arg_frames[3].verb_lemma, "see", sizeof(ctx->arg_frames[3].verb_lemma) - 1);
+    ctx->arg_frames[3].verb_lemma[sizeof(ctx->arg_frames[3].verb_lemma) - 1] = '\0';
     ctx->arg_frames[3].roles[0] = ROLE_EXPERIENCER;
     ctx->arg_frames[3].roles[1] = ROLE_THEME;
     ctx->arg_frames[3].num_roles = 2;
 
     /* Intransitive: Agent V */
-    strcpy(ctx->arg_frames[4].verb_lemma, "sleep");
+    strncpy(ctx->arg_frames[4].verb_lemma, "sleep", sizeof(ctx->arg_frames[4].verb_lemma) - 1);
+    ctx->arg_frames[4].verb_lemma[sizeof(ctx->arg_frames[4].verb_lemma) - 1] = '\0';
     ctx->arg_frames[4].roles[0] = ROLE_AGENT;
     ctx->arg_frames[4].num_roles = 1;
 }

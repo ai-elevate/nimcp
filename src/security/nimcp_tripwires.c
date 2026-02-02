@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
+#include <stdatomic.h>  /* P0 fix: Required for atomic health agent pointer */
 
 #include "utils/error/nimcp_error_codes.h"
 
@@ -44,6 +45,36 @@
 #define TRIPWIRE_NETWORK_FEATURE_DIM       16       /**< Network pattern feature dimension */
 #define TRIPWIRE_MIN_BEACON_INTERVALS      10       /**< Min intervals to detect beaconing */
 
+/**
+ * @brief Safe uint64_t addition with overflow protection
+ * SECURITY FIX: Prevents integer overflow in byte counters
+ * @param dest Pointer to destination value to add to
+ * @param addend Value to add
+ * @return true if addition succeeded, false if overflow would occur (value clamped to max)
+ */
+static inline bool safe_uint64_add(uint64_t* dest, uint64_t addend) {
+    if (*dest > UINT64_MAX - addend) {
+        /* Overflow would occur - clamp to maximum */
+        *dest = UINT64_MAX;
+        return false;
+    }
+    *dest += addend;
+    return true;
+}
+
+/**
+ * @brief Safe uint32_t increment with overflow protection
+ * @param dest Pointer to destination value to increment
+ * @return true if increment succeeded, false if overflow would occur (value clamped to max)
+ */
+static inline bool safe_uint32_inc(uint32_t* dest) {
+    if (*dest == UINT32_MAX) {
+        return false;  /* Already at max */
+    }
+    (*dest)++;
+    return true;
+}
+
 /* ============================================================================
  * Health Agent Integration
  * ============================================================================ */
@@ -52,20 +83,22 @@
 struct nimcp_health_agent;
 typedef struct nimcp_health_agent nimcp_health_agent_t;
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_tripwire_health_agent = NULL;
+/* Global health agent handle - P0 fix: Use atomic to prevent data race on concurrent access */
+static _Atomic(nimcp_health_agent_t*) g_tripwire_health_agent = NULL;
 
 /* Health agent setter - called from brain init */
 void tripwire_set_health_agent(nimcp_health_agent_t* agent) {
-    g_tripwire_health_agent = agent;
+    atomic_store(&g_tripwire_health_agent, agent);
 }
 
 /* Heartbeat helper - call during long-running operations */
 static inline void tripwire_heartbeat(const char* operation, float progress) {
-    if (g_tripwire_health_agent) {
+    /* P0 fix: Atomic load to prevent data race */
+    nimcp_health_agent_t* agent = atomic_load(&g_tripwire_health_agent);
+    if (agent) {
         /* Forward declaration of health agent function */
         extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_tripwire_health_agent, operation, progress);
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
 }
 
@@ -325,7 +358,27 @@ tripwire_config_t tripwire_default_config(void) {
     config.adaptive_baseline = true;
     config.baseline_decay = 0.99f;
 
-    /* Alert settings */
+    /*
+     * Alert settings
+     *
+     * COOLDOWN RATIONALE:
+     * - alert_cooldown_ms (5000ms = 5 seconds):
+     *   Prevents alert flooding while allowing timely detection. This is the
+     *   GLOBAL cooldown applied to all detection types equally.
+     *
+     *   5 seconds was chosen because:
+     *   1. Fast enough to detect escalating threats (multiple violations in minutes)
+     *   2. Slow enough to prevent alert fatigue during noisy periods
+     *   3. Matches typical human response time for security incidents
+     *   4. Aligns with common monitoring tool refresh intervals
+     *
+     * For more granular control, the per-tripwire sensitivity[] values can be
+     * adjusted to affect detection thresholds rather than cooldown times.
+     *
+     * FUTURE: Consider adding per-detection-type cooldowns in tripwire_thresholds_t
+     * for cases where some detectors (e.g., network C2) should alert more urgently
+     * than others (e.g., sycophancy).
+     */
     config.deduplicate_alerts = true;
     config.alert_cooldown_ms = 5000;
 
@@ -382,7 +435,16 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
     if (!system->action_features || !system->explanation_features) {
         NIMCP_LOGGING_WARN("%s Failed to allocate correlation buffers",
                            TRIPWIRE_LOG_PREFIX);
-        /* Non-fatal - continue without correlation tracking */
+        /* Non-fatal - clean up partial allocation and continue without correlation tracking */
+        if (system->action_features) {
+            nimcp_free(system->action_features);
+            system->action_features = NULL;
+        }
+        if (system->explanation_features) {
+            nimcp_free(system->explanation_features);
+            system->explanation_features = NULL;
+        }
+        system->correlation_buffer_size = 0;
     }
     system->correlation_count = 0;
 
@@ -456,10 +518,13 @@ void tripwire_destroy(tripwire_system_t* system) {
         nimcp_free(system->explanation_features);
     }
 
-    /* Free goal tracker pursuit history buffers */
-    for (size_t i = 0; i < system->goal_count; i++) {
+    /* Free goal tracker pursuit history buffers
+     * SECURITY FIX: Iterate over ALL slots, not just goal_count.
+     * This ensures we don't leak memory if goals were removed or reset. */
+    for (size_t i = 0; i < TRIPWIRE_MAX_GOALS; i++) {
         if (system->goals[i].pursuit_history) {
             nimcp_free(system->goals[i].pursuit_history);
+            system->goals[i].pursuit_history = NULL;  /* Prevent double-free */
         }
     }
 
@@ -510,10 +575,19 @@ nimcp_error_t tripwire_reset(tripwire_system_t* system) {
     /* Reset correlation tracking */
     system->correlation_count = 0;
 
-    /* Reset goal tracking */
+    /* SECURITY FIX: Free goal tracker pursuit history buffers before reset
+     * to prevent memory leaks when system is reset */
+    for (size_t i = 0; i < TRIPWIRE_MAX_GOALS; i++) {
+        if (system->goals[i].pursuit_history) {
+            nimcp_free(system->goals[i].pursuit_history);
+            system->goals[i].pursuit_history = NULL;
+        }
+    }
+    memset(system->goals, 0, sizeof(system->goals));  /* Clear all goal state */
     system->goal_count = 0;
 
     /* Reset resource tracking */
+    memset(system->resources, 0, sizeof(system->resources));  /* Clear all resource state */
     system->resource_count = 0;
 
     /* Reset detection scores */
@@ -703,6 +777,12 @@ nimcp_error_t tripwire_observe_goal(tripwire_system_t* system,
         /* Allocate pursuit history for Bayesian updates */
         tracker->pursuit_history_size = 50;  /* Track last 50 observations */
         tracker->pursuit_history = nimcp_calloc(tracker->pursuit_history_size, sizeof(float));
+        if (!tracker->pursuit_history) {
+            NIMCP_LOGGING_WARN("%s Failed to allocate pursuit history for goal %u, "
+                               "Bayesian tracking disabled for this goal",
+                               TRIPWIRE_LOG_PREFIX, goal_id);
+            tracker->pursuit_history_size = 0;  /* Mark as not available */
+        }
         tracker->pursuit_history_count = 0;
     }
 
@@ -718,7 +798,7 @@ nimcp_error_t tripwire_observe_goal(tripwire_system_t* system,
 
             /* Update Bayesian posterior when enough data */
             if (tracker->pursuit_history_count >= 5) {
-                nimcp_stats_bayesian_normal(
+                nimcp_stats_result_t bayes_result = nimcp_stats_bayesian_normal(
                     tracker->prior_mean,
                     tracker->prior_variance,
                     tracker->pursuit_history,
@@ -727,9 +807,14 @@ nimcp_error_t tripwire_observe_goal(tripwire_system_t* system,
                     0.95f,  /* 95% credible interval */
                     &tracker->bayesian_result
                 );
-                /* Update stats with Bayesian posterior */
-                system->stats.goal_posterior_mean = tracker->bayesian_result.posterior_mean;
-                system->stats.goal_posterior_variance = tracker->bayesian_result.posterior_variance;
+                /* Update stats with Bayesian posterior only on success */
+                if (bayes_result == NIMCP_STATS_OK) {
+                    system->stats.goal_posterior_mean = tracker->bayesian_result.posterior_mean;
+                    system->stats.goal_posterior_variance = tracker->bayesian_result.posterior_variance;
+                } else {
+                    NIMCP_LOGGING_WARN("%s Bayesian inference failed for goal %u: error %d",
+                                       TRIPWIRE_LOG_PREFIX, goal_id, (int)bayes_result);
+                }
             }
         }
     }
@@ -1085,6 +1170,13 @@ float tripwire_detect_power_seeking(tripwire_system_t* system) {
 
 /**
  * @brief Find or create endpoint tracker
+ *
+ * @param tracker Network tracker (must not be NULL)
+ * @param ip      IP address of endpoint
+ * @param port    Port number of endpoint
+ * @param proto   Protocol type
+ * @return Pointer to endpoint, or NULL if tracker is NULL or endpoint_count is 0
+ *         and we cannot create (should not happen in normal operation)
  */
 static network_endpoint_t* network_find_or_create_endpoint(
     network_tracker_t* tracker,
@@ -1092,7 +1184,12 @@ static network_endpoint_t* network_find_or_create_endpoint(
     uint16_t port,
     tripwire_network_protocol_t proto)
 {
-    /* Search existing */
+    /* Guard: Validate tracker */
+    if (!tracker) {
+        return NULL;
+    }
+
+    /* Search existing endpoints */
     for (size_t i = 0; i < tracker->endpoint_count; i++) {
         if (tracker->endpoints[i].active &&
             tracker->endpoints[i].ip == ip &&
@@ -1113,16 +1210,30 @@ static network_endpoint_t* network_find_or_create_endpoint(
         return ep;
     }
 
-    /* Find oldest endpoint to recycle */
+    /*
+     * Find oldest endpoint to recycle.
+     *
+     * Edge case: endpoint_count should always be > 0 here (since we checked
+     * endpoint_count < MAX above and it failed, endpoint_count >= MAX >= 1).
+     * However, add explicit check for robustness against future changes.
+     */
+    if (tracker->endpoint_count == 0) {
+        /* Should never happen, but handle gracefully */
+        return NULL;
+    }
+
     size_t oldest_idx = 0;
     uint64_t oldest_time = UINT64_MAX;
     for (size_t i = 0; i < tracker->endpoint_count; i++) {
+        /* Use last_seen_us for recency; endpoints that were never seen
+         * (last_seen_us == 0) are considered oldest */
         if (tracker->endpoints[i].last_seen_us < oldest_time) {
             oldest_time = tracker->endpoints[i].last_seen_us;
             oldest_idx = i;
         }
     }
 
+    /* Recycle the oldest endpoint */
     network_endpoint_t* ep = &tracker->endpoints[oldest_idx];
     memset(ep, 0, sizeof(network_endpoint_t));
     ep->ip = ip;
@@ -1256,13 +1367,20 @@ nimcp_error_t tripwire_observe_network_connection(
 
     network_tracker_t* net = &system->network;
 
-    /* Update endpoint tracking */
+    /* Update endpoint tracking with overflow protection */
     network_endpoint_t* ep = network_find_or_create_endpoint(
         net, dest_ip, dest_port, protocol);
     if (ep) {
-        ep->total_bytes_sent += bytes_sent;
-        ep->total_bytes_recv += bytes_recv;
-        ep->connection_count++;
+        /* SECURITY FIX: Use safe addition to prevent integer overflow */
+        if (!safe_uint64_add(&ep->total_bytes_sent, bytes_sent)) {
+            NIMCP_LOGGING_WARN("%s Endpoint bytes_sent overflow detected for %u:%u",
+                TRIPWIRE_LOG_PREFIX, dest_ip, dest_port);
+        }
+        if (!safe_uint64_add(&ep->total_bytes_recv, bytes_recv)) {
+            NIMCP_LOGGING_WARN("%s Endpoint bytes_recv overflow detected for %u:%u",
+                TRIPWIRE_LOG_PREFIX, dest_ip, dest_port);
+        }
+        safe_uint32_inc(&ep->connection_count);
         ep->last_seen_us = now_us;
     }
 
@@ -1299,9 +1417,13 @@ nimcp_error_t tripwire_observe_network_connection(
         net->protocol_counts[protocol]++;
     }
 
-    /* Update totals */
-    net->total_bytes_sent += bytes_sent;
-    net->total_bytes_recv += bytes_recv;
+    /* SECURITY FIX: Update totals with overflow protection */
+    if (!safe_uint64_add(&net->total_bytes_sent, bytes_sent)) {
+        NIMCP_LOGGING_WARN("%s Global total_bytes_sent overflow detected", TRIPWIRE_LOG_PREFIX);
+    }
+    if (!safe_uint64_add(&net->total_bytes_recv, bytes_recv)) {
+        NIMCP_LOGGING_WARN("%s Global total_bytes_recv overflow detected", TRIPWIRE_LOG_PREFIX);
+    }
     net->total_connections++;
 
     /* Check if we need to establish baseline */
@@ -2090,6 +2212,28 @@ static void tripwire_broadcast_alert(tripwire_system_t* system,
     bio_router_broadcast(system->bio_ctx, &header, sizeof(header));
 }
 
+/**
+ * @brief Update all enabled detectors and generate alerts
+ *
+ * WHAT: Run each enabled tripwire detector and generate alerts on violations
+ * WHY:  Continuous monitoring for AI safety misalignment patterns
+ * HOW:  Iterate through enabled detectors, check scores against thresholds,
+ *       apply per-detection-type cooldowns to prevent alert flooding
+ *
+ * RATE LIMITING STRATEGY:
+ * Rate limiting is implemented per-detection-type using last_detection_us[type]:
+ * - Each tripwire type has its own independent cooldown timer
+ * - Prevents one noisy detector from suppressing alerts from others
+ * - Configurable via alert_cooldown_ms (default 5000ms)
+ *
+ * COOLDOWN VALUES BY DETECTION TYPE (current implementation uses global):
+ * - CRITICAL (C2, Exfiltration): Would benefit from shorter cooldown (1-2s)
+ * - HIGH (Deception, Goal Drift): Standard cooldown (5s)
+ * - MEDIUM (Sandbagging, Sycophancy): Longer cooldown acceptable (10s)
+ * - LOW (Power Seeking): Longest cooldown (30s) - slow to develop
+ *
+ * TODO: Consider adding per-type cooldown multipliers in thresholds struct
+ */
 static void tripwire_update_all_detectors(tripwire_system_t* system) {
     if (!system || system->magic != TRIPWIRE_SYSTEM_MAGIC) return;
 
@@ -2131,14 +2275,25 @@ static void tripwire_update_all_detectors(tripwire_system_t* system) {
         }
 
         /* Check if we should generate an alert */
-        float threshold = 0.5f;  /* Base threshold */
+        float threshold = 0.5f;  /* Base detection threshold */
         if (score > threshold &&
             system->detection_confidence[type] >=
             system->config.thresholds.min_confidence) {
 
-            /* Check cooldown */
-            uint64_t cooldown_us = system->config.alert_cooldown_ms * 1000;
-            if (now - system->last_detection_us[type] >= cooldown_us) {
+            /*
+             * Per-detection-type rate limiting:
+             * Each tripwire type has its own independent cooldown tracked in
+             * last_detection_us[type]. This prevents:
+             * 1. Alert flooding from a single noisy detector
+             * 2. One detector's alerts from suppressing others
+             * 3. Operator fatigue while maintaining coverage
+             *
+             * Cooldown is converted from ms to us (multiply by 1000).
+             */
+            uint64_t cooldown_us = (uint64_t)system->config.alert_cooldown_ms * 1000ULL;
+            uint64_t elapsed_us = now - system->last_detection_us[type];
+
+            if (elapsed_us >= cooldown_us) {
                 nimcp_mutex_lock(system->mutex);
                 tripwire_add_alert(system, type, score, NULL);
                 system->last_detection_us[type] = now;

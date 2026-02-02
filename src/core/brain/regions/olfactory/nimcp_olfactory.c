@@ -272,7 +272,8 @@ int olfact_identify_odor(nimcp_olfactory_t* olfact, olfact_odor_id_t* result) {
         result->confidence = best_match;
     } else {
         result->odor_id = 0;
-        strcpy(result->name, "Unknown");
+        strncpy(result->name, "Unknown", sizeof(result->name) - 1);
+        result->name[sizeof(result->name) - 1] = '\0';
         result->category = ODOR_CAT_UNKNOWN;
         result->valence = HEDONIC_NEUTRAL;
         result->intensity = olfact->current_pattern.total_activation;

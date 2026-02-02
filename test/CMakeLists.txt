@@ -991,6 +991,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/subcortical")
 endif()
 
 # ============================================================================
+# KG Persistence Tests (Disaster Recovery, Analytics, Schema, Temporal)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/kg")
+    message(STATUS "Adding KG persistence unit tests...")
+    add_subdirectory(unit/core/brain/kg)
+endif()
+
+# ============================================================================
 # Utils Math Tests (Phase 0.5: Complex Number Support)
 # ============================================================================
 
@@ -1107,6 +1116,14 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/memory")
     message(STATUS "Adding utils memory regression tests...")
     add_subdirectory(regression/utils/memory)
+endif()
+
+# Utils Thread Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/thread")
+    message(STATUS "Adding utils thread regression tests...")
+    add_subdirectory(regression/utils/thread)
 endif()
 
 # Utils Containers Tests
@@ -1946,6 +1963,39 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/biology")
 endif()
 
 # ============================================================================
+# Embodiment Module Unit Tests
+# ============================================================================
+# WHAT: Unit tests for embodiment modules (affordance, body ownership, simulation, interoception)
+# WHY:  Verify embodied cognition subsystems for physical interaction modeling
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/embodiment")
+    message(STATUS "Adding embodiment module unit tests...")
+    add_subdirectory(unit/embodiment)
+endif()
+
+# ============================================================================
+# Superhuman Enhancement Module Unit Tests
+# ============================================================================
+# WHAT: Unit tests for superhuman enhancement modules
+# WHY:  Verify capability limits, safety boundaries, and proper behavior
+# HOW:  GTest with comprehensive coverage of all superhuman modules
+#
+# MODULES TESTED:
+# - Eagle Vision: Enhanced visual acuity with bounds enforcement
+# - Time Dilation: Temporal processing with factor limits
+# - Savant Mode: Pattern recognition abilities with safe limits
+# - Echolocation: 3D spatial mapping with range constraints
+# - Hyperthymesia: Autobiographical memory with encoding limits
+# - Synesthesia: Cross-modal perception with inhibition control
+# - Precognition: Pattern prediction with confidence bounds
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/superhuman")
+    message(STATUS "Adding superhuman module unit tests...")
+    add_subdirectory(unit/superhuman)
+endif()
+
+# ============================================================================
 # Physics Layer Unit Tests
 # ============================================================================
 # WHAT: Unit tests for physics layer modules (thermodynamics, biophysics, etc.)
@@ -2258,6 +2308,114 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/brain_regions/test_kg_wiring_e2e.c")
     set_tests_properties(e2e_brain_regions_kg_wiring PROPERTIES
         LABELS "e2e;brain_regions;kg_wiring"
         TIMEOUT 120
+    )
+endif()
+
+# ============================================================================
+# BBB (Blood-Brain Barrier) Sublayer Unit Tests (Pure C)
+# ============================================================================
+# WHAT: Unit tests for BBB perimeter security sublayer modules
+# WHY:  Verify BBB access control, code signing, input gate, memory boundary, helpers
+# HOW:  Pure C tests without GTest dependency for each BBB sublayer module
+# ============================================================================
+
+# BBB Access Control Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security/bbb/test_bbb_access_control.c")
+    add_executable(unit_security_bbb_access_control
+        unit/security/bbb/test_bbb_access_control.c
+    )
+    target_link_libraries(unit_security_bbb_access_control PRIVATE nimcp pthread m)
+    target_include_directories(unit_security_bbb_access_control PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+    )
+    add_test(NAME unit_security_bbb_access_control
+        COMMAND unit_security_bbb_access_control
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_security_bbb_access_control PROPERTIES
+        LABELS "unit;security;bbb;access_control"
+        TIMEOUT 30
+    )
+endif()
+
+# BBB Code Signing Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security/bbb/test_bbb_code_signing.c")
+    add_executable(unit_security_bbb_code_signing
+        unit/security/bbb/test_bbb_code_signing.c
+    )
+    target_link_libraries(unit_security_bbb_code_signing PRIVATE nimcp pthread m)
+    target_include_directories(unit_security_bbb_code_signing PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+    )
+    add_test(NAME unit_security_bbb_code_signing
+        COMMAND unit_security_bbb_code_signing
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_security_bbb_code_signing PROPERTIES
+        LABELS "unit;security;bbb;code_signing"
+        TIMEOUT 30
+    )
+endif()
+
+# BBB Input Gate Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security/bbb/test_bbb_input_gate.c")
+    add_executable(unit_security_bbb_input_gate
+        unit/security/bbb/test_bbb_input_gate.c
+    )
+    target_link_libraries(unit_security_bbb_input_gate PRIVATE nimcp pthread m)
+    target_include_directories(unit_security_bbb_input_gate PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+    )
+    add_test(NAME unit_security_bbb_input_gate
+        COMMAND unit_security_bbb_input_gate
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_security_bbb_input_gate PROPERTIES
+        LABELS "unit;security;bbb;input_gate"
+        TIMEOUT 30
+    )
+endif()
+
+# BBB Memory Boundary Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security/bbb/test_bbb_memory_boundary.c")
+    add_executable(unit_security_bbb_memory_boundary
+        unit/security/bbb/test_bbb_memory_boundary.c
+    )
+    target_link_libraries(unit_security_bbb_memory_boundary PRIVATE nimcp pthread m)
+    target_include_directories(unit_security_bbb_memory_boundary PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+    )
+    add_test(NAME unit_security_bbb_memory_boundary
+        COMMAND unit_security_bbb_memory_boundary
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_security_bbb_memory_boundary PROPERTIES
+        LABELS "unit;security;bbb;memory_boundary"
+        TIMEOUT 30
+    )
+endif()
+
+# BBB Helpers Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security/bbb/test_bbb_helpers.c")
+    add_executable(unit_security_bbb_helpers
+        unit/security/bbb/test_bbb_helpers.c
+    )
+    target_link_libraries(unit_security_bbb_helpers PRIVATE nimcp pthread m)
+    target_include_directories(unit_security_bbb_helpers PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+    )
+    add_test(NAME unit_security_bbb_helpers
+        COMMAND unit_security_bbb_helpers
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    set_tests_properties(unit_security_bbb_helpers PROPERTIES
+        LABELS "unit;security;bbb;helpers"
+        TIMEOUT 30
     )
 endif()
 

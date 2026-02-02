@@ -595,8 +595,8 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
-                              "echolocation_create: Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                              "echolocation_create: Failed to create mutex%s", "");
         echolocation_destroy(sys);
         return NULL;
     }

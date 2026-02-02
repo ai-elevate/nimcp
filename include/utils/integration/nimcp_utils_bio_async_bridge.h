@@ -79,8 +79,12 @@ extern "C" {
  * Forward Declarations (avoid circular dependencies)
  * ============================================================================ */
 
+/* Include canonical error type definition */
+#ifndef NIMCP_ERROR_TYPE_DEFINED
+#include "utils/error/nimcp_error_codes.h"
+#endif
+
 /* Bio-async types - forward declare to avoid header dependency */
-typedef int32_t nimcp_error_t;
 typedef struct bio_router_struct* bio_router_t;
 
 /* Neuromodulator channel types */

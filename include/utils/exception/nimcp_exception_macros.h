@@ -52,6 +52,7 @@
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "utils/exception/nimcp_exception_immune.h"
 #include "utils/signal/nimcp_signal_handler.h"
+#include "utils/error/nimcp_error_codes.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -41,37 +41,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
-
-#define LOG_MODULE "security_bbb_memory_boundary"
-
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for bbb_memory_boundary module */
-static nimcp_health_agent_t* g_bbb_memory_boundary_health_agent = NULL;
-
-/**
- * @brief Set health agent for bbb_memory_boundary heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void bbb_memory_boundary_set_health_agent(nimcp_health_agent_t* agent) {
-    g_bbb_memory_boundary_health_agent = agent;
-}
-
-/** @brief Send heartbeat from bbb_memory_boundary module */
-static inline void bbb_memory_boundary_heartbeat(const char* operation, float progress) {
-    if (g_bbb_memory_boundary_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bbb_memory_boundary_health_agent, operation, progress);
-    }
-}
-
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,10 +53,53 @@ static inline void bbb_memory_boundary_heartbeat(const char* operation, float pr
 #include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stddef.h>  /* for NULL */
 
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
+
+#define LOG_MODULE "security_bbb_memory_boundary"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for bbb_memory_boundary module (DEPRECATED - use atomic version) */
+static nimcp_health_agent_t* g_bbb_memory_boundary_health_agent = NULL;
+
+/** Forward declaration of atomic health agent pointer (defined in Global State section) */
+static nimcp_atomic_ptr_t g_atomic_memory_health_agent;
+
+/**
+ * @brief Set health agent for bbb_memory_boundary heartbeats (thread-safe)
+ * @param agent Health agent (can be NULL to disable)
+ *
+ * THREAD-SAFETY: Uses atomic store with RELEASE semantics
+ */
+void bbb_memory_boundary_set_health_agent(nimcp_health_agent_t* agent) {
+    /* Legacy pointer update (for backwards compatibility) */
+    g_bbb_memory_boundary_health_agent = agent;
+
+    /* Thread-safe atomic update */
+    nimcp_atomic_store_ptr(&g_atomic_memory_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
+}
+
+/** @brief Send heartbeat from bbb_memory_boundary module (thread-safe) */
+static inline void bbb_memory_boundary_heartbeat(const char* operation, float progress) {
+    /* Thread-safe read using atomic load */
+    nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
+        nimcp_atomic_load_ptr(&g_atomic_memory_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
+
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Constants
@@ -151,8 +166,26 @@ typedef struct {
  *
  * NOTE: In production, this would be stored in bbb_system_t structure.
  *       For now, using static global for simplicity.
+ *
+ * THREAD-SAFETY: Protected by g_memory_state_lock mutex
  */
 static bbb_memory_state_t g_memory_state = {0};
+
+/**
+ * WHAT: Mutex protecting g_memory_state
+ * WHY:  Thread-safe access to global state
+ * HOW:  All read-modify-write operations must hold this lock
+ */
+static nimcp_platform_mutex_t g_memory_state_lock;
+
+/**
+ * WHAT: Module initialization state using platform_once
+ * WHY:  Thread-safe lazy initialization
+ */
+static nimcp_platform_once_t g_memory_boundary_init_once = NIMCP_PLATFORM_ONCE_INIT;
+static bool g_memory_boundary_module_initialized = false;
+
+/* Note: g_atomic_memory_health_agent is declared near top of file with forward declaration */
 
 //=============================================================================
 // Internal Helper Functions
@@ -248,20 +281,42 @@ static uint64_t generate_random_canary(void)
 }
 
 /**
- * @brief Initialize memory boundary subsystem
+ * @brief Internal initialization routine called by nimcp_platform_once
  *
- * WHAT: Initialize global memory state on first use
- * WHY:  Lazy initialization avoids startup overhead
- * HOW:  Zero state and set initialized flag
+ * WHAT: Thread-safe one-time initialization of module state
+ * WHY:  Ensures mutex and state are initialized exactly once
  */
-static void ensure_initialized(void)
+static void memory_boundary_module_init_internal(void)
 {
-    if (g_memory_state.initialized)
-        return;
+    /* Initialize the global state mutex */
+    nimcp_platform_mutex_init(&g_memory_state_lock, false);
 
+    /* Initialize atomic pointer */
+    nimcp_atomic_init_ptr(&g_atomic_memory_health_agent, NULL);
+
+    /* Initialize the state itself */
     memset(&g_memory_state, 0, sizeof(g_memory_state));
     g_memory_state.next_region_id = 1;  /* Start IDs at 1, 0 is invalid */
     g_memory_state.initialized = true;
+
+    g_memory_boundary_module_initialized = true;
+
+    LOG_MODULE_INFO("bbb_memory_boundary", "Memory boundary module initialized");
+}
+
+/**
+ * @brief Initialize memory boundary subsystem (thread-safe)
+ *
+ * WHAT: Initialize global memory state on first use
+ * WHY:  Lazy initialization avoids startup overhead
+ * HOW:  Uses nimcp_platform_once for thread-safe init
+ *
+ * THREAD-SAFETY: nimcp_platform_once guarantees exactly-once execution
+ */
+static void ensure_initialized(void)
+{
+    /* Thread-safe one-time initialization */
+    nimcp_platform_once(&g_memory_boundary_init_once, memory_boundary_module_init_internal);
 }
 
 /**
@@ -269,13 +324,23 @@ static void ensure_initialized(void)
  *
  * WHAT: Clear all registered memory regions
  * WHY:  Enable test isolation by resetting between test cases
- * HOW:  Zero out global state and re-initialize
+ * HOW:  Zero out global state and re-initialize under lock
+ *
+ * THREAD-SAFETY: Acquires g_memory_state_lock before modifying state
  */
 void bbb_memory_boundary_reset_internal(void)
 {
+    /* Ensure module is initialized first */
+    ensure_initialized();
+
+    /* Lock before modifying state */
+    nimcp_platform_mutex_lock(&g_memory_state_lock);
+
     memset(&g_memory_state, 0, sizeof(g_memory_state));
     g_memory_state.next_region_id = 1;
     g_memory_state.initialized = true;
+
+    nimcp_platform_mutex_unlock(&g_memory_state_lock);
 }
 
 //=============================================================================
@@ -316,9 +381,13 @@ NIMCP_EXPORT uint32_t bbb_register_memory_region(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write operations on global state */
+    nimcp_platform_mutex_lock(&g_memory_state_lock);
+
     /* Guard: No available slots */
     int slot = find_available_slot();
     if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_memory_state_lock);
         fprintf(stderr, "[BBB-MEM] Region registry full (max %d)\n",
                 BBB_MAX_MEMORY_REGIONS);
         return BBB_INVALID_REGION_ID;
@@ -339,6 +408,8 @@ NIMCP_EXPORT uint32_t bbb_register_memory_region(bbb_system_t system,
 
     g_memory_state.region_count++;
     g_memory_state.total_protected_bytes += size;
+
+    nimcp_platform_mutex_unlock(&g_memory_state_lock);
 
     return region_id;
 }
@@ -367,10 +438,15 @@ NIMCP_EXPORT bool bbb_unregister_memory_region(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write operations on global state */
+    nimcp_platform_mutex_lock(&g_memory_state_lock);
+
     /* Find region by ID */
     int slot = find_region_by_id(region_id);
-    if (slot < 0)
+    if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_memory_state_lock);
         return false;
+    }
 
     /* WHAT: Mark region as inactive
      * WHY:  Slot can be reused for new registrations
@@ -380,6 +456,8 @@ NIMCP_EXPORT bool bbb_unregister_memory_region(bbb_system_t system,
     g_memory_state.region_count--;
 
     memset(region, 0, sizeof(bbb_memory_region_t));
+
+    nimcp_platform_mutex_unlock(&g_memory_state_lock);
 
     return true;
 }

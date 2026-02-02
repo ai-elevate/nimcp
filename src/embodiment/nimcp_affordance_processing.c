@@ -646,9 +646,11 @@ void nimcp_affordance_default_config(nimcp_affordance_config_t* config) {
 nimcp_affordance_context_t* nimcp_affordance_create(
     const nimcp_affordance_config_t* config
 ) {
+    /* Use defaults if config is NULL */
+    nimcp_affordance_config_t default_config;
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in affordance_create");
-        return NULL;
+        nimcp_affordance_default_config(&default_config);
+        config = &default_config;
     }
 
     nimcp_affordance_context_t* ctx = nimcp_malloc(sizeof(nimcp_affordance_context_t));

@@ -82,16 +82,9 @@
 #include <stdbool.h>
 #include "common/nimcp_export.h"
 
-// Forward-compatible error type (avoids conflict with nimcp_common.h)
-// Uses same underlying type as both nimcp_error_t and nimcp_result_t
+/* Include canonical error type definition */
 #ifndef NIMCP_ERROR_TYPE_DEFINED
-#define NIMCP_ERROR_TYPE_DEFINED
-typedef int32_t nimcp_error_t;
-#endif
-
-// Async-specific success code (compatible with both error systems)
-#ifndef NIMCP_SUCCESS
-#define NIMCP_SUCCESS 0
+#include "utils/error/nimcp_error_codes.h"
 #endif
 
 #ifdef __cplusplus

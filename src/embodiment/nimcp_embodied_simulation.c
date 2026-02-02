@@ -17,6 +17,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -495,9 +496,11 @@ void nimcp_sim_default_config(nimcp_sim_config_t* config) {
 }
 
 nimcp_sim_context_t* nimcp_sim_create(const nimcp_sim_config_t* config) {
+    /* Use defaults if config is NULL */
+    nimcp_sim_config_t default_config;
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in sim_create");
-        return NULL;
+        nimcp_sim_default_config(&default_config);
+        config = &default_config;
     }
 
     nimcp_sim_context_t* ctx = nimcp_malloc(sizeof(nimcp_sim_context_t));
@@ -1238,7 +1241,7 @@ nimcp_sim_error_t nimcp_sim_check_feasibility(
     if (!eff) {
         *is_feasible = false;
         if (reason) {
-            strcpy(reason, "Effector not found");
+            snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Effector not found");
         }
         return NIMCP_SIM_OK;
     }
@@ -1250,7 +1253,7 @@ nimcp_sim_error_t nimcp_sim_check_feasibility(
     if (dist > max_reach) {
         *is_feasible = false;
         if (reason) {
-            snprintf(reason, 64, "Target out of reach (%.2fm > %.2fm)", dist, max_reach);
+            snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Target out of reach (%.2fm > %.2fm)", dist, max_reach);
         }
         return NIMCP_SIM_OK;
     }
@@ -1259,7 +1262,7 @@ nimcp_sim_error_t nimcp_sim_check_feasibility(
     if (step->max_force > eff->max_force * (1.0 - eff->fatigue)) {
         *is_feasible = false;
         if (reason) {
-            strcpy(reason, "Insufficient force capacity");
+            snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Insufficient force capacity");
         }
         return NIMCP_SIM_OK;
     }
@@ -1268,7 +1271,7 @@ nimcp_sim_error_t nimcp_sim_check_feasibility(
     if (step->primitive == NIMCP_ACTION_PRIM_GRASP && eff->is_grasping) {
         *is_feasible = false;
         if (reason) {
-            strcpy(reason, "Already grasping an object");
+            snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Already grasping an object");
         }
         return NIMCP_SIM_OK;
     }
@@ -1276,13 +1279,13 @@ nimcp_sim_error_t nimcp_sim_check_feasibility(
     if (step->primitive == NIMCP_ACTION_PRIM_RELEASE && !eff->is_grasping) {
         *is_feasible = false;
         if (reason) {
-            strcpy(reason, "Not holding any object");
+            snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Not holding any object");
         }
         return NIMCP_SIM_OK;
     }
 
     if (reason) {
-        strcpy(reason, "Feasible");
+        snprintf(reason, NIMCP_SIMULATION_REASON_MAX, "Feasible");
     }
 
     return NIMCP_SIM_OK;

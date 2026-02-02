@@ -618,7 +618,10 @@ int medulla_kg_log_emergency(
             wiring->emergency_history[idx].reason[
                 sizeof(wiring->emergency_history[idx].reason) - 1] = '\0';
         } else {
-            strcpy(wiring->emergency_history[idx].reason, "unknown");
+            strncpy(wiring->emergency_history[idx].reason, "unknown",
+                sizeof(wiring->emergency_history[idx].reason) - 1);
+            wiring->emergency_history[idx].reason[
+                sizeof(wiring->emergency_history[idx].reason) - 1] = '\0';
         }
 
         wiring->emergency_history_head =

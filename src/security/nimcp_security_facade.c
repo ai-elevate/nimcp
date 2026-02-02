@@ -1028,7 +1028,8 @@ int security_facade_trigger_lockdown(
         strncpy(facade->lockdown_reason, reason, sizeof(facade->lockdown_reason) - 1);
         facade->lockdown_reason[sizeof(facade->lockdown_reason) - 1] = '\0';
     } else {
-        strcpy(facade->lockdown_reason, "Manual lockdown");
+        strncpy(facade->lockdown_reason, "Manual lockdown", sizeof(facade->lockdown_reason) - 1);
+        facade->lockdown_reason[sizeof(facade->lockdown_reason) - 1] = '\0';
     }
 
     /* Trigger orchestrator lockdown */

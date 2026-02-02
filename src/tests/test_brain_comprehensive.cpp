@@ -391,7 +391,8 @@ TEST_F(BrainComprehensiveTest, LearnBatch_Errors) {
     brain_example_t example;
     example.features = create_test_features(10);
     example.num_features = 10;
-    strcpy(example.label, "test");
+    strncpy(example.label, "test", sizeof(example.label) - 1);
+    example.label[sizeof(example.label) - 1] = '\0';
     example.confidence = 0.9f;
 
     // Test NULL brain

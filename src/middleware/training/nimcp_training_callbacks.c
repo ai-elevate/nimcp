@@ -16,6 +16,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -336,7 +337,7 @@ nimcp_result_t tcb_unregister(tcb_context_t* ctx, uint32_t callback_id) {
     }
 
     nimcp_platform_mutex_unlock(&ctx->mutex);
-    return NIMCP_NOT_FOUND;
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 nimcp_result_t tcb_set_enabled(tcb_context_t* ctx, uint32_t callback_id, bool enabled) {
@@ -354,7 +355,7 @@ nimcp_result_t tcb_set_enabled(tcb_context_t* ctx, uint32_t callback_id, bool en
     }
 
     nimcp_platform_mutex_unlock(&ctx->mutex);
-    return NIMCP_NOT_FOUND;
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 uint32_t tcb_unregister_all(tcb_context_t* ctx, tcb_event_type_t event_type) {

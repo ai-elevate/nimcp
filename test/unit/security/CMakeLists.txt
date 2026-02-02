@@ -873,3 +873,75 @@ set_tests_properties(unit_security_test_value_commitment PROPERTIES
     LABELS "unit;security;safety;value-commitment"
     TIMEOUT 60
 )
+
+# ============================================================================
+# Pattern Compiler Unit Tests
+# ============================================================================
+# WHAT: Unit tests for pattern compilation, validation, and security checks
+# WHY:  Verify pattern compiler correctly validates, compiles, and secures patterns
+# HOW:  Test valid/invalid patterns, ReDoS protection, complexity, optimizations
+# ============================================================================
+
+add_executable(unit_security_test_pattern_compiler
+    test_pattern_compiler.cpp
+)
+target_link_libraries(unit_security_test_pattern_compiler
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_pattern_compiler
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_pattern_compiler PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_pattern_compiler
+         COMMAND unit_security_test_pattern_compiler)
+set_tests_properties(unit_security_test_pattern_compiler PROPERTIES
+    LABELS "unit;security;pattern-compiler"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Artifact Verification Unit Tests
+# ============================================================================
+# WHAT: Unit tests for artifact signature and hash verification
+# WHY:  Verify artifact integrity checks work correctly for supply chain security
+# HOW:  Test signature/hash verification, trusted sources, certificates, concurrency
+# ============================================================================
+
+add_executable(unit_security_test_artifact_verify
+    test_artifact_verify.cpp
+)
+target_link_libraries(unit_security_test_artifact_verify
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_artifact_verify
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_security_test_artifact_verify PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_artifact_verify
+         COMMAND unit_security_test_artifact_verify)
+set_tests_properties(unit_security_test_artifact_verify PROPERTIES
+    LABELS "unit;security;artifact-verify;supply-chain"
+    TIMEOUT 120
+)
+
+# BBB (Blood-Brain Barrier) Sublayer Unit Tests
+# Note: Pure C tests are managed in test/CMakeLists.txt to avoid GTest dependency
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bbb/CMakeLists.txt")
+    add_subdirectory(bbb)
+endif()

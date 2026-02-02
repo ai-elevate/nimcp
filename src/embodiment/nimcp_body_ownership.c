@@ -292,9 +292,11 @@ void nimcp_body_default_config(nimcp_body_config_t* config) {
 }
 
 nimcp_body_context_t* nimcp_body_create(const nimcp_body_config_t* config) {
+    /* Use defaults if config is NULL */
+    nimcp_body_config_t default_config;
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in body_create");
-        return NULL;
+        nimcp_body_default_config(&default_config);
+        config = &default_config;
     }
 
     nimcp_body_context_t* ctx = nimcp_malloc(sizeof(nimcp_body_context_t));

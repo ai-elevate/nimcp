@@ -65,17 +65,17 @@ TEST_F(ProtectiveCutoffTest, DestroyNull) {
 //=============================================================================
 
 TEST_F(ProtectiveCutoffTest, ReportThreat) {
-    int result = protective_cutoff_report_threat(cutoff, THREAT_TEMPERATURE, 0.3f);
+    int result = protective_cutoff_report_threat(cutoff, PROTECTIVE_THREAT_TEMPERATURE, 0.3f);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(ProtectiveCutoffTest, ReportThreatInvalidType) {
-    int result = protective_cutoff_report_threat(cutoff, THREAT_COUNT, 0.5f);
+    int result = protective_cutoff_report_threat(cutoff, PROTECTIVE_THREAT_COUNT, 0.5f);
     EXPECT_EQ(result, NIMCP_ERROR_INVALID_PARAMETER);
 }
 
 TEST_F(ProtectiveCutoffTest, ReportThreatNull) {
-    int result = protective_cutoff_report_threat(nullptr, THREAT_TEMPERATURE, 0.5f);
+    int result = protective_cutoff_report_threat(nullptr, PROTECTIVE_THREAT_TEMPERATURE, 0.5f);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
@@ -85,15 +85,15 @@ TEST_F(ProtectiveCutoffTest, ReportThreatNull) {
 
 TEST_F(ProtectiveCutoffTest, GetThreat) {
     // Report a threat
-    protective_cutoff_report_threat(cutoff, THREAT_TEMPERATURE, 0.5f);
+    protective_cutoff_report_threat(cutoff, PROTECTIVE_THREAT_TEMPERATURE, 0.5f);
 
     // Query it back
-    float threat = protective_cutoff_get_threat(cutoff, THREAT_TEMPERATURE);
+    float threat = protective_cutoff_get_threat(cutoff, PROTECTIVE_THREAT_TEMPERATURE);
     EXPECT_FLOAT_EQ(threat, 0.5f);
 }
 
 TEST_F(ProtectiveCutoffTest, GetThreatNull) {
-    float threat = protective_cutoff_get_threat(nullptr, THREAT_TEMPERATURE);
+    float threat = protective_cutoff_get_threat(nullptr, PROTECTIVE_THREAT_TEMPERATURE);
     EXPECT_FLOAT_EQ(threat, -1.0f);  // Returns -1.0 on error per API spec
 }
 
@@ -156,7 +156,7 @@ TEST_F(ProtectiveCutoffTest, LevelToString) {
 }
 
 TEST_F(ProtectiveCutoffTest, ThreatToString) {
-    const char* str = protective_cutoff_threat_to_string(THREAT_TEMPERATURE);
+    const char* str = protective_cutoff_threat_to_string(PROTECTIVE_THREAT_TEMPERATURE);
     EXPECT_NE(str, nullptr);
     EXPECT_STRNE(str, "");
 }

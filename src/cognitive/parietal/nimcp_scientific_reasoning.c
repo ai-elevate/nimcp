@@ -412,7 +412,8 @@ const char* scientific_dimension_to_string(
     *p = '\0';
 
     if (scientific_is_dimensionless(d)) {
-        strcpy(buffer, "1");
+        strncpy(buffer, "1", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
         return buffer;
     }
 
@@ -1100,7 +1101,8 @@ int scientific_suggest_experiment(
 
 
     memset(design, 0, sizeof(experimental_design_t));
-    strcpy(design->name, "Suggested Experiment");
+    strncpy(design->name, "Suggested Experiment", sizeof(design->name) - 1);
+    design->name[sizeof(design->name) - 1] = '\0';
 
     /* Find causes of target */
     design->treatment_vars = malloc(graph->num_variables * sizeof(uint32_t));

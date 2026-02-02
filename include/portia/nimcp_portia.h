@@ -68,21 +68,9 @@ typedef struct portia_target_classifier_t portia_target_classifier_t;
 // Error Codes
 //=============================================================================
 
+/* Include canonical error type definition */
 #ifndef NIMCP_ERROR_TYPE_DEFINED
-#define NIMCP_ERROR_TYPE_DEFINED
-typedef int32_t nimcp_error_t;
-#endif
-
-#ifndef NIMCP_SUCCESS
-#define NIMCP_SUCCESS 0
-#endif
-
-#ifndef NIMCP_ERROR_INVALID_ARG
-#define NIMCP_ERROR_INVALID_ARG 1002
-#endif
-
-#ifndef NIMCP_ERROR_OUT_OF_MEMORY
-#define NIMCP_ERROR_OUT_OF_MEMORY 2000
+#include "utils/error/nimcp_error_codes.h"
 #endif
 
 #define NIMCP_PORTIA_ERROR_BASE 20000

@@ -401,7 +401,8 @@ expr_node_t* equation_copy_expr(equation_engine_t* eq, const expr_node_t* node) 
     if (node->type == EXPR_CONSTANT) {
         copy->data.constant = node->data.constant;
     } else if (node->type == EXPR_VARIABLE) {
-        strcpy(copy->data.variable, node->data.variable);
+        strncpy(copy->data.variable, node->data.variable, EQUATION_MAX_VAR_NAME - 1);
+        copy->data.variable[EQUATION_MAX_VAR_NAME - 1] = '\0';
     }
 
     copy->left = equation_copy_expr(eq, node->left);
@@ -645,7 +646,10 @@ const char* equation_to_string(
         }
 
         default:
-            strcpy(buffer, "?");
+            if (buffer_size > 0) {
+                buffer[0] = '?';
+                buffer[buffer_size > 1 ? 1 : 0] = '\0';
+            }
     }
 
     return buffer;
@@ -852,7 +856,8 @@ expr_node_t* equation_substitute(
     if (node->type == EXPR_CONSTANT) {
         copy->data.constant = node->data.constant;
     } else if (node->type == EXPR_VARIABLE) {
-        strcpy(copy->data.variable, node->data.variable);
+        strncpy(copy->data.variable, node->data.variable, EQUATION_MAX_VAR_NAME - 1);
+        copy->data.variable[EQUATION_MAX_VAR_NAME - 1] = '\0';
     }
 
     if (node->left) {
@@ -1281,7 +1286,9 @@ uint32_t equation_get_variables(
             }
         }
         if (!found && count < max_vars) {
-            strcpy(var_names[count++], node->data.variable);
+            strncpy(var_names[count], node->data.variable, EQUATION_MAX_VAR_NAME - 1);
+            var_names[count][EQUATION_MAX_VAR_NAME - 1] = '\0';
+            count++;
         }
     }
 

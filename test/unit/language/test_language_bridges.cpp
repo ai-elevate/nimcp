@@ -483,3 +483,401 @@ TEST_F(LanguageBridgesTest, AllDefaultConfigNull) {
     // No crash = success
 }
 
+//=============================================================================
+// Perception Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Perception bridge init and start/stop
+ * WHAT: Test bridge lifecycle operations
+ * WHY:  Verify state transitions work correctly
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeInitStartStop) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    // Init should succeed
+    int result = language_perception_bridge_init(bridge);
+    EXPECT_EQ(result, 0);
+
+    // Start should succeed
+    result = language_perception_bridge_start(bridge);
+    EXPECT_EQ(result, 0);
+
+    // Stop should succeed
+    result = language_perception_bridge_stop(bridge);
+    EXPECT_EQ(result, 0);
+
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge receive phonemes
+ * WHAT: Test phoneme reception API
+ * WHY:  Verify phoneme input handling
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeReceivePhonemes) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    // Create test phonemes
+    language_phoneme_t phonemes[3];
+    memset(phonemes, 0, sizeof(phonemes));
+    phonemes[0].id = 1;
+    phonemes[0].confidence = 0.9f;
+    phonemes[1].id = 2;
+    phonemes[1].confidence = 0.85f;
+    phonemes[2].id = 3;
+    phonemes[2].confidence = 0.95f;
+
+    int result = language_perception_bridge_receive_phonemes(bridge, phonemes, 3);
+    EXPECT_GE(result, 0);  // Should accept at least some phonemes
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge speech detection
+ * WHAT: Test speech detection event handling
+ * WHY:  Verify speech state tracking
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeSpeechDetection) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    // Simulate speech detection events
+    int result = language_perception_bridge_receive_speech_detection(
+        bridge, SPEECH_DETECTION_ONSET, 0.8f);
+    EXPECT_EQ(result, 0);
+
+    speech_detection_state_t state = language_perception_bridge_get_speech_state(bridge);
+    EXPECT_EQ(state, SPEECH_DETECTION_ONSET);
+
+    result = language_perception_bridge_receive_speech_detection(
+        bridge, SPEECH_DETECTION_ACTIVE, 0.95f);
+    EXPECT_EQ(result, 0);
+
+    state = language_perception_bridge_get_speech_state(bridge);
+    EXPECT_EQ(state, SPEECH_DETECTION_ACTIVE);
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge statistics
+ * WHAT: Test statistics retrieval
+ * WHY:  Verify stats are tracked correctly
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeStats) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    // Feed some data
+    language_phoneme_t phoneme = {0};
+    phoneme.id = 1;
+    phoneme.confidence = 0.9f;
+    language_perception_bridge_receive_phonemes(bridge, &phoneme, 1);
+
+    // Get stats
+    language_perception_stats_t stats;
+    int result = language_perception_bridge_get_stats(bridge, &stats);
+    EXPECT_EQ(result, 0);
+    EXPECT_GE(stats.phonemes_received, 1u);
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge receive text
+ * WHAT: Test text reception API (reading)
+ * WHY:  Verify visual text input handling
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeReceiveText) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    int result = language_perception_bridge_receive_text(bridge, "Hello world", 0.95f);
+    EXPECT_EQ(result, 0);
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge AV binding
+ * WHAT: Test audiovisual binding state
+ * WHY:  Verify multimodal integration
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeAVBinding) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    // Initial state should be none
+    av_binding_state_t state = language_perception_bridge_get_av_state(bridge);
+    EXPECT_EQ(state, AV_BINDING_NONE);
+
+    // Process AV binding
+    int result = language_perception_bridge_process_av_binding(bridge);
+    EXPECT_EQ(result, 0);
+
+    // McGurk should not be active without conflicting input
+    bool mcgurk = language_perception_bridge_is_mcgurk_active(bridge);
+    EXPECT_FALSE(mcgurk);
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+/**
+ * @test Perception bridge update
+ * WHAT: Test periodic update function
+ * WHY:  Verify update cycle works
+ */
+TEST_F(LanguageBridgesTest, PerceptionBridgeUpdate) {
+    language_perception_config_t config;
+    language_perception_default_config(&config);
+
+    language_perception_bridge_t* bridge = language_perception_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    language_perception_bridge_init(bridge);
+    language_perception_bridge_start(bridge);
+
+    // Call update
+    int result = language_perception_bridge_update(bridge, 1000);
+    EXPECT_EQ(result, 0);
+
+    // Call again with later time
+    result = language_perception_bridge_update(bridge, 2000);
+    EXPECT_EQ(result, 0);
+
+    language_perception_bridge_stop(bridge);
+    language_perception_bridge_destroy(bridge);
+}
+
+//=============================================================================
+// Cognitive Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Cognitive bridge phonological buffer size
+ * WHAT: Test phonological buffer respects Miller's law
+ * WHY:  Verify working memory constraints
+ */
+TEST_F(LanguageBridgesTest, CognitiveBridgePhonologicalBuffer) {
+    language_cognitive_config_t config;
+    language_cognitive_default_config(&config);
+
+    // Set explicit buffer size
+    config.phonological_buffer_size = 7;  // Miller's magic number
+
+    language_cognitive_bridge_t* bridge = language_cognitive_bridge_create(&config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_cognitive_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Training Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Training bridge learning rate bounds
+ * WHAT: Test learning rate configuration
+ * WHY:  Verify training parameters are valid
+ */
+TEST_F(LanguageBridgesTest, TrainingBridgeLearningRateBounds) {
+    language_training_config_t config;
+    language_training_default_config(&config);
+
+    // Vocabulary learning rate should be bounded
+    EXPECT_GT(config.vocabulary_learning_rate, 0.0f);
+    EXPECT_LT(config.vocabulary_learning_rate, 1.0f);
+
+    // Grammar learning rate should be bounded
+    EXPECT_GT(config.grammar_learning_rate, 0.0f);
+    EXPECT_LT(config.grammar_learning_rate, 1.0f);
+
+    language_training_bridge_t* bridge = language_training_bridge_create(&config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_training_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Omni Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Omni bridge prediction horizons
+ * WHAT: Test prediction horizon configuration
+ * WHY:  Verify predictive inference settings
+ */
+TEST_F(LanguageBridgesTest, OmniBridgePredictionHorizons) {
+    language_omni_config_t config;
+    language_omni_default_config(&config);
+
+    // Word prediction should be shorter horizon than sentence
+    EXPECT_GT(config.word_prediction_horizon, 0u);
+    EXPECT_GT(config.phoneme_prediction_horizon, 0u);
+
+    language_omni_bridge_t* bridge = language_omni_bridge_create(&config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_omni_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Immune Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Immune bridge cytokine sensitivity values
+ * WHAT: Test cytokine sensitivity configuration
+ * WHY:  Verify neuroinflammation parameters
+ */
+TEST_F(LanguageBridgesTest, ImmuneBridgeCytokineSensitivity) {
+    language_immune_config_t config;
+    language_immune_default_config(&config);
+
+    // All cytokine sensitivities should be positive
+    EXPECT_GT(config.il1b_sensitivity, 0.0f);
+    EXPECT_GT(config.il6_sensitivity, 0.0f);
+    EXPECT_GT(config.tnfa_sensitivity, 0.0f);
+
+    // And should be reasonable (not too high)
+    EXPECT_LT(config.il1b_sensitivity, 10.0f);
+    EXPECT_LT(config.il6_sensitivity, 10.0f);
+    EXPECT_LT(config.tnfa_sensitivity, 10.0f);
+
+    language_immune_bridge_t* bridge = language_immune_bridge_create(&config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_immune_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Logic Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Logic bridge inference depth bounds
+ * WHAT: Test inference depth configuration
+ * WHY:  Verify reasoning depth limits
+ */
+TEST_F(LanguageBridgesTest, LogicBridgeInferenceDepth) {
+    ASSERT_NE(orchestrator, nullptr);
+
+    language_logic_config_t config;
+    language_logic_default_config(&config);
+
+    // Inference depth should be bounded
+    EXPECT_GT(config.max_inference_depth, 0u);
+    EXPECT_LT(config.max_inference_depth, 1000u);  // Reasonable upper bound
+
+    // Both checking modes should be enabled by default
+    EXPECT_TRUE(config.enable_entailment_checking);
+    EXPECT_TRUE(config.enable_consistency_checking);
+
+    language_logic_bridge_t* bridge = language_logic_bridge_create(orchestrator, &config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_logic_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Thalamic Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Thalamic bridge attention gating
+ * WHAT: Test attention gating configuration
+ * WHY:  Verify thalamic filtering
+ */
+TEST_F(LanguageBridgesTest, ThalamicBridgeAttentionGating) {
+    ASSERT_NE(orchestrator, nullptr);
+
+    language_thalamic_config_t config;
+    language_thalamic_default_config(&config);
+
+    EXPECT_TRUE(config.enable_attention_gating);
+
+    language_thalamic_bridge_t* bridge = language_thalamic_bridge_create(orchestrator, &config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_thalamic_bridge_destroy(bridge);
+    }
+}
+
+//=============================================================================
+// Substrate Bridge Functional Tests
+//=============================================================================
+
+/**
+ * @test Substrate bridge ATP modulation
+ * WHAT: Test metabolic modulation configuration
+ * WHY:  Verify energy-based processing
+ */
+TEST_F(LanguageBridgesTest, SubstrateBridgeATPModulation) {
+    ASSERT_NE(orchestrator, nullptr);
+
+    language_substrate_config_t config;
+    language_substrate_default_config(&config);
+
+    EXPECT_TRUE(config.enable_atp_modulation);
+
+    language_substrate_bridge_t* bridge = language_substrate_bridge_create(orchestrator, &config);
+    EXPECT_NE(bridge, nullptr);
+
+    if (bridge) {
+        language_substrate_bridge_destroy(bridge);
+    }
+}
+

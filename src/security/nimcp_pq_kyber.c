@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "utils/memory/nimcp_memory.h"
 
@@ -92,6 +93,9 @@ typedef struct {
  * Secure Random Number Generation
  * ======================================================================== */
 
+/* Forward declaration */
+static void _local_secure_zero(void* ptr, size_t len);
+
 /**
  * Generate cryptographically secure random bytes
  *
@@ -111,6 +115,21 @@ static nimcp_error_t secure_random_bytes(uint8_t* buffer, size_t len) {
     if (result == (ssize_t)len) {
         return NIMCP_OK;
     }
+    /* SECURITY FIX: Handle partial reads and EINTR properly */
+    if (result < 0) {
+        if (errno == EINTR) {
+            /* Interrupted by signal - fall through to /dev/urandom */
+            LOG_WARN("getrandom() interrupted by signal, falling back to /dev/urandom");
+        } else {
+            /* Other error - log and fall through */
+            LOG_WARN("getrandom() failed with errno %d, falling back to /dev/urandom", errno);
+        }
+    } else if (result != (ssize_t)len) {
+        /* CRITICAL SECURITY: Partial read - do NOT use partial random data
+         * This could weaken cryptographic security. Zero the buffer and fall through. */
+        LOG_WARN("getrandom() partial read (%zd of %zu bytes) - discarding and using /dev/urandom", result, len);
+        _local_secure_zero(buffer, len);
+    }
 #endif
 
     /* Fallback to /dev/urandom */
@@ -121,7 +140,11 @@ static nimcp_error_t secure_random_bytes(uint8_t* buffer, size_t len) {
     }
 
     size_t bytes_read = fread(buffer, 1, len, urandom);
-    fclose(urandom);
+    /* SECURITY FIX: Check fclose() return value for crypto operations */
+    if (fclose(urandom) != 0) {
+        LOG_WARN("Failed to close /dev/urandom: %s", strerror(errno));
+        /* Continue - data is already read, close failure is not critical */
+    }
 
     if (bytes_read != len) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to read sufficient random bytes for Kyber");

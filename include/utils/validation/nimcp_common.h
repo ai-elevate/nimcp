@@ -67,11 +67,18 @@ typedef struct nimcp_message {
  *
  * NIMCP uses a unified error code system with POSITIVE integers:
  *   - NIMCP_SUCCESS = 0
- *   - Success with info codes: 1-999
- *   - Error codes: 1000+ (organized by category)
+ *   - Info status codes: 1-999 (NIMCP_INFO_* prefix, non-error conditions)
+ *   - Error codes: 1000+ (NIMCP_ERROR_* prefix, organized by category)
  *
- * See nimcp_error_codes.h for the canonical definitions.
- * This file provides compatibility aliases and protocol-specific codes.
+ * IMPORTANT: Info codes vs Error codes
+ *   NIMCP_INFO_NOT_FOUND (4)   = Non-error: item simply not present
+ *   NIMCP_ERROR_NOT_FOUND (1009) = Error: required resource missing
+ *
+ *   NIMCP_INFO_TIMEOUT (3)     = Non-error: poll/try timed out, can retry
+ *   NIMCP_ERROR_TIMEOUT (1010)  = Error: operation failed due to timeout
+ *
+ * See nimcp_error_codes.h for the canonical type and error code definitions.
+ * This file provides protocol-specific codes and compatibility aliases.
  * ============================================================================ */
 
 #define MAX_ROUTES 256
@@ -86,27 +93,60 @@ typedef struct nimcp_message {
 #define NIMCP_SUCCESS 0                     /**< Operation completed successfully */
 #endif
 
-/* Success with Information Codes (1-999) */
+/* Success with Information Codes (1-999)
+ * These are status codes that indicate non-error conditions.
+ * They use the INFO_ prefix to distinguish from ERROR_ codes.
+ * Note: Some legacy code may use names without INFO_ prefix.
+ */
+#ifndef NIMCP_INFO_PENDING
+#define NIMCP_INFO_PENDING 1        /**< Operation is in progress */
+#endif
 #ifndef NIMCP_PENDING
-#define NIMCP_PENDING 1        /**< Operation is in progress */
+#define NIMCP_PENDING NIMCP_INFO_PENDING    /**< Alias for compatibility */
+#endif
+
+#ifndef NIMCP_INFO_WOULD_BLOCK
+#define NIMCP_INFO_WOULD_BLOCK 2    /**< Non-blocking operation would block */
 #endif
 #ifndef NIMCP_WOULD_BLOCK
-#define NIMCP_WOULD_BLOCK 2    /**< Non-blocking operation would block */
+#define NIMCP_WOULD_BLOCK NIMCP_INFO_WOULD_BLOCK    /**< Alias for compatibility */
+#endif
+
+#ifndef NIMCP_INFO_TIMEOUT
+#define NIMCP_INFO_TIMEOUT 3        /**< Operation timed out (informational, not error) */
 #endif
 #ifndef NIMCP_TIMEOUT
-#define NIMCP_TIMEOUT 3        /**< Operation timed out (non-error) */
+#define NIMCP_TIMEOUT NIMCP_INFO_TIMEOUT    /**< Alias for compatibility */
+#endif
+/* Note: NIMCP_INFO_TIMEOUT=3 is informational; NIMCP_ERROR_TIMEOUT=1010 is an error */
+
+#ifndef NIMCP_INFO_NOT_FOUND
+#define NIMCP_INFO_NOT_FOUND 4      /**< Item not found (informational, not error) */
 #endif
 #ifndef NIMCP_NOT_FOUND
-#define NIMCP_NOT_FOUND 4      /**< Requested item not found (non-error) */
+#define NIMCP_NOT_FOUND NIMCP_INFO_NOT_FOUND  /**< Alias for compatibility */
+#endif
+/* Note: NIMCP_INFO_NOT_FOUND=4 is informational; NIMCP_ERROR_NOT_FOUND=1009 is an error */
+
+#ifndef NIMCP_INFO_BUFFER_FULL
+#define NIMCP_INFO_BUFFER_FULL 5    /**< Buffer capacity reached (informational) */
 #endif
 #ifndef NIMCP_BUFFER_FULL
-#define NIMCP_BUFFER_FULL 5    /**< Buffer capacity reached (non-error) */
+#define NIMCP_BUFFER_FULL NIMCP_INFO_BUFFER_FULL    /**< Alias for compatibility */
+#endif
+
+#ifndef NIMCP_INFO_END_OF_STREAM
+#define NIMCP_INFO_END_OF_STREAM 6  /**< End of stream reached */
 #endif
 #ifndef NIMCP_END_OF_STREAM
-#define NIMCP_END_OF_STREAM 6  /**< End of stream reached */
+#define NIMCP_END_OF_STREAM NIMCP_INFO_END_OF_STREAM    /**< Alias for compatibility */
+#endif
+
+#ifndef NIMCP_INFO_ALREADY_EXISTS
+#define NIMCP_INFO_ALREADY_EXISTS 7 /**< Item already exists (informational) */
 #endif
 #ifndef NIMCP_ALREADY_EXISTS
-#define NIMCP_ALREADY_EXISTS 7 /**< Item already exists (non-error) */
+#define NIMCP_ALREADY_EXISTS NIMCP_INFO_ALREADY_EXISTS  /**< Alias for compatibility */
 #endif
 
 /* ============================================================================

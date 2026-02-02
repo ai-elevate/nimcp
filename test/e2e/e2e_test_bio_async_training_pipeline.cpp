@@ -297,6 +297,9 @@ TEST_F(BioAsyncTrainingE2ETest, FullTrainingPipeline) {
 // NOTE: Disabled due to phase synchronization timeout issues
 //=============================================================================
 
+// KNOWN ISSUE: Test design expects promises to be completed by batch_complete
+// messages, but the handler doesn't have access to the original promises.
+// Requires architectural rework to properly connect async requests with responses.
 TEST_F(BioAsyncTrainingE2ETest, DISABLED_BatchTrainingPipeline) {
     E2E_PIPELINE_START("Multi-Batch Training with Bio-Async");
 
@@ -404,6 +407,9 @@ TEST_F(BioAsyncTrainingE2ETest, DISABLED_BatchTrainingPipeline) {
 // NOTE: Disabled due to handler registration issues causing crashes
 //=============================================================================
 
+// KNOWN ISSUE: Lambda capture for checkpoint_requested atomic cannot be
+// passed through C-style function pointer to bio_router_register_handler.
+// Need to use static variables or a different handler registration pattern.
 TEST_F(BioAsyncTrainingE2ETest, DISABLED_AsyncCheckpointPipeline) {
     E2E_PIPELINE_START("Async Checkpoint during Training");
 
@@ -483,6 +489,9 @@ TEST_F(BioAsyncTrainingE2ETest, DISABLED_AsyncCheckpointPipeline) {
 // NOTE: Disabled due to handler coordination timing issues
 //=============================================================================
 
+// KNOWN ISSUE: Same fundamental issue as BatchTrainingPipeline - weight_handler
+// needs access to original promises to complete them, but handler registration
+// only passes user_data for the counter.
 TEST_F(BioAsyncTrainingE2ETest, DISABLED_TrainingWithPlasticityPipeline) {
     E2E_PIPELINE_START("Training with Plasticity via Bio-Async");
 

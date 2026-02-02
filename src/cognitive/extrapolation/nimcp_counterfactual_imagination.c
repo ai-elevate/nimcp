@@ -12,6 +12,7 @@
 
 #include "cognitive/extrapolation/nimcp_counterfactual_imagination.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1275,16 +1276,21 @@ static cf_error_t causal_model_add_edge(
     cf_variable_t* child = &model->variables[to];
     uint32_t new_count = child->num_parents + 1;
 
-    uint32_t* new_parents = realloc(child->parent_ids, new_count * sizeof(uint32_t));
-    float* new_weights = realloc(child->causal_weights, new_count * sizeof(float));
+    /* Save old pointers to preserve on failure - prevents double-free */
+    uint32_t* old_parents = child->parent_ids;
+    float* old_weights = child->causal_weights;
 
-    if (!new_parents || !new_weights) {
-        free(new_parents);
-        free(new_weights);
+    uint32_t* new_parents = nimcp_realloc(old_parents, new_count * sizeof(uint32_t));
+    if (!new_parents) {
         return CF_ERR_MEMORY_ALLOC;
     }
-
     child->parent_ids = new_parents;
+
+    float* new_weights = nimcp_realloc(old_weights, new_count * sizeof(float));
+    if (!new_weights) {
+        /* parent_ids was already updated, but that's fine - it's a valid realloc */
+        return CF_ERR_MEMORY_ALLOC;
+    }
     child->causal_weights = new_weights;
     child->parent_ids[child->num_parents] = from;
     child->causal_weights[child->num_parents] = weight;

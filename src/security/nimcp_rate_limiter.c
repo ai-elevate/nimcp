@@ -32,6 +32,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <limits.h>
+#include <errno.h>
 
 #include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
@@ -44,21 +45,23 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for rate_limiter module */
-static nimcp_health_agent_t* g_rate_limiter_health_agent = NULL;
+/** Global health agent for rate_limiter module - P0 fix: Use atomic for thread safety */
+static _Atomic(nimcp_health_agent_t*) g_rate_limiter_health_agent = NULL;
 
 /**
  * @brief Set health agent for rate_limiter heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
 static void rate_limiter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_rate_limiter_health_agent = agent;
+    atomic_store(&g_rate_limiter_health_agent, agent);
 }
 
 /** @brief Send heartbeat from rate_limiter module */
 static inline void rate_limiter_heartbeat(const char* operation, float progress) {
-    if (g_rate_limiter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_rate_limiter_health_agent, operation, progress);
+    /* P0 fix: Atomic load to prevent data race */
+    nimcp_health_agent_t* agent = atomic_load(&g_rate_limiter_health_agent);
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
 }
 
@@ -126,11 +129,18 @@ struct nimcp_rate_limiter_impl {
 //=============================================================================
 
 /**
- * @brief Get current time in milliseconds
+ * @brief Get current time in milliseconds (safe wrapper)
+ *
+ * SECURITY FIX: Check clock_gettime() return value to avoid using garbage data.
+ * On failure, returns 0 which causes rate limiting to be conservative.
  */
 static uint64_t get_time_ms(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        /* clock_gettime failed - return 0 to be conservative */
+        LOG_MODULE_WARN("rate_limiter", "clock_gettime() failed: %s", strerror(errno));
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * NIMCP_MS_PER_SEC + (uint64_t)ts.tv_nsec / NIMCP_NS_PER_MS;
 }
 

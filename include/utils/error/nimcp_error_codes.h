@@ -109,6 +109,9 @@ typedef int32_t nimcp_error_t;
 //=============================================================================
 
 #define NIMCP_ERROR_NO_MEMORY           2000 /**< Memory allocation failed */
+#ifndef NIMCP_ERROR_MEMORY
+#define NIMCP_ERROR_MEMORY              NIMCP_ERROR_NO_MEMORY /**< Alias for consistency */
+#endif
 #ifndef NIMCP_ERROR_BUFFER_TOO_SMALL
 #define NIMCP_ERROR_BUFFER_TOO_SMALL    2001 /**< Buffer too small */
 #endif

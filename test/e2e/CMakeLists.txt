@@ -3012,6 +3012,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/security/CMakeLists.txt)
     add_subdirectory(security)
 endif()
 
+# Include Brain Regions E2E test subdirectory (KG Wiring)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain_regions/CMakeLists.txt)
+    message(STATUS "Adding Brain Regions KG Wiring E2E tests...")
+    add_subdirectory(brain_regions)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

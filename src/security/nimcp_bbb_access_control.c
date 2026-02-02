@@ -51,11 +51,20 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <time.h>
+#include <stddef.h>  /* for NULL */
 
 #define LOG_MODULE "security_bbb_access_control"
 
-#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -65,29 +74,50 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for bbb_access_control module */
+/** Global health agent for bbb_access_control module (DEPRECATED - use atomic version) */
 static nimcp_health_agent_t* g_bbb_access_control_health_agent = NULL;
 
+/** Forward declaration of atomic health agent pointer (defined in Global State section) */
+static nimcp_atomic_ptr_t g_atomic_health_agent;
+
 /**
- * @brief Set health agent for bbb_access_control heartbeats
+ * @brief Set health agent for bbb_access_control heartbeats (thread-safe)
  * @param agent Health agent (can be NULL to disable)
+ *
+ * THREAD-SAFETY: Uses atomic store with RELEASE semantics
+ * WHY: Ensures all prior writes are visible before pointer is updated
+ *
+ * PATTERN DOCUMENTATION (for reuse in other files):
+ * ```c
+ * // 1. Declare atomic pointer in global state section:
+ * static nimcp_atomic_ptr_t g_atomic_health_agent = {0};
+ *
+ * // 2. Setter uses atomic store:
+ * nimcp_atomic_store_ptr(&g_atomic_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
+ *
+ * // 3. Getter uses atomic load:
+ * nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
+ *     nimcp_atomic_load_ptr(&g_atomic_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
+ * ```
  */
-static void bbb_access_control_set_health_agent(nimcp_health_agent_t* agent) {
+void bbb_access_control_set_health_agent(nimcp_health_agent_t* agent) {
+    /* Legacy pointer update (for backwards compatibility) */
     g_bbb_access_control_health_agent = agent;
+
+    /* Thread-safe atomic update - RELEASE ensures visibility */
+    nimcp_atomic_store_ptr(&g_atomic_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
-/** @brief Send heartbeat from bbb_access_control module */
+/** @brief Send heartbeat from bbb_access_control module (thread-safe) */
 static inline void bbb_access_control_heartbeat(const char* operation, float progress) {
-    if (g_bbb_access_control_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bbb_access_control_health_agent, operation, progress);
+    /* Thread-safe read using atomic load with ACQUIRE semantics */
+    nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
+        nimcp_atomic_load_ptr(&g_atomic_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
+
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
 }
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <time.h>
 
 //=============================================================================
 // Constants
@@ -228,8 +258,34 @@ typedef struct {
  * WHY:  Singleton pattern - one instance per process
  *
  * NOTE: In production, this would be stored in bbb_system_t structure.
+ *
+ * THREAD-SAFETY: Protected by g_access_state_lock mutex
  */
 static bbb_access_state_t g_access_state = {0};
+
+/**
+ * WHAT: Mutex protecting g_access_state
+ * WHY:  Thread-safe access to global state
+ * HOW:  All read-modify-write operations must hold this lock
+ */
+static nimcp_platform_mutex_t g_access_state_lock;
+
+/**
+ * WHAT: Atomic statistics counters for lock-free updates
+ * WHY:  Statistics are frequently updated, avoid lock contention
+ * HOW:  Use atomic operations for increment-only counters
+ */
+static nimcp_atomic_uint64_t g_atomic_total_checks = {0};
+static nimcp_atomic_uint64_t g_atomic_total_denials = {0};
+
+/**
+ * WHAT: Module initialization state using platform_once
+ * WHY:  Thread-safe lazy initialization
+ */
+static nimcp_platform_once_t g_access_control_init_once = NIMCP_PLATFORM_ONCE_INIT;
+static bool g_access_control_module_initialized = false;
+
+/* Note: g_atomic_health_agent is declared near top of file with forward declaration */
 
 //=============================================================================
 // Internal Helper Functions
@@ -407,19 +463,44 @@ static uint64_t access_type_to_capability(uint32_t access_type)
 }
 
 /**
- * @brief Initialize access control subsystem
+ * @brief Internal initialization routine called by nimcp_platform_once
+ *
+ * WHAT: Thread-safe one-time initialization of module state
+ * WHY:  Ensures mutex and state are initialized exactly once
+ */
+static void access_control_module_init_internal(void)
+{
+    /* Initialize the global state mutex */
+    nimcp_platform_mutex_init(&g_access_state_lock, false);
+
+    /* Initialize atomic counters */
+    nimcp_atomic_init_u64(&g_atomic_total_checks, 0);
+    nimcp_atomic_init_u64(&g_atomic_total_denials, 0);
+    nimcp_atomic_init_ptr(&g_atomic_health_agent, NULL);
+
+    /* Initialize the state itself */
+    memset(&g_access_state, 0, sizeof(g_access_state));
+    g_access_state.initialized = true;
+    g_access_state.log_access_attempts = true;
+
+    g_access_control_module_initialized = true;
+
+    LOG_MODULE_INFO("bbb_access_control", "Access control module initialized");
+}
+
+/**
+ * @brief Initialize access control subsystem (thread-safe)
  *
  * WHAT: Initialize global access state on first use
  * WHY:  Lazy initialization avoids startup overhead
+ * HOW:  Uses nimcp_platform_once for thread-safe init
+ *
+ * THREAD-SAFETY: nimcp_platform_once guarantees exactly-once execution
  */
 static void ensure_initialized(void)
 {
-    if (g_access_state.initialized)
-        return;
-
-    memset(&g_access_state, 0, sizeof(g_access_state));
-    g_access_state.initialized = true;
-    g_access_state.log_access_attempts = true;  /* Default: log attempts */
+    /* Thread-safe one-time initialization */
+    nimcp_platform_once(&g_access_control_init_once, access_control_module_init_internal);
 }
 
 /**
@@ -427,24 +508,43 @@ static void ensure_initialized(void)
  *
  * WHAT: Clear all registered subjects and objects
  * WHY:  Enable test isolation by resetting between test cases
- * HOW:  Zero out global state and re-initialize
+ * HOW:  Zero out global state and re-initialize under lock
+ *
+ * THREAD-SAFETY: Acquires g_access_state_lock before modifying state
  */
 void bbb_access_control_reset_internal(void)
 {
+    /* Ensure module is initialized first */
+    ensure_initialized();
+
+    /* Lock before modifying state */
+    nimcp_platform_mutex_lock(&g_access_state_lock);
+
     memset(&g_access_state, 0, sizeof(g_access_state));
     g_access_state.initialized = true;
     g_access_state.log_access_attempts = true;
+
+    /* Reset atomic counters */
+    nimcp_atomic_store_u64(&g_atomic_total_checks, 0, NIMCP_MEMORY_ORDER_RELEASE);
+    nimcp_atomic_store_u64(&g_atomic_total_denials, 0, NIMCP_MEMORY_ORDER_RELEASE);
+
+    nimcp_platform_mutex_unlock(&g_access_state_lock);
 }
 
 /**
- * @brief Log access denial and update statistics
+ * @brief Log access denial and update statistics (thread-safe)
  *
  * WHAT: Record denial in statistics and optionally log message
  * WHY:  Centralizes denial handling for cleaner access check code
+ *
+ * THREAD-SAFETY: Uses atomic increment for statistics counter
  */
 static void log_denial(const char* reason, uint32_t subject_id)
 {
-    g_access_state.total_denials++;
+    /* Atomic increment for statistics (lock-free) */
+    nimcp_atomic_fetch_add_u64(&g_atomic_total_denials, 1, NIMCP_MEMORY_ORDER_RELAXED);
+
+    /* Read log flag - may race but acceptable for logging decision */
     if (g_access_state.log_access_attempts) {
         fprintf(stderr, "[BBB-AC] DENIED: %s (subject %u)\n", reason, subject_id);
     }
@@ -486,7 +586,9 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
         return false;
 
     ensure_initialized();
-    g_access_state.total_checks++;
+
+    /* Atomic increment for statistics (lock-free) */
+    nimcp_atomic_fetch_add_u64(&g_atomic_total_checks, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
     /* Check privilege level requirement */
     if (subject->privilege_level < object->required_privilege) {
@@ -560,8 +662,12 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write operations on global state */
+    nimcp_platform_mutex_lock(&g_access_state_lock);
+
     /* Guard: Subject already registered */
     if (find_subject_by_id(subject->id) >= 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Subject %u already registered\n", subject->id);
         return false;
     }
@@ -569,6 +675,7 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
     /* Guard: No available slots */
     int slot = find_available_subject_slot();
     if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Subject registry full (max %d)\n", BBB_MAX_SUBJECTS);
         return false;
     }
@@ -585,6 +692,8 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
     record->denied_count = 0;
 
     g_access_state.subject_count++;
+
+    nimcp_platform_mutex_unlock(&g_access_state_lock);
 
     return true;
 }
@@ -625,8 +734,12 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write operations on global state */
+    nimcp_platform_mutex_lock(&g_access_state_lock);
+
     /* Guard: Object already registered */
     if (find_object_by_id(object->id) >= 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Object %u already registered\n", object->id);
         return false;
     }
@@ -634,6 +747,7 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
     /* Guard: No available slots */
     int slot = find_available_object_slot();
     if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Object registry full (max %d)\n", BBB_MAX_OBJECTS);
         return false;
     }
@@ -648,6 +762,8 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
     record->access_count = 0;
 
     g_access_state.object_count++;
+
+    nimcp_platform_mutex_unlock(&g_access_state_lock);
 
     return true;
 }
@@ -683,9 +799,13 @@ NIMCP_EXPORT bool bbb_grant_capability(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write on subject capabilities */
+    nimcp_platform_mutex_lock(&g_access_state_lock);
+
     /* Find subject */
     int slot = find_subject_by_id(subject_id);
     if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Cannot grant: subject %u not found\n", subject_id);
         return false;
     }
@@ -694,6 +814,8 @@ NIMCP_EXPORT bool bbb_grant_capability(bbb_system_t system,
      * WHY:  Preserves existing capabilities while adding new ones
      */
     g_access_state.subjects[slot].subject.capabilities |= capability;
+
+    nimcp_platform_mutex_unlock(&g_access_state_lock);
 
     return true;
 }
@@ -726,9 +848,13 @@ NIMCP_EXPORT bool bbb_revoke_capability(bbb_system_t system,
 
     ensure_initialized();
 
+    /* Lock for read-modify-write on subject capabilities */
+    nimcp_platform_mutex_lock(&g_access_state_lock);
+
     /* Find subject */
     int slot = find_subject_by_id(subject_id);
     if (slot < 0) {
+        nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Cannot revoke: subject %u not found\n", subject_id);
         return false;
     }
@@ -737,6 +863,8 @@ NIMCP_EXPORT bool bbb_revoke_capability(bbb_system_t system,
      * WHY:  Clears only the specified bits, preserves others
      */
     g_access_state.subjects[slot].subject.capabilities &= ~capability;
+
+    nimcp_platform_mutex_unlock(&g_access_state_lock);
 
     return true;
 }

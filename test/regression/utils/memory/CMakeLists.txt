@@ -44,3 +44,23 @@ target_link_libraries(regression_utils_memory_test_unified_memory_regression
 )
 add_test(NAME regression_utils_memory_test_unified_memory_regression
          COMMAND regression_utils_memory_test_unified_memory_regression)
+
+# Memory API Regression Tests (GTest C++)
+add_executable(regression_utils_memory_test_memory_api_regression
+    test_memory_api_regression.cpp
+)
+target_link_libraries(regression_utils_memory_test_memory_api_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(regression_utils_memory_test_memory_api_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_utils_memory_test_memory_api_regression
+         COMMAND regression_utils_memory_test_memory_api_regression)

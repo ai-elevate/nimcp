@@ -13,6 +13,7 @@
 
 #include "mesh/nimcp_mesh_gpu.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -877,7 +878,7 @@ nimcp_error_t mesh_gpu_channel_register_fallback(
     /* Resize if needed */
     if (channel->fallback_count >= channel->fallback_capacity) {
         size_t new_cap = channel->fallback_capacity * 2;
-        cpu_fallback_entry_t* new_arr = (cpu_fallback_entry_t*)realloc(
+        cpu_fallback_entry_t* new_arr = (cpu_fallback_entry_t*)nimcp_realloc(
             channel->fallbacks, new_cap * sizeof(cpu_fallback_entry_t));
         if (!new_arr) return NIMCP_ERROR_NO_MEMORY;
         channel->fallbacks = new_arr;
@@ -924,10 +925,19 @@ nimcp_error_t mesh_gpu_channel_get_stats(
         stats->device_stats = (mesh_gpu_device_state_t*)calloc(
             channel->coordinator_count, sizeof(mesh_gpu_device_state_t));
         if (stats->device_stats) {
+            size_t valid_count = 0;
             for (size_t i = 0; i < channel->coordinator_count; i++) {
-                mesh_gpu_channel_get_device_state(channel, i, &stats->device_stats[i]);
+                nimcp_error_t err = mesh_gpu_channel_get_device_state(
+                    channel, i, &stats->device_stats[valid_count]);
+                if (err == NIMCP_SUCCESS) {
+                    valid_count++;
+                }
+                /* Skip devices that fail to report state */
             }
-            stats->device_count = channel->coordinator_count;
+            stats->device_count = valid_count;
+        } else {
+            /* Allocation failed - stats incomplete but not fatal */
+            stats->device_count = 0;
         }
     }
 

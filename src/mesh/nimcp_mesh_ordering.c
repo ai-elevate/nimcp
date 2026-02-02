@@ -9,6 +9,7 @@
 #include "mesh/nimcp_mesh_ordering.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -497,7 +498,7 @@ mesh_ordered_block_t* mesh_ordering_create_block(
     /* Store block */
     if (service->block_count >= service->block_capacity) {
         size_t new_capacity = service->block_capacity * 2;
-        mesh_ordered_block_t** new_blocks = realloc(service->blocks,
+        mesh_ordered_block_t** new_blocks = nimcp_realloc(service->blocks,
             new_capacity * sizeof(mesh_ordered_block_t*));
         if (new_blocks) {
             service->blocks = new_blocks;
@@ -789,7 +790,7 @@ nimcp_error_t mesh_ordering_log_append(
     /* Grow log if needed */
     if (service->raft.log_size >= service->raft.log_capacity) {
         size_t new_capacity = service->raft.log_capacity * 2;
-        raft_log_entry_t* new_log = realloc(service->raft.log,
+        raft_log_entry_t* new_log = nimcp_realloc(service->raft.log,
             new_capacity * sizeof(raft_log_entry_t));
         if (!new_log) {
             return NIMCP_ERROR_NO_MEMORY;

@@ -1106,50 +1106,73 @@ char* config_array_to_string(const config_array_t* arr) {
         return NULL;
     }
 
+    size_t remaining = buf_size;
     char* p = buffer;
-    p += sprintf(p, "[");
+    int written = snprintf(p, remaining, "[");
+    if (written < 0 || (size_t)written >= remaining) {
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        nimcp_free(buffer);
+        return NULL;
+    }
+    p += written;
+    remaining -= (size_t)written;
 
     for (size_t i = 0; i < arr->count; i++) {
         if (i > 0) {
-            p += sprintf(p, ", ");
+            written = snprintf(p, remaining, ", ");
+            if (written < 0 || (size_t)written >= remaining) {
+                LOG_ERROR("config_array_to_string: buffer overflow prevented");
+                nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+                nimcp_free(buffer);
+                return NULL;
+            }
+            p += written;
+            remaining -= (size_t)written;
         }
 
         switch (arr->element_type) {
             case CONFIG_TYPE_INT:
-                p += sprintf(p, "%ld", (long)arr->data.int_vals[i]);
+                written = snprintf(p, remaining, "%ld", (long)arr->data.int_vals[i]);
                 break;
 
             case CONFIG_TYPE_FLOAT:
-                p += sprintf(p, "%.6f", arr->data.float_vals[i]);
+                written = snprintf(p, remaining, "%.6f", arr->data.float_vals[i]);
                 break;
 
             case CONFIG_TYPE_BOOL:
-                p += sprintf(p, "%s", arr->data.bool_vals[i] ? "true" : "false");
+                written = snprintf(p, remaining, "%s", arr->data.bool_vals[i] ? "true" : "false");
                 break;
 
             case CONFIG_TYPE_STRING:
                 if (arr->data.string_vals[i]) {
-                    p += sprintf(p, "\"%s\"", arr->data.string_vals[i]);
+                    written = snprintf(p, remaining, "\"%s\"", arr->data.string_vals[i]);
                 } else {
-                    p += sprintf(p, "null");
+                    written = snprintf(p, remaining, "null");
                 }
                 break;
 
             default:
-                p += sprintf(p, "?");
+                written = snprintf(p, remaining, "?");
                 break;
         }
 
-        // Safety check for buffer overflow
-        if ((size_t)(p - buffer) > buf_size - 64) {
+        if (written < 0 || (size_t)written >= remaining) {
             LOG_ERROR("config_array_to_string: buffer overflow prevented");
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             nimcp_free(buffer);
             return NULL;
         }
+        p += written;
+        remaining -= (size_t)written;
     }
 
-    sprintf(p, "]");
+    written = snprintf(p, remaining, "]");
+    if (written < 0 || (size_t)written >= remaining) {
+        LOG_ERROR("config_array_to_string: buffer overflow prevented");
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        nimcp_free(buffer);
+        return NULL;
+    }
     nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return buffer;

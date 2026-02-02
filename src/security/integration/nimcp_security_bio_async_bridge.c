@@ -86,9 +86,18 @@ struct security_bio_bridge_struct {
  * Helper Functions
  * ============================================================================ */
 
+/**
+ * @brief Get current time in microseconds (safe wrapper)
+ *
+ * SECURITY FIX: Check clock_gettime() return value to avoid using garbage data.
+ * On failure, returns 0 which may affect timing but won't cause undefined behavior.
+ */
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        /* clock_gettime failed - return 0 to be safe */
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 

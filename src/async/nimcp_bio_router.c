@@ -508,9 +508,9 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
         }
 
         if (timeout_ms == 0) {
+            // Non-blocking mode: return NOT_FOUND silently (not an error condition)
             nimcp_platform_mutex_unlock(&queue->mutex);
-            NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
-                              "bio_msg_queue_dequeue: queue empty, would block");
+            return NIMCP_ERROR_NOT_FOUND;
         }
 
         int wait_result = nimcp_platform_cond_timedwait(&queue->not_empty,

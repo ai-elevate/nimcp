@@ -960,13 +960,13 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
     if (!parietal) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_process: parietal is NULL");
         result.success = false;
-        strcpy(result.error_message, "parietal is NULL");
+        snprintf(result.error_message, sizeof(result.error_message), "parietal is NULL");
         return result;
     }
     if (!request) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_process: request is NULL");
         result.success = false;
-        strcpy(result.error_message, "request is NULL");
+        snprintf(result.error_message, sizeof(result.error_message), "request is NULL");
         return result;
     }
 
@@ -1030,7 +1030,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
                     break;
                 default:
                     result.success = false;
-                    strcpy(result.error_message, "Invalid operation");
+                    snprintf(result.error_message, sizeof(result.error_message), "Invalid operation");
             }
             result.confidence = result.output.arithmetic.confidence;
             break;
@@ -1130,7 +1130,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
                 result.success = (result.output.expression != NULL);
             } else {
                 result.success = false;
-                strcpy(result.error_message, "Failed to parse expression");
+                snprintf(result.error_message, sizeof(result.error_message), "Failed to parse expression");
             }
             result.confidence = result.success ? 1.0f : 0.0f;
             break;
@@ -1185,7 +1185,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
                 }
             } else {
                 result.success = false;
-                strcpy(result.error_message, "Physics NN not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Physics NN not available");
             }
             result.confidence = result.success ? 0.9f : 0.0f;
             break;
@@ -1197,7 +1197,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_ELECTRICAL_STABILITY_ANALYZE: {
             if (!parietal->electrical_eng) {
                 result.success = false;
-                strcpy(result.error_message, "Electrical engineering not enabled");
+                snprintf(result.error_message, sizeof(result.error_message), "Electrical engineering not enabled");
             } else {
                 /* Electrical engineering processing would be dispatched here */
                 result.success = true;
@@ -1211,7 +1211,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_MECHANICAL_THERMAL_ANALYZE: {
             if (!parietal->mechanical_eng) {
                 result.success = false;
-                strcpy(result.error_message, "Mechanical engineering not enabled");
+                snprintf(result.error_message, sizeof(result.error_message), "Mechanical engineering not enabled");
             } else {
                 /* Mechanical engineering processing would be dispatched here */
                 result.success = true;
@@ -1225,7 +1225,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_CIVIL_HYDRAULIC_ANALYZE: {
             if (!parietal->civil_eng) {
                 result.success = false;
-                strcpy(result.error_message, "Civil engineering not enabled");
+                snprintf(result.error_message, sizeof(result.error_message), "Civil engineering not enabled");
             } else {
                 /* Civil engineering processing - can use quantum for optimization */
                 result.success = true;
@@ -1239,7 +1239,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->quantum_bridge ||
                 !parietal_quantum_is_available(parietal->quantum_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "Quantum acceleration not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Quantum acceleration not available");
             } else {
                 /* Quantum optimization through bridge */
                 parietal->quantum_optimizations++;
@@ -1253,7 +1253,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->quantum_bridge ||
                 !parietal_quantum_is_available(parietal->quantum_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "Quantum acceleration not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Quantum acceleration not available");
             } else {
                 /* Quantum topology optimization for structural design */
                 parietal->quantum_optimizations++;
@@ -1267,7 +1267,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->quantum_bridge ||
                 !parietal_quantum_is_available(parietal->quantum_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "Quantum acceleration not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Quantum acceleration not available");
             } else {
                 /* VQE for physics/chemistry simulations */
                 parietal->quantum_vqe_runs++;
@@ -1281,7 +1281,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->quantum_bridge ||
                 !parietal_quantum_is_available(parietal->quantum_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "Quantum acceleration not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Quantum acceleration not available");
             } else {
                 /* Quantum walk for graph search */
                 parietal->quantum_walks++;
@@ -1295,7 +1295,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->quantum_bridge ||
                 !parietal_quantum_is_available(parietal->quantum_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "Quantum acceleration not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Quantum acceleration not available");
             } else {
                 /* QUBO via quantum annealing */
                 parietal->quantum_optimizations++;
@@ -1310,7 +1310,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* Hierarchical belief update via prediction error minimization */
                 parietal->fep_belief_updates++;
@@ -1325,7 +1325,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* Generate prediction from current beliefs */
                 parietal->fep_predictions++;
@@ -1339,7 +1339,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* Active inference for problem-solving action selection */
                 parietal->fep_active_inferences++;
@@ -1353,7 +1353,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* Compute surprise (negative log probability) from observation */
                 parietal->fep_predictions++;
@@ -1367,7 +1367,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* FEP-based number sense - Weber-Fechner as precision-weighted prediction */
                 parietal->fep_predictions++;
@@ -1382,7 +1382,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* FEP-based spatial reasoning - generative models of 3D space */
                 parietal->fep_predictions++;
@@ -1397,7 +1397,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             if (!parietal->fep_parietal_bridge ||
                 !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
                 result.success = false;
-                strcpy(result.error_message, "FEP-Parietal bridge not available");
+                snprintf(result.error_message, sizeof(result.error_message), "FEP-Parietal bridge not available");
             } else {
                 /* FEP-based physics prediction - physics-informed generative model */
                 parietal->fep_predictions++;
@@ -1420,7 +1420,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_FINANCIAL_OPTIMIZE: {
             if (!parietal->financial_investment) {
                 result.success = false;
-                strcpy(result.error_message, "Financial investment engine not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Financial investment engine not available");
             } else {
                 result.success = true;
                 result.confidence = 0.88f;
@@ -1436,7 +1436,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_FINANCIAL_MONTE_CARLO: {
             if (!parietal->financial_market) {
                 result.success = false;
-                strcpy(result.error_message, "Financial market engine not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Financial market engine not available");
             } else {
                 result.success = true;
                 result.confidence = 0.85f;
@@ -1448,7 +1448,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
         case PARIETAL_FINANCIAL_ARCHETYPE_BLEND: {
             if (!parietal->financial_archetype) {
                 result.success = false;
-                strcpy(result.error_message, "Financial archetype engine not available");
+                snprintf(result.error_message, sizeof(result.error_message), "Financial archetype engine not available");
             } else {
                 result.success = true;
                 result.confidence = 0.82f;
@@ -1458,7 +1458,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
 
         default:
             result.success = false;
-            strcpy(result.error_message, "Unknown request type");
+            snprintf(result.error_message, sizeof(result.error_message), "Unknown request type");
     }
 
     /* Update statistics */

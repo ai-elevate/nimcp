@@ -10,6 +10,7 @@
 #include "mesh/nimcp_mesh_kg_routing_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 

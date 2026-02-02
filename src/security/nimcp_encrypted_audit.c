@@ -160,11 +160,18 @@ struct nimcp_encrypted_audit_impl {
 //=============================================================================
 
 /**
- * @brief Get current time in nanoseconds
+ * @brief Get current time in nanoseconds (safe wrapper)
+ *
+ * SECURITY FIX: Check clock_gettime() return value to avoid using garbage data.
+ * On failure, returns 0 which may affect timestamps but won't cause undefined behavior.
  */
 static uint64_t get_time_ns(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        /* clock_gettime failed - return 0 to be safe */
+        LOG_MODULE_WARN("encrypted_audit", "clock_gettime() failed");
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 }
 

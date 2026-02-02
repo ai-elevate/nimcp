@@ -148,10 +148,15 @@ protected:
     }
 
     mesh_transaction_t* CreateMedullaTransaction(const char* payload_type) {
-        mesh_transaction_config_t config;
-        mesh_transaction_config_init(&config);
-        config.type = MESH_TX_TYPE_BELIEF_UPDATE;
+        // Create transaction with correct API: (type, proposer_id, channel_id)
+        // mesh_participant_id_t is uint64_t, mesh_channel_id_t is uint16_t
+        mesh_participant_id_t proposer = 100;  // Medulla participant ID
+        mesh_channel_id_t channel = 1;          // Autonomic channel
 
+        mesh_transaction_t* tx = mesh_transaction_create(MESH_TX_BELIEF_UPDATE, proposer, channel);
+        if (!tx) return nullptr;
+
+        // Set payload
         char payload[256];
         snprintf(payload, sizeof(payload),
                 "medulla:%s:arousal_%.2f:protection_%d:phase_%d",
@@ -160,10 +165,8 @@ protected:
                 (int)mock_medulla_->protection_level,
                 (int)mock_medulla_->circadian_phase);
 
-        config.payload = payload;
-        config.payload_size = strlen(payload);
-
-        return mesh_transaction_create(&config);
+        mesh_transaction_set_payload(tx, (const uint8_t*)payload, strlen(payload));
+        return tx;
     }
 };
 
@@ -349,14 +352,16 @@ TEST_F(MedullaMeshE2ETest, MeshEmergencyBroadcast) {
     mock_medulla_->emergency_broadcasts++;
 
     // Create emergency broadcast transaction
-    mesh_transaction_config_t emergency_config;
-    mesh_transaction_config_init(&emergency_config);
-    emergency_config.type = MESH_TX_TYPE_SYSTEM_EVENT;
-    emergency_config.payload = "EMERGENCY:medulla_shutdown:protection_SHUTDOWN";
-    emergency_config.payload_size = strlen(emergency_config.payload);
+    // mesh_participant_id_t is uint64_t, mesh_channel_id_t is uint16_t
+    mesh_participant_id_t emergency_proposer = 100;  // Medulla participant
+    mesh_channel_id_t emergency_channel = 0;         // Broadcast channel
 
-    mesh_transaction_t* emergency_tx = mesh_transaction_create(&emergency_config);
+    mesh_transaction_t* emergency_tx = mesh_transaction_create(
+        MESH_TX_EMERGENCY_OVERRIDE, emergency_proposer, emergency_channel);
     ASSERT_NE(emergency_tx, nullptr);
+
+    const char* emergency_payload = "EMERGENCY:medulla_shutdown:protection_SHUTDOWN";
+    mesh_transaction_set_payload(emergency_tx, (const uint8_t*)emergency_payload, strlen(emergency_payload));
 
     // Simulate broadcast to all receivers
     for (const auto& receiver : receivers) {
@@ -472,8 +477,8 @@ TEST_F(MedullaMeshE2ETest, MeshChannelCommunication) {
     mesh_channel_stats_t channel_stats;
     EXPECT_EQ(mesh_channel_get_stats(subcortical, &channel_stats), NIMCP_SUCCESS);
 
-    // Channel should be active
-    EXPECT_TRUE(channel_stats.is_active);
+    // Channel should be active (has participants)
+    EXPECT_GT(channel_stats.participant_count, 0u);
 }
 
 //=============================================================================

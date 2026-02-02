@@ -681,7 +681,9 @@ uint32_t brain_config_get_enabled_features(const brain_config_t* config,
                     buffer[written++] = ',';
                     buffer[written++] = ' ';
                 }
-                strcpy(buffer + written, FEATURE_MAP[i].name);
+                size_t remaining = buffer_size - written;
+                strncpy(buffer + written, FEATURE_MAP[i].name, remaining - 1);
+                buffer[written + remaining - 1] = '\0';
                 written += name_len;
                 count++;
             }

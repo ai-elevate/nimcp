@@ -465,8 +465,8 @@ savant_system_t* savant_create(const savant_config_t* config) {
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
-                              "savant_create: Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                              "savant_create: Failed to create mutex%s", "");
         savant_destroy(sys);
         return NULL;
     }

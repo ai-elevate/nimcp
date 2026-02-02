@@ -25,6 +25,7 @@
 
 #include "cognitive/parietal/nimcp_financial_consolidation_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -803,7 +804,7 @@ int financial_consolidation_bridge_associate_pattern(
 
     /* Add to trade's pattern list */
     uint32_t current_count = bridge->trade_pattern_counts[trade_index];
-    uint32_t* new_patterns = (uint32_t*)realloc(
+    uint32_t* new_patterns = (uint32_t*)nimcp_realloc(
         bridge->trade_patterns[trade_index],
         (current_count + 1) * sizeof(uint32_t));
     if (!new_patterns) {

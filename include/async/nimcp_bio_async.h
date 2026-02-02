@@ -94,13 +94,9 @@ typedef struct nimcp_predictive_model_struct* nimcp_predictive_model_t;
 // Error Codes (bio-async specific)
 //=============================================================================
 
+/* Include canonical error type definition */
 #ifndef NIMCP_ERROR_TYPE_DEFINED
-#define NIMCP_ERROR_TYPE_DEFINED
-typedef int32_t nimcp_error_t;
-#endif
-
-#ifndef NIMCP_SUCCESS
-#define NIMCP_SUCCESS 0
+#include "utils/error/nimcp_error_codes.h"
 #endif
 
 #define NIMCP_BIO_ERROR_BASE 10000

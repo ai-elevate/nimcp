@@ -202,9 +202,16 @@ static uint64_t get_time_ns(void) {
 }
 
 static void update_gradient_stats(nimcp_optimizer_context_t* ctx, float norm) {
-    // Process pending bio-async messages
-    if (ctx && ctx->bio_async_enabled && ctx->bio_ctx) {
+    if (!ctx) return;
+
+    // Process pending bio-async messages (outside of lock to avoid potential deadlock)
+    if (ctx->bio_async_enabled && ctx->bio_ctx) {
         bio_router_process_inbox(ctx->bio_ctx, 5);
+    }
+
+    /* P0 fix: Mutex protection for gradient stats updates to prevent data race */
+    if (ctx->state_mutex_initialized) {
+        nimcp_platform_mutex_lock(&ctx->state_mutex);
     }
 
     ctx->stats.total_gradient_norm += norm;
@@ -214,7 +221,14 @@ static void update_gradient_stats(nimcp_optimizer_context_t* ctx, float norm) {
     if (norm > ctx->stats.max_gradient_norm) {
         ctx->stats.max_gradient_norm = norm;
     }
-    ctx->stats.avg_gradient_norm = ctx->stats.total_gradient_norm / ctx->stats.step_count;
+    /* Prevent divide-by-zero if step_count is 0 */
+    if (ctx->stats.step_count > 0) {
+        ctx->stats.avg_gradient_norm = ctx->stats.total_gradient_norm / ctx->stats.step_count;
+    }
+
+    if (ctx->state_mutex_initialized) {
+        nimcp_platform_mutex_unlock(&ctx->state_mutex);
+    }
 }
 
 /* ============================================================================

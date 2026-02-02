@@ -53,7 +53,7 @@ protected:
         basal_ganglia_default_config(&bg_config);
         bg_config.num_actions = NUM_ACTIONS;
         bg_config.enable_hyperdirect = true;
-        bg_config.enable_habits = true;
+        bg_config.enable_habit_learning = true;
         bg = basal_ganglia_create(&bg_config);
         ASSERT_NE(bg, nullptr);
 
@@ -160,15 +160,16 @@ protected:
         bgsm_process_matrix(striosome_matrix);
 
         // 4. BG action selection
-        basal_ganglia_set_cortical_input(bg, cortical_input.data());
         basal_ganglia_set_dopamine(bg, effective_dopamine);
-        basal_ganglia_process(bg);
+        basal_ganglia_process_input(bg, cortical_input.data());
+        basal_ganglia_step(bg, 1.0f);
 
-        int ret = basal_ganglia_get_selected_action(bg, &result.selected_action, &result.confidence);
+        int ret = basal_ganglia_select_action(bg, cortical_input.data(), &result.selected_action);
         if (ret != 0) {
             result.success = false;
             return result;
         }
+        result.confidence = 0.8f;  // Default confidence since API doesn't return it
 
         // 5. Vigor computation
         bgv_set_dopamine(vigor, effective_dopamine);
@@ -551,9 +552,8 @@ TEST_F(BasalGangliaPipelineE2ETest, CompleteSystem_GoalDirectedBehavior) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Action execution with vigor", 300);
-    // Signal action completion to BG
-    int ret = basal_ganglia_action_completed(bg, result.selected_action, true,
-                                              result.predicted_duration);
+    // Signal action completion to BG (3 args: bg, action_id, success)
+    int ret = basal_ganglia_action_completed(bg, result.selected_action, true);
     EXPECT_EQ(ret, 0);
     E2E_STAGE_END();
 

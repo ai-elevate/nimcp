@@ -33,13 +33,9 @@ extern "C" {
 // Error Codes
 //=============================================================================
 
+/* Include canonical error type definition */
 #ifndef NIMCP_ERROR_TYPE_DEFINED
-#define NIMCP_ERROR_TYPE_DEFINED
-typedef int32_t nimcp_error_t;
-#endif
-
-#ifndef NIMCP_OK
-#define NIMCP_OK 0
+#include "utils/error/nimcp_error_codes.h"
 #endif
 
 /**

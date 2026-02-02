@@ -26,8 +26,8 @@ protected:
         return interp;
     }
 
-    proposed_action_t makeAction(const char* type, const char* desc) {
-        proposed_action_t action;
+    interp_proposed_action_t makeAction(const char* type, const char* desc) {
+        interp_proposed_action_t action;
         memset(&action, 0, sizeof(action));
         strncpy(action.action_type, type, sizeof(action.action_type) - 1);
         strncpy(action.description, desc, sizeof(action.description) - 1);
@@ -56,8 +56,8 @@ TEST_F(InterpretabilityTest, ExplainDecisionReturnsValidStructure) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
-    decision_explanation_t explanation;
+    interp_proposed_action_t action = makeAction("compute", "Test action");
+    interp_decision_explanation_t explanation;
     memset(&explanation, 0, sizeof(explanation));
 
     nimcp_error_t err = interpretability_explain_decision(interp, &action, &explanation);
@@ -69,7 +69,7 @@ TEST_F(InterpretabilityTest, ExplainSummary) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
+    interp_proposed_action_t action = makeAction("compute", "Test action");
     char summary[1024];
     nimcp_error_t err = interpretability_explain_summary(
         interp, &action, summary, sizeof(summary));
@@ -80,7 +80,7 @@ TEST_F(InterpretabilityTest, ExtractFactors) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
+    interp_proposed_action_t action = makeAction("compute", "Test action");
     decision_factor_t factors[10];
     size_t factor_count = 0;
 
@@ -93,8 +93,8 @@ TEST_F(InterpretabilityTest, VerifyFidelity) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
-    decision_explanation_t explanation;
+    interp_proposed_action_t action = makeAction("compute", "Test action");
+    interp_decision_explanation_t explanation;
     memset(&explanation, 0, sizeof(explanation));
     interpretability_explain_decision(interp, &action, &explanation);
 
@@ -110,7 +110,7 @@ TEST_F(InterpretabilityTest, GenerateCounterfactual) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
+    interp_proposed_action_t action = makeAction("compute", "Test action");
     counterfactual_query_t query;
     memset(&query, 0, sizeof(query));
     strcpy(query.query, "What if confidence was higher?");
@@ -125,7 +125,7 @@ TEST_F(InterpretabilityTest, DecomposeUncertainty) {
     createWithDefaults();
     ASSERT_NE(interp, nullptr);
 
-    proposed_action_t action = makeAction("compute", "Test action");
+    interp_proposed_action_t action = makeAction("compute", "Test action");
     uncertainty_breakdown_t uncertainty;
     nimcp_error_t err = interpretability_decompose_uncertainty(
         interp, &action, &uncertainty);
@@ -151,9 +151,9 @@ TEST_F(InterpretabilityTest, ConnectBioAsync) {
 }
 
 TEST_F(InterpretabilityTest, NullHandleOperationsReturnErrors) {
-    proposed_action_t action;
+    interp_proposed_action_t action;
     memset(&action, 0, sizeof(action));
-    decision_explanation_t exp;
+    interp_decision_explanation_t exp;
     EXPECT_EQ(interpretability_explain_decision(nullptr, &action, &exp),
               NIMCP_ERROR_INVALID_ARGUMENT);
 }

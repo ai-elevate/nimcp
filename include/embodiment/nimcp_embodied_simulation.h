@@ -68,6 +68,11 @@ extern "C" {
  */
 #define NIMCP_SIMULATION_TRAJECTORY_SIZE 128
 
+/**
+ * @brief Maximum size of feasibility reason buffer
+ */
+#define NIMCP_SIMULATION_REASON_MAX 64
+
 /* ============================================================================
  * Error Codes
  * ============================================================================ */

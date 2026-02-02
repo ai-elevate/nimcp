@@ -660,10 +660,38 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
 NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, size_t size);
 
 /**
+ * @brief TOCTOU-safe quarantine check with optional reference acquisition
+ *
+ * WHAT: Atomically check quarantine status and optionally acquire reference
+ * WHY:  Prevents race condition between check and use
+ * HOW:  If acquire_ref is true and region is not quarantined, acquires reference
+ *
+ * @param system BBB system handle
+ * @param address Address to check
+ * @param size Size of region to check
+ * @param acquire_ref If true and not quarantined, acquire reference (must call bbb_release_quarantine_ref)
+ * @return true if quarantined, false if not quarantined (and reference acquired if requested)
+ *
+ * @note Caller MUST call bbb_release_quarantine_ref() when done if acquire_ref was true
+ *       and this function returned false.
+ */
+NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* address, size_t size, bool acquire_ref);
+
+/**
+ * @brief Release quarantine reference acquired by bbb_is_quarantined_safe
+ *
+ * WHAT: Release reference acquired during TOCTOU-safe check
+ * WHY:  Allow quarantine operations to proceed after safe access
+ *
+ * @param system BBB system handle
+ */
+NIMCP_EXPORT void bbb_release_quarantine_ref(bbb_system_t system);
+
+/**
  * @brief Release quarantined region
  * @param system BBB system handle
  * @param address Start address of region
- * @return true on success
+ * @return true on success, false if region has active references or not found
  */
 NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address);
 

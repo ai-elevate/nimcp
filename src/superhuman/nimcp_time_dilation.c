@@ -419,8 +419,8 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
-                              "time_dilation_create: Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                              "time_dilation_create: Failed to create mutex%s", "");
         time_dilation_destroy(sys);
         return NULL;
     }

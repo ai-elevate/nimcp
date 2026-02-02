@@ -420,6 +420,23 @@ uint32_t nimcp_toctou_process_inbox(
 );
 
 //=============================================================================
+// Module Cleanup API
+//=============================================================================
+
+/**
+ * @brief Cleanup TOCTOU guard module resources
+ *
+ * WHAT: Destroy global module resources (guard creation lock)
+ * WHY:  Clean resource management on module unload
+ * HOW:  Call at program exit or explicit module cleanup
+ *
+ * THREAD-SAFETY: Should only be called when no other threads are using the module
+ *
+ * NOTE: This function is idempotent - safe to call multiple times
+ */
+void nimcp_toctou_module_cleanup(void);
+
+//=============================================================================
 // Convenience Macros
 //=============================================================================
 

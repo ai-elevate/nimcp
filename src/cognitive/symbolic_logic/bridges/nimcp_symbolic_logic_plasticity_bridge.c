@@ -1190,14 +1190,16 @@ safety_event_t safety_event_create(
         strncpy(event.rule_name, rule_name, SAFETY_MAX_RULE_NAME_LENGTH - 1);
         event.rule_name[SAFETY_MAX_RULE_NAME_LENGTH - 1] = '\0';
     } else {
-        strcpy(event.rule_name, "unknown");
+        strncpy(event.rule_name, "unknown", SAFETY_MAX_RULE_NAME_LENGTH - 1);
+        event.rule_name[SAFETY_MAX_RULE_NAME_LENGTH - 1] = '\0';
     }
 
     if (source_module) {
         strncpy(event.source_module, source_module, SAFETY_MAX_MODULE_NAME_LENGTH - 1);
         event.source_module[SAFETY_MAX_MODULE_NAME_LENGTH - 1] = '\0';
     } else {
-        strcpy(event.source_module, "unknown");
+        strncpy(event.source_module, "unknown", SAFETY_MAX_MODULE_NAME_LENGTH - 1);
+        event.source_module[SAFETY_MAX_MODULE_NAME_LENGTH - 1] = '\0';
     }
 
     return event;

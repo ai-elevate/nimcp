@@ -17,6 +17,7 @@
 #include "utils/thread/nimcp_mutex_pool.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -73,6 +74,19 @@ typedef struct {
  */
 static mutex_pool_t g_pool = {0};
 
+/**
+ * WHAT: Platform-once control for thread-safe auto-initialization
+ * WHY:  Prevent race condition when multiple threads call acquire() simultaneously
+ * HOW:  nimcp_platform_once guarantees exactly-once execution
+ */
+static nimcp_platform_once_t g_pool_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * WHAT: Initialization result for thread-safe error propagation
+ * WHY:  nimcp_platform_once doesn't return error, so store result for later check
+ */
+static int g_pool_init_result = 0;
+
 //=============================================================================
 // Hash Function
 //=============================================================================
@@ -99,26 +113,33 @@ static uint32_t fnv1a_hash(const char* str) {
 // Lifecycle API
 //=============================================================================
 
-int nimcp_mutex_pool_init(void) {
-    if (g_pool.initialized) {
-        return 0;  // Already initialized
-    }
-
-    // Initialize all pool mutexes
+/**
+ * @brief Internal initialization routine called by nimcp_platform_once
+ *
+ * WHAT: Thread-safe one-time initialization of mutex pool
+ * WHY:  Ensures pool is initialized exactly once even with concurrent callers
+ */
+static void mutex_pool_init_internal(void) {
+    /* Initialize all pool mutexes */
     for (int i = 0; i < NIMCP_MUTEX_POOL_SIZE; i++) {
         int rc = nimcp_platform_mutex_init(&g_pool.mutexes[i], false);
         if (rc != 0) {
-            // Rollback on failure
+            /* Rollback on failure */
             for (int j = 0; j < i; j++) {
                 nimcp_platform_mutex_destroy(&g_pool.mutexes[j]);
             }
-            return -1;
+            /* P0 fix: Explicitly set initialized to false on failure to ensure
+             * consistent state. Although initialized starts as false, being explicit
+             * here makes the failure state clear and guards against future changes. */
+            g_pool.initialized = false;
+            g_pool_init_result = -1;
+            return;
         }
         g_pool.ref_counts[i] = 0;
         nimcp_atomic_init_u32(&g_pool.slot_usage[i], 0);
     }
 
-    // Initialize atomic statistics
+    /* Initialize atomic statistics */
     nimcp_atomic_init_u32(&g_pool.total_acquires, 0);
     nimcp_atomic_init_u32(&g_pool.total_releases, 0);
     nimcp_atomic_init_u32(&g_pool.total_locks, 0);
@@ -126,7 +147,18 @@ int nimcp_mutex_pool_init(void) {
     nimcp_atomic_init_u32(&g_pool.contention_events, 0);
 
     g_pool.initialized = true;
-    return 0;
+    g_pool_init_result = 0;
+}
+
+int nimcp_mutex_pool_init(void) {
+    if (g_pool.initialized) {
+        return 0;  /* Already initialized */
+    }
+
+    /* Thread-safe one-time initialization using platform_once */
+    nimcp_platform_once(&g_pool_init_once, mutex_pool_init_internal);
+
+    return g_pool_init_result;
 }
 
 int nimcp_mutex_pool_destroy(void) {
@@ -155,8 +187,9 @@ bool nimcp_mutex_pool_is_initialized(void) {
 
 nimcp_mutex_slot_t nimcp_mutex_pool_acquire(const char* bridge_name) {
     if (!g_pool.initialized) {
-        // Auto-initialize on first use
-        if (nimcp_mutex_pool_init() != 0) {
+        /* Thread-safe auto-initialize on first use via platform_once */
+        nimcp_platform_once(&g_pool_init_once, mutex_pool_init_internal);
+        if (g_pool_init_result != 0 || !g_pool.initialized) {
             return NIMCP_MUTEX_SLOT_INVALID;
         }
     }
@@ -186,7 +219,9 @@ nimcp_mutex_slot_t nimcp_mutex_pool_acquire(const char* bridge_name) {
 
 nimcp_mutex_slot_t nimcp_mutex_pool_acquire_by_id(uint32_t bridge_id) {
     if (!g_pool.initialized) {
-        if (nimcp_mutex_pool_init() != 0) {
+        /* Thread-safe auto-initialize on first use via platform_once */
+        nimcp_platform_once(&g_pool_init_once, mutex_pool_init_internal);
+        if (g_pool_init_result != 0 || !g_pool.initialized) {
             return NIMCP_MUTEX_SLOT_INVALID;
         }
     }

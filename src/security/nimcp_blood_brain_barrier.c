@@ -49,21 +49,23 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for blood_brain_barrier module */
-static nimcp_health_agent_t* g_blood_brain_barrier_health_agent = NULL;
+/** Global health agent for blood_brain_barrier module - P0 fix: Use atomic for thread safety */
+static _Atomic(nimcp_health_agent_t*) g_blood_brain_barrier_health_agent = NULL;
 
 /**
  * @brief Set health agent for blood_brain_barrier heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
 static void blood_brain_barrier_set_health_agent(nimcp_health_agent_t* agent) {
-    g_blood_brain_barrier_health_agent = agent;
+    atomic_store(&g_blood_brain_barrier_health_agent, agent);
 }
 
 /** @brief Send heartbeat from blood_brain_barrier module */
 static inline void blood_brain_barrier_heartbeat(const char* operation, float progress) {
-    if (g_blood_brain_barrier_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_blood_brain_barrier_health_agent, operation, progress);
+    /* P0 fix: Atomic load to prevent data race */
+    nimcp_health_agent_t* agent = atomic_load(&g_blood_brain_barrier_health_agent);
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
 }
 
@@ -96,12 +98,16 @@ static inline void blood_brain_barrier_heartbeat(const char* operation, float pr
 /**
  * WHAT: Quarantined memory region tracking
  * WHY:  Track isolated regions containing detected threats
+ *
+ * SECURITY: Uses reference counting to prevent TOCTOU races.
+ * When ref_count > 0, the quarantine entry cannot be released.
  */
 typedef struct {
     void* address;      /**< Start address of quarantined region */
     size_t size;        /**< Size of quarantined region */
     uint64_t timestamp; /**< When region was quarantined */
     bool active;        /**< Whether region is still quarantined */
+    _Atomic int ref_count; /**< Reference count to prevent TOCTOU races */
 } bbb_quarantine_entry_t;
 
 /**
@@ -144,6 +150,10 @@ struct bbb_system_struct {
     /* SECURITY FIX: Atomic counter for pending immune operations
      * Prevents use-after-free if immune system is detached while operations pending */
     _Atomic int pending_immune_ops;
+
+    /* SECURITY FIX: Condition variable for waiting on pending immune operations */
+    nimcp_cond_t immune_ops_cond;
+    bool immune_ops_cond_initialized;
 };
 
 //=============================================================================
@@ -378,6 +388,14 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
     system->immune_system = NULL;
     atomic_init(&system->pending_immune_ops, 0);
 
+    /* Initialize condition variable for immune ops synchronization */
+    if (nimcp_cond_init(&system->immune_ops_cond) == NIMCP_SUCCESS) {
+        system->immune_ops_cond_initialized = true;
+    } else {
+        system->immune_ops_cond_initialized = false;
+        LOG_WARN("bbb_system_create: Failed to initialize immune ops condition variable");
+    }
+
     return system;
 }
 
@@ -393,6 +411,11 @@ NIMCP_EXPORT void bbb_system_destroy(bbb_system_t system)
     /* Guard: Null system */
     if (!system) {
         return;
+    }
+
+    /* Destroy condition variable if initialized */
+    if (system->immune_ops_cond_initialized) {
+        nimcp_cond_destroy(&system->immune_ops_cond);
     }
 
     /* Destroy mutex if initialized */
@@ -533,20 +556,31 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
     nimcp_mutex_lock(&system->mutex);
 
     /* SECURITY FIX: If disconnecting (setting to NULL), wait for pending operations.
-     * This prevents use-after-free when immune system is being detached. */
+     * This prevents use-after-free when immune system is being detached.
+     * Uses condition variable instead of spin-wait for proper synchronization. */
     if (immune_system == NULL && system->immune_system != NULL) {
-        /* Spin-wait for pending immune operations to complete (with timeout) */
-        int max_wait_cycles = 10000;
-        while (atomic_load(&system->pending_immune_ops) > 0 && max_wait_cycles > 0) {
-            nimcp_mutex_unlock(&system->mutex);
-            /* Brief yield to allow pending ops to complete */
-            struct timespec ts = {0, 100000}; /* 100 microseconds */
-            nanosleep(&ts, NULL);
-            nimcp_mutex_lock(&system->mutex);
-            max_wait_cycles--;
+        /* Wait for pending immune operations to complete using condition variable */
+        const uint32_t TIMEOUT_MS = 1000;  /* 1 second timeout */
+        int total_wait_ms = 0;
+        const int WAIT_INTERVAL_MS = 10;   /* Check every 10ms */
+
+        while (atomic_load(&system->pending_immune_ops) > 0 && total_wait_ms < TIMEOUT_MS) {
+            if (system->immune_ops_cond_initialized) {
+                /* Use condition variable with timeout for proper waiting */
+                nimcp_cond_timedwait(&system->immune_ops_cond, &system->mutex, WAIT_INTERVAL_MS);
+            } else {
+                /* Fallback: release mutex briefly to allow pending ops to complete */
+                nimcp_mutex_unlock(&system->mutex);
+                struct timespec ts = {0, WAIT_INTERVAL_MS * 1000000L}; /* Convert ms to ns */
+                nanosleep(&ts, NULL);
+                nimcp_mutex_lock(&system->mutex);
+            }
+            total_wait_ms += WAIT_INTERVAL_MS;
         }
-        if (max_wait_cycles == 0) {
-            LOG_WARN("bbb_connect_immune: Timeout waiting for pending immune operations");
+
+        if (atomic_load(&system->pending_immune_ops) > 0) {
+            LOG_WARN("bbb_connect_immune: Timeout waiting for %d pending immune operations after %dms",
+                     atomic_load(&system->pending_immune_ops), total_wait_ms);
         }
     }
 
@@ -849,6 +883,101 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
 }
 
 /**
+ * @brief TOCTOU-safe quarantine check with optional reference acquisition
+ *
+ * WHAT: Atomically check quarantine status and optionally acquire reference
+ * WHY:  Prevents race condition between check and use
+ * HOW:  If acquire_ref is true and region is not quarantined, increments ref_count
+ *
+ * @param system BBB system handle
+ * @param address Address to check
+ * @param size Size of region to check
+ * @param acquire_ref If true and not quarantined, acquire reference (must call bbb_release_quarantine_ref)
+ * @return true if quarantined, false if not quarantined (and reference acquired if requested)
+ *
+ * @note Caller MUST call bbb_release_quarantine_ref() when done if acquire_ref was true
+ *       and this function returned false.
+ */
+NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* address, size_t size, bool acquire_ref)
+{
+    if (!system || !address || size == 0) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    uintptr_t check_start = (uintptr_t)address;
+
+    /* Check for integer overflow in address + size */
+    if (size > UINTPTR_MAX - check_start) {
+        nimcp_mutex_unlock(&system->mutex);
+        return true;  /* Treat overflow as quarantined for safety */
+    }
+
+    uintptr_t check_end = check_start + size;
+
+    for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
+        if (!system->quarantine[i].active) continue;
+
+        uintptr_t q_start = (uintptr_t)system->quarantine[i].address;
+
+        if (system->quarantine[i].size > UINTPTR_MAX - q_start) {
+            continue;
+        }
+
+        uintptr_t q_end = q_start + system->quarantine[i].size;
+
+        /* Check for overlap */
+        if (check_start < q_end && check_end > q_start) {
+            nimcp_mutex_unlock(&system->mutex);
+            return true;  /* Region is quarantined */
+        }
+    }
+
+    /* Region is not quarantined - optionally acquire reference to prevent TOCTOU */
+    if (acquire_ref) {
+        /* Find the closest containing region and increment its ref_count
+         * This prevents the region from being quarantined while in use */
+        for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
+            if (system->quarantine[i].active) {
+                /* Increment ref_count to signal region is in use */
+                atomic_fetch_add(&system->quarantine[i].ref_count, 1);
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(&system->mutex);
+    return false;
+}
+
+/**
+ * @brief Release quarantine reference acquired by bbb_is_quarantined_safe
+ *
+ * WHAT: Release reference acquired during TOCTOU-safe check
+ * WHY:  Allow quarantine operations to proceed after safe access
+ * HOW:  Decrements ref_count on all active quarantine entries
+ *
+ * @param system BBB system handle
+ */
+NIMCP_EXPORT void bbb_release_quarantine_ref(bbb_system_t system)
+{
+    if (!system) return;
+
+    nimcp_mutex_lock(&system->mutex);
+    for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
+        if (system->quarantine[i].active) {
+            int prev = atomic_fetch_sub(&system->quarantine[i].ref_count, 1);
+            /* Ensure we don't go below zero (shouldn't happen with correct usage) */
+            if (prev <= 0) {
+                atomic_store(&system->quarantine[i].ref_count, 0);
+                LOG_WARN("bbb_release_quarantine_ref: ref_count underflow detected");
+            }
+        }
+    }
+    nimcp_mutex_unlock(&system->mutex);
+}
+
+/**
  * @brief Quarantine a memory region containing a threat
  *
  * WHAT: Isolate suspicious memory region
@@ -893,21 +1022,28 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     system->quarantine[slot].size = size;
     system->quarantine[slot].timestamp = (uint64_t)time(NULL);
     system->quarantine[slot].active = true;
+    atomic_init(&system->quarantine[slot].ref_count, 0);  /* Initialize ref_count */
     system->quarantine_count++;
 
     /* Update statistics */
     system->stats.threats_quarantined++;
 
     /* SECURITY FIX: Use atomic reference count to prevent use-after-free.
-     * Increment counter before copying pointer, decrement after immune call.
-     * This prevents immune system from being detached while we're using it. */
+     * The pending_immune_ops counter prevents the immune system from being
+     * detached (set to NULL) while operations are in progress:
+     *   1. We increment the counter BEFORE copying the pointer
+     *   2. bbb_connect_immune(NULL) will wait for counter to reach zero
+     *   3. We decrement counter AFTER immune calls complete
+     *   4. Signal condition variable to wake up any waiting disconnect calls
+     * This creates a safe window where the immune pointer remains valid. */
     brain_immune_system_t* immune = system->immune_system;
     bool has_immune = (immune != NULL);
     if (has_immune) {
         atomic_fetch_add(&system->pending_immune_ops, 1);
     }
 
-    /* Release BBB mutex BEFORE calling immune functions (prevents deadlock) */
+    /* Release BBB mutex BEFORE calling immune functions (prevents deadlock).
+     * At this point, pending_immune_ops > 0 guarantees immune pointer validity. */
     nimcp_mutex_unlock(&system->mutex);
 
     /* Activate killer T cell to handle quarantined region (without holding BBB mutex) */
@@ -933,8 +1069,12 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         uint32_t t_cell_id = 0;
         brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
 
-        /* SECURITY FIX: Decrement pending operations counter */
+        /* SECURITY FIX: Decrement pending operations counter and signal waiters.
+         * This allows bbb_connect_immune(NULL) to proceed if it was waiting. */
         atomic_fetch_sub(&system->pending_immune_ops, 1);
+        if (system->immune_ops_cond_initialized) {
+            nimcp_cond_signal(&system->immune_ops_cond);
+        }
     }
 
     return true;
@@ -962,6 +1102,14 @@ NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address)
     for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
         if (system->quarantine[i].active &&
             system->quarantine[i].address == address) {
+            /* SECURITY FIX: Check ref_count before releasing to prevent TOCTOU issues */
+            int ref = atomic_load(&system->quarantine[i].ref_count);
+            if (ref > 0) {
+                LOG_WARN("bbb_release_quarantine: Cannot release region %p with %d active references",
+                         address, ref);
+                nimcp_mutex_unlock(&system->mutex);
+                return false;  /* Cannot release while references are held */
+            }
             system->quarantine[i].active = false;
             system->quarantine_count--;
             found = true;

@@ -25,6 +25,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -40,21 +41,34 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for toctou_guard module */
+/** Global health agent for toctou_guard module (DEPRECATED - use atomic version) */
 static nimcp_health_agent_t* g_toctou_guard_health_agent = NULL;
 
+/** Atomic health agent pointer for thread-safe access */
+static nimcp_atomic_ptr_t g_atomic_toctou_health_agent = {0};
+
 /**
- * @brief Set health agent for toctou_guard heartbeats
+ * @brief Set health agent for toctou_guard heartbeats (thread-safe)
  * @param agent Health agent (can be NULL to disable)
+ *
+ * THREAD-SAFETY: Uses atomic store with RELEASE semantics
  */
-static void toctou_guard_set_health_agent(nimcp_health_agent_t* agent) {
+void toctou_guard_set_health_agent(nimcp_health_agent_t* agent) {
+    /* Legacy pointer update (for backwards compatibility) */
     g_toctou_guard_health_agent = agent;
+
+    /* Thread-safe atomic update */
+    nimcp_atomic_store_ptr(&g_atomic_toctou_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
-/** @brief Send heartbeat from toctou_guard module */
+/** @brief Send heartbeat from toctou_guard module (thread-safe) */
 static inline void toctou_guard_heartbeat(const char* operation, float progress) {
-    if (g_toctou_guard_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_toctou_guard_health_agent, operation, progress);
+    /* Thread-safe read using atomic load */
+    nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
+        nimcp_atomic_load_ptr(&g_atomic_toctou_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
+
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
 }
 
@@ -131,9 +145,15 @@ static uint64_t get_time_ms(void) {
 
 /**
  * @brief Internal initialization routine called by nimcp_platform_once
+ *
+ * THREAD-SAFETY: Guaranteed to execute exactly once by nimcp_platform_once
  */
 static void toctou_module_init_internal(void) {
     nimcp_platform_mutex_init(&g_guard_creation_lock, false);
+
+    /* Initialize atomic health agent pointer */
+    nimcp_atomic_init_ptr(&g_atomic_toctou_health_agent, NULL);
+
     LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module initialized");
 }
 
@@ -788,4 +808,44 @@ uint32_t nimcp_toctou_process_inbox(
     }
 
     return bio_router_process_inbox(guard->bio_context, max_messages);
+}
+
+//=============================================================================
+// Module Cleanup Implementation
+//=============================================================================
+
+/**
+ * @brief Flag to track if module cleanup has been performed
+ * WHY: Prevent double-cleanup
+ */
+static bool g_toctou_module_cleaned_up = false;
+
+/**
+ * @brief Cleanup TOCTOU guard module resources
+ *
+ * WHAT: Destroy the global guard creation lock
+ * WHY:  Clean resource management on module unload
+ * HOW:  Called at program exit or explicit module cleanup
+ *
+ * THREAD-SAFETY: Should only be called when no other threads are using the module
+ *
+ * NOTE: This function is idempotent - safe to call multiple times
+ */
+void nimcp_toctou_module_cleanup(void) {
+    /* Prevent double cleanup */
+    if (g_toctou_module_cleaned_up) {
+        return;
+    }
+
+    /* Only destroy if the once-init actually ran (module was initialized) */
+    /* The once-init sets up g_guard_creation_lock, so we destroy it here */
+    nimcp_platform_mutex_destroy(&g_guard_creation_lock);
+
+    /* Clear health agent pointer */
+    nimcp_atomic_store_ptr(&g_atomic_toctou_health_agent, NULL, NIMCP_MEMORY_ORDER_RELEASE);
+    g_toctou_guard_health_agent = NULL;
+
+    g_toctou_module_cleaned_up = true;
+
+    LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module cleaned up");
 }

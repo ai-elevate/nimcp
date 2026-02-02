@@ -180,9 +180,11 @@ static nimcp_error_t compute_file_hash(const char* filepath,
 
     EVP_MD_CTX_free(ctx);
 
-    /* Convert to hex string */
+    /* Convert to hex string with bounds checking */
+    /* hash_output must be at least (hash_len * 2 + 1) bytes */
+    /* Maximum hash_len is 64 (SHA-512), so max output is 129 bytes */
     for (size_t i = 0; i < hash_len; i++) {
-        sprintf(&hash_output[i * 2], "%02x", hash[i]);
+        snprintf(&hash_output[i * 2], 3, "%02x", hash[i]);
     }
     hash_output[hash_len * 2] = '\0';
 

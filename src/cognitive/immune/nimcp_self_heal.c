@@ -378,7 +378,7 @@ static int apply_template_substitution(
                 if (value != NULL && value[0] != '\0') {
                     size_t val_len = strlen(value);
                     if (out_idx + val_len < output_size) {
-                        strcpy(output + out_idx, value);
+                        memcpy(output + out_idx, value, val_len);
                         out_idx += val_len;
                     }
                 }
@@ -463,7 +463,8 @@ static int generate_pattern_fix(
                     match.var_idx[idx_len] = '\0';
                 }
             }
-            strcpy(match.var_size, "size"); /* Default size variable */
+            strncpy(match.var_size, "size", sizeof(match.var_size) - 1); /* Default size variable */
+            match.var_size[sizeof(match.var_size) - 1] = '\0';
             match.valid = true;
         }
 

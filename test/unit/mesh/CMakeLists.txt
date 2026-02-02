@@ -290,3 +290,11 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator.cpp
     unit
 )
+
+# ============================================================================
+# Phase 17: Brain Region Mesh Integration
+# ============================================================================
+# WHAT: Tests for individual brain region mesh integration
+# WHY:  Validates amygdala, basal ganglia, hippocampus, thalamus mesh coordination
+
+add_subdirectory(integration)

@@ -1354,8 +1354,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_fuzzy_bridge.c  # Fuzzy logic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_statistics_bridge.c  # Statistics/HMM integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_snn_bridge.c  # SNN integration for linguistics
-    # TODO: Fix API mismatches in plasticity bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_plasticity_bridge.c  # Plasticity integration for linguistics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_plasticity_bridge.c  # Plasticity integration for linguistics
     # Personality SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_snn_bridge.c  # SNN integration for personality
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_plasticity_bridge.c  # Plasticity integration for personality
@@ -2538,6 +2537,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_collective_bridge.c  # Occipital-collective cognition integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
 
+    # Superhuman Enhancement Modules (Phase: Cognitive Expansion)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_eagle_vision.c          # Enhanced visual acuity (8x human, dual fovea)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_time_dilation.c         # Temporal processing enhancement
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_savant_mode.c           # Pattern recognition abilities
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_echolocation.c          # 3D spatial mapping from echoes
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_hyperthymesia.c         # Autobiographical memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_synesthesia.c           # Cross-modal perception
+    ${CMAKE_CURRENT_SOURCE_DIR}/../superhuman/nimcp_precognition.c          # Pattern prediction
+
     # Integration Layer Infrastructure (Phase: Comprehensive Implementation Plan)
     # Core layer infrastructure
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/core/nimcp_layer_types.c
@@ -2633,6 +2641,12 @@ set(NIMCP_CORE_SOURCES
 
     # Biology layer modules - Neurovascular Coupling
     ${CMAKE_CURRENT_SOURCE_DIR}/../biology/neurovascular/nimcp_neurovascular.c
+
+    # Embodiment layer modules - Embodied Cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../embodiment/nimcp_affordance_processing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../embodiment/nimcp_body_ownership.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../embodiment/nimcp_embodied_simulation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../embodiment/nimcp_interoceptive_prediction.c
 
     # Module adapters - Physics layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/physics/nimcp_hh_dynamics_adapter.c

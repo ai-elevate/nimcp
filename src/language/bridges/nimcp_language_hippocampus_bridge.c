@@ -534,7 +534,8 @@ int language_hippocampus_pattern_complete(language_hippocampus_bridge_t* bridge,
     for (uint32_t i = 0; i < bridge->config.max_word_memories && count < max_completions; i++) {
         if (bridge->memories[i].is_valid &&
             strncmp(bridge->memories[i].memory.word, partial_word, partial_len) == 0) {
-            strcpy(completed_words + count * 64, bridge->memories[i].memory.word);
+            strncpy(completed_words + count * 64, bridge->memories[i].memory.word, 63);
+            completed_words[count * 64 + 63] = '\0';
             count++;
         }
     }

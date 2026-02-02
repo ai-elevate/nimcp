@@ -633,7 +633,7 @@ TEST_F(PlasticityBridgeTest, MeshHandler_ProcessGeneratesBelief) {
 
     linguistics_request_t request;
     memset(&request, 0, sizeof(request));
-    request.type = LING_REQUEST_PLASTICITY_UPDATE;
+    request.type = LING_REQUEST_REHEARSE;  // Use valid request type (no PLASTICITY_UPDATE in enum)
 
     linguistics_belief_t belief;
     memset(&belief, 0, sizeof(belief));

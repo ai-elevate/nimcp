@@ -24,6 +24,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "security_fractal"
 
@@ -105,11 +106,11 @@ static uint64_t get_timestamp_ms(void);
 //=============================================================================
 
 nimcp_fractal_security_t* nimcp_fractal_security_create(void) {
-    nimcp_fractal_security_t* fsc = calloc(1, sizeof(nimcp_fractal_security_t));
+    nimcp_fractal_security_t* fsc = nimcp_calloc(1, sizeof(nimcp_fractal_security_t));
     if (!fsc) return NULL;
 
     if (nimcp_mutex_init(&fsc->lock, NULL) != NIMCP_SUCCESS) {
-        free(fsc);
+        nimcp_free(fsc);
         return NULL;
     }
 
@@ -156,7 +157,7 @@ nimcp_result_t nimcp_fractal_security_init(
 
     // Allocate node lookup table
     fsc->lookup_capacity = 256;
-    fsc->node_lookup = calloc(fsc->lookup_capacity, sizeof(nimcp_fsc_node_t*));
+    fsc->node_lookup = nimcp_calloc(fsc->lookup_capacity, sizeof(nimcp_fsc_node_t*));
     if (!fsc->node_lookup) {
         destroy_node(fsc->root);
         fsc->root = NULL;
@@ -186,7 +187,7 @@ void nimcp_fractal_security_destroy(nimcp_fractal_security_t* fsc) {
     }
 
     if (fsc->node_lookup) {
-        free(fsc->node_lookup);
+        nimcp_free(fsc->node_lookup);
         fsc->node_lookup = NULL;
     }
 
@@ -194,7 +195,7 @@ void nimcp_fractal_security_destroy(nimcp_fractal_security_t* fsc) {
     nimcp_mutex_unlock(&fsc->lock);
     nimcp_mutex_destroy(&fsc->lock);
 
-    free(fsc);
+    nimcp_free(fsc);
 }
 
 nimcp_fsc_config_t nimcp_fractal_security_default_config(void) {
@@ -267,12 +268,25 @@ nimcp_result_t nimcp_fractal_security_protect(
         branch->parent = parent;
         branch->max_children = fsc->config.branching_factor;
 
-        // Add branch to parent
-        nimcp_fsc_node_t** new_children = realloc(parent->children,
-                                   (parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+        // Add branch to parent - check for integer overflow before realloc
+        if (parent->num_children >= UINT32_MAX) {
+            destroy_node(leaf);
+            destroy_node(branch);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        size_t new_count = (size_t)parent->num_children + 1;
+        if (new_count > SIZE_MAX / sizeof(nimcp_fsc_node_t*)) {
+            destroy_node(leaf);
+            destroy_node(branch);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        nimcp_fsc_node_t** new_children = nimcp_realloc(parent->children,
+                                   new_count * sizeof(nimcp_fsc_node_t*));
         if (!new_children) {
-            nimcp_free(leaf);
-            nimcp_free(branch);
+            destroy_node(leaf);
+            destroy_node(branch);
             nimcp_mutex_unlock(&fsc->lock);
             return NIMCP_NO_MEMORY;
         }
@@ -280,7 +294,13 @@ nimcp_result_t nimcp_fractal_security_protect(
         parent->children[parent->num_children++] = branch;
 
         // Add leaf to branch
-        branch->children = malloc(sizeof(nimcp_fsc_node_t*));
+        branch->children = nimcp_malloc(sizeof(nimcp_fsc_node_t*));
+        if (!branch->children) {
+            destroy_node(leaf);
+            destroy_node(branch);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
         branch->children[0] = leaf;
         branch->num_children = 1;
         leaf->parent = branch;
@@ -288,11 +308,22 @@ nimcp_result_t nimcp_fractal_security_protect(
 
         fsc->stats.total_nodes += 2;
     } else {
-        // Add directly to parent
-        nimcp_fsc_node_t** new_children = realloc(parent->children,
-                                   (parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+        // Add directly to parent - check for integer overflow before realloc
+        if (parent->num_children >= UINT32_MAX) {
+            destroy_node(leaf);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        size_t new_count = (size_t)parent->num_children + 1;
+        if (new_count > SIZE_MAX / sizeof(nimcp_fsc_node_t*)) {
+            destroy_node(leaf);
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_NO_MEMORY;
+        }
+        nimcp_fsc_node_t** new_children = nimcp_realloc(parent->children,
+                                   new_count * sizeof(nimcp_fsc_node_t*));
         if (!new_children) {
-            nimcp_free(leaf);
+            destroy_node(leaf);
             nimcp_mutex_unlock(&fsc->lock);
             return NIMCP_NO_MEMORY;
         }
@@ -301,11 +332,23 @@ nimcp_result_t nimcp_fractal_security_protect(
         fsc->stats.total_nodes++;
     }
 
-    // Add to lookup table
+    // Add to lookup table - check for integer overflow before realloc
     if (fsc->lookup_count >= fsc->lookup_capacity) {
+        if (fsc->lookup_capacity >= UINT32_MAX / 2) {
+            // Leaf already added to tree, just skip lookup expansion
+            LOG_WARN("nimcp_fractal_security_protect: lookup table capacity overflow");
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_SUCCESS;  // Node added but lookup not expanded
+        }
         uint32_t new_capacity = fsc->lookup_capacity * 2;
-        nimcp_fsc_node_t** new_lookup = realloc(fsc->node_lookup,
-                                   new_capacity * sizeof(nimcp_fsc_node_t*));
+        if ((size_t)new_capacity > SIZE_MAX / sizeof(nimcp_fsc_node_t*)) {
+            // Leaf already added to tree, just skip lookup expansion
+            LOG_WARN("nimcp_fractal_security_protect: lookup table size overflow");
+            nimcp_mutex_unlock(&fsc->lock);
+            return NIMCP_SUCCESS;  // Node added but lookup not expanded
+        }
+        nimcp_fsc_node_t** new_lookup = nimcp_realloc(fsc->node_lookup,
+                                   (size_t)new_capacity * sizeof(nimcp_fsc_node_t*));
         if (!new_lookup) {
             // Leaf already added to tree, just skip lookup expansion
             LOG_WARN("nimcp_fractal_security_protect: lookup table expansion failed");
@@ -627,10 +670,21 @@ nimcp_result_t nimcp_fractal_security_place_guardian(
         guardian->verified = true;
         guardian->last_verified = get_timestamp_ms();
 
-        // Add to parent
+        // Add to parent - check for integer overflow before realloc
         if (node->parent) {
-            nimcp_fsc_node_t** new_children = realloc(node->parent->children,
-                (node->parent->num_children + 1) * sizeof(nimcp_fsc_node_t*));
+            if (node->parent->num_children >= UINT32_MAX) {
+                nimcp_free(guardian);
+                nimcp_mutex_unlock(&fsc->lock);
+                return NIMCP_NO_MEMORY;
+            }
+            size_t new_count = (size_t)node->parent->num_children + 1;
+            if (new_count > SIZE_MAX / sizeof(nimcp_fsc_node_t*)) {
+                nimcp_free(guardian);
+                nimcp_mutex_unlock(&fsc->lock);
+                return NIMCP_NO_MEMORY;
+            }
+            nimcp_fsc_node_t** new_children = nimcp_realloc(node->parent->children,
+                new_count * sizeof(nimcp_fsc_node_t*));
             if (!new_children) {
                 nimcp_free(guardian);
                 nimcp_mutex_unlock(&fsc->lock);
@@ -849,7 +903,7 @@ nimcp_result_t nimcp_fractal_security_detect_anomalies(
     nimcp_mutex_lock(&fsc->lock);
 
     // Allocate anomaly array
-    *anomalies = calloc(fsc->stats.total_nodes, sizeof(nimcp_fsc_anomaly_t));
+    *anomalies = nimcp_calloc(fsc->stats.total_nodes, sizeof(nimcp_fsc_anomaly_t));
     if (!*anomalies) {
         nimcp_mutex_unlock(&fsc->lock);
         return NIMCP_NO_MEMORY;
@@ -887,9 +941,13 @@ nimcp_result_t nimcp_fractal_security_detect_anomalies(
 
     // Resize to actual count
     if (*count > 0) {
-        *anomalies = realloc(*anomalies, *count * sizeof(nimcp_fsc_anomaly_t));
+        nimcp_fsc_anomaly_t* resized = nimcp_realloc(*anomalies, *count * sizeof(nimcp_fsc_anomaly_t));
+        if (resized) {
+            *anomalies = resized;
+        }
+        // If realloc fails, keep original allocation (it's just slightly oversized)
     } else {
-        free(*anomalies);
+        nimcp_free(*anomalies);
         *anomalies = NULL;
     }
 
@@ -1183,7 +1241,7 @@ static void propagate_hash_up(nimcp_fractal_security_t* fsc, nimcp_fsc_node_t* n
 }
 
 static nimcp_fsc_node_t* create_node(nimcp_fsc_node_type_t type, uint32_t level) {
-    nimcp_fsc_node_t* node = calloc(1, sizeof(nimcp_fsc_node_t));
+    nimcp_fsc_node_t* node = nimcp_calloc(1, sizeof(nimcp_fsc_node_t));
     if (!node) return NULL;
 
     node->type = type;
@@ -1202,10 +1260,10 @@ static void destroy_node(nimcp_fsc_node_t* node) {
     }
 
     if (node->children) {
-        free(node->children);
+        nimcp_free(node->children);
     }
 
-    free(node);
+    nimcp_free(node);
 }
 
 static nimcp_fsc_node_t* find_node_for_data(nimcp_fractal_security_t* fsc, void* data) {

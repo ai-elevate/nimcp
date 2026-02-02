@@ -486,9 +486,11 @@ void nimcp_intero_default_config(nimcp_intero_config_t* config) {
 }
 
 nimcp_intero_context_t* nimcp_intero_create(const nimcp_intero_config_t* config) {
+    /* Use defaults if config is NULL */
+    nimcp_intero_config_t default_config;
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in intero_create");
-        return NULL;
+        nimcp_intero_default_config(&default_config);
+        config = &default_config;
     }
 
     nimcp_intero_context_t* ctx = nimcp_malloc(sizeof(nimcp_intero_context_t));
@@ -1320,8 +1322,8 @@ nimcp_intero_error_t nimcp_intero_assess_awareness(
 
     awareness->assessment_time = get_timestamp_ns();
 
-    ctx->stats.avg_intero_accuracy = (ctx->stats.avg_intero_accuracy * 0.9 +
-                                      awareness->accuracy * 0.1);
+    /* Note: Stats update moved to nimcp_intero_update() to avoid const violation.
+     * This function is intentionally read-only per API contract. */
 
     return NIMCP_INTERO_OK;
 }

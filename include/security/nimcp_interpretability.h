@@ -107,9 +107,10 @@ typedef struct uncertainty_breakdown {
 } uncertainty_breakdown_t;
 
 /**
- * @brief Complete decision explanation
+ * @brief Complete decision explanation (interpretability module)
+ * @note Prefixed with 'interp_' to avoid conflict with tripwires module
  */
-typedef struct decision_explanation {
+typedef struct interp_decision_explanation {
     /* Decision factors with weights */
     decision_factor_t factors[INTERPRETABILITY_MAX_FACTORS];
     uint32_t factor_count;
@@ -136,19 +137,20 @@ typedef struct decision_explanation {
     /* Metadata */
     uint64_t generation_timestamp;
     float generation_time_ms;
-} decision_explanation_t;
+} interp_decision_explanation_t;
 
 /**
- * @brief Proposed action (for explanation generation)
+ * @brief Proposed action for explanation generation (interpretability module)
+ * @note Prefixed with 'interp_' to avoid conflict with tripwires module
  */
-typedef struct proposed_action {
+typedef struct interp_proposed_action {
     char action_type[64];
     char description[256];
     float priority;
     float confidence;
     char target[128];
     void* context;                      /**< Opaque context for explanation */
-} proposed_action_t;
+} interp_proposed_action_t;
 
 /**
  * @brief Counterfactual query
@@ -273,8 +275,8 @@ NIMCP_EXPORT void interpretability_destroy(interpretability_t* system);
  */
 NIMCP_EXPORT nimcp_error_t interpretability_explain_decision(
     interpretability_t* system,
-    const proposed_action_t* action,
-    decision_explanation_t* explanation
+    const interp_proposed_action_t* action,
+    interp_decision_explanation_t* explanation
 );
 
 /**
@@ -288,7 +290,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_explain_decision(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_explain_summary(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     char* summary,
     size_t summary_size
 );
@@ -305,7 +307,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_explain_summary(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_extract_factors(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     decision_factor_t* factors,
     size_t max_factors,
     size_t* factor_count
@@ -330,7 +332,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_extract_factors(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_counterfactual(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     const counterfactual_query_t* query,
     counterfactual_result_t* result
 );
@@ -346,7 +348,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_counterfactual(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_find_minimal_change(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     char* minimal_change,
     size_t change_size
 );
@@ -370,8 +372,8 @@ NIMCP_EXPORT nimcp_error_t interpretability_find_minimal_change(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_verify_fidelity(
     interpretability_t* system,
-    const decision_explanation_t* explanation,
-    const proposed_action_t* action,
+    const interp_decision_explanation_t* explanation,
+    const interp_proposed_action_t* action,
     fidelity_result_t* result
 );
 
@@ -389,7 +391,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_verify_fidelity(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_decompose_uncertainty(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     uncertainty_breakdown_t* uncertainty
 );
 
@@ -409,7 +411,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_decompose_uncertainty(
  */
 NIMCP_EXPORT nimcp_error_t interpretability_trace_causality(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     causal_node_t* chain,
     size_t max_nodes,
     size_t* node_count
@@ -470,7 +472,7 @@ NIMCP_EXPORT nimcp_error_t interpretability_connect_alignment_monitor(
  * @return Number of characters written
  */
 NIMCP_EXPORT size_t interpretability_format_explanation(
-    const decision_explanation_t* explanation,
+    const interp_decision_explanation_t* explanation,
     char* buffer,
     size_t buffer_size
 );

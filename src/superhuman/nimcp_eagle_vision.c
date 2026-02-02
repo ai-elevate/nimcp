@@ -507,8 +507,8 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
-                              "eagle_vision_create: Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                              "eagle_vision_create: Failed to create mutex%s", "");
         eagle_vision_destroy(sys);
         return NULL;
     }

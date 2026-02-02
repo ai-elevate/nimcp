@@ -33,6 +33,7 @@
 #include "security/nimcp_post_quantum.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -376,15 +377,17 @@ nimcp_error_t nimcp_artifact_verify_signature(
     }
 
     if (err != NIMCP_OK) {
-        pthread_mutex_lock(&sc->lock);
-        sc->stats.failed_verifications++;
-        pthread_mutex_unlock(&sc->lock);
+        if (nimcp_platform_mutex_lock(&sc->lock) == 0) {
+            sc->stats.failed_verifications++;
+            nimcp_platform_mutex_unlock(&sc->lock);
+        }
         return err;
     }
 
-    pthread_mutex_lock(&sc->lock);
-    sc->stats.verified_dependencies++;
-    pthread_mutex_unlock(&sc->lock);
+    if (nimcp_platform_mutex_lock(&sc->lock) == 0) {
+        sc->stats.verified_dependencies++;
+        nimcp_platform_mutex_unlock(&sc->lock);
+    }
 
     return NIMCP_OK;
 }
@@ -453,7 +456,10 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
     NIMCP_CHECK_THROW(source_url, NIMCP_ERROR_INVALID_PARAM, "source_url is NULL");
     NIMCP_CHECK_THROW(public_key_path, NIMCP_ERROR_INVALID_PARAM, "public_key_path is NULL");
 
-    pthread_mutex_lock(&sc->lock);
+    if (nimcp_platform_mutex_lock(&sc->lock) != 0) {
+        LOG_ERROR("Failed to acquire lock for adding trusted source");
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
 
     /* Check capacity */
     if (sc->source_count >= sc->source_capacity) {
@@ -461,7 +467,7 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
         nimcp_trusted_source_t* new_sources = (nimcp_trusted_source_t*)realloc(
             sc->sources, new_capacity * sizeof(nimcp_trusted_source_t));
         if (!new_sources) {
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_platform_mutex_unlock(&sc->lock);
             return NIMCP_ERROR_NO_MEMORY;
         }
         sc->sources = new_sources;
@@ -478,7 +484,7 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
 
     sc->source_count++;
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_platform_mutex_unlock(&sc->lock);
 
     LOG_INFO("Added trusted source: %s", source_url);
 
@@ -491,19 +497,22 @@ nimcp_error_t nimcp_supply_chain_revoke_source(nimcp_supply_chain_t sc,
                       NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
     NIMCP_CHECK_THROW(source_url, NIMCP_ERROR_INVALID_PARAM, "source_url is NULL");
 
-    pthread_mutex_lock(&sc->lock);
+    if (nimcp_platform_mutex_lock(&sc->lock) != 0) {
+        LOG_ERROR("Failed to acquire lock for revoking source");
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
 
     /* Find and deactivate source */
     for (size_t i = 0; i < sc->source_count; i++) {
         if (strcmp(sc->sources[i].url, source_url) == 0) {
             sc->sources[i].is_active = false;
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_platform_mutex_unlock(&sc->lock);
             LOG_INFO("Revoked trusted source: %s", source_url);
             return NIMCP_OK;
         }
     }
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_platform_mutex_unlock(&sc->lock);
 
     NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NOT_FOUND, "source not found: %s", source_url);
 }
@@ -516,25 +525,28 @@ nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
     NIMCP_CHECK_THROW(sources, NIMCP_ERROR_INVALID_PARAM, "sources is NULL");
     NIMCP_CHECK_THROW(count, NIMCP_ERROR_INVALID_PARAM, "count is NULL");
 
-    pthread_mutex_lock(&sc->lock);
+    if (nimcp_platform_mutex_lock(&sc->lock) != 0) {
+        LOG_ERROR("Failed to acquire lock for listing sources");
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
 
     if (sc->source_count == 0) {
         *sources = NULL;
         *count = 0;
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_platform_mutex_unlock(&sc->lock);
         return NIMCP_OK;
     }
 
     *sources = (nimcp_trusted_source_t*)malloc(sc->source_count * sizeof(nimcp_trusted_source_t));
     if (!*sources) {
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_platform_mutex_unlock(&sc->lock);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for sources list");
     }
 
     memcpy(*sources, sc->sources, sc->source_count * sizeof(nimcp_trusted_source_t));
     *count = sc->source_count;
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_platform_mutex_unlock(&sc->lock);
 
     return NIMCP_OK;
 }
@@ -549,16 +561,19 @@ bool nimcp_supply_chain_is_source_trusted(nimcp_supply_chain_t sc,
             return false;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    if (nimcp_platform_mutex_lock(&sc->lock) != 0) {
+        LOG_ERROR("Failed to acquire lock for checking trusted source");
+        return false;
+    }
 
     for (size_t i = 0; i < sc->source_count; i++) {
         if (strcmp(sc->sources[i].url, source_url) == 0 && sc->sources[i].is_active) {
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_platform_mutex_unlock(&sc->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_platform_mutex_unlock(&sc->lock);
 
     return false;
 }

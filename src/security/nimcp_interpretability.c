@@ -61,7 +61,7 @@ static inline void interpretability_heartbeat(const char* operation, float progr
  */
 typedef struct cached_explanation {
     uint64_t action_hash;
-    decision_explanation_t explanation;
+    interp_decision_explanation_t explanation;
     uint64_t timestamp;
     bool valid;
 } cached_explanation_t;
@@ -127,7 +127,7 @@ static void safe_strcpy(char* dest, const char* src, size_t max_len)
 /**
  * @brief Simple hash of action for caching
  */
-static uint64_t hash_action(const proposed_action_t* action)
+static uint64_t hash_action(const interp_proposed_action_t* action)
 {
     uint64_t hash = 5381;
     const char* str = action->action_type;
@@ -163,7 +163,7 @@ static cached_explanation_t* lookup_cache(
 static void add_to_cache(
     interpretability_t* system,
     uint64_t action_hash,
-    const decision_explanation_t* explanation)
+    const interp_decision_explanation_t* explanation)
 {
     size_t idx = system->cache_index;
     system->cache[idx].action_hash = action_hash;
@@ -178,7 +178,7 @@ static void add_to_cache(
  * @brief Generate default factors for action
  */
 static void generate_default_factors(
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     decision_factor_t* factors,
     uint32_t* count)
 {
@@ -222,7 +222,7 @@ static void generate_default_factors(
  * @brief Trace causal reasoning chain
  */
 static void trace_causal_chain(
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     causal_node_t* chain,
     uint32_t* length)
 {
@@ -285,7 +285,7 @@ static void trace_causal_chain(
  * @brief Compute uncertainty breakdown
  */
 static void compute_uncertainty(
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     uncertainty_breakdown_t* uncertainty)
 {
     /* Base uncertainty on confidence */
@@ -392,8 +392,8 @@ void interpretability_destroy(interpretability_t* system)
 
 nimcp_error_t interpretability_explain_decision(
     interpretability_t* system,
-    const proposed_action_t* action,
-    decision_explanation_t* explanation)
+    const interp_proposed_action_t* action,
+    interp_decision_explanation_t* explanation)
 {
     if (!is_valid_handle(system) || action == NULL || explanation == NULL) {
         return NIMCP_ERROR_INVALID_ARGUMENT;
@@ -484,7 +484,7 @@ nimcp_error_t interpretability_explain_decision(
 
 nimcp_error_t interpretability_explain_summary(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     char* summary,
     size_t summary_size)
 {
@@ -504,7 +504,7 @@ nimcp_error_t interpretability_explain_summary(
 
 nimcp_error_t interpretability_extract_factors(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     decision_factor_t* factors,
     size_t max_factors,
     size_t* factor_count)
@@ -535,7 +535,7 @@ nimcp_error_t interpretability_extract_factors(
 
 nimcp_error_t interpretability_counterfactual(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     const counterfactual_query_t* query,
     counterfactual_result_t* result)
 {
@@ -588,7 +588,7 @@ nimcp_error_t interpretability_counterfactual(
 
 nimcp_error_t interpretability_find_minimal_change(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     char* minimal_change,
     size_t change_size)
 {
@@ -614,8 +614,8 @@ nimcp_error_t interpretability_find_minimal_change(
 
 nimcp_error_t interpretability_verify_fidelity(
     interpretability_t* system,
-    const decision_explanation_t* explanation,
-    const proposed_action_t* action,
+    const interp_decision_explanation_t* explanation,
+    const interp_proposed_action_t* action,
     fidelity_result_t* result)
 {
     if (!is_valid_handle(system) || explanation == NULL ||
@@ -677,7 +677,7 @@ nimcp_error_t interpretability_verify_fidelity(
 
 nimcp_error_t interpretability_decompose_uncertainty(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     uncertainty_breakdown_t* uncertainty)
 {
     if (!is_valid_handle(system) || action == NULL || uncertainty == NULL) {
@@ -695,7 +695,7 @@ nimcp_error_t interpretability_decompose_uncertainty(
 
 nimcp_error_t interpretability_trace_causality(
     interpretability_t* system,
-    const proposed_action_t* action,
+    const interp_proposed_action_t* action,
     causal_node_t* chain,
     size_t max_nodes,
     size_t* node_count)
@@ -795,7 +795,7 @@ nimcp_error_t interpretability_connect_alignment_monitor(
  * ============================================================================ */
 
 size_t interpretability_format_explanation(
-    const decision_explanation_t* explanation,
+    const interp_decision_explanation_t* explanation,
     char* buffer,
     size_t buffer_size)
 {

@@ -56,6 +56,7 @@ static inline void security_recovery_bridge_heartbeat(const char* operation, flo
 #include <stdio.h>
 #include <time.h>
 #include <pthread.h>
+#include <errno.h>
 
 //=============================================================================
 // Type Definitions
@@ -128,17 +129,34 @@ struct nimcp_security_recovery_bridge {
 // Utility Functions
 //=============================================================================
 
+/**
+ * @brief Get current time in milliseconds (safe wrapper)
+ *
+ * SECURITY FIX: Check clock_gettime() return value to avoid using garbage data.
+ * On failure, returns 0 which may affect timing but won't cause undefined behavior.
+ */
 static uint64_t get_timestamp_ms(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        LOG_MODULE_WARN(LOG_MODULE, "clock_gettime() failed: %s", strerror(errno));
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000ULL;
 }
 
+/**
+ * @brief Get current time in microseconds (safe wrapper)
+ *
+ * SECURITY FIX: Check clock_gettime() return value to avoid using garbage data.
+ */
 static uint64_t get_timestamp_us(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        LOG_MODULE_WARN(LOG_MODULE, "clock_gettime() failed: %s", strerror(errno));
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000ULL;
 }
 
