@@ -57,16 +57,9 @@ struct brain_immune_system;  /* Forward declare struct only */
 /* health_agent already typedef'd via bridge_base.h */
 struct health_agent;  /* Forward declare struct only */
 
-/* Mesh system */
-#ifndef MESH_COORDINATOR_T_DEFINED
-#define MESH_COORDINATOR_T_DEFINED
-typedef struct mesh_coordinator_struct* mesh_coordinator_t;
-#endif
-
-#ifndef MESH_TRANSACTION_T_DEFINED
-#define MESH_TRANSACTION_T_DEFINED
-typedef struct mesh_transaction_struct* mesh_transaction_t;
-#endif
+/* Mesh system - forward declarations (full definitions in mesh/ headers) */
+struct mesh_coordinator;
+struct mesh_transaction;
 
 /* Training */
 #ifndef NIMCP_TRAINING_MODULE_T_DEFINED
@@ -80,42 +73,16 @@ typedef struct nimcp_training_module_struct* nimcp_training_module_t;
 typedef struct rcog_engine_struct* rcog_engine_t;
 #endif
 
-/* SNN/Plasticity */
-#ifndef SNN_CONFIG_T_DEFINED
-#define SNN_CONFIG_T_DEFINED
-typedef struct snn_config_struct snn_config_t;
-#endif
+/* SNN/Plasticity - forward declarations (full definitions in plasticity/ headers) */
+struct snn_config;
+struct stdp_params;
 
-#ifndef STDP_PARAMS_T_DEFINED
-#define STDP_PARAMS_T_DEFINED
-typedef struct stdp_params_struct stdp_params_t;
-#endif
-
-/* Memory systems */
-#ifndef WORKING_MEMORY_T_DEFINED
-#define WORKING_MEMORY_T_DEFINED
-typedef struct working_memory_struct* working_memory_t;
-#endif
-
-#ifndef AUTOBIOGRAPHICAL_MEMORY_SYSTEM_T_DEFINED
-#define AUTOBIOGRAPHICAL_MEMORY_SYSTEM_T_DEFINED
-typedef struct autobiographical_memory_system_struct* autobiographical_memory_system_t;
-#endif
-
-#ifndef SEMANTIC_MEMORY_SYSTEM_T_DEFINED
-#define SEMANTIC_MEMORY_SYSTEM_T_DEFINED
-typedef struct semantic_memory_system_struct* semantic_memory_system_t;
-#endif
-
-#ifndef NIMCP_HIPPOCAMPUS_T_DEFINED
-#define NIMCP_HIPPOCAMPUS_T_DEFINED
-typedef struct nimcp_hippocampus_struct* nimcp_hippocampus_t;
-#endif
-
-#ifndef HOPFIELD_MEMORY_T_DEFINED
-#define HOPFIELD_MEMORY_T_DEFINED
-typedef struct hopfield_memory_struct* hopfield_memory_t;
-#endif
+/* Memory systems - forward declarations (full definitions in cognitive/ headers) */
+struct working_memory;
+struct autobiographical_memory_system;
+struct semantic_memory_system;
+struct nimcp_hippocampus;
+struct hopfield_memory;
 
 /* Brain regions */
 #ifndef PARIETAL_ADAPTER_T_DEFINED
@@ -154,9 +121,10 @@ typedef struct motor_adapter_struct* motor_adapter_t;
 typedef struct nimcp_brain_struct* nimcp_brain_t;
 #endif
 
+/* Forward declare hemispheric_brain_t - actual definition in nimcp_hemispheric_brain.h */
 #ifndef HEMISPHERIC_BRAIN_T_DEFINED
 #define HEMISPHERIC_BRAIN_T_DEFINED
-typedef struct hemispheric_brain_struct* hemispheric_brain_t;
+typedef struct hemispheric_brain_struct hemispheric_brain_t;
 #endif
 
 #ifndef BRAIN_CYCLE_COORDINATOR_T_DEFINED
@@ -290,16 +258,16 @@ struct genius_profiles_bridge_t {
 
     /* === System References === */
     brain_immune_system_t* immune_system;   /**< Immune system reference */
-    mesh_coordinator_t* mesh_coordinator;   /**< Mesh coordinator reference */
+    struct mesh_coordinator* mesh_coordinator; /**< Mesh coordinator reference */
     nimcp_training_module_t* training;      /**< Training module reference */
     rcog_engine_t* rcog_engine;             /**< RCOG engine reference */
 
     /* === Memory System References === */
-    working_memory_t* working_memory;
-    autobiographical_memory_system_t* autobio_memory;
-    semantic_memory_system_t* semantic_memory;
-    nimcp_hippocampus_t* hippocampus;
-    hopfield_memory_t* hopfield_memory;
+    struct working_memory* working_memory;
+    struct autobiographical_memory_system* autobio_memory;
+    struct semantic_memory_system* semantic_memory;
+    struct nimcp_hippocampus* hippocampus;
+    struct hopfield_memory* hopfield_memory;
 
     /* === Brain Region References === */
     parietal_adapter_t* parietal;
@@ -333,6 +301,14 @@ struct genius_profiles_bridge_t {
 
     /* === Exception Epitope === */
     uint8_t current_epitope[GENIUS_EPITOPE_SIZE]; /**< Current exception fingerprint */
+
+    /* === KG Wiring State === */
+    uint32_t kg_root_node;                  /**< KG root node ID for genius profiles */
+
+    /* === Mesh Integration === */
+    uint64_t mesh_participant_id;           /**< Mesh network participant ID */
+    uint64_t pending_mesh_tx_sequence;      /**< Pending mesh transaction sequence */
+    uint64_t pending_mesh_tx_timestamp;     /**< Pending mesh transaction timestamp */
 };
 
 /* ============================================================================
@@ -399,7 +375,7 @@ genius_error_t genius_profiles_connect_immune(
  */
 genius_error_t genius_profiles_connect_mesh(
     genius_profiles_bridge_t* bridge,
-    mesh_coordinator_t* mesh
+    struct mesh_coordinator* mesh
 );
 
 /**
@@ -436,11 +412,11 @@ genius_error_t genius_profiles_connect_rcog(
  */
 genius_error_t genius_profiles_connect_memory_systems(
     genius_profiles_bridge_t* bridge,
-    working_memory_t* wm,
-    autobiographical_memory_system_t* autobio,
-    semantic_memory_system_t* semantic,
-    nimcp_hippocampus_t* hippo,
-    hopfield_memory_t* hopfield
+    struct working_memory* wm,
+    struct autobiographical_memory_system* autobio,
+    struct semantic_memory_system* semantic,
+    struct nimcp_hippocampus* hippo,
+    struct hopfield_memory* hopfield
 );
 
 /**
@@ -868,7 +844,7 @@ genius_error_t genius_profiles_mesh_propose(
  */
 genius_error_t genius_profiles_mesh_endorse(
     genius_profiles_bridge_t* bridge,
-    mesh_transaction_t* tx
+    struct mesh_transaction* tx
 );
 
 /* ============================================================================
@@ -903,7 +879,7 @@ genius_error_t genius_profiles_quantum_optimize(
  * @param type Genius type
  * @return Brain instance or NULL on failure
  */
-nimcp_brain_t* genius_brain_create(genius_type_t type);
+brain_t genius_brain_create(genius_type_t type);
 
 /**
  * @brief Create hemispheric brain with genius profile

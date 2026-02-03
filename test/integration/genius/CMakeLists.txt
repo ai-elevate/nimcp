@@ -72,6 +72,72 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_eidetic_integration.cpp")
     message(STATUS "  Added Integration test: integration_eidetic_memory")
 endif()
 
+# Brain Factory Integration Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_integration.cpp")
+    add_executable(integration_genius_brain_factory
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_integration.cpp
+    )
+
+    target_link_libraries(integration_genius_brain_factory
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(integration_genius_brain_factory
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+
+    target_compile_features(integration_genius_brain_factory PRIVATE cxx_std_17)
+    target_compile_definitions(integration_genius_brain_factory PRIVATE NIMCP_TESTING)
+
+    gtest_discover_tests(integration_genius_brain_factory
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;genius;brain_factory"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Integration test: integration_genius_brain_factory")
+endif()
+
+# Mesh Integration Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_integration.cpp")
+    add_executable(integration_genius_mesh
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_integration.cpp
+    )
+
+    target_link_libraries(integration_genius_mesh
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(integration_genius_mesh
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+
+    target_compile_features(integration_genius_mesh PRIVATE cxx_std_17)
+    target_compile_definitions(integration_genius_mesh PRIVATE NIMCP_TESTING)
+
+    gtest_discover_tests(integration_genius_mesh
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;genius;mesh"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Integration test: integration_genius_mesh")
+endif()
+
 # =============================================================================
 # Custom Target: Run All Genius Integration Tests
 # =============================================================================

@@ -84,6 +84,46 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_eidetic_regression.cpp")
 endif()
 
 # =============================================================================
+# Brain Factory Regression Tests
+# =============================================================================
+# Tests:
+# - Brain creation regression (boundary cases, memory leaks)
+# - State consistency regression
+# - Concurrent access regression
+# - Type validation regression
+# =============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_regression.cpp")
+    add_executable(regression_brain_factory
+        test_brain_factory_regression.cpp
+    )
+
+    target_link_libraries(regression_brain_factory
+        PRIVATE
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            pthread
+            m
+    )
+
+    target_compile_features(regression_brain_factory PRIVATE cxx_std_17)
+
+    add_test(
+        NAME regression_brain_factory
+        COMMAND regression_brain_factory
+    )
+
+    set_tests_properties(regression_brain_factory
+        PROPERTIES
+        LABELS "regression;genius;brain_factory"
+        TIMEOUT 180
+    )
+
+    message(STATUS "  Added Regression test: regression_brain_factory")
+endif()
+
+# =============================================================================
 # Custom Target: Run All Genius Regression Tests
 # =============================================================================
 add_custom_target(test_genius_regression

@@ -307,6 +307,13 @@ typedef enum {
     GENIUS_ERROR_CONTEXT_MISMATCH       = 0x1F15,   /**< Context mismatch for profile */
     GENIUS_ERROR_INVALID_PARAM          = 0x1F16,   /**< Invalid parameter */
     GENIUS_ERROR_MESSAGE_TOO_SMALL      = 0x1F17,   /**< Message size too small */
+    GENIUS_ERROR_KG_UNAVAILABLE         = 0x1F18,   /**< Knowledge graph not available */
+    GENIUS_ERROR_KG_REGISTRATION_FAILED = 0x1F19,   /**< KG node registration failed */
+    GENIUS_ERROR_MESH_PROPOSAL_FAILED   = 0x1F1A,   /**< Mesh transaction proposal failed */
+    GENIUS_ERROR_MESH_ENDORSEMENT_FAILED= 0x1F1B,   /**< Mesh endorsement failed */
+    GENIUS_ERROR_BRAIN_CREATION_FAILED  = 0x1F1C,   /**< Brain factory creation failed */
+    GENIUS_ERROR_FLOW_STATE_CONFLICT    = 0x1F1D,   /**< Operation conflicts with flow state */
+    GENIUS_ERROR_FATIGUE_EXCEEDED       = 0x1F1E,   /**< Fatigue level too high for operation */
     GENIUS_ERROR_MAX                    = 0x1FFF    /**< Maximum error code */
 } genius_error_t;
 
@@ -339,6 +346,13 @@ static inline const char* genius_error_message(genius_error_t error) {
         case GENIUS_ERROR_CONTEXT_MISMATCH:     return "Context mismatch for profile";
         case GENIUS_ERROR_INVALID_PARAM:        return "Invalid parameter";
         case GENIUS_ERROR_MESSAGE_TOO_SMALL:    return "Message size too small";
+        case GENIUS_ERROR_KG_UNAVAILABLE:       return "Knowledge graph not available";
+        case GENIUS_ERROR_KG_REGISTRATION_FAILED: return "KG node registration failed";
+        case GENIUS_ERROR_MESH_PROPOSAL_FAILED: return "Mesh transaction proposal failed";
+        case GENIUS_ERROR_MESH_ENDORSEMENT_FAILED: return "Mesh endorsement failed";
+        case GENIUS_ERROR_BRAIN_CREATION_FAILED: return "Brain factory creation failed";
+        case GENIUS_ERROR_FLOW_STATE_CONFLICT:  return "Operation conflicts with flow state";
+        case GENIUS_ERROR_FATIGUE_EXCEEDED:     return "Fatigue level too high";
         default:                                return "Unknown error";
     }
 }
