@@ -1052,7 +1052,7 @@ __global__ void kernel_task_finalize(
 __global__ void kernel_collision_detect_brute(
     const float4* positions,
     const float* radii,           // [N] or NULL for uniform
-    uint32_t* collision_flags,    // [N] output
+    float* collision_flags,       // [N] output (0.0 or 1.0)
     uint32_t* collision_pairs,    // [max_pairs x 2] output
     uint32_t* pair_count,         // Atomic counter
     size_t n_agents,
@@ -1068,7 +1068,10 @@ __global__ void kernel_collision_detect_brute(
 
     bool collided = false;
 
-    for (size_t j = idx + 1; j < n_agents; j++) {
+    // Check against ALL other agents (not just j > idx) to properly set our flag
+    for (size_t j = 0; j < n_agents; j++) {
+        if (j == idx) continue;
+
         float4 pos_j = positions[j];
         float r_j = use_variable_radius ? radii[j] : default_radius;
 
@@ -1081,16 +1084,18 @@ __global__ void kernel_collision_detect_brute(
         if (dist_sq < min_dist * min_dist) {
             collided = true;
 
-            // Record collision pair
-            uint32_t pair_idx = atomicAdd(pair_count, 1);
-            if (pair_idx < max_pairs) {
-                collision_pairs[pair_idx * 2 + 0] = (uint32_t)idx;
-                collision_pairs[pair_idx * 2 + 1] = (uint32_t)j;
+            // Only record pair once (when idx < j) to avoid duplicates
+            if (idx < j) {
+                uint32_t pair_idx = atomicAdd(pair_count, 1);
+                if (pair_idx < max_pairs) {
+                    collision_pairs[pair_idx * 2 + 0] = (uint32_t)idx;
+                    collision_pairs[pair_idx * 2 + 1] = (uint32_t)j;
+                }
             }
         }
     }
 
-    collision_flags[idx] = collided ? 1 : 0;
+    collision_flags[idx] = collided ? 1.0f : 0.0f;
 }
 
 /**
@@ -2236,7 +2241,7 @@ extern "C" bool nimcp_gpu_collision_detect(
     kernel_collision_detect_brute<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
         (const float4*)state->positions->data,
         state->params.use_variable_radius ? (const float*)state->radii->data : NULL,
-        (uint32_t*)state->collision_flags->data,
+        (float*)state->collision_flags->data,
         (uint32_t*)state->collision_pairs->data,
         (uint32_t*)state->pair_count->data,
         state->n_agents,

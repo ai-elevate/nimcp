@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"  /* For mc_random_uniform */
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
@@ -274,40 +275,40 @@ static uint32_t conn_hash_table_get(
 // RANDOM NUMBER GENERATION
 //=============================================================================
 
+/** Thread-local RNG seed for reproducible random generation */
+static __thread uint32_t g_rng_seed = 0;
+static __thread bool g_rng_initialized = false;
+
+/**
+ * WHAT: Initialize RNG seed if not already done
+ * WHY:  Ensure each thread has a unique starting seed
+ * HOW:  Use thread ID and time-based seed from mc_seed_from_time
+ */
+static inline void ensure_rng_initialized(void) {
+    if (!g_rng_initialized) {
+        g_rng_seed = mc_seed_from_time();
+        g_rng_initialized = true;
+    }
+}
+
 /**
  * WHAT: Generate random float in [0, 1)
  * WHY:  For probabilistic connection generation
- * HOW:  Use rand() / RAND_MAX (could be improved with better RNG)
+ * HOW:  Use mc_random_uniform from nimcp_monte_carlo for better RNG quality
  */
 static inline float randf(void) {
-    return (float)rand() / (float)RAND_MAX;
+    ensure_rng_initialized();
+    return mc_random_uniform(&g_rng_seed);
 }
 
 /**
  * WHAT: Generate random Gaussian (Box-Muller transform)
  * WHY:  For patchy connectivity and weight initialization
- * HOW:  Transform uniform random to Gaussian
+ * HOW:  Use mc_random_normal from nimcp_monte_carlo for thread-safe Gaussian
  */
 static float randg(float mean, float stddev) {
-    static bool has_spare = false;
-    static float spare;
-
-    if (has_spare) {
-        has_spare = false;
-        return mean + stddev * spare;
-    }
-
-    has_spare = true;
-    float u, v, s;
-    do {
-        u = randf() * 2.0F - 1.0F;
-        v = randf() * 2.0F - 1.0F;
-        s = u * u + v * v;
-    } while (s >= 1.0F || s == 0.0F);
-
-    s = sqrtf(-2.0F * logf(s) / s);
-    spare = v * s;
-    return mean + stddev * u * s;
+    ensure_rng_initialized();
+    return mc_random_normal(&g_rng_seed, mean, stddev);
 }
 
 //=============================================================================

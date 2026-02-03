@@ -477,20 +477,21 @@ TEST_F(LNNTernaryIntegrationTest, ScaleFreeWiringTernaryMatrix) {
     EXPECT_LT(sparsity, 1.0f) << "Scale-free network should have some edges";
 
     // Verify degree distribution shows hub structure
-    // Find max out-degree (should be significantly higher than average)
-    uint32_t max_degree = 0;
-    uint32_t total_degree = 0;
+    // In Barabasi-Albert model, early nodes (hubs) receive many incoming edges
+    // from later nodes due to preferential attachment. Check in-degree for hubs.
+    uint32_t max_in_degree = 0;
+    uint32_t total_in_degree = 0;
     for (uint32_t i = 0; i < n_neurons; i++) {
-        uint32_t degree = lnn_wiring_out_degree(wiring, i);
-        total_degree += degree;
-        if (degree > max_degree) {
-            max_degree = degree;
+        uint32_t in_degree = lnn_wiring_in_degree(wiring, i);
+        total_in_degree += in_degree;
+        if (in_degree > max_in_degree) {
+            max_in_degree = in_degree;
         }
     }
 
-    float avg_degree = (float)total_degree / n_neurons;
-    EXPECT_GT(max_degree, avg_degree * 1.5f)
-        << "Scale-free network should have hub neurons with high degree";
+    float avg_in_degree = (float)total_in_degree / n_neurons;
+    EXPECT_GT(max_in_degree, avg_in_degree * 1.5f)
+        << "Scale-free network should have hub neurons with high in-degree";
 
     trit_matrix_destroy(ternary_mat);
     lnn_wiring_destroy(wiring);
@@ -520,23 +521,27 @@ TEST_F(LNNTernaryIntegrationTest, NCPWiringTernaryMatrix) {
     EXPECT_EQ(n_total, ternary_mat->cols);
 
     // Verify hierarchical structure:
-    // Sensory neurons should NOT receive connections (first n_sensory rows mostly unknown)
+    // In CSR/ternary matrix, mat[from][to] = POSITIVE means edge FROM from TO to.
+    // To check INCOMING connections to a neuron, we check all rows (sources) for that column (target).
+
+    // Sensory neurons should NOT receive connections (check column for sensory neurons)
     size_t sensory_inputs = 0;
-    for (uint32_t row = 0; row < n_sensory; row++) {
-        for (uint32_t col = 0; col < n_total; col++) {
+    for (uint32_t col = 0; col < n_sensory; col++) {
+        for (uint32_t row = 0; row < n_total; row++) {
             if (trit_matrix_get(ternary_mat, row, col) == TRIT_POSITIVE) {
                 sensory_inputs++;
             }
         }
     }
-    // Sensory neurons should have minimal internal connections
-    EXPECT_LE(sensory_inputs, n_sensory * 2)
-        << "Sensory neurons should have few incoming connections";
+    // Sensory neurons should have NO incoming connections (they are input-only)
+    EXPECT_EQ(sensory_inputs, 0u)
+        << "Sensory neurons should have no incoming connections";
 
-    // Motor neurons should have many incoming connections from command
+    // Motor neurons should have incoming connections from command neurons
+    // Check columns for motor neurons
     size_t motor_inputs = 0;
-    for (uint32_t row = n_sensory + n_inter + n_command; row < n_total; row++) {
-        for (uint32_t col = 0; col < n_total; col++) {
+    for (uint32_t col = n_sensory + n_inter + n_command; col < n_total; col++) {
+        for (uint32_t row = 0; row < n_total; row++) {
             if (trit_matrix_get(ternary_mat, row, col) == TRIT_POSITIVE) {
                 motor_inputs++;
             }

@@ -24,7 +24,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "async/nimcp_bio_async.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -152,6 +154,350 @@ static inline void aix_unlock(action_interceptor_t aix) {
     nimcp_platform_mutex_unlock(&aix->mutex);
 }
 
+/*=============================================================================
+ * BACKGROUND EVALUATION SUPPORT
+ *============================================================================*/
+
+/**
+ * @brief Context for background evaluation thread
+ */
+typedef struct {
+    action_interceptor_t aix;
+    uint64_t proposal_id;
+} bg_eval_context_t;
+
+/**
+ * @brief Forward declaration for evaluate_safety_unlocked
+ */
+static void evaluate_safety_unlocked(
+    action_interceptor_t aix,
+    const aix_proposal_t* proposal,
+    aix_safety_eval_t* safety_eval
+);
+
+/**
+ * @brief Forward declaration for determine_result
+ */
+static aix_result_t determine_result(
+    action_interceptor_t aix,
+    const aix_safety_eval_t* safety_eval
+);
+
+/**
+ * @brief Forward declaration for create_escalation_unlocked
+ */
+static nimcp_error_t create_escalation_unlocked(
+    action_interceptor_t aix,
+    const aix_proposal_t* proposal,
+    const aix_safety_eval_t* safety_eval,
+    uint64_t* escalation_id
+);
+
+/**
+ * @brief Forward declaration for find_pending_unlocked
+ */
+static pending_proposal_t* find_pending_unlocked(
+    action_interceptor_t aix,
+    uint64_t proposal_id
+);
+
+/**
+ * @brief Forward declaration for log_audit
+ */
+static void log_audit(
+    action_interceptor_t aix,
+    const aix_proposal_t* proposal,
+    const aix_decision_t* decision
+);
+
+/**
+ * @brief Background evaluation thread function
+ *
+ * WHAT: Evaluate pending proposal in background thread
+ * WHY:  Non-blocking async evaluation for performance-critical paths
+ * HOW:  Use bio-async promise to signal completion
+ */
+static void* background_evaluation_thread(void* arg) {
+    bg_eval_context_t* ctx = (bg_eval_context_t*)arg;
+
+    if (!ctx || !is_valid_aix(ctx->aix)) {
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    action_interceptor_t aix = ctx->aix;
+    uint64_t proposal_id = ctx->proposal_id;
+    nimcp_free(ctx);
+
+    aix_lock(aix);
+
+    // Find pending proposal
+    pending_proposal_t* entry = find_pending_unlocked(aix, proposal_id);
+    if (!entry) {
+        aix_unlock(aix);
+        LOG_WARN("%s: Background eval - proposal %lu not found",
+                 MODULE_NAME, (unsigned long)proposal_id);
+        return NULL;
+    }
+
+    // Skip if already evaluated
+    if (entry->decision_ready) {
+        aix_unlock(aix);
+        return NULL;
+    }
+
+    // Perform evaluation
+    aix_proposal_t* prop = &entry->proposal;
+
+    // Initialize decision with fail-safe values
+    memset(&entry->decision, 0, sizeof(aix_decision_t));
+    entry->decision.proposal_id = prop->proposal_id;
+    entry->decision.result = AIX_RESULT_DENY;  // Fail-safe default
+
+    // Evaluate against safety KB
+    evaluate_safety_unlocked(aix, prop, &entry->decision.safety_eval);
+    entry->decision.result = determine_result(aix, &entry->decision.safety_eval);
+
+    // Handle escalation
+    if (entry->decision.result == AIX_RESULT_ESCALATE) {
+        uint64_t escalation_id = 0;
+        nimcp_error_t esc_result = create_escalation_unlocked(
+            aix, prop, &entry->decision.safety_eval, &escalation_id);
+        if (esc_result == NIMCP_SUCCESS) {
+            entry->decision.escalation_pending = true;
+            entry->decision.escalation_id = escalation_id;
+        } else {
+            entry->decision.result = AIX_RESULT_DENY;
+            aix->stats.proposals_denied++;
+        }
+    } else {
+        if (entry->decision.result == AIX_RESULT_ALLOW) {
+            aix->stats.proposals_allowed++;
+        } else {
+            aix->stats.proposals_denied++;
+        }
+    }
+
+    // Finalize decision
+    uint64_t elapsed_us = get_time_us() - entry->submit_time_us;
+    entry->decision.processing_time_us = elapsed_us;
+    entry->decision.timestamp_us = get_time_us();
+    entry->decision_ready = true;
+
+    // Update statistics
+    aix->stats.total_proposals++;
+    aix->total_processing_time_us += entry->decision.processing_time_us;
+    aix->stats.avg_processing_time_us =
+        aix->total_processing_time_us / aix->stats.total_proposals;
+    if (entry->decision.processing_time_us > aix->stats.max_processing_time_us) {
+        aix->stats.max_processing_time_us = entry->decision.processing_time_us;
+    }
+
+    // Invoke callback if configured
+    if (aix->config.decision_callback) {
+        aix->config.decision_callback(&entry->decision, entry->proposal.user_data);
+    }
+
+    // Audit log
+    log_audit(aix, prop, &entry->decision);
+
+    LOG_DEBUG("%s: Background eval complete for proposal %lu: result=%s",
+              MODULE_NAME, (unsigned long)proposal_id,
+              aix_result_name(entry->decision.result));
+
+    aix_unlock(aix);
+
+    return NULL;
+}
+
+/**
+ * @brief Trigger background evaluation for a pending proposal
+ *
+ * WHAT: Start background thread to evaluate proposal
+ * WHY:  Non-blocking async evaluation
+ * HOW:  Create detached thread, bio-async signals completion
+ *
+ * @param aix Action interceptor handle
+ * @param proposal_id Proposal ID to evaluate
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t trigger_background_evaluation(
+    action_interceptor_t aix,
+    uint64_t proposal_id
+) {
+    // Allocate context for background thread
+    bg_eval_context_t* ctx = nimcp_malloc(sizeof(bg_eval_context_t));
+    if (!ctx) {
+        LOG_ERROR("%s: Failed to allocate background eval context", MODULE_NAME);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    ctx->aix = aix;
+    ctx->proposal_id = proposal_id;
+
+    // Create detached thread for background evaluation
+    nimcp_platform_thread_t thread;
+    int result = nimcp_platform_thread_create(&thread, background_evaluation_thread, ctx);
+
+    if (result != 0) {
+        LOG_WARN("%s: Failed to create background eval thread (err=%d), will eval on get_decision",
+                 MODULE_NAME, result);
+        nimcp_free(ctx);
+        // Non-fatal: evaluation will happen on aix_get_decision call
+        return NIMCP_SUCCESS;
+    }
+
+    // Detach thread - it will clean up itself
+    nimcp_platform_thread_detach(thread);
+
+    LOG_DEBUG("%s: Triggered background evaluation for proposal %lu",
+              MODULE_NAME, (unsigned long)proposal_id);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Build action context from proposal for safety evaluation
+ *
+ * WHAT: Convert AIx proposal to safety action context
+ * WHY:  Safety KB uses safety_action_context_t for rule matching
+ * HOW:  Map proposal fields to context key-value pairs
+ */
+static void build_safety_context_from_proposal(
+    const aix_proposal_t* proposal,
+    safety_action_context_t* context
+) {
+    memset(context, 0, sizeof(*context));
+
+    // Set source module
+    strncpy(context->source, proposal->source_module, sizeof(context->source) - 1);
+
+    // Set action description
+    snprintf(context->action_description, sizeof(context->action_description),
+             "Action type %u from %s", proposal->action_type, proposal->source_module);
+
+    // Set timestamp
+    context->timestamp = proposal->timestamp_us;
+
+    // Add source_module as string field
+    strncpy(context->string_fields[0].key, "source_module",
+            sizeof(context->string_fields[0].key) - 1);
+    strncpy(context->string_fields[0].value, proposal->source_module,
+            sizeof(context->string_fields[0].value) - 1);
+    context->num_string_fields = 1;
+
+    // Add action_type as numeric field
+    strncpy(context->numeric_fields[0].key, "action_type",
+            sizeof(context->numeric_fields[0].key) - 1);
+    context->numeric_fields[0].value = (float)proposal->action_type;
+    context->num_numeric_fields = 1;
+
+    // Add priority as numeric field
+    strncpy(context->numeric_fields[1].key, "priority",
+            sizeof(context->numeric_fields[1].key) - 1);
+    context->numeric_fields[1].value = (float)proposal->priority;
+    context->num_numeric_fields = 2;
+
+    // No domain hint by default - let all rules be evaluated
+    context->has_domain_hint = false;
+}
+
+/**
+ * @brief Evaluate a single condition against the context
+ *
+ * @return true if condition matches, false otherwise
+ */
+static bool evaluate_condition(
+    const safety_condition_t* condition,
+    const safety_action_context_t* context
+) {
+    // Search for field in string fields
+    for (uint32_t i = 0; i < context->num_string_fields; i++) {
+        if (strcmp(condition->field, context->string_fields[i].key) == 0) {
+            bool match = false;
+
+            switch (condition->op) {
+                case SAFETY_COND_OP_EQ:
+                    match = (strcmp(condition->value, context->string_fields[i].value) == 0);
+                    break;
+                case SAFETY_COND_OP_NEQ:
+                    match = (strcmp(condition->value, context->string_fields[i].value) != 0);
+                    break;
+                case SAFETY_COND_OP_CONTAINS:
+                    match = (strstr(context->string_fields[i].value, condition->value) != NULL);
+                    break;
+                default:
+                    // Other operators not applicable to strings
+                    match = false;
+                    break;
+            }
+
+            return condition->is_negated ? !match : match;
+        }
+    }
+
+    // Search for field in numeric fields
+    for (uint32_t i = 0; i < context->num_numeric_fields; i++) {
+        if (strcmp(condition->field, context->numeric_fields[i].key) == 0) {
+            float ctx_value = context->numeric_fields[i].value;
+            float cond_value = condition->numeric_value;
+            bool match = false;
+
+            switch (condition->op) {
+                case SAFETY_COND_OP_EQ:
+                    match = (ctx_value == cond_value);
+                    break;
+                case SAFETY_COND_OP_NEQ:
+                    match = (ctx_value != cond_value);
+                    break;
+                case SAFETY_COND_OP_GT:
+                    match = (ctx_value > cond_value);
+                    break;
+                case SAFETY_COND_OP_LT:
+                    match = (ctx_value < cond_value);
+                    break;
+                case SAFETY_COND_OP_GTE:
+                    match = (ctx_value >= cond_value);
+                    break;
+                case SAFETY_COND_OP_LTE:
+                    match = (ctx_value <= cond_value);
+                    break;
+                default:
+                    match = false;
+                    break;
+            }
+
+            return condition->is_negated ? !match : match;
+        }
+    }
+
+    // Field not found - condition does not match
+    return false;
+}
+
+/**
+ * @brief Evaluate a single rule against the context
+ *
+ * @return true if ALL conditions in the rule match
+ */
+static bool evaluate_rule(
+    const safety_rule_t* rule,
+    const safety_action_context_t* context
+) {
+    if (!rule->enabled) {
+        return false;
+    }
+
+    // All conditions must match (AND logic)
+    for (uint32_t i = 0; i < rule->num_conditions; i++) {
+        if (!evaluate_condition(&rule->conditions[i], context)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /**
  * @brief Evaluate proposal against safety knowledge base (internal, unlocked)
  *
@@ -182,28 +528,133 @@ static void evaluate_safety_unlocked(
         return;
     }
 
-    // TODO: Implement actual safety KB evaluation
-    // For now, use placeholder evaluation logic
-    //
-    // In production, this would:
-    // 1. Query safety KB for relevant rules
-    // 2. Evaluate action against each rule
-    // 3. Aggregate rule results into safety score
-    // 4. Track which rules flagged concerns
+    safety_kb_t* kb = aix->safety_kb;
+
+    // Verify KB is locked (immutable) for trusted evaluation
+    if (!kb->is_locked) {
+        snprintf(safety_eval->primary_concern, sizeof(safety_eval->primary_concern),
+                 "Safety KB not locked - rules may be mutable");
+        snprintf(safety_eval->notes, sizeof(safety_eval->notes),
+                 "WARNING: Safety KB should be locked for production use");
+        LOG_WARN("%s: Safety KB not locked - evaluation may be unreliable",
+                 MODULE_NAME);
+        // Continue evaluation but note the concern
+    }
+
+    // Build safety action context from proposal
+    safety_action_context_t context;
+    build_safety_context_from_proposal(proposal, &context);
 
     aix->stats.safety_kb_evaluations++;
 
-    // Placeholder: simple evaluation based on action type
-    // Production implementation would query actual safety rules
-    safety_eval->rules_evaluated = 1;
-    safety_eval->rules_flagged = 0;
+    // Track evaluation results
+    uint32_t rules_evaluated = 0;
+    uint32_t rules_flagged = 0;
+    safety_action_t highest_action = SAFETY_ACTION_ALLOW;
+    safety_severity_t highest_severity = SAFETY_SEVERITY_INFO;
+    const char* primary_concern_name = NULL;
 
-    // Default to moderate safety score for placeholder
-    safety_eval->safety_score = 0.5f;
-    safety_eval->confidence = 0.5f;
+    // Evaluate each rule in the KB
+    for (uint32_t i = 0; i < kb->num_rules && i < kb->max_rules; i++) {
+        const safety_rule_t* rule = &kb->rules[i];
+
+        if (!rule->enabled) {
+            continue;
+        }
+
+        rules_evaluated++;
+
+        if (evaluate_rule(rule, &context)) {
+            rules_flagged++;
+
+            // Track highest priority action (DENY > ESCALATE > WARN > LOG > ALLOW)
+            if (rule->action > highest_action ||
+                (rule->action == highest_action && rule->severity < highest_severity)) {
+                highest_action = rule->action;
+                highest_severity = rule->severity;
+                primary_concern_name = rule->name;
+            }
+
+            LOG_DEBUG("%s: Rule '%s' triggered (action=%s, severity=%s)",
+                     MODULE_NAME, rule->name,
+                     safety_action_name(rule->action),
+                     safety_severity_name(rule->severity));
+        }
+    }
+
+    // Compute safety score based on evaluation results
+    // Higher score = safer action
+    float base_score = 1.0f;  // Start with safe assumption
+
+    // FAIL-SAFE: If no rules were evaluated (empty KB), we cannot determine safety
+    // Set score to uncertain range to trigger ESCALATE for human review
+    if (rules_evaluated == 0) {
+        base_score = 0.5f;  // Uncertain - triggers ESCALATE
+        LOG_DEBUG("%s: No rules evaluated - setting uncertain score (0.5)",
+                  MODULE_NAME);
+    } else if (rules_flagged > 0) {
+        // Reduce score based on highest action triggered
+        switch (highest_action) {
+            case SAFETY_ACTION_DENY:
+                base_score = 0.0f;  // Definitely unsafe
+                break;
+            case SAFETY_ACTION_ESCALATE:
+                base_score = 0.4f;  // Uncertain, needs review
+                break;
+            case SAFETY_ACTION_WARN:
+                base_score = 0.6f;  // Minor concern
+                break;
+            case SAFETY_ACTION_LOG:
+                base_score = 0.85f;  // Log but allow
+                break;
+            case SAFETY_ACTION_ALLOW:
+            default:
+                base_score = 1.0f;
+                break;
+        }
+
+        // Further reduce score for higher severity
+        float severity_factor = 1.0f - ((float)(SAFETY_SEVERITY_INFO - highest_severity) * 0.1f);
+        base_score *= severity_factor;
+    }
+
+    // Set confidence based on KB quality and evaluation completeness
+    float confidence = 1.0f;
+    if (!kb->is_locked) {
+        confidence *= 0.7f;  // Reduced confidence for unlocked KB
+    }
+    if (!kb->is_compiled) {
+        confidence *= 0.8f;  // Reduced confidence for uncompiled rules
+    }
+    if (rules_evaluated == 0) {
+        confidence *= 0.5f;  // No rules matched - less certain
+    }
+
+    // Populate safety evaluation result
+    safety_eval->safety_score = base_score;
+    safety_eval->confidence = confidence;
+    safety_eval->rules_evaluated = rules_evaluated;
+    safety_eval->rules_flagged = rules_flagged;
+
+    if (primary_concern_name) {
+        snprintf(safety_eval->primary_concern, sizeof(safety_eval->primary_concern),
+                 "%s", primary_concern_name);
+    } else if (rules_evaluated == 0) {
+        snprintf(safety_eval->primary_concern, sizeof(safety_eval->primary_concern),
+                 "No matching rules in safety KB");
+    }
 
     snprintf(safety_eval->notes, sizeof(safety_eval->notes),
-             "Placeholder evaluation - implement safety KB integration");
+             "Evaluated %u rules, %u flagged. Action=%s, Severity=%s%s",
+             rules_evaluated, rules_flagged,
+             rules_flagged > 0 ? safety_action_name(highest_action) : "NONE",
+             rules_flagged > 0 ? safety_severity_name(highest_severity) : "NONE",
+             kb->is_locked ? "" : " [KB UNLOCKED]");
+
+    LOG_DEBUG("%s: Safety eval for %s: score=%.2f, confidence=%.2f, rules=%u/%u flagged",
+              MODULE_NAME, proposal->source_module,
+              safety_eval->safety_score, safety_eval->confidence,
+              rules_flagged, rules_evaluated);
 }
 
 /**
@@ -620,8 +1071,9 @@ nimcp_error_t aix_evaluate_async(
     LOG_DEBUG("%s: Queued async proposal %lu from %s",
               MODULE_NAME, (unsigned long)pid, proposal->source_module);
 
-    // TODO: Trigger background evaluation thread
-    // For now, evaluation happens on aix_get_decision call
+    // Trigger background evaluation thread
+    // If thread creation fails, evaluation will happen on aix_get_decision call
+    trigger_background_evaluation(aix, pid);
 
     return NIMCP_SUCCESS;
 }

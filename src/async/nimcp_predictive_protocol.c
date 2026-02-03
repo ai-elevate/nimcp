@@ -67,6 +67,7 @@ static inline void predictive_protocol_heartbeat(const char* operation, float pr
 #define PREDICTIVE_MAGIC 0x50524544  // 'PRED'
 #define MAX_PATTERN_HASH_BUCKETS 512
 #define MAX_CACHE_HASH_BUCKETS 128
+#define MAX_TRANSITION_HASH_BUCKETS 256  /* Hash buckets for Markov transitions */
 #define DEFAULT_PREDICTION_HORIZON_MS 100
 #define DEFAULT_CACHE_SIZE 256
 #define DEFAULT_LEARNING_RATE 0.1f
@@ -97,14 +98,15 @@ typedef struct pattern_entry {
 } pattern_entry_t;
 
 /**
- * @brief Markov transition entry
+ * @brief Markov transition entry with hash chaining
  */
-typedef struct {
+typedef struct markov_transition {
     pattern_key_t from_state;
     pattern_key_t to_state;
     uint32_t count;             /**< Transition count */
     float probability;          /**< P(to | from) */
     uint64_t last_updated_us;
+    struct markov_transition* hash_next;  /**< Hash bucket chain */
 } markov_transition_t;
 
 /**
@@ -133,8 +135,9 @@ struct predictive_protocol_struct {
     pattern_entry_t* pattern_buckets[MAX_PATTERN_HASH_BUCKETS];
     uint32_t pattern_count;
 
-    /* Markov chain transitions */
-    markov_transition_t* transitions;
+    /* Markov chain transitions (hash table for O(1) lookup) */
+    markov_transition_t* transition_buckets[MAX_TRANSITION_HASH_BUCKETS];
+    markov_transition_t* transitions;  /**< Array storage for iteration */
     uint32_t transition_count;
     uint32_t transition_capacity;
 
@@ -184,6 +187,26 @@ static bool pattern_key_equal(const pattern_key_t* a, const pattern_key_t* b) {
     return a->source == b->source &&
            a->target == b->target &&
            a->msg_type == b->msg_type;
+}
+
+/**
+ * WHAT: Hash function for Markov transition keys (from->to pair)
+ * WHY:  O(1) lookup of transitions by state pair
+ * HOW:  Combine hashes of from and to keys using FNV-1a
+ */
+static uint32_t hash_transition_key(const pattern_key_t* from, const pattern_key_t* to) {
+    if (!from || !to) return 0;
+
+    uint32_t hash = 2166136261U;
+    /* Hash the 'from' state */
+    hash = (hash ^ from->source) * 16777619U;
+    hash = (hash ^ from->target) * 16777619U;
+    hash = (hash ^ from->msg_type) * 16777619U;
+    /* Hash the 'to' state */
+    hash = (hash ^ to->source) * 16777619U;
+    hash = (hash ^ to->target) * 16777619U;
+    hash = (hash ^ to->msg_type) * 16777619U;
+    return hash;
 }
 
 /**
@@ -263,19 +286,22 @@ static void upsert_pattern(predictive_protocol_t proto, const pattern_key_t* key
 /**
  * WHAT: Find Markov transition
  * WHY:  Lookup transition probability
- * HOW:  Linear search (could be optimized with hash table)
+ * HOW:  Hash table lookup for O(1) average case
  */
 static markov_transition_t* find_transition(predictive_protocol_t proto,
                                             const pattern_key_t* from,
                                             const pattern_key_t* to) {
     if (!proto || !from || !to) return NULL;
 
-    for (uint32_t i = 0; i < proto->transition_count; i++) {
-        markov_transition_t* trans = &proto->transitions[i];
+    uint32_t bucket = hash_transition_key(from, to) % MAX_TRANSITION_HASH_BUCKETS;
+    markov_transition_t* trans = proto->transition_buckets[bucket];
+
+    while (trans) {
         if (pattern_key_equal(&trans->from_state, from) &&
             pattern_key_equal(&trans->to_state, to)) {
             return trans;
         }
+        trans = trans->hash_next;
     }
 
     return NULL;
@@ -284,7 +310,7 @@ static markov_transition_t* find_transition(predictive_protocol_t proto,
 /**
  * WHAT: Update Markov chain transition
  * WHY:  Learn state->state probabilities
- * HOW:  Increment count, recalculate probabilities
+ * HOW:  Increment count, recalculate probabilities; use hash table for O(1) insert
  */
 static void update_transition(predictive_protocol_t proto,
                               const pattern_key_t* from,
@@ -301,7 +327,7 @@ static void update_transition(predictive_protocol_t proto,
     } else {
         /* Create new transition */
         if (proto->transition_count >= proto->transition_capacity) {
-            /* Resize transition array */
+            /* Resize transition array - need to rebuild hash table */
             uint32_t new_capacity = proto->transition_capacity * 2;
             markov_transition_t* new_array = nimcp_realloc(proto->transitions,
                                                            new_capacity * sizeof(markov_transition_t));
@@ -311,6 +337,15 @@ static void update_transition(predictive_protocol_t proto,
             }
             proto->transitions = new_array;
             proto->transition_capacity = new_capacity;
+
+            /* Rebuild hash table after realloc (pointers may have changed) */
+            memset(proto->transition_buckets, 0, sizeof(proto->transition_buckets));
+            for (uint32_t i = 0; i < proto->transition_count; i++) {
+                markov_transition_t* t = &proto->transitions[i];
+                uint32_t bucket = hash_transition_key(&t->from_state, &t->to_state) % MAX_TRANSITION_HASH_BUCKETS;
+                t->hash_next = proto->transition_buckets[bucket];
+                proto->transition_buckets[bucket] = t;
+            }
         }
 
         trans = &proto->transitions[proto->transition_count];
@@ -319,6 +354,11 @@ static void update_transition(predictive_protocol_t proto,
         trans->count = 1;
         trans->probability = 0.0F;  // Will be calculated later
         trans->last_updated_us = timestamp_us;
+
+        /* Insert into hash table */
+        uint32_t bucket = hash_transition_key(from, to) % MAX_TRANSITION_HASH_BUCKETS;
+        trans->hash_next = proto->transition_buckets[bucket];
+        proto->transition_buckets[bucket] = trans;
 
         proto->transition_count++;
     }

@@ -435,13 +435,166 @@ float compute_assortativity(NimcpGraph* graph)
     return r;
 }
 
+//=============================================================================
+// Community Detection (Label Propagation Algorithm)
+//=============================================================================
+
+/**
+ * @brief Detect communities using Label Propagation Algorithm (LPA)
+ *
+ * WHAT: Assigns community labels to vertices based on neighbor consensus
+ * WHY:  Near-linear time community detection for modularity calculation
+ * HOW:  Each vertex adopts most frequent label among neighbors; iterate to convergence
+ *
+ * ALGORITHM (Raghavan et al., 2007):
+ * 1. Initialize each vertex with unique label
+ * 2. In each iteration:
+ *    a. Process vertices in random order
+ *    b. Each vertex adopts the most frequent label among neighbors
+ *    c. Break ties randomly
+ * 3. Stop when no labels change or max iterations reached
+ *
+ * COMPLEXITY: O(k*E) where k = iterations (~5-10 typically), E = edges
+ *
+ * @param graph Network to analyze (must be non-NULL)
+ * @param communities Output array for community labels [vertex_count] (caller allocated)
+ * @param max_iterations Maximum iterations (0 for default of 100)
+ * @return Number of communities detected, or 0 on error
+ */
+static uint32_t detect_communities_label_propagation(
+    NimcpGraph* graph,
+    uint32_t* communities,
+    uint32_t max_iterations)
+{
+    if (!graph || !communities || graph->vertex_count == 0) {
+        return 0;
+    }
+
+    uint32_t n = graph->vertex_count;
+    if (max_iterations == 0) {
+        max_iterations = 100;
+    }
+
+    // Initialize each vertex with unique community label
+    for (uint32_t i = 0; i < n; i++) {
+        communities[i] = i;
+    }
+
+    // Allocate temporary arrays for label counting
+    // We use a simple approach: for each vertex, count neighbor labels
+    uint32_t* label_counts = (uint32_t*)nimcp_calloc(n, sizeof(uint32_t));
+    uint32_t* vertex_order = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+
+    if (!label_counts || !vertex_order) {
+        nimcp_free(label_counts);
+        nimcp_free(vertex_order);
+        return 0;
+    }
+
+    // Initialize vertex processing order
+    for (uint32_t i = 0; i < n; i++) {
+        vertex_order[i] = i;
+    }
+
+    // Simple pseudo-random shuffle using linear congruential generator
+    uint32_t seed = 12345;
+    for (uint32_t i = n - 1; i > 0; i--) {
+        seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+        uint32_t j = seed % (i + 1);
+        uint32_t tmp = vertex_order[i];
+        vertex_order[i] = vertex_order[j];
+        vertex_order[j] = tmp;
+    }
+
+    // Iterate until convergence or max iterations
+    bool changed = true;
+    uint32_t iteration = 0;
+
+    while (changed && iteration < max_iterations) {
+        changed = false;
+        iteration++;
+
+        // Shuffle order each iteration for better convergence
+        seed = seed * 1103515245 + 12345;
+        for (uint32_t i = n - 1; i > 0; i--) {
+            seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+            uint32_t j = seed % (i + 1);
+            uint32_t tmp = vertex_order[i];
+            vertex_order[i] = vertex_order[j];
+            vertex_order[j] = tmp;
+        }
+
+        // Process each vertex
+        for (uint32_t idx = 0; idx < n; idx++) {
+            uint32_t v = vertex_order[idx];
+            uint32_t degree = get_degree(graph, v);
+
+            if (degree == 0) {
+                continue;  // Isolated vertex keeps its label
+            }
+
+            // Reset label counts
+            memset(label_counts, 0, n * sizeof(uint32_t));
+
+            // Count labels among neighbors
+            NimcpEdgeNode* edge = graph->vertices[v].edges;
+            while (edge) {
+                uint32_t neighbor_label = communities[edge->dest];
+                label_counts[neighbor_label]++;
+                edge = edge->next;
+            }
+
+            // Find most frequent label (with tie-breaking toward lower labels for stability)
+            uint32_t best_label = communities[v];
+            uint32_t best_count = 0;
+
+            for (uint32_t label = 0; label < n; label++) {
+                if (label_counts[label] > best_count) {
+                    best_count = label_counts[label];
+                    best_label = label;
+                }
+            }
+
+            // Update if label changed
+            if (best_label != communities[v]) {
+                communities[v] = best_label;
+                changed = true;
+            }
+        }
+
+        // Heartbeat for long-running community detection
+        graph_metrics_heartbeat("community_detection",
+                                (float)iteration / (float)max_iterations);
+    }
+
+    nimcp_free(label_counts);
+    nimcp_free(vertex_order);
+
+    // Count unique communities
+    uint32_t* seen = (uint32_t*)nimcp_calloc(n, sizeof(uint32_t));
+    if (!seen) {
+        return 1;  // Assume at least 1 community
+    }
+
+    uint32_t num_communities = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t label = communities[i];
+        if (label < n && seen[label] == 0) {
+            seen[label] = 1;
+            num_communities++;
+        }
+    }
+
+    nimcp_free(seen);
+    return num_communities;
+}
+
 /**
  * WHAT: Computes all graph metrics in one call
  * WHY: Convenient single-function API for complete analysis
  * HOW: Calls individual metric functions and packages results
  *
- * NOTE: Community detection not yet implemented, so modularity
- *       uses trivial single-community assignment
+ * Uses Label Propagation Algorithm for community detection to compute modularity
  */
 graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
 {
@@ -471,13 +624,20 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
     metrics->characteristic_path_length = compute_characteristic_path_length(graph);
     metrics->assortativity = compute_assortativity(graph);
 
-    // Compute modularity with trivial single-community assignment
-    // TODO: Implement community detection (Louvain, spectral, etc.)
+    // Compute modularity using Label Propagation community detection
     if (graph->vertex_count > 0) {
         uint32_t* communities = (uint32_t*)nimcp_calloc(graph->vertex_count, sizeof(uint32_t));
         if (communities) {
-            // All vertices in community 0 (trivial - gives Q ≈ 0)
+            // Detect communities using Label Propagation Algorithm
+            uint32_t num_communities = detect_communities_label_propagation(
+                graph, communities, 100);  // max 100 iterations
+
+            // Compute modularity with detected communities
             metrics->modularity = compute_modularity_q(graph, communities);
+
+            // Log community detection result for debugging
+            (void)num_communities;  // Suppress unused warning in release builds
+
             nimcp_free(communities);
         }
     }

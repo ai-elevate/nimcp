@@ -205,7 +205,8 @@ TEST_F(ExceptionMacroE2ETest, NimcpThrowToImmunePresentation) {
 /* ============================================================================
  * Test 3: NIMCP_THROW_IF Conditional Throw
  *
- * Verifies: Conditional throw only triggers when condition is false
+ * Verifies: Conditional throw triggers when condition is TRUE
+ * (THROW_IF means "throw if this condition is met")
  * ============================================================================ */
 
 TEST_F(ExceptionMacroE2ETest, NimcpThrowIfConditional) {
@@ -213,18 +214,19 @@ TEST_F(ExceptionMacroE2ETest, NimcpThrowIfConditional) {
 
     reset_tracking();
 
-    // Should NOT throw - condition is true
-    int* valid_ptr = new int(42);
-    NIMCP_THROW_IF(valid_ptr != nullptr, NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
-    EXPECT_EQ(g_handler_calls.load(), 0);
-    printf("  True condition: handler calls = %d (expected 0)\n", g_handler_calls.load());
-    delete valid_ptr;
-
-    // Should throw - condition is false
+    // Should NOT throw - condition is false (ptr IS null, so ptr == nullptr is true,
+    // but we're checking ptr != nullptr which is false)
     int* null_ptr = nullptr;
-    NIMCP_THROW_IF(null_ptr != nullptr, NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+    NIMCP_THROW_IF(null_ptr != nullptr, NIMCP_ERROR_NULL_POINTER, "ptr is not NULL");
+    EXPECT_EQ(g_handler_calls.load(), 0);
+    printf("  False condition (null_ptr != nullptr): handler calls = %d (expected 0)\n", g_handler_calls.load());
+
+    // Should throw - condition is true (valid_ptr IS not null)
+    int* valid_ptr = new int(42);
+    NIMCP_THROW_IF(valid_ptr != nullptr, NIMCP_ERROR_NULL_POINTER, "ptr is not NULL - throwing");
     EXPECT_GT(g_handler_calls.load(), 0);
-    printf("  False condition: handler calls = %d (expected >0)\n", g_handler_calls.load());
+    printf("  True condition (valid_ptr != nullptr): handler calls = %d (expected >0)\n", g_handler_calls.load());
+    delete valid_ptr;
 
     EXPECT_EQ(g_last_code, NIMCP_ERROR_NULL_POINTER);
 

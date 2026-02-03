@@ -168,8 +168,9 @@ TEST_F(ExceptionMacroRegressionTest, ThrowMacroSetsSourceLocation) {
 // REGRESSION: Conditional throw must only throw when condition is false
 //=============================================================================
 
-TEST_F(ExceptionMacroRegressionTest, ThrowIfOnlyThrowsWhenConditionFalse) {
-    // REGRESSION: NIMCP_THROW_IF(cond, ...) throws only when cond is false
+TEST_F(ExceptionMacroRegressionTest, ThrowIfOnlyThrowsWhenConditionTrue) {
+    // REGRESSION: NIMCP_THROW_IF(cond, ...) throws only when cond is true
+    // This matches standard semantics: "throw IF (the condition is met)"
 
     static bool handler_called = false;
 
@@ -185,17 +186,17 @@ TEST_F(ExceptionMacroRegressionTest, ThrowIfOnlyThrowsWhenConditionFalse) {
     nimcp_handler_registration_t* reg = nimcp_handler_register(&opts);
     ASSERT_NE(reg, nullptr);
 
-    // Test with true condition - should NOT throw
+    // Test with false condition - should NOT throw
     handler_called = false;
-    NIMCP_THROW_IF(true, NIMCP_ERROR_UNKNOWN, "Should not throw");
+    NIMCP_THROW_IF(false, NIMCP_ERROR_UNKNOWN, "Should not throw");
     EXPECT_FALSE(handler_called)
-        << "NIMCP_THROW_IF must NOT throw when condition is true";
+        << "NIMCP_THROW_IF must NOT throw when condition is false";
 
-    // Test with false condition - should throw
+    // Test with true condition - should throw
     handler_called = false;
-    NIMCP_THROW_IF(false, NIMCP_ERROR_UNKNOWN, "Should throw");
+    NIMCP_THROW_IF(true, NIMCP_ERROR_UNKNOWN, "Should throw");
     EXPECT_TRUE(handler_called)
-        << "NIMCP_THROW_IF must throw when condition is false";
+        << "NIMCP_THROW_IF must throw when condition is true";
 
     nimcp_handler_unregister(reg);
 }

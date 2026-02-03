@@ -242,12 +242,9 @@ nimcp_error_t nimcp_ephaptic_init(
         return EPHAPTIC_ERROR_NULL_POINTER;
     }
 
-    /* Guard: already initialized */
-    if (system->initialized) {
-        return EPHAPTIC_ERROR_ALREADY_INITIALIZED;
-    }
-
-    /* Zero initialize */
+    /* Zero initialize FIRST to avoid reading uninitialized memory.
+     * Note: We do NOT check initialized flag before memset because
+     * the system struct may contain garbage values on the stack. */
     memset(system, 0, sizeof(nimcp_ephaptic_system_t));
 
     /* Apply configuration */

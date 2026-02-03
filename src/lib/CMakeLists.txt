@@ -158,6 +158,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_injury.c        # Injury and recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_split_brain_experiments.c  # Split-brain experiments
 
+    # Genius Profiles Module (Phase Feb 2026: Configurable genius brain profiles)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/genius/nimcp_genius_profiles.c  # Static profiles, bridge lifecycle, system integration
+
     # Brain processing modules (Phase 9.1: SRP Refactoring) - TODO: Enable when refactoring complete
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/sensory_extractor.c
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/multimodal_integrator.c

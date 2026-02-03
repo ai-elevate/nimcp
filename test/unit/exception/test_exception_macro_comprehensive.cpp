@@ -835,29 +835,29 @@ TEST_F(ExceptionMacroComprehensiveTest, ErrorCodeDeadlock) {
  * @brief Function using NIMCP_THROW_IF
  */
 static void throw_if_test(bool condition) {
-    /* NIMCP_THROW_IF throws when condition is FALSE */
-    NIMCP_THROW_IF(condition, NIMCP_ERROR_INVALID_PARAM, "Condition was false");
+    /* NIMCP_THROW_IF throws when condition is TRUE (standard semantics) */
+    NIMCP_THROW_IF(condition, NIMCP_ERROR_INVALID_PARAM, "Condition was true");
 }
 
 /**
  * WHAT: Test NIMCP_THROW_IF when condition is false
- * WHY:  Verify throw occurs on false condition
+ * WHY:  Verify no throw on false condition
  */
 TEST_F(ExceptionMacroComprehensiveTest, ThrowIfConditionFalse) {
     throw_if_test(false);
 
-    EXPECT_EQ(g_handler_call_count, 1);
-    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_EQ(g_handler_call_count, 0);
 }
 
 /**
  * WHAT: Test NIMCP_THROW_IF when condition is true
- * WHY:  Verify no throw on true condition
+ * WHY:  Verify throw occurs on true condition
  */
 TEST_F(ExceptionMacroComprehensiveTest, ThrowIfConditionTrue) {
     throw_if_test(true);
 
-    EXPECT_EQ(g_handler_call_count, 0);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_INVALID_PARAM);
 }
 
 //=============================================================================

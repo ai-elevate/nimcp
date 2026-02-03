@@ -26,6 +26,9 @@ protected:
         kg_config.max_nodes = 1000;
         kg_config.max_edges = 5000;
         kg_config.enable_statistics = true;
+        // Disable security for testing - allows writes without valid admin token
+        kg_config.enable_security = false;
+        kg_config.enable_access_control = false;
 
         kg_ = brain_kg_create(&kg_config);
         kg_initialized_ = (kg_ != nullptr);

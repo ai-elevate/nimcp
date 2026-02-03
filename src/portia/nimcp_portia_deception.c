@@ -466,19 +466,19 @@ int portia_deception_set_mode(
     if (mode == STEALTH_MODE_PASSIVE && !deception->config.enable_stealth) {
         LOG_ERROR("Stealth not enabled");
         deception_set_error("Stealth capability not enabled");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     if (mode == STEALTH_MODE_ACTIVE && !deception->config.enable_stealth) {
         LOG_ERROR("Active stealth not enabled");
         deception_set_error("Active stealth not enabled");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     if (mode == STEALTH_MODE_MIMICRY && !deception->config.enable_mimicry) {
         LOG_ERROR("Mimicry not enabled");
         deception_set_error("Mimicry capability not enabled");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     nimcp_mutex_lock(&deception->lock);
@@ -583,7 +583,7 @@ int portia_deception_mimic(
     if (!deception->config.enable_mimicry) {
         LOG_ERROR("Mimicry not enabled");
         deception_set_error("Mimicry capability not enabled");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     if (profile_id == 0 || profile_id > deception->profile_count) {
@@ -731,7 +731,7 @@ int portia_deception_jam(
     if (!deception->config.enable_jamming) {
         LOG_ERROR("Jamming not enabled");
         deception_set_error("Jamming capability not enabled");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     nimcp_mutex_lock(&deception->lock);

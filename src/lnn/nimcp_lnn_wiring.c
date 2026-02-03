@@ -411,6 +411,15 @@ lnn_wiring_t* lnn_wiring_create_small_world(uint32_t n_neurons, uint32_t k, floa
         }
     }
 
+    // Step 3: Sort col_idx within each row for binary search compatibility
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        uint32_t start = wiring->row_ptr[i];
+        uint32_t end = wiring->row_ptr[i + 1];
+        if (end > start) {
+            qsort(&wiring->col_idx[start], end - start, sizeof(uint32_t), lnn_wiring_compare_uint32);
+        }
+    }
+
     // Compute sparsity
     wiring->sparsity = lnn_wiring_compute_sparsity(wiring);
 

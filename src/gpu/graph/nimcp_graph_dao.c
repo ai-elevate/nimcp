@@ -471,6 +471,250 @@ nimcp_error_t nimcp_graph_dao_query(
     return err;
 }
 
+//=============================================================================
+// Filter Parsing and Evaluation
+//=============================================================================
+
+/**
+ * @brief Filter operator types
+ */
+typedef enum {
+    FILTER_OP_NONE,      /**< No filter or parse error */
+    FILTER_OP_EQ,        /**< Equal (=, ==) */
+    FILTER_OP_NE,        /**< Not equal (!=) */
+    FILTER_OP_LT,        /**< Less than (<) */
+    FILTER_OP_LE,        /**< Less than or equal (<=) */
+    FILTER_OP_GT,        /**< Greater than (>) */
+    FILTER_OP_GE,        /**< Greater than or equal (>=) */
+} filter_op_t;
+
+/**
+ * @brief Filter field types
+ */
+typedef enum {
+    FILTER_FIELD_NONE,       /**< Unknown field */
+    FILTER_FIELD_VERTICES,   /**< num_vertices */
+    FILTER_FIELD_EDGES,      /**< num_edges */
+    FILTER_FIELD_DENSITY,    /**< graph density (edges / max_edges) */
+    FILTER_FIELD_ID,         /**< graph ID */
+} filter_field_t;
+
+/**
+ * @brief Parsed filter condition
+ */
+typedef struct {
+    filter_field_t field;    /**< Field to filter on */
+    filter_op_t op;          /**< Comparison operator */
+    double value;            /**< Comparison value */
+    bool valid;              /**< Whether parse was successful */
+} filter_condition_t;
+
+/**
+ * @brief Skip whitespace in string
+ */
+static const char* skip_whitespace(const char* str) {
+    while (*str == ' ' || *str == '\t') {
+        str++;
+    }
+    return str;
+}
+
+/**
+ * @brief Parse a filter field name
+ *
+ * Supported fields:
+ * - vertices, num_vertices, v: Number of vertices
+ * - edges, num_edges, e: Number of edges
+ * - density, d: Graph density
+ * - id: Graph ID
+ */
+static filter_field_t parse_filter_field(const char** str) {
+    const char* s = skip_whitespace(*str);
+
+    // Match field names (case-insensitive prefix matching)
+    if (strncmp(s, "vertices", 8) == 0 || strncmp(s, "num_vertices", 12) == 0) {
+        *str = s + (s[0] == 'n' ? 12 : 8);
+        return FILTER_FIELD_VERTICES;
+    }
+    if (s[0] == 'v' && (s[1] == ' ' || s[1] == '<' || s[1] == '>' || s[1] == '=' || s[1] == '!')) {
+        *str = s + 1;
+        return FILTER_FIELD_VERTICES;
+    }
+
+    if (strncmp(s, "edges", 5) == 0 || strncmp(s, "num_edges", 9) == 0) {
+        *str = s + (s[0] == 'n' ? 9 : 5);
+        return FILTER_FIELD_EDGES;
+    }
+    if (s[0] == 'e' && (s[1] == ' ' || s[1] == '<' || s[1] == '>' || s[1] == '=' || s[1] == '!')) {
+        *str = s + 1;
+        return FILTER_FIELD_EDGES;
+    }
+
+    if (strncmp(s, "density", 7) == 0) {
+        *str = s + 7;
+        return FILTER_FIELD_DENSITY;
+    }
+    if (s[0] == 'd' && (s[1] == ' ' || s[1] == '<' || s[1] == '>' || s[1] == '=' || s[1] == '!')) {
+        *str = s + 1;
+        return FILTER_FIELD_DENSITY;
+    }
+
+    if (strncmp(s, "id", 2) == 0) {
+        *str = s + 2;
+        return FILTER_FIELD_ID;
+    }
+
+    return FILTER_FIELD_NONE;
+}
+
+/**
+ * @brief Parse a comparison operator
+ */
+static filter_op_t parse_filter_operator(const char** str) {
+    const char* s = skip_whitespace(*str);
+
+    if (s[0] == '=' && s[1] == '=') {
+        *str = s + 2;
+        return FILTER_OP_EQ;
+    }
+    if (s[0] == '=') {
+        *str = s + 1;
+        return FILTER_OP_EQ;
+    }
+    if (s[0] == '!' && s[1] == '=') {
+        *str = s + 2;
+        return FILTER_OP_NE;
+    }
+    if (s[0] == '<' && s[1] == '=') {
+        *str = s + 2;
+        return FILTER_OP_LE;
+    }
+    if (s[0] == '<') {
+        *str = s + 1;
+        return FILTER_OP_LT;
+    }
+    if (s[0] == '>' && s[1] == '=') {
+        *str = s + 2;
+        return FILTER_OP_GE;
+    }
+    if (s[0] == '>') {
+        *str = s + 1;
+        return FILTER_OP_GT;
+    }
+
+    return FILTER_OP_NONE;
+}
+
+/**
+ * @brief Parse a numeric value
+ */
+static bool parse_filter_value(const char** str, double* value) {
+    const char* s = skip_whitespace(*str);
+    char* end = NULL;
+
+    *value = strtod(s, &end);
+    if (end == s) {
+        return false;  // No number found
+    }
+
+    *str = end;
+    return true;
+}
+
+/**
+ * @brief Parse a complete filter expression
+ *
+ * Syntax: field operator value
+ * Examples:
+ *   "vertices > 100"
+ *   "edges <= 1000"
+ *   "density >= 0.5"
+ *   "id = 42"
+ */
+static filter_condition_t parse_filter(const char* filter) {
+    filter_condition_t cond = {
+        .field = FILTER_FIELD_NONE,
+        .op = FILTER_OP_NONE,
+        .value = 0.0,
+        .valid = false
+    };
+
+    if (!filter || filter[0] == '\0') {
+        return cond;  // Empty filter matches all
+    }
+
+    const char* s = filter;
+
+    cond.field = parse_filter_field(&s);
+    if (cond.field == FILTER_FIELD_NONE) {
+        return cond;
+    }
+
+    cond.op = parse_filter_operator(&s);
+    if (cond.op == FILTER_OP_NONE) {
+        return cond;
+    }
+
+    if (!parse_filter_value(&s, &cond.value)) {
+        return cond;
+    }
+
+    cond.valid = true;
+    return cond;
+}
+
+/**
+ * @brief Evaluate a filter condition against a graph
+ */
+static bool evaluate_filter(
+    const filter_condition_t* cond,
+    nimcp_gpu_graph_t* graph,
+    int graph_id)
+{
+    if (!cond->valid) {
+        return true;  // Invalid filter matches all
+    }
+
+    double field_value = 0.0;
+
+    switch (cond->field) {
+        case FILTER_FIELD_VERTICES:
+            field_value = (double)graph->num_vertices;
+            break;
+
+        case FILTER_FIELD_EDGES:
+            field_value = (double)graph->num_edges;
+            break;
+
+        case FILTER_FIELD_DENSITY:
+            if (graph->num_vertices > 1) {
+                size_t max_edges = graph->num_vertices * (graph->num_vertices - 1) / 2;
+                field_value = (max_edges > 0) ?
+                              (double)graph->num_edges / (double)max_edges : 0.0;
+            } else {
+                field_value = 0.0;
+            }
+            break;
+
+        case FILTER_FIELD_ID:
+            field_value = (double)graph_id;
+            break;
+
+        default:
+            return true;  // Unknown field matches all
+    }
+
+    switch (cond->op) {
+        case FILTER_OP_EQ:  return field_value == cond->value;
+        case FILTER_OP_NE:  return field_value != cond->value;
+        case FILTER_OP_LT:  return field_value < cond->value;
+        case FILTER_OP_LE:  return field_value <= cond->value;
+        case FILTER_OP_GT:  return field_value > cond->value;
+        case FILTER_OP_GE:  return field_value >= cond->value;
+        default:            return true;
+    }
+}
+
 size_t nimcp_graph_dao_find(
     nimcp_gpu_graph_dao_t* dao,
     const char* filter,
@@ -481,10 +725,30 @@ size_t nimcp_graph_dao_find(
         return 0;
     }
 
-    (void)filter;  // TODO: Implement filter parsing and evaluation
+    // Parse filter expression
+    filter_condition_t cond = parse_filter(filter);
 
-    // For now, return all IDs up to max_results
-    return nimcp_graph_dao_list_ids(dao, out_ids, max_results);
+    // If no valid filter, return all IDs
+    if (!filter || filter[0] == '\0' || !cond.valid) {
+        return nimcp_graph_dao_list_ids(dao, out_ids, max_results);
+    }
+
+    pthread_mutex_lock(&dao->lock);
+
+    size_t count = 0;
+
+    // Iterate over GPU storage and evaluate filter
+    for (size_t i = 0; i < dao->gpu_capacity && count < max_results; i++) {
+        if (dao->gpu_ids[i] >= 0 && dao->gpu_storage[i]) {
+            nimcp_gpu_graph_t* graph = (nimcp_gpu_graph_t*)dao->gpu_storage[i];
+            if (evaluate_filter(&cond, graph, dao->gpu_ids[i])) {
+                out_ids[count++] = dao->gpu_ids[i];
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&dao->lock);
+    return count;
 }
 
 size_t nimcp_graph_dao_count(
@@ -495,12 +759,32 @@ size_t nimcp_graph_dao_count(
         return 0;
     }
 
-    (void)filter;  // TODO: Implement filter counting
+    // Parse filter expression
+    filter_condition_t cond = parse_filter(filter);
+
+    // If no valid filter, return total count
+    if (!filter || filter[0] == '\0' || !cond.valid) {
+        pthread_mutex_lock(&dao->lock);
+        size_t count = dao->gpu_count + (dao->host_cache ? dao->host_cache->count : 0);
+        pthread_mutex_unlock(&dao->lock);
+        return count;
+    }
 
     pthread_mutex_lock(&dao->lock);
-    size_t count = dao->gpu_count + dao->host_cache->count;
-    pthread_mutex_unlock(&dao->lock);
 
+    size_t count = 0;
+
+    // Count graphs matching filter in GPU storage
+    for (size_t i = 0; i < dao->gpu_capacity; i++) {
+        if (dao->gpu_ids[i] >= 0 && dao->gpu_storage[i]) {
+            nimcp_gpu_graph_t* graph = (nimcp_gpu_graph_t*)dao->gpu_storage[i];
+            if (evaluate_filter(&cond, graph, dao->gpu_ids[i])) {
+                count++;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&dao->lock);
     return count;
 }
 

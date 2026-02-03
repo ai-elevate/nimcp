@@ -52,6 +52,13 @@ static inline void error_codes_heartbeat(const char* operation, float progress) 
 
 
 //=============================================================================
+// Forward Declarations
+//=============================================================================
+
+// Forward declaration of extended error context API (defined below)
+static nimcp_error_context_t* get_thread_error_context(void);
+
+//=============================================================================
 // Thread-Local Error Storage
 //=============================================================================
 
@@ -409,6 +416,17 @@ void nimcp_error_clear(void)
     nimcp_error_info_t* info = get_thread_error();
     if (info) {
         memset(info, 0, sizeof(nimcp_error_info_t));
+    }
+
+    // Also clear the extended error context (used by nimcp_set_error_ex)
+    nimcp_error_context_t* ctx = get_thread_error_context();
+    if (ctx) {
+        ctx->code = NIMCP_SUCCESS;
+        ctx->file = NULL;
+        ctx->line = 0;
+        ctx->function = NULL;
+        ctx->timestamp = 0;
+        ctx->message[0] = '\0';
     }
 }
 

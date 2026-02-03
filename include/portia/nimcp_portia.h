@@ -428,9 +428,9 @@ const char* portia_power_state_name(portia_power_state_t state);
 const char* portia_thermal_state_name(portia_thermal_state_t state);
 
 /**
- * @brief Get accelerator type name
+ * @brief Get accelerator type name (for portia_accelerator_type_t)
  */
-const char* portia_accelerator_type_name(portia_accelerator_type_t type);
+const char* portia_accel_type_name(portia_accelerator_type_t type);
 
 /**
  * @brief Get workload type name

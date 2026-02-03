@@ -796,45 +796,96 @@ flashbulb_error_t flashbulb_retrieve_most_vivid(
         return FLASHBULB_SUCCESS;
     }
 
-    // Simple selection sort for top-K (could be optimized with heap)
-    // Create array of indices sorted by vividness
+    /* Heap-based top-K selection: O(n log k) instead of O(nk) selection sort
+     * Use min-heap of size k: smallest element is root
+     * For each memory, if vividness > heap root, replace and re-heapify
+     */
     size_t actual_k = (k < system->num_memories) ? k : system->num_memories;
 
-    // Track which memories we've already selected
-    bool* selected = (bool*)calloc(system->num_memories, sizeof(bool));
-    if (!selected) {
+    /* Heap element: store vividness (key) and index (value) */
+    typedef struct {
+        float vividness;
+        size_t idx;
+    } heap_elem_t;
+
+    /* Allocate min-heap (1-indexed for simpler parent/child math) */
+    heap_elem_t* heap = (heap_elem_t*)calloc(actual_k + 1, sizeof(heap_elem_t));
+    if (!heap) {
         return FLASHBULB_ERROR_NO_MEMORY;
     }
 
-    for (size_t i = 0; i < actual_k; i++) {
+    size_t heap_size = 0;
+
+    /* Helper: sift down for min-heap */
+    #define HEAP_SIFT_DOWN(idx) do { \
+        size_t _i = (idx); \
+        while (2 * _i <= heap_size) { \
+            size_t _child = 2 * _i; \
+            if (_child + 1 <= heap_size && heap[_child + 1].vividness < heap[_child].vividness) { \
+                _child++; \
+            } \
+            if (heap[_child].vividness < heap[_i].vividness) { \
+                heap_elem_t _tmp = heap[_child]; heap[_child] = heap[_i]; heap[_i] = _tmp; \
+                _i = _child; \
+            } else break; \
+        } \
+    } while(0)
+
+    /* Helper: sift up for min-heap */
+    #define HEAP_SIFT_UP(idx) do { \
+        size_t _i = (idx); \
+        while (_i > 1 && heap[_i].vividness < heap[_i / 2].vividness) { \
+            heap_elem_t _tmp = heap[_i]; heap[_i] = heap[_i / 2]; heap[_i / 2] = _tmp; \
+            _i /= 2; \
+        } \
+    } while(0)
+
+    /* Process all memories */
+    for (size_t j = 0; j < system->num_memories; j++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && actual_k > 256) {
+        if ((j & 0xFF) == 0 && system->num_memories > 256) {
             flashbulb_heartbeat("flashbulb_loop",
-                             (float)(i + 1) / (float)actual_k);
+                             (float)(j + 1) / (float)system->num_memories);
         }
 
-        float best_vividness = -1.0f;
-        size_t best_idx = 0;
+        float vividness = system->memories[j].vividness;
 
-        for (size_t j = 0; j < system->num_memories; j++) {
-            /* Phase 8: Loop progress heartbeat */
-            if ((j & 0xFF) == 0 && system->num_memories > 256) {
-                flashbulb_heartbeat("flashbulb_loop",
-                                 (float)(j + 1) / (float)system->num_memories);
-            }
-
-            if (!selected[j] && system->memories[j].vividness > best_vividness) {
-                best_vividness = system->memories[j].vividness;
-                best_idx = j;
-            }
+        if (heap_size < actual_k) {
+            /* Heap not full yet - insert */
+            heap_size++;
+            heap[heap_size].vividness = vividness;
+            heap[heap_size].idx = j;
+            HEAP_SIFT_UP(heap_size);
+        } else if (vividness > heap[1].vividness) {
+            /* This memory is more vivid than the least vivid in top-k - replace */
+            heap[1].vividness = vividness;
+            heap[1].idx = j;
+            HEAP_SIFT_DOWN(1);
         }
-
-        selected[best_idx] = true;
-        memories[i] = &system->memories[best_idx];
     }
 
-    free(selected);
-    *count = actual_k;
+    #undef HEAP_SIFT_DOWN
+    #undef HEAP_SIFT_UP
+
+    /* Extract results from heap (will be in arbitrary order) */
+    /* Sort by vividness descending for consistent output */
+    for (size_t i = 0; i < heap_size; i++) {
+        memories[i] = &system->memories[heap[i + 1].idx];
+    }
+
+    /* Simple insertion sort for final ordering (heap_size <= k, typically small) */
+    for (size_t i = 1; i < heap_size; i++) {
+        flashbulb_memory_t* key = memories[i];
+        int64_t j = (int64_t)i - 1;
+        while (j >= 0 && memories[j]->vividness < key->vividness) {
+            memories[j + 1] = memories[j];
+            j--;
+        }
+        memories[j + 1] = key;
+    }
+
+    free(heap);
+    *count = heap_size;
 
     return FLASHBULB_SUCCESS;
 }

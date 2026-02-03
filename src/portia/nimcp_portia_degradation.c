@@ -225,13 +225,7 @@ static nimcp_result_t apply_degradation_level(
 degradation_state_t* portia_degradation_init(
     const degradation_internal_config_t* config
 ) {
-    // Security validation - check for NULL config pointer
-    if (!config) {
-        LOG_ERROR("Invalid config pointer");
-        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_FAILED", "Invalid config pointer");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_degradation_init");
-        return NULL;
-    }
+    // NULL config is allowed - defaults will be used (see below)
 
     // Thread-safe initialization of global mutex
     nimcp_platform_once(&g_degradation_once, init_degradation_mutex);
@@ -279,7 +273,7 @@ degradation_state_t* portia_degradation_init(
     state->current_level = DEGRADATION_LEVEL_NONE;
     state->target_level = DEGRADATION_LEVEL_NONE;
     state->resource_usage = 0.0F;
-    state->last_change_time_ms = nimcp_time_monotonic_ms();
+    state->last_change_time_ms = 0;  // Set to 0 so first evaluation is not blocked by hysteresis
 
     // Sort features by degradation level
     qsort(state->features, state->feature_count,
@@ -776,7 +770,7 @@ nimcp_result_t portia_degradation_is_feature_enabled(
     degradation_state_t* mutable_state = (degradation_state_t*)state;
     pthread_mutex_lock(&mutable_state->lock);
 
-    nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
+    nimcp_result_t result = NIMCP_NOT_FOUND;  /* Return NOT_FOUND if feature not found */
 
     for (uint32_t i = 0; i < state->feature_count; i++) {
         if (state->features[i].feature_id == feature_id) {

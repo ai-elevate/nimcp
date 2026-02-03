@@ -393,19 +393,42 @@ static void update_hyperscanning_state(collective_cognition_t* cc) {
 static void update_we_mode_state(collective_cognition_t* cc) {
     we_mode_state_t* wm = &cc->state.we_mode;
 
-    /* We-mode strength based on hyperscanning and phi */
+    /* Query actual shared_intentionality subsystem if available */
+    if (cc->intentionality) {
+        /* Update the subsystem first to refresh its internal state */
+        shared_intentionality_update((shared_intentionality_t*)cc->intentionality);
+        /* Then get the updated state */
+        shared_intentionality_get_we_mode(
+            (shared_intentionality_t*)cc->intentionality,
+            wm
+        );
+    }
+
+    /* Overlay hyperscanning-derived metrics if not set by subsystem */
     float sync = cc->state.hyperscanning.global_sync;
     float phi_norm = cc->state.phi.phi_total /
         (cc->instance_count > 0 ? cc->instance_count : 1.0f);
 
-    wm->we_mode_strength = (sync + phi_norm) / 2.0f;
-    wm->joint_commitment = sync;
-    wm->mutual_responsiveness = cc->state.hyperscanning.theta_emotional;
-    wm->role_understanding = cc->state.hyperscanning.beta_coordination;
+    /* Blend we-mode strength with sync and phi if we have active instances */
+    if (cc->instance_count >= 2) {
+        float blended_strength = (wm->we_mode_strength + sync + phi_norm) / 3.0f;
+        if (blended_strength > wm->we_mode_strength) {
+            wm->we_mode_strength = blended_strength;
+        }
+    }
 
-    /* TODO: Track actual shared goals and joint attentions when subsystem implemented */
-    wm->active_shared_goals = 0;
-    wm->active_joint_attentions = 0;
+    /* Update joint commitment from sync if not set */
+    if (wm->joint_commitment < sync) {
+        wm->joint_commitment = sync;
+    }
+
+    /* Use hyperscanning metrics as fallback */
+    if (wm->mutual_responsiveness == 0.0f) {
+        wm->mutual_responsiveness = cc->state.hyperscanning.theta_emotional;
+    }
+    if (wm->role_understanding == 0.0f) {
+        wm->role_understanding = cc->state.hyperscanning.beta_coordination;
+    }
 }
 
 /*=============================================================================
@@ -415,12 +438,20 @@ static void update_we_mode_state(collective_cognition_t* cc) {
 static void update_extended_mind_state(collective_cognition_t* cc) {
     extended_mind_state_t* em = &cc->state.extended_mind;
 
-    /* TODO: Implement when extended_mind subsystem is created */
-    em->total_cognitive_capacity = 1.0f + (cc->instance_count * 0.1f);
-    em->extended_ratio = 0.0f;
-    em->integration_quality = 0.0f;
-    em->active_extensions = 0;
-    em->degraded_extensions = 0;
+    /* Query actual extended_mind subsystem if available */
+    if (cc->extended_mind) {
+        /* Update the subsystem first to refresh its internal state */
+        extended_mind_update((extended_mind_t*)cc->extended_mind);
+        /* Then get the updated state */
+        extended_mind_get_state((extended_mind_t*)cc->extended_mind, em);
+    } else {
+        /* Fallback defaults if subsystem not available */
+        em->total_cognitive_capacity = 1.0f + (cc->instance_count * 0.1f);
+        em->extended_ratio = 0.0f;
+        em->integration_quality = 0.0f;
+        em->active_extensions = 0;
+        em->degraded_extensions = 0;
+    }
 }
 
 /*=============================================================================
@@ -734,6 +765,26 @@ int collective_cognition_register_instance(
     cc->instance_count++;
     cc->stats.instances_joined++;
 
+    /* Register with subsystems so they can be accessed directly */
+    if (cc->hyperscanning) {
+        hyperscanning_register_instance(
+            (hyperscanning_t*)cc->hyperscanning,
+            instance_id,
+            NULL,  /* No callback for now */
+            NULL
+        );
+    }
+
+    if (cc->intentionality) {
+        shared_intentionality_register_instance(
+            (shared_intentionality_t*)cc->intentionality,
+            instance_id
+        );
+    }
+
+    /* Note: extended_mind doesn't register instances, it registers extensions */
+    /* Note: phi_system doesn't need instance registration */
+
     return 0;
 }
 
@@ -756,6 +807,21 @@ int collective_cognition_unregister_instance(
     inst->brain = NULL;
     cc->instance_count--;
     cc->stats.instances_left++;
+
+    /* Unregister from subsystems */
+    if (cc->hyperscanning) {
+        hyperscanning_unregister_instance(
+            (hyperscanning_t*)cc->hyperscanning,
+            instance_id
+        );
+    }
+
+    if (cc->intentionality) {
+        shared_intentionality_unregister_instance(
+            (shared_intentionality_t*)cc->intentionality,
+            instance_id
+        );
+    }
 
     return 0;
 }
@@ -895,11 +961,16 @@ int collective_cognition_get_extended_mind_state(
 ) {
     if (!cc || !state) return -1;
 
-    *state = cc->state.extended_mind;
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_get_extended_mind_st", 0.0f);
 
+    /* Get fresh state directly from extended_mind subsystem if available */
+    if (cc->extended_mind) {
+        return extended_mind_get_state((extended_mind_t*)cc->extended_mind, state);
+    }
 
+    /* Fallback to cached state */
+    *state = cc->state.extended_mind;
     return 0;
 }
 

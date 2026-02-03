@@ -20,6 +20,7 @@
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
+#include <stdint.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -1274,42 +1275,123 @@ int fractal_box_dimension(
         /* Count occupied boxes using a grid approach */
         size_t num_x_boxes = (count + box_size - 1) / box_size;
         size_t num_y_boxes = (size_t)(y_range / epsilon_y) + 1;
+        size_t grid_size = num_x_boxes * num_y_boxes;
 
-        /* Use a hash set approach for counting unique boxes */
-        /* For simplicity, use direct counting with coordinate mapping */
         size_t box_count = 0;
 
-        /* Track which (x_box, y_box) pairs are occupied */
-        /* For large grids, this could be optimized with a hash set */
-        bool* occupied = (bool*)calloc(num_x_boxes * num_y_boxes, sizeof(bool));
-        if (!occupied) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-                "fractal_box_dimension: allocation failure for occupied array");
-            free(scales);
-            free(log_eps);
-            free(log_n);
-            return FRACTAL_ERROR_ALLOC;
-        }
+        /* Use hash set for large/sparse grids, direct array for small grids */
+        #define HASH_SET_THRESHOLD 65536  /* Switch to hash set above 64K cells */
+        #define HASH_SET_BUCKETS 1024     /* Number of hash buckets */
 
-        for (size_t i = 0; i < count; i++) {
-            /* Phase 8: Loop progress heartbeat */
-            if ((i & 0xFF) == 0 && count > 256) {
-                fractal_heartbeat("fractal_loop",
-                                 (float)(i + 1) / (float)count);
+        if (grid_size <= HASH_SET_THRESHOLD) {
+            /* Small grid: use direct boolean array (original approach) */
+            bool* occupied = (bool*)calloc(grid_size, sizeof(bool));
+            if (!occupied) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                    "fractal_box_dimension: allocation failure for occupied array");
+                free(scales);
+                free(log_eps);
+                free(log_n);
+                return FRACTAL_ERROR_ALLOC;
             }
 
-            size_t x_box = i / box_size;
-            size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
-            if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
+            for (size_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(i + 1) / (float)count);
+                }
 
-            size_t idx = x_box * num_y_boxes + y_box;
-            if (!occupied[idx]) {
-                occupied[idx] = true;
-                box_count++;
+                size_t x_box = i / box_size;
+                size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
+                if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
+
+                size_t idx = x_box * num_y_boxes + y_box;
+                if (!occupied[idx]) {
+                    occupied[idx] = true;
+                    box_count++;
+                }
             }
+
+            free(occupied);
+        } else {
+            /* Large grid: use hash set for O(n) memory instead of O(grid_size) */
+            /* Hash set node for chained collision resolution */
+            typedef struct hash_node {
+                uint64_t key;  /* Packed (x_box, y_box) */
+                struct hash_node* next;
+            } hash_node_t;
+
+            hash_node_t** buckets = (hash_node_t**)calloc(HASH_SET_BUCKETS, sizeof(hash_node_t*));
+            if (!buckets) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                    "fractal_box_dimension: allocation failure for hash set");
+                free(scales);
+                free(log_eps);
+                free(log_n);
+                return FRACTAL_ERROR_ALLOC;
+            }
+
+            /* Pre-allocate node pool for efficiency */
+            hash_node_t* node_pool = (hash_node_t*)malloc(count * sizeof(hash_node_t));
+            if (!node_pool) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                    "fractal_box_dimension: allocation failure for node pool");
+                free(buckets);
+                free(scales);
+                free(log_eps);
+                free(log_n);
+                return FRACTAL_ERROR_ALLOC;
+            }
+            size_t pool_idx = 0;
+
+            for (size_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
+                size_t x_box = i / box_size;
+                size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
+                if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
+
+                /* Pack coordinates into single 64-bit key */
+                uint64_t key = ((uint64_t)x_box << 32) | (uint64_t)y_box;
+
+                /* FNV-1a hash for bucket selection */
+                uint32_t hash = 2166136261U;
+                hash = (hash ^ (uint32_t)(key & 0xFFFFFFFF)) * 16777619U;
+                hash = (hash ^ (uint32_t)(key >> 32)) * 16777619U;
+                size_t bucket = hash % HASH_SET_BUCKETS;
+
+                /* Search for existing key in bucket chain */
+                hash_node_t* node = buckets[bucket];
+                bool found = false;
+                while (node) {
+                    if (node->key == key) {
+                        found = true;
+                        break;
+                    }
+                    node = node->next;
+                }
+
+                if (!found) {
+                    /* Insert new node from pool */
+                    hash_node_t* new_node = &node_pool[pool_idx++];
+                    new_node->key = key;
+                    new_node->next = buckets[bucket];
+                    buckets[bucket] = new_node;
+                    box_count++;
+                }
+            }
+
+            free(node_pool);
+            free(buckets);
         }
 
-        free(occupied);
+        #undef HASH_SET_THRESHOLD
+        #undef HASH_SET_BUCKETS
 
         if (box_count > 0) {
             log_eps[valid_scales] = logf(1.0f / epsilon_x);  /* log(1/epsilon) */

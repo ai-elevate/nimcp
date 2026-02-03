@@ -47,18 +47,22 @@ protected:
         // Call parent first for global state cleanup
         NimcpTestBase::SetUp();
 
-        // Initialize NIMCP systems
-        nimcp_memory_init();
-        nimcp_cache_init();
+        // Initialize NIMCP systems via nimcp_init() which handles:
+        // - nimcp_memory_init()
+        // - nimcp_cache_init()
+        // - bio-async initialization
+        // This ensures proper initialization order
         nimcp_init();
         brain_clear_error();
     }
 
     void TearDown() override {
-        // Cleanup
+        // Cleanup via nimcp_shutdown() which handles:
+        // - nimcp_cache_cleanup()
+        // - bio-async shutdown
+        // - nimcp_memory_cleanup()
+        // Do NOT call these individually as nimcp_shutdown() does them in correct order
         nimcp_shutdown();
-        nimcp_cache_cleanup();
-        nimcp_memory_cleanup();
 
         // Call parent last for global state cleanup
         NimcpTestBase::TearDown();

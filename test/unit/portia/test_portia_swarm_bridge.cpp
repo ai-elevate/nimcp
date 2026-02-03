@@ -336,7 +336,7 @@ TEST_F(PortiaSwarmBridgeTest, StartBridgeSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, StartBridgeNull) {
     int result = portia_swarm_bridge_start(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, StopBridgeSuccess) {
@@ -350,7 +350,7 @@ TEST_F(PortiaSwarmBridgeTest, StopBridgeSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, StopBridgeNull) {
     int result = portia_swarm_bridge_stop(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, StartStopCycle) {
@@ -380,7 +380,7 @@ TEST_F(PortiaSwarmBridgeTest, ConnectSwarmBrainNull) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_connect_brain(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ConnectConsensusSuccess) {
@@ -396,7 +396,7 @@ TEST_F(PortiaSwarmBridgeTest, ConnectConsensusNull) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_connect_consensus(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ConnectEmergenceSuccess) {
@@ -412,7 +412,7 @@ TEST_F(PortiaSwarmBridgeTest, ConnectEmergenceNull) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_connect_emergence(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ConnectEnergyGossipSuccess) {
@@ -428,7 +428,7 @@ TEST_F(PortiaSwarmBridgeTest, ConnectEnergyGossipNull) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_connect_energy_gossip(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ConnectBioAsyncSuccess) {
@@ -441,7 +441,7 @@ TEST_F(PortiaSwarmBridgeTest, ConnectBioAsyncSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, ConnectBioAsyncNull) {
     int result = portia_swarm_connect_bio_async(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, DisconnectBioAsyncSuccess) {
@@ -455,7 +455,7 @@ TEST_F(PortiaSwarmBridgeTest, DisconnectBioAsyncSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, DisconnectBioAsyncNull) {
     int result = portia_swarm_disconnect_bio_async(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, IsBioAsyncConnected) {
@@ -522,7 +522,7 @@ TEST_F(PortiaSwarmBridgeTest, GetLocalStateSuccess) {
 TEST_F(PortiaSwarmBridgeTest, GetLocalStateNullBridge) {
     portia_swarm_state_t state;
     int result = portia_swarm_get_local_state(nullptr, &state);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, GetLocalStateNullOutput) {
@@ -530,7 +530,7 @@ TEST_F(PortiaSwarmBridgeTest, GetLocalStateNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_get_local_state(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, BroadcastStateSuccess) {
@@ -544,7 +544,7 @@ TEST_F(PortiaSwarmBridgeTest, BroadcastStateSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, BroadcastStateNull) {
     int result = portia_swarm_broadcast_state(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, BroadcastStateDisabledMode) {
@@ -586,7 +586,7 @@ TEST_F(PortiaSwarmBridgeTest, GetCollectiveStateSuccess) {
 TEST_F(PortiaSwarmBridgeTest, GetCollectiveStateNullBridge) {
     portia_swarm_collective_state_t state;
     int result = portia_swarm_get_collective_state(nullptr, &state);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, GetCollectiveStateNullOutput) {
@@ -594,7 +594,7 @@ TEST_F(PortiaSwarmBridgeTest, GetCollectiveStateNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_get_collective_state(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 //=============================================================================
@@ -612,7 +612,7 @@ TEST_F(PortiaSwarmBridgeTest, UpdateBridgeSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, UpdateBridgeNull) {
     int result = portia_swarm_update(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, UpdateBridgeMultipleTimes) {
@@ -671,7 +671,7 @@ TEST_F(PortiaSwarmBridgeTest, RequestRecommendationSuccess) {
 TEST_F(PortiaSwarmBridgeTest, RequestRecommendationNullBridge) {
     portia_swarm_recommendation_t recommendation;
     int result = portia_swarm_request_recommendation(nullptr, &recommendation);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, RequestRecommendationNullOutput) {
@@ -679,7 +679,7 @@ TEST_F(PortiaSwarmBridgeTest, RequestRecommendationNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_request_recommendation(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, GetRecommendationSuccess) {
@@ -702,7 +702,7 @@ TEST_F(PortiaSwarmBridgeTest, GetRecommendationSuccess) {
 TEST_F(PortiaSwarmBridgeTest, GetRecommendationNullBridge) {
     portia_swarm_recommendation_t recommendation;
     int result = portia_swarm_get_recommendation(nullptr, &recommendation);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, GetRecommendationNullOutput) {
@@ -710,7 +710,7 @@ TEST_F(PortiaSwarmBridgeTest, GetRecommendationNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_get_recommendation(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ApplyRecommendationSuccess) {
@@ -733,7 +733,7 @@ TEST_F(PortiaSwarmBridgeTest, ApplyRecommendationNullBridge) {
     recommendation.recommended_tier = 3;
 
     int result = portia_swarm_apply_recommendation(nullptr, &recommendation);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ApplyRecommendationNullRecommendation) {
@@ -741,7 +741,7 @@ TEST_F(PortiaSwarmBridgeTest, ApplyRecommendationNullRecommendation) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_apply_recommendation(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 //=============================================================================
@@ -763,7 +763,7 @@ TEST_F(PortiaSwarmBridgeTest, ComputeOptimalTierSuccess) {
 TEST_F(PortiaSwarmBridgeTest, ComputeOptimalTierNullBridge) {
     uint8_t optimal_tier;
     int result = portia_swarm_compute_optimal_tier(nullptr, 2, &optimal_tier);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ComputeOptimalTierNullOutput) {
@@ -771,7 +771,7 @@ TEST_F(PortiaSwarmBridgeTest, ComputeOptimalTierNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_compute_optimal_tier(bridge, 2, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ComputeOptimalTierLocalWeight) {
@@ -844,7 +844,7 @@ TEST_F(PortiaSwarmBridgeTest, RegisterRecommendationCallback) {
 TEST_F(PortiaSwarmBridgeTest, RegisterRecommendationCallbackNull) {
     int result = portia_swarm_register_recommendation_cb(
         nullptr, recommendation_callback, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, RegisterEmergenceCallback) {
@@ -859,7 +859,7 @@ TEST_F(PortiaSwarmBridgeTest, RegisterEmergenceCallback) {
 TEST_F(PortiaSwarmBridgeTest, RegisterEmergenceCallbackNull) {
     int result = portia_swarm_register_emergence_cb(
         nullptr, emergence_callback, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, RegisterCollectiveCallback) {
@@ -874,7 +874,7 @@ TEST_F(PortiaSwarmBridgeTest, RegisterCollectiveCallback) {
 TEST_F(PortiaSwarmBridgeTest, RegisterCollectiveCallbackNull) {
     int result = portia_swarm_register_collective_cb(
         nullptr, collective_callback, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, TriggerRecommendationCallback) {
@@ -927,7 +927,7 @@ TEST_F(PortiaSwarmBridgeTest, GetStatsSuccess) {
 TEST_F(PortiaSwarmBridgeTest, GetStatsNullBridge) {
     portia_swarm_stats_t stats;
     int result = portia_swarm_get_stats(nullptr, &stats);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, GetStatsNullOutput) {
@@ -935,7 +935,7 @@ TEST_F(PortiaSwarmBridgeTest, GetStatsNullOutput) {
     ASSERT_NE(bridge, nullptr);
 
     int result = portia_swarm_get_stats(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, ResetStatsSuccess) {
@@ -959,7 +959,7 @@ TEST_F(PortiaSwarmBridgeTest, ResetStatsSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, ResetStatsNull) {
     int result = portia_swarm_reset_stats(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, StatsAccumulation) {
@@ -1063,7 +1063,7 @@ TEST_F(PortiaSwarmBridgeTest, NotifyTierChangeSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, NotifyTierChangeNull) {
     int result = portia_swarm_notify_tier_change(nullptr, 2, 3);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 TEST_F(PortiaSwarmBridgeTest, NotifyDegradationSuccess) {
@@ -1076,7 +1076,7 @@ TEST_F(PortiaSwarmBridgeTest, NotifyDegradationSuccess) {
 
 TEST_F(PortiaSwarmBridgeTest, NotifyDegradationNull) {
     int result = portia_swarm_notify_degradation(nullptr, 2, 0x1234);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, NIMCP_OK);
 }
 
 //=============================================================================

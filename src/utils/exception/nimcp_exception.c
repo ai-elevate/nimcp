@@ -71,6 +71,7 @@ nimcp_exception_category_t nimcp_exception_get_category_from_code(nimcp_error_t 
         case 6:  return EXCEPTION_CATEGORY_THREADING;
         case 7:  return EXCEPTION_CATEGORY_SIGNAL;
         case 8:  return EXCEPTION_CATEGORY_COGNITIVE;
+        case 9:  return EXCEPTION_CATEGORY_SECURITY;
         default:
             if (code >= 10000 && code < 20000) {
                 return EXCEPTION_CATEGORY_BRAIN_REGION;
@@ -113,6 +114,7 @@ nimcp_exception_severity_t nimcp_exception_get_severity_from_code(nimcp_error_t 
         case 6:  return EXCEPTION_SEVERITY_SEVERE;   /* Threading */
         case 7:  return EXCEPTION_SEVERITY_CRITICAL; /* Signal */
         case 8:  return EXCEPTION_SEVERITY_ERROR;    /* Cognitive */
+        case 9:  return EXCEPTION_SEVERITY_SEVERE;   /* Security */
         default:
             if (code >= 10000 && code < 20000) {
                 return EXCEPTION_SEVERITY_ERROR;     /* Brain region */
@@ -569,6 +571,22 @@ static nimcp_error_t signal_to_error_code(int signal_number) {
     }
 }
 
+/**
+ * @brief Determine if a signal is fatal (SIGSEGV, SIGABRT, SIGFPE, SIGBUS, SIGILL)
+ */
+static bool is_fatal_signal(int signal_number) {
+    switch (signal_number) {
+        case SIGSEGV:
+        case SIGABRT:
+        case SIGFPE:
+        case SIGBUS:
+        case SIGILL:
+            return true;
+        default:
+            return false;
+    }
+}
+
 nimcp_signal_exception_t* nimcp_signal_exception_create(
     int signal_number,
     void* fault_address,
@@ -584,7 +602,8 @@ nimcp_signal_exception_t* nimcp_signal_exception_create(
     ex->base.type = EXCEPTION_TYPE_SIGNAL;
     ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
     ex->base.code = signal_to_error_code(signal_number);
-    ex->base.severity = EXCEPTION_SEVERITY_CRITICAL;
+    /* Fatal signals get FATAL severity, others get CRITICAL */
+    ex->base.severity = is_fatal_signal(signal_number) ? EXCEPTION_SEVERITY_FATAL : EXCEPTION_SEVERITY_CRITICAL;
     ex->base.file = file;
     ex->base.line = line;
     ex->base.function = func;
@@ -606,6 +625,13 @@ nimcp_signal_exception_t* nimcp_signal_exception_create(
         va_start(args, format);
         vsnprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
         va_end(args);
+    } else {
+        /* Generate default message when format is NULL */
+        snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
+                 "Signal %d (%s) at %p",
+                 signal_number,
+                 strsignal(signal_number),
+                 fault_address);
     }
 
     nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
@@ -625,7 +651,8 @@ nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
     ex->base.type = EXCEPTION_TYPE_SIGNAL;
     ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
     ex->base.code = signal_to_error_code(ctx->signal);
-    ex->base.severity = EXCEPTION_SEVERITY_CRITICAL;
+    /* Fatal signals get FATAL severity, others get CRITICAL */
+    ex->base.severity = is_fatal_signal(ctx->signal) ? EXCEPTION_SEVERITY_FATAL : EXCEPTION_SEVERITY_CRITICAL;
     ex->base.file = NULL;  /* Not available in crash context */
     ex->base.line = 0;
     ex->base.function = NULL;
@@ -654,7 +681,22 @@ nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
              strsignal(ctx->signal),
              ctx->fault_address);
 
-    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    /* Use backtrace from crash context if available, otherwise capture current */
+    if (ctx->backtrace_depth > 0) {
+        /* Copy backtrace from crash context */
+        ex->base.stack_trace.depth = 0;
+        for (int i = 0; i < ctx->backtrace_depth &&
+             ex->base.stack_trace.depth < NIMCP_EXCEPTION_MAX_STACK_DEPTH; i++) {
+            ex->base.stack_trace.frames[ex->base.stack_trace.depth].address = ctx->backtrace[i];
+            ex->base.stack_trace.frames[ex->base.stack_trace.depth].function = NULL;
+            ex->base.stack_trace.frames[ex->base.stack_trace.depth].file = NULL;
+            ex->base.stack_trace.frames[ex->base.stack_trace.depth].line = 0;
+            ex->base.stack_trace.depth++;
+        }
+    } else {
+        /* No backtrace in context, capture current stack */
+        nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    }
     nimcp_exception_generate_epitope(&ex->base);
 
     return ex;
@@ -872,7 +914,9 @@ size_t nimcp_stack_trace_to_string(
             trace->frames[i].address,
             trace->frames[i].function ? trace->frames[i].function : "(unknown)");
         if (written > 0) {
-            offset += (size_t)written;
+            /* Cap at available space to prevent offset exceeding buffer_size */
+            size_t available = buffer_size - 1 - offset;
+            offset += ((size_t)written < available) ? (size_t)written : available;
         }
     }
     return offset;
@@ -898,13 +942,18 @@ size_t nimcp_exception_to_string(
         ex->function ? ex->function : "(unknown)");
 
     if (written > 0) {
-        offset += (size_t)written;
+        /* Cap at available space to prevent offset exceeding buffer_size */
+        size_t available = buffer_size - 1 - offset;
+        offset += ((size_t)written < available) ? (size_t)written : available;
     }
 
     /* Stack trace */
     if (ex->stack_trace.depth > 0 && offset < buffer_size - 1) {
         written = snprintf(buffer + offset, buffer_size - offset, "Stack trace:\n");
-        if (written > 0) offset += (size_t)written;
+        if (written > 0) {
+            size_t available = buffer_size - 1 - offset;
+            offset += ((size_t)written < available) ? (size_t)written : available;
+        }
         offset += nimcp_stack_trace_to_string(&ex->stack_trace, buffer + offset, buffer_size - offset);
     }
 

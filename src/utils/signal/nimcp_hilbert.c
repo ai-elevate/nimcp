@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread_pool.h"
 #include <string.h>
 #include <math.h>
 
@@ -372,8 +373,73 @@ bool hilbert_extract_amplitude_phase(hilbert_transform_t* ht,
 }
 
 //=============================================================================
-// Batch Processing
+// Batch Processing with Thread Pool Parallelization
 //=============================================================================
+
+/** Minimum channels to use parallel processing (overhead threshold) */
+#define HILBERT_PARALLEL_THRESHOLD 4
+
+/** Default number of worker threads */
+#define HILBERT_DEFAULT_THREADS 4
+
+/**
+ * @brief Task context for parallel Hilbert transform
+ */
+typedef struct {
+    hilbert_transform_t* ht;      /**< Hilbert transform instance */
+    const float* signal;          /**< Input signal for this channel */
+    neural_phasor_t* analytic;    /**< Output analytic signal */
+    uint32_t n;                   /**< Signal length */
+    volatile bool success;        /**< Result flag (atomic write) */
+} hilbert_apply_task_t;
+
+/**
+ * @brief Task context for parallel amplitude extraction
+ */
+typedef struct {
+    hilbert_transform_t* ht;      /**< Hilbert transform instance */
+    const float* signal;          /**< Input signal */
+    float* amplitude;             /**< Output amplitude */
+    uint32_t n;                   /**< Signal length */
+    volatile bool success;        /**< Result flag */
+} hilbert_amplitude_task_t;
+
+/**
+ * @brief Task context for parallel phase extraction
+ */
+typedef struct {
+    hilbert_transform_t* ht;      /**< Hilbert transform instance */
+    const float* signal;          /**< Input signal */
+    float* phase;                 /**< Output phase */
+    uint32_t n;                   /**< Signal length */
+    volatile bool success;        /**< Result flag */
+} hilbert_phase_task_t;
+
+/**
+ * @brief Thread pool task wrapper for hilbert_apply
+ */
+static void hilbert_apply_task_fn(void* arg) {
+    hilbert_apply_task_t* task = (hilbert_apply_task_t*)arg;
+    task->success = hilbert_apply(task->ht, task->signal, task->analytic, task->n);
+}
+
+/**
+ * @brief Thread pool task wrapper for hilbert_extract_amplitude
+ */
+static void hilbert_amplitude_task_fn(void* arg) {
+    hilbert_amplitude_task_t* task = (hilbert_amplitude_task_t*)arg;
+    task->success = hilbert_extract_amplitude(task->ht, task->signal,
+                                               task->amplitude, task->n);
+}
+
+/**
+ * @brief Thread pool task wrapper for hilbert_extract_phase
+ */
+static void hilbert_phase_task_fn(void* arg) {
+    hilbert_phase_task_t* task = (hilbert_phase_task_t*)arg;
+    task->success = hilbert_extract_phase(task->ht, task->signal,
+                                           task->phase, task->n);
+}
 
 bool hilbert_apply_batch(hilbert_transform_t* ht,
                           const float** signals,
@@ -384,15 +450,63 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
         return false;
     }
 
-    // Process each channel independently
-    // TODO: Parallelize with OpenMP or threading
+    // Use sequential processing for small channel counts (avoid thread pool overhead)
+    if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_apply(ht, signals[ch], analytic[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Parallel processing using thread pool
+    nimcp_thread_pool_t* pool = nimcp_pool_create(HILBERT_DEFAULT_THREADS);
+    if (pool == NULL) {
+        // Fall back to sequential processing
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_apply(ht, signals[ch], analytic[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Allocate task contexts
+    hilbert_apply_task_t* tasks = (hilbert_apply_task_t*)nimcp_calloc(
+        num_channels, sizeof(hilbert_apply_task_t));
+    if (tasks == NULL) {
+        nimcp_pool_destroy(pool);
+        return false;
+    }
+
+    // Submit tasks for each channel
     for (uint32_t ch = 0; ch < num_channels; ch++) {
-        if (!hilbert_apply(ht, signals[ch], analytic[ch], n)) {
-            return false;
+        tasks[ch].ht = ht;
+        tasks[ch].signal = signals[ch];
+        tasks[ch].analytic = analytic[ch];
+        tasks[ch].n = n;
+        tasks[ch].success = true;
+
+        nimcp_pool_submit(pool, hilbert_apply_task_fn, &tasks[ch]);
+    }
+
+    // Wait for all tasks to complete
+    nimcp_pool_wait(pool);
+
+    // Check for any failures
+    bool all_success = true;
+    for (uint32_t ch = 0; ch < num_channels; ch++) {
+        if (!tasks[ch].success) {
+            all_success = false;
+            break;
         }
     }
 
-    return true;
+    nimcp_free(tasks);
+    nimcp_pool_destroy(pool);
+
+    return all_success;
 }
 
 bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
@@ -404,13 +518,59 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
         return false;
     }
 
+    // Use sequential processing for small channel counts
+    if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_extract_amplitude(ht, signals[ch], amplitudes[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Parallel processing using thread pool
+    nimcp_thread_pool_t* pool = nimcp_pool_create(HILBERT_DEFAULT_THREADS);
+    if (pool == NULL) {
+        // Fall back to sequential
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_extract_amplitude(ht, signals[ch], amplitudes[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    hilbert_amplitude_task_t* tasks = (hilbert_amplitude_task_t*)nimcp_calloc(
+        num_channels, sizeof(hilbert_amplitude_task_t));
+    if (tasks == NULL) {
+        nimcp_pool_destroy(pool);
+        return false;
+    }
+
     for (uint32_t ch = 0; ch < num_channels; ch++) {
-        if (!hilbert_extract_amplitude(ht, signals[ch], amplitudes[ch], n)) {
-            return false;
+        tasks[ch].ht = ht;
+        tasks[ch].signal = signals[ch];
+        tasks[ch].amplitude = amplitudes[ch];
+        tasks[ch].n = n;
+        tasks[ch].success = true;
+
+        nimcp_pool_submit(pool, hilbert_amplitude_task_fn, &tasks[ch]);
+    }
+
+    nimcp_pool_wait(pool);
+
+    bool all_success = true;
+    for (uint32_t ch = 0; ch < num_channels; ch++) {
+        if (!tasks[ch].success) {
+            all_success = false;
+            break;
         }
     }
 
-    return true;
+    nimcp_free(tasks);
+    nimcp_pool_destroy(pool);
+
+    return all_success;
 }
 
 bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
@@ -422,13 +582,59 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
         return false;
     }
 
+    // Use sequential processing for small channel counts
+    if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_extract_phase(ht, signals[ch], phases[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Parallel processing using thread pool
+    nimcp_thread_pool_t* pool = nimcp_pool_create(HILBERT_DEFAULT_THREADS);
+    if (pool == NULL) {
+        // Fall back to sequential
+        for (uint32_t ch = 0; ch < num_channels; ch++) {
+            if (!hilbert_extract_phase(ht, signals[ch], phases[ch], n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    hilbert_phase_task_t* tasks = (hilbert_phase_task_t*)nimcp_calloc(
+        num_channels, sizeof(hilbert_phase_task_t));
+    if (tasks == NULL) {
+        nimcp_pool_destroy(pool);
+        return false;
+    }
+
     for (uint32_t ch = 0; ch < num_channels; ch++) {
-        if (!hilbert_extract_phase(ht, signals[ch], phases[ch], n)) {
-            return false;
+        tasks[ch].ht = ht;
+        tasks[ch].signal = signals[ch];
+        tasks[ch].phase = phases[ch];
+        tasks[ch].n = n;
+        tasks[ch].success = true;
+
+        nimcp_pool_submit(pool, hilbert_phase_task_fn, &tasks[ch]);
+    }
+
+    nimcp_pool_wait(pool);
+
+    bool all_success = true;
+    for (uint32_t ch = 0; ch < num_channels; ch++) {
+        if (!tasks[ch].success) {
+            all_success = false;
+            break;
         }
     }
 
-    return true;
+    nimcp_free(tasks);
+    nimcp_pool_destroy(pool);
+
+    return all_success;
 }
 
 //=============================================================================

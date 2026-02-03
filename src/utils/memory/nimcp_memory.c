@@ -736,6 +736,41 @@ static size_t get_allocation_size(void* ptr)
 }
 
 /**
+ * @brief Check if a pointer is tracked in our allocation list
+ *
+ * WHAT: Search tracking list for pointer
+ * WHY: Needed to determine if nimcp_free should actually free the pointer
+ * HOW: Linear search through tracking list
+ *
+ * @param ptr User pointer
+ * @return true if pointer is in tracking list, false otherwise
+ */
+static bool is_tracked_allocation(void* ptr)
+{
+    if (!ptr) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&g_memory_state.lock);
+    memory_block_t* current = g_memory_state.blocks;
+    bool found = false;
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 100000;
+
+    while (current && iterations < MAX_ITERATIONS) {
+        if (current->ptr == ptr) {
+            found = true;
+            break;
+        }
+        current = current->next;
+        iterations++;
+    }
+
+    nimcp_mutex_unlock(&g_memory_state.lock);
+    return found;
+}
+
+/**
  * @brief Get guard size for allocation
  *
  * WHAT: Retrieve guard size from tracking metadata
@@ -809,36 +844,28 @@ static size_t get_guard_size(void* ptr)
 }
 
 /**
- * @brief Get allocation lifetime in milliseconds
+ * @brief Get allocation lifetime in milliseconds (internal, no lock)
  *
- * WHY TRACK LIFETIME:
- * - Pattern analysis: Average lifetime by size
- * - Find long-lived allocations (cache candidates)
- * - Detect unexpected allocation patterns
+ * WHY SEPARATE UNLOCKED VERSION:
+ * - Prevent deadlock when called from functions already holding the lock
+ * - Follows NIMCP pattern: create *_unlocked() helpers for internal use
  *
  * ALGORITHM:
- * 1. Acquire lock
- * 2. Find allocation in tracking list
- * 3. Get current time
- * 4. Compute difference from allocation_time
- * 5. Release lock
+ * 1. Find allocation in tracking list (caller must hold lock)
+ * 2. Get current time
+ * 3. Compute difference from allocation_time
  *
  * COMPLEXITY: O(n) where n = number of active allocations
- * THREAD SAFETY: Fully thread-safe (lock-protected)
+ * THREAD SAFETY: Caller must hold g_memory_state.lock
  *
  * @param ptr User pointer
  * @return Lifetime in milliseconds or 0 if not tracked
  */
-static uint64_t get_allocation_lifetime_ms(void* ptr)
+static uint64_t get_allocation_lifetime_ms_unlocked(void* ptr)
 {
     if (!ptr)
         return 0;
 
-    // Note: We intentionally DO NOT check tracking_enabled here.
-    // Even if tracking is currently disabled, we need to look up lifetime
-    // for allocations that were made when tracking WAS enabled.
-
-    nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
     uint64_t lifetime = 0;
 
@@ -878,6 +905,39 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
         NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_allocation_lifetime_ms (exceeded max iterations)");
     }
 
+    return lifetime;
+}
+
+/**
+ * @brief Get allocation lifetime in milliseconds
+ *
+ * WHY TRACK LIFETIME:
+ * - Pattern analysis: Average lifetime by size
+ * - Find long-lived allocations (cache candidates)
+ * - Detect unexpected allocation patterns
+ *
+ * ALGORITHM:
+ * 1. Acquire lock
+ * 2. Call unlocked version
+ * 3. Release lock
+ *
+ * COMPLEXITY: O(n) where n = number of active allocations
+ * THREAD SAFETY: Fully thread-safe (lock-protected)
+ *
+ * @param ptr User pointer
+ * @return Lifetime in milliseconds or 0 if not tracked
+ */
+static uint64_t get_allocation_lifetime_ms(void* ptr)
+{
+    if (!ptr)
+        return 0;
+
+    // Note: We intentionally DO NOT check tracking_enabled here.
+    // Even if tracking is currently disabled, we need to look up lifetime
+    // for allocations that were made when tracking WAS enabled.
+
+    nimcp_mutex_lock(&g_memory_state.lock);
+    uint64_t lifetime = get_allocation_lifetime_ms_unlocked(ptr);
     nimcp_mutex_unlock(&g_memory_state.lock);
     return lifetime;
 }
@@ -1660,6 +1720,18 @@ void nimcp_free(void* ptr)
         printf("[MEMORY] Freed at %p\n", ptr);
     }
 
+    // BUG FIX: Check if pointer is actually tracked before attempting to free.
+    // If not tracked, the pointer may have been:
+    // 1. Allocated by UMM internal code (not tracked to avoid recursion)
+    // 2. Already freed (double-free)
+    // 3. Allocated by external code (not via nimcp_malloc)
+    // In any case, calling free() on it could corrupt the heap.
+    if (!is_tracked_allocation(ptr)) {
+        fprintf(stderr, "[MEMORY] Warning: Skipping free of untracked pointer %p "
+                "(may be UMM internal or external allocation)\n", ptr);
+        return;  // Don't free - prevent heap corruption
+    }
+
     // Get allocation info before untracking (needed for proper cleanup)
     unified_mem_handle_t handle = get_umm_handle(ptr);
     size_t guard_size = get_guard_size(ptr);
@@ -2064,7 +2136,8 @@ void nimcp_memory_check_leaks(void)
         printf("  Size: %zu bytes\n", current->size);
         printf("  Function: %s()\n", current->function);
         printf("  Location: %s:%d\n", current->file, current->line);
-        printf("  Lifetime: %lu ms\n", get_allocation_lifetime_ms(current->ptr));
+        // Use unlocked version since we already hold the lock
+        printf("  Lifetime: %lu ms\n", get_allocation_lifetime_ms_unlocked(current->ptr));
         printf("\n");
 
         total_leaked += current->size;

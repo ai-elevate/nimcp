@@ -88,6 +88,9 @@ typedef struct nimcp_cache_header {
     // uint32_t canary_end follows user data
 } nimcp_cache_header_t;
 
+/** Forward declaration for tracking table */
+typedef struct cache_tracking_table cache_tracking_table_t;
+
 /**
  * WHAT: Global cache state
  * WHY: Track system-wide statistics and configuration
@@ -96,7 +99,7 @@ typedef struct {
     bool initialized;              /**< Is system initialized? */
     nimcp_cache_config_t config;   /**< Configuration */
     nimcp_cache_stats_t stats;     /**< Statistics */
-    hash_table_t* tracking_table;  /**< Allocation tracking (ptr -> header) */
+    cache_tracking_table_t* tracking_table;  /**< Allocation tracking (ptr -> header) */
     nimcp_platform_mutex_t mutex;  /**< Protects tracking table and stats */
 } nimcp_cache_state_t;
 
@@ -104,6 +107,221 @@ typedef struct {
 static nimcp_cache_state_t g_cache_state = {
     .initialized = false
 };
+
+//=============================================================================
+// Pointer-Key Hash Table for Allocation Tracking
+//=============================================================================
+
+/** WHAT: Number of buckets for pointer tracking hash table */
+#define CACHE_TRACKING_BUCKETS 256
+
+/**
+ * WHAT: Entry in pointer tracking hash table
+ * WHY: Map user pointers to cache headers for leak detection
+ * HOW: Separate chaining collision resolution
+ */
+typedef struct cache_tracking_entry {
+    void* user_ptr;                      /**< User-visible pointer (key) */
+    nimcp_cache_header_t* header;        /**< Associated cache header (value) */
+    struct cache_tracking_entry* next;   /**< Next in chain */
+} cache_tracking_entry_t;
+
+/**
+ * WHAT: Pointer-key hash table for tracking
+ * WHY: Fast O(1) lookup of cache allocations by pointer
+ * HOW: Array of bucket chains indexed by hashed pointer
+ */
+struct cache_tracking_table {
+    cache_tracking_entry_t** buckets;    /**< Array of bucket heads */
+    size_t bucket_count;                 /**< Number of buckets */
+    size_t entry_count;                  /**< Number of tracked entries */
+};
+
+/**
+ * WHAT: Hash a pointer value
+ * WHY: Compute bucket index for pointer key
+ * HOW: MurmurHash3 finalizer for good distribution
+ *
+ * @param ptr Pointer to hash
+ * @return Hash value
+ */
+static uint32_t hash_pointer(const void* ptr) {
+    uintptr_t val = (uintptr_t)ptr;
+
+    // Mix bits for better distribution (MurmurHash3 finalizer)
+    val ^= val >> 33;
+    val *= 0xff51afd7ed558ccdULL;
+    val ^= val >> 33;
+    val *= 0xc4ceb9fe1a85ec53ULL;
+    val ^= val >> 33;
+
+    return (uint32_t)val;
+}
+
+/**
+ * WHAT: Create pointer tracking hash table
+ * WHY: Initialize tracking infrastructure
+ * HOW: Allocate bucket array
+ *
+ * @return New tracking table, or NULL on allocation failure
+ */
+static cache_tracking_table_t* tracking_table_create(void) {
+    cache_tracking_table_t* table = nimcp_malloc(sizeof(cache_tracking_table_t));
+    if (!table) {
+        return NULL;
+    }
+
+    table->buckets = nimcp_calloc(CACHE_TRACKING_BUCKETS,
+                                   sizeof(cache_tracking_entry_t*));
+    if (!table->buckets) {
+        nimcp_free(table);
+        return NULL;
+    }
+
+    table->bucket_count = CACHE_TRACKING_BUCKETS;
+    table->entry_count = 0;
+
+    return table;
+}
+
+/**
+ * WHAT: Destroy pointer tracking hash table
+ * WHY: Clean up tracking infrastructure
+ * HOW: Free all entries and buckets
+ *
+ * @param table Table to destroy (NULL is safe)
+ */
+static void tracking_table_destroy(cache_tracking_table_t* table) {
+    if (!table) {
+        return;
+    }
+
+    // Free all entries in all buckets
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        cache_tracking_entry_t* current = table->buckets[i];
+        while (current) {
+            cache_tracking_entry_t* next = current->next;
+            nimcp_free(current);
+            current = next;
+        }
+    }
+
+    nimcp_free(table->buckets);
+    nimcp_free(table);
+}
+
+/**
+ * WHAT: Insert pointer into tracking table
+ * WHY: Track new cache allocation
+ * HOW: Hash pointer, add to bucket chain
+ *
+ * @param table Tracking table
+ * @param user_ptr User-visible pointer (key)
+ * @param header Cache header (value)
+ * @return true on success, false on failure
+ */
+static bool tracking_table_insert(cache_tracking_table_t* table, void* user_ptr,
+                                   nimcp_cache_header_t* header) {
+    if (!table || !user_ptr || !header) {
+        return false;
+    }
+
+    uint32_t hash = hash_pointer(user_ptr);
+    size_t bucket_idx = hash % table->bucket_count;
+
+    // Check for duplicate (shouldn't happen in normal use)
+    cache_tracking_entry_t* current = table->buckets[bucket_idx];
+    while (current) {
+        if (current->user_ptr == user_ptr) {
+            // Already tracked - update header
+            current->header = header;
+            return true;
+        }
+        current = current->next;
+    }
+
+    // Create new entry
+    cache_tracking_entry_t* entry = nimcp_malloc(sizeof(cache_tracking_entry_t));
+    if (!entry) {
+        return false;
+    }
+
+    entry->user_ptr = user_ptr;
+    entry->header = header;
+    entry->next = table->buckets[bucket_idx];
+    table->buckets[bucket_idx] = entry;
+    table->entry_count++;
+
+    return true;
+}
+
+/**
+ * WHAT: Lookup pointer in tracking table
+ * WHY: Find cache header for a given pointer
+ * HOW: Hash pointer, search bucket chain
+ *
+ * @param table Tracking table
+ * @param user_ptr Pointer to look up
+ * @return Cache header if found, NULL otherwise
+ */
+static nimcp_cache_header_t* tracking_table_lookup(cache_tracking_table_t* table,
+                                                    const void* user_ptr) {
+    if (!table || !user_ptr) {
+        return NULL;
+    }
+
+    uint32_t hash = hash_pointer(user_ptr);
+    size_t bucket_idx = hash % table->bucket_count;
+
+    cache_tracking_entry_t* current = table->buckets[bucket_idx];
+    while (current) {
+        if (current->user_ptr == user_ptr) {
+            return current->header;
+        }
+        current = current->next;
+    }
+
+    return NULL;
+}
+
+/**
+ * WHAT: Remove pointer from tracking table
+ * WHY: Clean up tracking when allocation is freed
+ * HOW: Hash pointer, find and unlink from chain
+ *
+ * @param table Tracking table
+ * @param user_ptr Pointer to remove
+ * @return true if found and removed, false otherwise
+ */
+static bool tracking_table_remove(cache_tracking_table_t* table, const void* user_ptr) {
+    if (!table || !user_ptr) {
+        return false;
+    }
+
+    uint32_t hash = hash_pointer(user_ptr);
+    size_t bucket_idx = hash % table->bucket_count;
+
+    cache_tracking_entry_t* current = table->buckets[bucket_idx];
+    cache_tracking_entry_t* prev = NULL;
+
+    while (current) {
+        if (current->user_ptr == user_ptr) {
+            // Found - unlink from chain
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                table->buckets[bucket_idx] = current->next;
+            }
+            nimcp_free(current);
+            table->entry_count--;
+            return true;
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    return false;
+}
 
 //=============================================================================
 // Helper Functions
@@ -288,9 +506,17 @@ void nimcp_cache_init(void) {
     g_cache_state.config = nimcp_cache_get_default_config();
 
     // Create tracking table (if tracking enabled)
-    // TODO: Implement proper pointer-key hash table for tracking
-    // For Phase 1, tracking table is disabled
-    g_cache_state.tracking_table = NULL;
+    if (g_cache_state.config.enable_tracking) {
+        g_cache_state.tracking_table = tracking_table_create();
+        if (!g_cache_state.tracking_table) {
+            if (g_cache_state.config.enable_debug_output) {
+                fprintf(stderr, "[CACHE] WARNING: Failed to create tracking table\n");
+            }
+            // Continue without tracking - not fatal
+        }
+    } else {
+        g_cache_state.tracking_table = NULL;
+    }
 
     // Clear statistics
     memset(&g_cache_state.stats, 0, sizeof(nimcp_cache_stats_t));
@@ -316,7 +542,7 @@ void nimcp_cache_cleanup(void) {
 
     // Destroy tracking table
     if (g_cache_state.tracking_table) {
-        hash_table_destroy(g_cache_state.tracking_table);
+        tracking_table_destroy(g_cache_state.tracking_table);
         g_cache_state.tracking_table = NULL;
     }
 
@@ -397,10 +623,16 @@ void* nimcp_cache_alloc(size_t size) {
     // Get user pointer
     void* user_ptr = get_user_ptr(header);
 
-    // Track allocation
-    // TODO: Implement proper pointer-key hash table for tracking
-    // For Phase 1, tracking is disabled
-    (void)g_cache_state;  // Suppress unused variable warning
+    // Track allocation in tracking table (if enabled)
+    if (g_cache_state.tracking_table) {
+        nimcp_platform_mutex_lock(&g_cache_state.mutex);
+        if (!tracking_table_insert(g_cache_state.tracking_table, user_ptr, header)) {
+            if (g_cache_state.config.enable_debug_output) {
+                fprintf(stderr, "[CACHE] WARNING: Failed to track allocation at %p\n", user_ptr);
+            }
+        }
+        nimcp_platform_mutex_unlock(&g_cache_state.mutex);
+    }
 
     // Update statistics
     update_stats_alloc(size);
@@ -514,9 +746,12 @@ void nimcp_cache_release(void* ptr) {
 
     // If last reference, free memory
     if (old_count == 1) {
-        // Remove from tracking table
-        // TODO: Implement proper pointer-key hash table for tracking
-        // For Phase 1, tracking is disabled
+        // Remove from tracking table (if enabled)
+        if (g_cache_state.tracking_table) {
+            nimcp_platform_mutex_lock(&g_cache_state.mutex);
+            tracking_table_remove(g_cache_state.tracking_table, ptr);
+            nimcp_platform_mutex_unlock(&g_cache_state.mutex);
+        }
 
         // Update statistics
         update_stats_release(header->size);
@@ -623,9 +858,33 @@ void nimcp_cache_dump_allocations(void) {
 
     nimcp_platform_mutex_lock(&g_cache_state.mutex);
 
-    // Iterate through tracking table
-    // (This requires hash_table_iterate function - placeholder for now)
-    printf("Total active allocations: %u\n", g_cache_state.stats.active_allocations);
+    // Iterate through tracking table and dump allocation details
+    cache_tracking_table_t* table = g_cache_state.tracking_table;
+    size_t count = 0;
+
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        cache_tracking_entry_t* entry = table->buckets[i];
+        while (entry) {
+            nimcp_cache_header_t* header = entry->header;
+            if (header) {
+                uint32_t ref_count = __atomic_load_n(&header->ref_count, __ATOMIC_ACQUIRE);
+                printf("  [%zu] ptr=%p, size=%zu, refs=%u, %s\n",
+                       count, entry->user_ptr, header->size, ref_count,
+                       ref_count > 1 ? "SHARED" : "PRIVATE");
+#ifdef NIMCP_CACHE_DEBUG
+                if (header->alloc_file) {
+                    printf("       Allocated at %s:%u\n",
+                           header->alloc_file, header->alloc_line);
+                }
+#endif
+            }
+            count++;
+            entry = entry->next;
+        }
+    }
+
+    printf("Total tracked allocations: %zu\n", table->entry_count);
+    printf("Total active allocations (stats): %u\n", g_cache_state.stats.active_allocations);
 
     nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 

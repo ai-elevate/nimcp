@@ -207,11 +207,16 @@ static uint32_t count_detour_depth(const portia_plan_t* plan)
     if (!plan) return 0;
 
     uint32_t depth = 0;
-    for (uint32_t i = plan->current_waypoint; i < plan->waypoint_count; i++) {
+    /* Start from next waypoint after current to count upcoming invisible waypoints */
+    uint32_t start = (plan->current_waypoint + 1 < plan->waypoint_count)
+                     ? plan->current_waypoint + 1
+                     : plan->current_waypoint;
+
+    for (uint32_t i = start; i < plan->waypoint_count; i++) {
         if (!plan->waypoints[i].visible) {
             depth++;
         } else {
-            break;  // Stop at first visible waypoint
+            break;  /* Stop at first visible waypoint */
         }
     }
 

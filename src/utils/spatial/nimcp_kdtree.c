@@ -291,26 +291,193 @@ void* kdtree_nearest(const kdtree_t* tree, const kdtree_point_t query,
     return best->user_data;
 }
 
+/**
+ * @brief Max-heap element for k-NN search
+ *
+ * WHAT: Stores candidate neighbor with distance
+ * WHY:  Max-heap allows O(log k) pruning of furthest neighbor
+ * HOW:  Store distance (key) and user_data pointer (value)
+ */
+typedef struct {
+    float dist_sq;      /**< Squared distance (heap key) */
+    void* user_data;    /**< Associated user data pointer */
+} knn_heap_element_t;
+
+/**
+ * @brief Max-heap context for k-NN search
+ */
+typedef struct {
+    knn_heap_element_t* elements;  /**< Heap array (1-indexed) */
+    uint32_t size;                 /**< Current number of elements */
+    uint32_t capacity;             /**< Maximum capacity (k) */
+} knn_max_heap_t;
+
+/**
+ * @brief Initialize max-heap for k-NN search
+ */
+static void knn_heap_init(knn_max_heap_t* heap, knn_heap_element_t* buffer, uint32_t capacity) {
+    heap->elements = buffer - 1;  /* 1-indexed */
+    heap->size = 0;
+    heap->capacity = capacity;
+}
+
+/**
+ * @brief Sift up to restore heap property after insert
+ */
+static void knn_heap_sift_up(knn_max_heap_t* heap, uint32_t idx) {
+    while (idx > 1) {
+        uint32_t parent = idx / 2;
+        if (heap->elements[parent].dist_sq < heap->elements[idx].dist_sq) {
+            knn_heap_element_t tmp = heap->elements[parent];
+            heap->elements[parent] = heap->elements[idx];
+            heap->elements[idx] = tmp;
+            idx = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+/**
+ * @brief Sift down to restore heap property after replace
+ */
+static void knn_heap_sift_down(knn_max_heap_t* heap, uint32_t idx) {
+    while (2 * idx <= heap->size) {
+        uint32_t child = 2 * idx;
+        if (child + 1 <= heap->size &&
+            heap->elements[child + 1].dist_sq > heap->elements[child].dist_sq) {
+            child++;
+        }
+        if (heap->elements[child].dist_sq > heap->elements[idx].dist_sq) {
+            knn_heap_element_t tmp = heap->elements[child];
+            heap->elements[child] = heap->elements[idx];
+            heap->elements[idx] = tmp;
+            idx = child;
+        } else {
+            break;
+        }
+    }
+}
+
+/**
+ * @brief Insert element into max-heap (or replace max if full and smaller)
+ * @return true if element was added/replaced, false if rejected
+ */
+static bool knn_heap_insert(knn_max_heap_t* heap, float dist_sq, void* user_data) {
+    if (heap->size < heap->capacity) {
+        /* Heap not full - insert */
+        heap->size++;
+        heap->elements[heap->size].dist_sq = dist_sq;
+        heap->elements[heap->size].user_data = user_data;
+        knn_heap_sift_up(heap, heap->size);
+        return true;
+    } else if (dist_sq < heap->elements[1].dist_sq) {
+        /* Heap full but this is closer than max - replace max */
+        heap->elements[1].dist_sq = dist_sq;
+        heap->elements[1].user_data = user_data;
+        knn_heap_sift_down(heap, 1);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @brief Get maximum distance in heap (furthest neighbor)
+ */
+static float knn_heap_max_dist(const knn_max_heap_t* heap) {
+    if (heap->size == 0) return INFINITY;
+    return heap->elements[1].dist_sq;
+}
+
+/**
+ * @brief Recursive k-NN search with max-heap pruning
+ */
+static void knn_recursive(const kdtree_node_t* node, const kdtree_point_t query,
+                          knn_max_heap_t* heap) {
+    if (!node) return;
+
+    /* Check current node */
+    float dist_sq = distance_squared(node->point, query);
+    knn_heap_insert(heap, dist_sq, node->user_data);
+
+    /* Determine which subtree to search first */
+    uint8_t dim = node->split_dim;
+    float diff = query[dim] - node->point[dim];
+
+    kdtree_node_t* near_child = (diff < 0) ? node->left : node->right;
+    kdtree_node_t* far_child = (diff < 0) ? node->right : node->left;
+
+    /* Search near subtree */
+    knn_recursive(near_child, query, heap);
+
+    /* Check if we need to search far subtree
+     * Only if splitting plane is closer than furthest k-th neighbor */
+    if (diff * diff < knn_heap_max_dist(heap) || heap->size < heap->capacity) {
+        knn_recursive(far_child, query, heap);
+    }
+}
+
 uint32_t kdtree_k_nearest(const kdtree_t* tree, const kdtree_point_t query,
                           uint32_t k, void** results, float* distances) {
-    // Simple implementation: Use nearest() k times with exclusion
-    // TODO: Optimize with priority queue
-    if (!tree || !results || k == 0) {
+    if (!tree || !tree->root || !results || k == 0) {
         return 0;
     }
 
-    // For now, just return the single nearest neighbor
-    // Full k-nearest implementation would require a priority queue
-    if (k >= 1) {
-        float dist_sq;
-        results[0] = kdtree_nearest(tree, query, &dist_sq);
-        if (distances) {
-            distances[0] = dist_sq;
+    /* Allocate heap buffer on stack for small k, heap for large k */
+    knn_heap_element_t stack_buffer[64];
+    knn_heap_element_t* heap_buffer = NULL;
+
+    if (k <= 64) {
+        heap_buffer = stack_buffer;
+    } else {
+        heap_buffer = (knn_heap_element_t*)nimcp_malloc(k * sizeof(knn_heap_element_t));
+        if (!heap_buffer) {
+            return 0;
         }
-        return (results[0] != NULL) ? 1 : 0;
     }
 
-    return 0;
+    /* Initialize max-heap */
+    knn_max_heap_t heap;
+    knn_heap_init(&heap, heap_buffer, k);
+
+    /* Perform k-NN search */
+    knn_recursive(tree->root, query, &heap);
+
+    /* Extract results from heap (currently in arbitrary order) */
+    /* Sort by distance for consistent output */
+    uint32_t count = heap.size;
+
+    /* Simple insertion sort for small k */
+    for (uint32_t i = 0; i < count; i++) {
+        results[i] = heap_buffer[i].user_data;
+        if (distances) {
+            distances[i] = heap_buffer[i].dist_sq;
+        }
+    }
+
+    /* Sort results by distance (ascending) */
+    for (uint32_t i = 1; i < count; i++) {
+        void* key_data = results[i];
+        float key_dist = distances ? distances[i] : 0;
+        int32_t j = (int32_t)i - 1;
+
+        while (j >= 0 && distances && distances[j] > key_dist) {
+            results[j + 1] = results[j];
+            distances[j + 1] = distances[j];
+            j--;
+        }
+        results[j + 1] = key_data;
+        if (distances) {
+            distances[j + 1] = key_dist;
+        }
+    }
+
+    /* Cleanup if heap-allocated */
+    if (heap_buffer != stack_buffer) {
+        nimcp_free(heap_buffer);
+    }
+
+    return count;
 }
 
 /**

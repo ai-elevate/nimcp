@@ -54,6 +54,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stddef.h>  /* for NULL */
+#include <stdatomic.h>
 
 #ifndef _WIN32
 #include <sys/mman.h>
@@ -70,32 +71,21 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for bbb_memory_boundary module (DEPRECATED - use atomic version) */
-static nimcp_health_agent_t* g_bbb_memory_boundary_health_agent = NULL;
-
-/** Forward declaration of atomic health agent pointer (defined in Global State section) */
-static nimcp_atomic_ptr_t g_atomic_memory_health_agent;
+/** Global health agent for bbb_memory_boundary module - P2 fix: Use atomic for thread safety */
+static _Atomic(nimcp_health_agent_t*) g_bbb_memory_boundary_health_agent = NULL;
 
 /**
  * @brief Set health agent for bbb_memory_boundary heartbeats (thread-safe)
  * @param agent Health agent (can be NULL to disable)
- *
- * THREAD-SAFETY: Uses atomic store with RELEASE semantics
  */
 void bbb_memory_boundary_set_health_agent(nimcp_health_agent_t* agent) {
-    /* Legacy pointer update (for backwards compatibility) */
-    g_bbb_memory_boundary_health_agent = agent;
-
-    /* Thread-safe atomic update */
-    nimcp_atomic_store_ptr(&g_atomic_memory_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
+    atomic_store(&g_bbb_memory_boundary_health_agent, agent);
 }
 
 /** @brief Send heartbeat from bbb_memory_boundary module (thread-safe) */
 static inline void bbb_memory_boundary_heartbeat(const char* operation, float progress) {
-    /* Thread-safe read using atomic load */
-    nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
-        nimcp_atomic_load_ptr(&g_atomic_memory_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
-
+    /* P2 fix: Atomic load to prevent data race */
+    nimcp_health_agent_t* agent = atomic_load(&g_bbb_memory_boundary_health_agent);
     if (agent) {
         nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
@@ -185,7 +175,7 @@ static nimcp_platform_mutex_t g_memory_state_lock;
 static nimcp_platform_once_t g_memory_boundary_init_once = NIMCP_PLATFORM_ONCE_INIT;
 static bool g_memory_boundary_module_initialized = false;
 
-/* Note: g_atomic_memory_health_agent is declared near top of file with forward declaration */
+/* Note: g_bbb_memory_boundary_health_agent is declared near top of file with _Atomic type */
 
 //=============================================================================
 // Internal Helper Functions
@@ -291,8 +281,7 @@ static void memory_boundary_module_init_internal(void)
     /* Initialize the global state mutex */
     nimcp_platform_mutex_init(&g_memory_state_lock, false);
 
-    /* Initialize atomic pointer */
-    nimcp_atomic_init_ptr(&g_atomic_memory_health_agent, NULL);
+    /* Health agent uses _Atomic type, no init needed (statically initialized to NULL) */
 
     /* Initialize the state itself */
     memset(&g_memory_state, 0, sizeof(g_memory_state));

@@ -67,6 +67,11 @@ static inline void brain_init_hippocampus_heartbeat(const char* operation, float
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+// Memory consolidation includes (Phase M2-M4)
+#include "cognitive/memory/nimcp_systems_consolidation.h"
+#include "cognitive/memory/nimcp_semantic_memory.h"
+#include "cognitive/memory/nimcp_engram.h"
+
 #include <string.h>
 
 //=============================================================================
@@ -517,6 +522,88 @@ bool nimcp_brain_factory_init_hippocampus_quantum_bridge(brain_t brain) {
     return true;
 }
 
+/**
+ * @brief Callback for hippocampus memory consolidation to cortex
+ *
+ * WHAT: Called when hippocampus marks a memory for consolidation
+ * WHY:  Transfers strong memories from hippocampus to cortical areas
+ * HOW:  Schedules replay in systems consolidation for gradual transfer
+ *
+ * BIOLOGICAL BASIS:
+ * - Sleep replay (SWS): Hippocampal memories reactivate
+ * - Systems consolidation: Gradual transfer to neocortex
+ * - Semantic extraction: Episodic → semantic transformation
+ *
+ * @param memory The memory being consolidated
+ * @param user_data Brain pointer for accessing systems consolidation
+ */
+static void hippocampus_to_cortex_consolidation_callback(
+    const hippocampus_memory_t* memory,
+    void* user_data)
+{
+    struct brain_struct* brain = (struct brain_struct*)user_data;
+
+    if (!brain || !memory) {
+        return;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Consolidation callback: memory_id=%u strength=%.2f",
+              memory->memory_id, memory->strength);
+
+    /*
+     * Schedule memory for replay during sleep.
+     * Priority based on memory strength and emotional valence.
+     * Higher priority = replayed sooner during SWS.
+     */
+    if (brain->systems_consolidation) {
+        /* Calculate replay priority from strength and emotional salience */
+        float priority = memory->strength * 0.6f;
+        if (memory->emotional_valence > 0.5f || memory->emotional_valence < -0.5f) {
+            /* Emotional memories get higher priority (amygdala modulation) */
+            priority += 0.3f;
+        }
+        if (priority > 1.0f) priority = 1.0f;
+
+        /*
+         * Schedule replay - the memory_id from hippocampus needs to map
+         * to an engram_id in the engram system. For now, use memory_id
+         * as the engram_id (assumes 1:1 correspondence).
+         */
+        bool scheduled = systems_consolidation_schedule_replay(
+            brain->systems_consolidation,
+            (uint64_t)memory->memory_id,
+            priority);
+
+        if (scheduled) {
+            LOG_DEBUG(LOG_MODULE, "Scheduled replay for memory %u with priority %.2f",
+                      memory->memory_id, priority);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to schedule replay for memory %u (queue full?)",
+                     memory->memory_id);
+        }
+    }
+
+    /*
+     * Optionally create semantic concept from consolidated memory.
+     * This extracts semantic features for long-term knowledge storage.
+     */
+    if (brain->semantic_memory && memory->features && memory->feature_count > 0) {
+        /* Create semantic concept from memory features */
+        uint64_t concept_id = semantic_memory_create_concept(
+            brain->semantic_memory,
+            memory->features,
+            memory->feature_count,
+            NULL,  /* No label - generated from features */
+            CONCEPT_EVENT  /* Episodic memories become event concepts */
+        );
+
+        if (concept_id > 0) {
+            LOG_DEBUG(LOG_MODULE, "Created semantic concept %lu from memory %u",
+                      (unsigned long)concept_id, memory->memory_id);
+        }
+    }
+}
+
 bool nimcp_brain_factory_connect_hippocampus_to_cortex(brain_t brain) {
     if (!brain || !brain->hippocampus) {
         return true;  /* Nothing to connect */
@@ -533,23 +620,49 @@ bool nimcp_brain_factory_connect_hippocampus_to_cortex(brain_t brain) {
      * - Parietal cortex (spatial memory)
      */
 
-    /* Check if systems consolidation is available */
-    if (brain->systems_consolidation) {
+    /* Set up consolidation callback to transfer memories to cortex */
+    if (brain->systems_consolidation || brain->semantic_memory) {
         /*
-         * TODO: Register with systems consolidation
-         * systems_consolidation_register_source(brain->systems_consolidation,
-         *     brain->hippocampus);
+         * Register callback with hippocampus.
+         * When hippocampus consolidates memories (via hippocampus_consolidate_memories),
+         * this callback is invoked for each memory above the strength threshold.
+         * The callback then:
+         * 1. Schedules replay in systems consolidation (for SWS transfer)
+         * 2. Creates semantic concepts from memory features
          */
-        LOG_DEBUG(LOG_MODULE, "Hippocampus registered with systems consolidation");
+        bool callback_set = hippocampus_set_consolidation_callback(
+            brain->hippocampus,
+            hippocampus_to_cortex_consolidation_callback,
+            brain  /* Pass brain pointer as user_data */
+        );
+
+        if (callback_set) {
+            LOG_DEBUG(LOG_MODULE, "Hippocampus consolidation callback registered");
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to set hippocampus consolidation callback");
+        }
     }
 
-    /* Connect to semantic memory if available */
-    if (brain->semantic_memory) {
+    /* Connect semantic memory to systems consolidation for bidirectional flow */
+    if (brain->semantic_memory && brain->systems_consolidation) {
         /*
-         * TODO: Register semantic abstraction callback
-         * semantic_memory_register_source(brain->semantic_memory,
-         *     brain->hippocampus);
+         * Link semantic memory to systems consolidation.
+         * This allows semantic memory to:
+         * - Extract concepts from consolidated cortical nodes
+         * - Build semantic relations from co-consolidated memories
          */
+        semantic_memory_set_consolidation(
+            brain->semantic_memory,
+            brain->systems_consolidation
+        );
+        LOG_DEBUG(LOG_MODULE, "Semantic memory connected to systems consolidation");
+    }
+
+    /* Log successful connection */
+    if (brain->systems_consolidation) {
+        LOG_DEBUG(LOG_MODULE, "Hippocampus registered with systems consolidation");
+    }
+    if (brain->semantic_memory) {
         LOG_DEBUG(LOG_MODULE, "Hippocampus connected to semantic memory");
     }
 

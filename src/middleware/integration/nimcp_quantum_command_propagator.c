@@ -26,6 +26,8 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
+#include "core/brain_regions/nimcp_brain_regions.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 
 #define LOG_MODULE "middleware_quantum_propagator"
 
@@ -68,6 +70,36 @@ static inline void quantum_command_propagator_heartbeat(const char* operation, f
 extern uint32_t brain_get_neuron_count(brain_t brain);
 extern adaptive_network_t brain_get_network(brain_t brain);
 extern neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+extern brain_module_t* brain_get_brain_regions(brain_t brain);
+
+/**
+ * @brief Map command target region to brain region type
+ *
+ * WHAT: Convert middleware target region enum to brain region type
+ * WHY:  Enable lookup in brain regions module
+ *
+ * @param target Command target region
+ * @return Corresponding brain_region_type_t or -1 if not mappable
+ */
+static int map_target_to_brain_region_type(command_target_region_t target) {
+    switch (target) {
+        case TARGET_PREFRONTAL:
+            return REGION_PREFRONTAL;
+        case TARGET_HIPPOCAMPUS:
+            return REGION_HIPPOCAMPUS;
+        case TARGET_AMYGDALA:
+            // Amygdala not in brain_region_type_t, use basal ganglia as proxy
+            return REGION_BASAL_GANGLIA;
+        case TARGET_VISUAL_CORTEX:
+            return REGION_VISUAL_V1;
+        case TARGET_AUDITORY_CORTEX:
+            return REGION_AUDITORY_A1;
+        case TARGET_MOTOR_CORTEX:
+            return REGION_MOTOR_M1;
+        default:
+            return -1;  // Not mappable
+    }
+}
 
 //=============================================================================
 // Constants
@@ -77,6 +109,104 @@ extern neural_network_t adaptive_network_get_base_network(adaptive_network_t net
 #define DEFAULT_PROPAGATION_THRESHOLD 0.01f  // Min probability to deliver
 #define DEFAULT_INFORMATION_THRESHOLD 2.0f   // Min bits to propagate
 #define DEFAULT_MAX_COMMANDS 16              // Max concurrent commands
+
+/**
+ * @brief Apply a middleware command to a specific neuron
+ *
+ * WHAT: Execute the command effect on a target neuron
+ * WHY:  Translate abstract middleware commands to concrete neuron changes
+ * HOW:  Modify neuron parameters based on command type
+ *
+ * @param network Neural network
+ * @param neuron_id Target neuron ID
+ * @param command Command to apply
+ * @return true if applied successfully, false otherwise
+ */
+static bool apply_command_to_neuron(
+    neural_network_t network,
+    uint32_t neuron_id,
+    const middleware_command_t* command
+) {
+    if (!network || !command) {
+        return false;
+    }
+
+    neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
+    if (!neuron) {
+        return false;
+    }
+
+    switch (command->type) {
+        case COMMAND_CONFIGURE_ATTENTION:
+            // Adjust neuron sensitivity via threshold modification
+            // Higher priority = lower threshold (more responsive)
+            {
+                float attention_factor = command->payload.attention.priority *
+                                         command->payload.attention.selectivity;
+                // Lower threshold by up to 20% for high-attention commands
+                neuron->threshold *= (1.0F - 0.2F * attention_factor);
+            }
+            break;
+
+        case COMMAND_REDUCE_ACTIVITY:
+            // Reduce activity by scaling threshold up and reducing external current
+            {
+                float scale = command->payload.activity.activity_scale;
+                if (scale > 0.0F && scale < 1.0F) {
+                    // Increase threshold to reduce firing
+                    neuron->threshold /= scale;
+                    // Reduce any external current
+                    neuron->external_current *= scale;
+                }
+            }
+            break;
+
+        case COMMAND_INCREASE_ACTIVITY:
+            // Increase activity by lowering threshold and boosting bias
+            {
+                float scale = command->payload.activity.activity_scale;
+                if (scale > 1.0F) {
+                    // Lower threshold to increase firing
+                    neuron->threshold /= scale;
+                    // Add a small boost to bias
+                    neuron->bias += 0.1F * (scale - 1.0F);
+                }
+            }
+            break;
+
+        case COMMAND_ADJUST_ROUTING:
+            // Routing adjustments apply to synapses, not individual neurons
+            // For now, adjust the plasticity rate which affects future learning
+            {
+                float weight = command->payload.routing.weight;
+                neuron->plasticity_rate *= (0.5F + weight);  // Scale 0.5x to 1.5x
+            }
+            break;
+
+        case COMMAND_RESET_BUFFERS:
+            // Reset activity history and calcium for this neuron
+            neuron->avg_activity = 0.0F;
+            neuron->calcium_concentration = 0.0F;
+            for (int i = 0; i < HISTORY_WINDOW; i++) {
+                neuron->activity_history[i] = 0.0F;
+            }
+            break;
+
+        case COMMAND_SUBSCRIBE_PATTERN:
+        case COMMAND_UNSUBSCRIBE_PATTERN:
+        case COMMAND_SET_NORMALIZATION:
+        case COMMAND_CUSTOM:
+            // These commands don't directly affect individual neurons
+            // They are handled at a higher level (pattern detectors, normalizers)
+            break;
+
+        default:
+            LOG_DEBUG("Unknown command type %d for neuron %u", command->type, neuron_id);
+            return false;
+    }
+
+    return true;
+}
 
 //=============================================================================
 // Internal Structures
@@ -140,9 +270,6 @@ static uint32_t map_region_to_neurons(
         return 0;
     }
 
-    // For MVP, use simplified region mapping
-    // TODO: Integrate with brain_get_region_neurons() when available
-
     uint32_t total_neurons = brain_get_neuron_count(brain);
     if (total_neurons == 0) {
         return 0;
@@ -150,6 +277,33 @@ static uint32_t map_region_to_neurons(
 
     uint32_t count = 0;
 
+    // Try to use brain regions module if available
+    brain_module_t* brain_regions = brain_get_brain_regions(brain);
+    if (brain_regions && region != TARGET_ALL_REGIONS && region != TARGET_CUSTOM) {
+        int brain_region_type = map_target_to_brain_region_type(region);
+        if (brain_region_type >= 0) {
+            brain_region_t* br = brain_module_get_region_by_type(
+                brain_regions, (brain_region_type_t)brain_region_type
+            );
+            if (br && br->total_neurons > 0) {
+                // Get neurons from all layers in the region
+                for (int layer = LAYER_1; layer < LAYER_COUNT && count < max_neurons; layer++) {
+                    count += brain_region_get_layer_neurons(
+                        br,
+                        (cortical_layer_t)layer,
+                        neuron_ids + count,
+                        max_neurons - count
+                    );
+                }
+                if (count > 0) {
+                    LOG_DEBUG("Retrieved %u neurons from brain region %d", count, brain_region_type);
+                    return count;
+                }
+            }
+        }
+    }
+
+    // Fallback: Use simplified region mapping when brain_regions not available
     switch (region) {
         case TARGET_ALL_REGIONS:
             // All neurons
@@ -159,42 +313,42 @@ static uint32_t map_region_to_neurons(
             break;
 
         case TARGET_PREFRONTAL:
-            // First 20% of neurons (simplified)
+            // First 20% of neurons (simplified fallback)
             for (uint32_t i = 0; i < total_neurons / 5 && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
             break;
 
         case TARGET_HIPPOCAMPUS:
-            // Neurons 20-40% (simplified)
+            // Neurons 20-40% (simplified fallback)
             for (uint32_t i = total_neurons / 5; i < (2 * total_neurons) / 5 && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
             break;
 
         case TARGET_AMYGDALA:
-            // Neurons 40-50% (simplified)
+            // Neurons 40-50% (simplified fallback)
             for (uint32_t i = (2 * total_neurons) / 5; i < total_neurons / 2 && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
             break;
 
         case TARGET_VISUAL_CORTEX:
-            // Neurons 50-70% (simplified)
+            // Neurons 50-70% (simplified fallback)
             for (uint32_t i = total_neurons / 2; i < (7 * total_neurons) / 10 && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
             break;
 
         case TARGET_AUDITORY_CORTEX:
-            // Neurons 70-85% (simplified)
+            // Neurons 70-85% (simplified fallback)
             for (uint32_t i = (7 * total_neurons) / 10; i < (85 * total_neurons) / 100 && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
             break;
 
         case TARGET_MOTOR_CORTEX:
-            // Last 15% of neurons (simplified)
+            // Last 15% of neurons (simplified fallback)
             for (uint32_t i = (85 * total_neurons) / 100; i < total_neurons && count < max_neurons; i++) {
                 neuron_ids[count++] = i;
             }
@@ -633,9 +787,10 @@ uint32_t quantum_command_propagator_propagate_to_neurons(
         float probability = qcp->probability_buffer[neuron_id];
 
         if (probability >= effective_threshold) {
-            // Deliver command to neuron
-            // TODO: Actually invoke command on neuron (needs brain API integration)
-            neurons_reached++;
+            // Deliver command to neuron via neural network API
+            if (apply_command_to_neuron(qcp->base_network, neuron_id, command)) {
+                neurons_reached++;
+            }
         }
     }
 

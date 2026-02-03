@@ -883,8 +883,9 @@ void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t 
 // Decision Caching
 //=============================================================================
 
-// Forward declaration
+// Forward declarations
 brain_decision_t* copy_decision(brain_decision_t* source);
+brain_decision_t* copy_decision_deep(const brain_decision_t* source);
 
 /**
  * @brief Check if input matches cached input
@@ -948,7 +949,10 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
 
     // Create new decision copy FIRST (before freeing old)
     // This reduces the race window where cached_decision could be NULL
-    brain_decision_t* new_cached = copy_decision(decision);
+    // FIX: Use deep copy instead of COW to avoid complex refcount races
+    // The COW pattern was causing heap corruption due to unsafe refcount
+    // increment operations in multi-threaded scenarios.
+    brain_decision_t* new_cached = copy_decision_deep(decision);
     if (!new_cached) {
         set_error("Failed to copy decision for cache");
         return;
@@ -3404,7 +3408,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     if (is_cached_input(brain, features, num_features)) {
-        brain_decision_t* cached_copy = copy_decision(brain->cached_decision);
+        // FIX: Use deep copy instead of COW to avoid complex refcount races
+        // The COW pattern was causing heap corruption due to unsafe refcount
+        // increment operations in multi-threaded scenarios.
+        brain_decision_t* cached_copy = copy_decision_deep(brain->cached_decision);
 
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache hit");

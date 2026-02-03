@@ -956,8 +956,19 @@ int shared_intentionality_assign_role(
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
+    /* Verify instance is registered */
+    if (!find_instance(si, instance_id)) return -1;
+
     goal_commitment_t* c = find_commitment(goal, instance_id);
-    if (!c) return -1;
+    if (!c) {
+        /* Auto-create commitment if assigning role before explicit commit */
+        if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) return -1;
+        c = &goal->commitments[goal->commitment_count++];
+        c->instance_id = instance_id;
+        c->strength = 0.0f;  /* Will be set when commit_to_goal is called */
+        c->committed_at_us = get_timestamp_us();
+        c->has_role = false;
+    }
 
     c->assigned_role = role;
     c->has_role = true;

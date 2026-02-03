@@ -66,10 +66,12 @@ static inline void astrocytes_refactored_heartbeat(const char* operation, float 
 #include "utils/config/nimcp_dynamic_config.h"
 #include "security/nimcp_security.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 //=============================================================================
 // Module Constants and Configuration Keys
@@ -385,8 +387,28 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
 
             astro->last_calcium_spike = now;
 
-            // TODO: Publish async event for calcium spike
-            // This would notify other modules (e.g., synapses, BCM) without tight coupling
+            // Publish async event for calcium spike via bio-async
+            // This notifies other modules (e.g., synapses, BCM) without tight coupling
+            // Uses predictive coding: observers only notified on prediction errors
+            if (bio_router_is_initialized()) {
+                // Get the astrocyte bio-async context from the main module
+                // This shares the context registered in nimcp_astrocytes.c
+                extern bio_module_context_t g_astrocyte_bio_ctx;
+                extern nimcp_atomic_bool_t g_astrocyte_bio_initialized;
+
+                if (nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) &&
+                    g_astrocyte_bio_ctx) {
+                    // Publish calcium spike as a predictive signal
+                    // Signal name encodes astrocyte ID for specific routing
+                    char signal_name[64];
+                    snprintf(signal_name, sizeof(signal_name), "astrocyte.calcium_spike.%u", astro->id);
+                    bio_router_publish_signal(g_astrocyte_bio_ctx, signal_name, astro->calcium_concentration);
+
+                    LOG_MODULE_DEBUG(ASTROCYTE_MODULE_NAME,
+                        "Published calcium spike event: astro=%u Ca=%.3f µM",
+                        astro->id, astro->calcium_concentration);
+                }
+            }
         }
     }
 

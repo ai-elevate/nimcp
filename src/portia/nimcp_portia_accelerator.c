@@ -1084,3 +1084,15 @@ float portia_accelerator_calculate_score(const accelerator_info_t* info,
 
     return score;
 }
+
+const char* portia_accelerator_type_name(accelerator_type_t type) {
+    switch (type) {
+        case ACCELERATOR_TYPE_NONE: return "None";
+        case ACCELERATOR_TYPE_GPU:  return "GPU";
+        case ACCELERATOR_TYPE_NPU:  return "NPU";
+        case ACCELERATOR_TYPE_DSP:  return "DSP";
+        case ACCELERATOR_TYPE_FPGA: return "FPGA";
+        case ACCELERATOR_TYPE_TPU:  return "TPU";
+        default: return "Unknown";
+    }
+}

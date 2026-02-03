@@ -62,6 +62,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <stddef.h>  /* for NULL */
+#include <stdatomic.h>
 
 #define LOG_MODULE "security_bbb_access_control"
 
@@ -74,46 +75,21 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
-/** Global health agent for bbb_access_control module (DEPRECATED - use atomic version) */
-static nimcp_health_agent_t* g_bbb_access_control_health_agent = NULL;
-
-/** Forward declaration of atomic health agent pointer (defined in Global State section) */
-static nimcp_atomic_ptr_t g_atomic_health_agent;
+/** Global health agent for bbb_access_control module - P2 fix: Use atomic for thread safety */
+static _Atomic(nimcp_health_agent_t*) g_bbb_access_control_health_agent = NULL;
 
 /**
  * @brief Set health agent for bbb_access_control heartbeats (thread-safe)
  * @param agent Health agent (can be NULL to disable)
- *
- * THREAD-SAFETY: Uses atomic store with RELEASE semantics
- * WHY: Ensures all prior writes are visible before pointer is updated
- *
- * PATTERN DOCUMENTATION (for reuse in other files):
- * ```c
- * // 1. Declare atomic pointer in global state section:
- * static nimcp_atomic_ptr_t g_atomic_health_agent = {0};
- *
- * // 2. Setter uses atomic store:
- * nimcp_atomic_store_ptr(&g_atomic_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
- *
- * // 3. Getter uses atomic load:
- * nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
- *     nimcp_atomic_load_ptr(&g_atomic_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
- * ```
  */
 void bbb_access_control_set_health_agent(nimcp_health_agent_t* agent) {
-    /* Legacy pointer update (for backwards compatibility) */
-    g_bbb_access_control_health_agent = agent;
-
-    /* Thread-safe atomic update - RELEASE ensures visibility */
-    nimcp_atomic_store_ptr(&g_atomic_health_agent, agent, NIMCP_MEMORY_ORDER_RELEASE);
+    atomic_store(&g_bbb_access_control_health_agent, agent);
 }
 
 /** @brief Send heartbeat from bbb_access_control module (thread-safe) */
 static inline void bbb_access_control_heartbeat(const char* operation, float progress) {
-    /* Thread-safe read using atomic load with ACQUIRE semantics */
-    nimcp_health_agent_t* agent = (nimcp_health_agent_t*)
-        nimcp_atomic_load_ptr(&g_atomic_health_agent, NIMCP_MEMORY_ORDER_ACQUIRE);
-
+    /* P2 fix: Atomic load to prevent data race */
+    nimcp_health_agent_t* agent = atomic_load(&g_bbb_access_control_health_agent);
     if (agent) {
         nimcp_health_agent_heartbeat_ex(agent, operation, progress);
     }
@@ -285,7 +261,7 @@ static nimcp_atomic_uint64_t g_atomic_total_denials = {0};
 static nimcp_platform_once_t g_access_control_init_once = NIMCP_PLATFORM_ONCE_INIT;
 static bool g_access_control_module_initialized = false;
 
-/* Note: g_atomic_health_agent is declared near top of file with forward declaration */
+/* Note: g_bbb_access_control_health_agent is declared near top of file with _Atomic type */
 
 //=============================================================================
 // Internal Helper Functions
@@ -476,7 +452,7 @@ static void access_control_module_init_internal(void)
     /* Initialize atomic counters */
     nimcp_atomic_init_u64(&g_atomic_total_checks, 0);
     nimcp_atomic_init_u64(&g_atomic_total_denials, 0);
-    nimcp_atomic_init_ptr(&g_atomic_health_agent, NULL);
+    /* Health agent uses _Atomic type, no init needed (statically initialized to NULL) */
 
     /* Initialize the state itself */
     memset(&g_access_state, 0, sizeof(g_access_state));

@@ -620,7 +620,7 @@ TEST_F(PortiaLogicBridgeTest, ProcessInbox) {
 
 TEST_F(PortiaLogicBridgeTest, ProcessInboxNullBridge) {
     int count = portia_logic_process_inbox(nullptr);
-    EXPECT_LT(count, 0);  /* Error */
+    EXPECT_EQ(count, NIMCP_ERROR_NULL_POINTER);  /* Error code for null bridge */
 }
 
 TEST_F(PortiaLogicBridgeTest, DisconnectBioAsyncNotConnected) {

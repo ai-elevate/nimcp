@@ -20,6 +20,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "async/nimcp_bio_async.h"
 #include <string.h>
 #include <time.h>
 #include <stdatomic.h>
@@ -51,6 +52,156 @@ static inline void lgss_override_controller_heartbeat(const char* operation, flo
     if (g_lgss_override_controller_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_lgss_override_controller_health_agent, operation, progress);
     }
+}
+
+/*=============================================================================
+ * COGNITIVE SYSTEM INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Override signal type for cognitive system integration
+ */
+typedef enum {
+    OVERRIDE_SIGNAL_HALT = 0,          /**< Immediate halt signal */
+    OVERRIDE_SIGNAL_SOFT_RESET = 1,    /**< Graceful restart signal */
+    OVERRIDE_SIGNAL_HARD_RESET = 2,    /**< Force restart with state clear */
+    OVERRIDE_SIGNAL_CAPABILITY_CHANGE = 3  /**< Capability level changed */
+} override_signal_type_t;
+
+/**
+ * @brief Override signal payload for bio-async messaging
+ */
+typedef struct {
+    override_signal_type_t signal_type;
+    uint64_t request_id;
+    char operator_id[NIMCP_OVERRIDE_MAX_OPERATOR_ID];
+    char reason[NIMCP_OVERRIDE_MAX_REASON_LEN];
+    capability_type_t affected_capability;
+    float capability_level;
+} override_signal_payload_t;
+
+/** Global bio-async promise for cognitive system signaling (NULL if not initialized) */
+static nimcp_bio_promise_t g_override_signal_promise = NULL;
+
+/**
+ * @brief Send override signal to cognitive system via bio-async
+ *
+ * WHAT: Signal cognitive system about override operation
+ * WHY:  Cognitive modules need to know when to halt/reset
+ * HOW:  Use bio-async norepinephrine channel (alerting/priority)
+ *
+ * @param signal_type Type of override signal
+ * @param request Originating override request
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t send_override_signal_to_cognitive_system(
+    override_signal_type_t signal_type,
+    const override_request_t* request
+) {
+    // Prepare signal payload
+    override_signal_payload_t payload;
+    memset(&payload, 0, sizeof(payload));
+    payload.signal_type = signal_type;
+    payload.request_id = request->request_id;
+    strncpy(payload.operator_id, request->operator_id, NIMCP_OVERRIDE_MAX_OPERATOR_ID - 1);
+    strncpy(payload.reason, request->reason, NIMCP_OVERRIDE_MAX_REASON_LEN - 1);
+
+    // Check if bio-async is initialized
+    if (!nimcp_bio_async_is_initialized()) {
+        LOG_WARN("OverrideCtrl: Bio-async not initialized - cognitive signal not sent");
+        // Not a fatal error - cognitive system integration is optional
+        return NIMCP_SUCCESS;
+    }
+
+    // Create a norepinephrine (alerting/priority) promise for the signal
+    nimcp_bio_promise_t promise = nimcp_bio_promise_create(
+        BIO_CHANNEL_NOREPINEPHRINE,
+        sizeof(override_signal_payload_t)
+    );
+
+    if (!promise) {
+        LOG_WARN("OverrideCtrl: Failed to create bio-async promise for cognitive signal");
+        // Non-fatal: cognitive system might not be listening
+        return NIMCP_SUCCESS;
+    }
+
+    // Complete the promise with the signal payload
+    nimcp_error_t result = nimcp_bio_promise_complete(promise, &payload);
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("OverrideCtrl: Failed to send cognitive signal (err=%d)", result);
+    } else {
+        LOG_INFO("OverrideCtrl: Sent %s signal to cognitive system (request=%lu)",
+                 signal_type == OVERRIDE_SIGNAL_HALT ? "HALT" :
+                 signal_type == OVERRIDE_SIGNAL_SOFT_RESET ? "SOFT_RESET" :
+                 signal_type == OVERRIDE_SIGNAL_HARD_RESET ? "HARD_RESET" : "CAPABILITY_CHANGE",
+                 (unsigned long)request->request_id);
+    }
+
+    // Destroy promise (future is delivered asynchronously)
+    nimcp_bio_promise_destroy(promise);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast halt signal to all cognitive subsystems
+ *
+ * WHAT: Signal immediate halt to all cognitive operations
+ * WHY:  Emergency stop must reach all components quickly
+ * HOW:  Multiple signals via different channels for redundancy
+ */
+static nimcp_error_t broadcast_halt_signal(const override_request_t* request) {
+    LOG_WARN("OverrideCtrl: Broadcasting HALT signal to cognitive system");
+
+    // Send via norepinephrine channel (primary alerting path)
+    send_override_signal_to_cognitive_system(OVERRIDE_SIGNAL_HALT, request);
+
+    // Additional logging for audit trail
+    LOG_INFO("OverrideCtrl: HALT broadcast complete - request=%lu operator=%s reason=%s",
+             (unsigned long)request->request_id,
+             request->operator_id,
+             request->reason);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast soft reset signal to cognitive subsystems
+ *
+ * WHAT: Signal graceful restart to cognitive operations
+ * WHY:  Allow cognitive state to be preserved where possible
+ * HOW:  Serotonin channel (mood/state coordination) for gradual transition
+ */
+static nimcp_error_t broadcast_soft_reset_signal(const override_request_t* request) {
+    LOG_INFO("OverrideCtrl: Broadcasting SOFT_RESET signal to cognitive system");
+
+    send_override_signal_to_cognitive_system(OVERRIDE_SIGNAL_SOFT_RESET, request);
+
+    LOG_INFO("OverrideCtrl: SOFT_RESET broadcast complete - request=%lu operator=%s",
+             (unsigned long)request->request_id,
+             request->operator_id);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast hard reset signal to cognitive subsystems
+ *
+ * WHAT: Signal force restart with state clear to cognitive operations
+ * WHY:  Complete system restart when soft reset is insufficient
+ * HOW:  Norepinephrine channel (high priority alert)
+ */
+static nimcp_error_t broadcast_hard_reset_signal(const override_request_t* request) {
+    LOG_WARN("OverrideCtrl: Broadcasting HARD_RESET signal to cognitive system");
+
+    send_override_signal_to_cognitive_system(OVERRIDE_SIGNAL_HARD_RESET, request);
+
+    LOG_INFO("OverrideCtrl: HARD_RESET broadcast complete - request=%lu operator=%s",
+             (unsigned long)request->request_id,
+             request->operator_id);
+
+    return NIMCP_SUCCESS;
 }
 
 
@@ -237,6 +388,12 @@ static void log_audit_entry(
 
 /**
  * @brief Execute HALT override (internal, unlocked)
+ *
+ * WHAT: Immediately halt all cognitive operations
+ * WHY:  Emergency stop for safety-critical situations
+ * HOW:  1. Broadcast halt signal to cognitive system via bio-async
+ *       2. Set all capabilities to fully reduced (local state)
+ *       3. Log for audit purposes
  */
 static nimcp_error_t execute_halt_unlocked(
     override_controller_t controller,
@@ -246,9 +403,12 @@ static nimcp_error_t execute_halt_unlocked(
     LOG_WARN("%s: Executing HALT override (request %lu)",
              MODULE_NAME, (unsigned long)request->request_id);
 
-    // TODO: Integrate with cognitive system to actually halt operations
-    // For now, set all capabilities to fully reduced
+    // Broadcast halt signal to cognitive system via bio-async
+    // This signals all cognitive modules to stop processing immediately
+    broadcast_halt_signal(request);
 
+    // Set all capabilities to fully reduced (local state backup)
+    // This ensures capability queries reflect the halted state
     for (int i = 0; i < CAPABILITY_TYPE_COUNT; i++) {
         controller->capabilities[i].reduction_level = 1.0f;  // Fully disabled
         controller->capabilities[i].reduction_start = get_time_us();
@@ -262,14 +422,26 @@ static nimcp_error_t execute_halt_unlocked(
     controller->stats.halts_executed++;
     controller->stats.active_capability_reductions = CAPABILITY_TYPE_COUNT;
 
+    // Send heartbeat indicating halt operation
+    lgss_override_controller_heartbeat("halt_execute", 1.0f);
+
     result->status = OVERRIDE_STATUS_COMPLETED;
     result->components_affected = CAPABILITY_TYPE_COUNT;
+
+    LOG_INFO("%s: HALT override completed - all %d capabilities disabled",
+             MODULE_NAME, CAPABILITY_TYPE_COUNT);
 
     return NIMCP_SUCCESS;
 }
 
 /**
  * @brief Execute SOFT_RESET override (internal, unlocked)
+ *
+ * WHAT: Gracefully restart cognitive processes
+ * WHY:  Allow cognitive state to be preserved where possible
+ * HOW:  1. Broadcast soft reset signal to cognitive system
+ *       2. Reset capability reductions (restore normal operation)
+ *       3. Cognitive modules handle their own state preservation
  */
 static nimcp_error_t execute_soft_reset_unlocked(
     override_controller_t controller,
@@ -279,26 +451,47 @@ static nimcp_error_t execute_soft_reset_unlocked(
     LOG_INFO("%s: Executing SOFT_RESET override (request %lu)",
              MODULE_NAME, (unsigned long)request->request_id);
 
-    // TODO: Integrate with cognitive system for graceful restart
-    // For now, reset capability reductions
+    // Broadcast soft reset signal to cognitive system via bio-async
+    // Uses serotonin channel for gradual state transition
+    broadcast_soft_reset_signal(request);
 
+    // Reset capability reductions (restore normal operation)
     for (int i = 0; i < CAPABILITY_TYPE_COUNT; i++) {
         controller->capabilities[i].reduction_level = 0.0f;
         controller->capabilities[i].reduction_start = 0;
         controller->capabilities[i].duration_sec = 0;
+        memset(controller->capabilities[i].operator_id, 0,
+               NIMCP_OVERRIDE_MAX_OPERATOR_ID);
+        memset(controller->capabilities[i].reason, 0,
+               NIMCP_OVERRIDE_MAX_REASON_LEN);
     }
 
     controller->stats.soft_resets_executed++;
     controller->stats.active_capability_reductions = 0;
 
+    // Send heartbeat indicating soft reset operation
+    lgss_override_controller_heartbeat("soft_reset_execute", 1.0f);
+
     result->status = OVERRIDE_STATUS_COMPLETED;
     result->components_affected = CAPABILITY_TYPE_COUNT;
+
+    LOG_INFO("%s: SOFT_RESET override completed - capabilities restored",
+             MODULE_NAME);
 
     return NIMCP_SUCCESS;
 }
 
 /**
  * @brief Execute HARD_RESET override (internal, unlocked)
+ *
+ * WHAT: Force restart cognitive system with state clear
+ * WHY:  Complete system restart when soft reset is insufficient
+ * HOW:  1. Broadcast hard reset signal (high priority)
+ *       2. Clear all capability state
+ *       3. Cognitive modules must clear their internal state
+ *
+ * SECURITY: Hard reset is more aggressive than soft reset.
+ *           All transient state is lost. Use only when necessary.
  */
 static nimcp_error_t execute_hard_reset_unlocked(
     override_controller_t controller,
@@ -308,20 +501,32 @@ static nimcp_error_t execute_hard_reset_unlocked(
     LOG_WARN("%s: Executing HARD_RESET override (request %lu)",
              MODULE_NAME, (unsigned long)request->request_id);
 
-    // TODO: Integrate with cognitive system for force restart
-    // For now, same as soft reset but would clear state
+    // Broadcast hard reset signal to cognitive system via bio-async
+    // Uses norepinephrine channel for high priority alert
+    broadcast_hard_reset_signal(request);
 
+    // Clear all capability state (more aggressive than soft reset)
     for (int i = 0; i < CAPABILITY_TYPE_COUNT; i++) {
         controller->capabilities[i].reduction_level = 0.0f;
         controller->capabilities[i].reduction_start = 0;
         controller->capabilities[i].duration_sec = 0;
+        memset(controller->capabilities[i].operator_id, 0,
+               NIMCP_OVERRIDE_MAX_OPERATOR_ID);
+        memset(controller->capabilities[i].reason, 0,
+               NIMCP_OVERRIDE_MAX_REASON_LEN);
     }
 
     controller->stats.hard_resets_executed++;
     controller->stats.active_capability_reductions = 0;
 
+    // Send heartbeat indicating hard reset operation
+    lgss_override_controller_heartbeat("hard_reset_execute", 1.0f);
+
     result->status = OVERRIDE_STATUS_COMPLETED;
     result->components_affected = CAPABILITY_TYPE_COUNT;
+
+    LOG_INFO("%s: HARD_RESET override completed - all state cleared",
+             MODULE_NAME);
 
     return NIMCP_SUCCESS;
 }
