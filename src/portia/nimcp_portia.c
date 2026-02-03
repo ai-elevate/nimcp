@@ -192,7 +192,7 @@ struct portia_context_t {
 //=============================================================================
 
 /* Mutex protecting global state modifications during init/destroy */
-static pthread_mutex_t g_portia_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_portia_state_mutex = NIMCP_MUTEX_INITIALIZER;
 
 /* Atomic pointer for thread-safe read access without locking */
 static _Atomic(portia_context_t*) g_portia_ctx = NULL;
@@ -303,11 +303,11 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     }
 
     /* Lock to prevent concurrent initialization */
-    pthread_mutex_lock(&g_portia_state_mutex);
+    nimcp_mutex_lock(&g_portia_state_mutex);
 
     /* Double-check under lock (another thread may have initialized) */
     if (atomic_load(&g_portia_ctx) != NULL) {
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         LOG_ERROR(LOG_MODULE, "Portia already initialized");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Portia already initialized (double-check)");
         return NIMCP_PORTIA_ERROR_ALREADY_INITIALIZED;
@@ -319,7 +319,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     /* Security validation */
     if (config && !bbb_check_pointer(config, "portia_init")) {
         LOG_ERROR(LOG_MODULE, "Invalid config pointer");
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_init");
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -328,7 +328,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     portia_context_t* ctx = nimcp_calloc(1, sizeof(portia_context_t));
     if (!ctx) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate Portia context");
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Portia context");
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -343,7 +343,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     if (err != NIMCP_SUCCESS) {
         LOG_ERROR(LOG_MODULE, "Failed to create tier manager: %d", err);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create tier manager: %d", err);
         return err;
     }
@@ -354,7 +354,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         LOG_ERROR(LOG_MODULE, "Failed to create power monitor: %d", err);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create power monitor: %d", err);
         return err;
     }
@@ -366,7 +366,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create resource tracker: %d", err);
         return err;
     }
@@ -379,7 +379,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create degradation controller: %d", err);
         return err;
     }
@@ -393,7 +393,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create accelerator detector: %d", err);
         return err;
     }
@@ -408,7 +408,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create sensor fusion: %d", err);
         return err;
     }
@@ -424,7 +424,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create planning engine: %d", err);
         return err;
     }
@@ -441,7 +441,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         portia_power_monitor_destroy(ctx->power_monitor);
         portia_tier_manager_destroy(ctx->tier_manager);
         nimcp_free(ctx);
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create target classifier: %d", err);
         return err;
     }
@@ -496,7 +496,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     /* Set global context atomically (must be last before unlock) */
     atomic_store(&g_portia_ctx, ctx);
 
-    pthread_mutex_unlock(&g_portia_state_mutex);
+    nimcp_mutex_unlock(&g_portia_state_mutex);
 
     /* Security audit: Log Portia initialization via BBB audit system */
     bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "system_init",
@@ -515,20 +515,21 @@ void portia_destroy(void) {
         return;
     }
 
-    /* Lock to prevent concurrent destroy/init */
-    pthread_mutex_lock(&g_portia_state_mutex);
+    /* Lock to prevent concurrent destroy/init
+     * CRITICAL: Hold lock throughout entire destruction to prevent race conditions
+     * where another thread could call portia_init() during destruction.
+     */
+    nimcp_mutex_lock(&g_portia_state_mutex);
 
     /* Double-check under lock */
     portia_context_t* ctx = atomic_load(&g_portia_ctx);
     if (ctx == NULL) {
-        pthread_mutex_unlock(&g_portia_state_mutex);
+        nimcp_mutex_unlock(&g_portia_state_mutex);
         return;
     }
 
     /* Clear global context atomically first to prevent new operations */
     atomic_store(&g_portia_ctx, NULL);
-
-    pthread_mutex_unlock(&g_portia_state_mutex);
 
     LOG_INFO(LOG_MODULE, "Shutting down Portia system");
 
@@ -551,13 +552,30 @@ void portia_destroy(void) {
     nimcp_mutex_destroy(&ctx->lock);
     nimcp_free(ctx);
 
+    /* Unlock only after destruction is complete */
+    nimcp_mutex_unlock(&g_portia_state_mutex);
+
     /* bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Portia system destroyed"); */
     LOG_INFO(LOG_MODULE, "Portia shutdown complete");
 }
 
 bool portia_is_initialized(void) {
+    /* Load context pointer atomically to prevent tearing
+     *
+     * THREAD SAFETY ANALYSIS:
+     * - ctx->initialized is only set to true at end of portia_init()
+     *   AFTER g_portia_ctx is published via atomic_store
+     * - ctx is only freed AFTER g_portia_ctx is atomically set to NULL
+     * - Therefore, if atomic_load returns non-NULL, ctx is valid and
+     *   ctx->initialized is safe to read
+     * - No lock needed here: the atomic pointer load provides sufficient
+     *   memory ordering for the subsequent plain read
+     */
     portia_context_t* ctx = atomic_load(&g_portia_ctx);
-    return ctx != NULL && ctx->initialized;
+    if (ctx == NULL) {
+        return false;
+    }
+    return ctx->initialized;
 }
 
 portia_context_t* portia_get_context(void) {

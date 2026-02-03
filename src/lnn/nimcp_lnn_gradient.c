@@ -1401,7 +1401,12 @@ static int allocate_gradient_storage(lnn_gradient_ctx_t* ctx, lnn_network_t* net
         return LNN_ERROR_INVALID_STATE;
     }
 
+    // BUG FIX: Check that first layer is not NULL before dereferencing
     lnn_layer_t* layer = network->layers[0];
+    if (!layer) {
+        NIMCP_LOGGING_ERROR("Network layer[0] is NULL");
+        return LNN_ERROR_NULL_POINTER;
+    }
     uint32_t n_neurons = layer->n_neurons;
 
     // Allocate adjoint state tensor
