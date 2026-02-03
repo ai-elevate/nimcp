@@ -2188,6 +2188,21 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/statistics")
 endif()
 
 # ============================================================================
+# Genius Profiles Regression Tests
+# ============================================================================
+# WHAT: Regression tests for genius profiles system
+# WHY:  Tests mathematical, artistic, musical, scientific, athletic, strategic,
+#       financial, literary, and polymath brain configurations
+# HOW:  Tests profile consistency, eidetic memory presets, blending, state machines
+# Note: E2E tests are added via test/e2e/CMakeLists.txt
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/genius")
+    message(STATUS "Adding Genius Profiles regression tests...")
+    add_subdirectory(regression/genius)
+endif()
+
+# ============================================================================
 # Brain Region KG Wiring Tests
 # ============================================================================
 # WHAT: Unit, integration, regression, and E2E tests for brain region KG wiring

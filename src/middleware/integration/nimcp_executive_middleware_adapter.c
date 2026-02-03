@@ -24,6 +24,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
 #include "api/nimcp_api_exception.h"
+#include "core/events/nimcp_event_bus.h"
+#include "middleware/events/nimcp_event_types.h"
 
 #define LOG_MODULE "middleware_executive_adapter"
 
@@ -73,6 +75,11 @@ static inline void executive_middleware_adapter_heartbeat(const char* operation,
 //=============================================================================
 
 /**
+ * @brief Maximum number of event subscriptions
+ */
+#define MAX_EVENT_SUBSCRIPTIONS 16
+
+/**
  * @brief Executive middleware adapter internal structure
  */
 struct executive_middleware_adapter {
@@ -90,6 +97,11 @@ struct executive_middleware_adapter {
     // State tracking
     uint32_t next_command_id;                   /**< Next command ID to assign */
     uint64_t last_command_time_us;              /**< Last command timestamp */
+
+    // Event bus integration
+    event_bus_t registered_event_bus;          /**< Registered event bus (NULL if not registered) */
+    event_subscription_handle_t subscriptions[MAX_EVENT_SUBSCRIPTIONS]; /**< Subscription handles */
+    uint32_t num_subscriptions;                 /**< Number of active subscriptions */
 
     // Bio-async integration
     bio_module_context_t bio_ctx;               /**< Bio-async module context */
@@ -170,6 +182,88 @@ static float calculate_event_information(uint32_t event_type, float value) {
 }
 
 //=============================================================================
+// Event Bus Callback Handlers
+//=============================================================================
+
+/**
+ * @brief Event callback for attention shift events
+ *
+ * WHAT: Handle attention focus change events from cognitive system
+ * WHY:  Translate attention events to middleware commands
+ */
+static void on_attention_shift_event(const brain_event_t* event, void* context) {
+    executive_middleware_adapter_t* adapter = (executive_middleware_adapter_t*)context;
+    if (!adapter || !event) {
+        return;
+    }
+
+    // Extract priority from event data (if available)
+    float priority = 0.5F;  // Default priority
+    if (event->data.size >= sizeof(float)) {
+        priority = *(const float*)event->data.data;
+    }
+
+    // Map to task switch handler with attention-related task type
+    executive_middleware_adapter_on_task_switched(
+        adapter,
+        (uint32_t)event->sequence_number,  // Use sequence as task ID
+        0,  // TASK_TYPE_CLASSIFICATION for attention
+        priority
+    );
+}
+
+/**
+ * @brief Event callback for cognitive load events
+ *
+ * WHAT: Handle cognitive load change events
+ * WHY:  Adjust middleware activity based on load
+ */
+static void on_health_event(const brain_event_t* event, void* context) {
+    executive_middleware_adapter_t* adapter = (executive_middleware_adapter_t*)context;
+    if (!adapter || !event) {
+        return;
+    }
+
+    // Health events indicate cognitive load changes
+    float cognitive_load = 0.5F;  // Default
+    if (event->data.size >= sizeof(float)) {
+        cognitive_load = *(const float*)event->data.data;
+    }
+
+    executive_middleware_adapter_on_cognitive_load_changed(adapter, cognitive_load);
+}
+
+/**
+ * @brief Event callback for pattern detection events
+ *
+ * WHAT: Handle pattern detection notifications
+ * WHY:  Subscribe to detected patterns for middleware processing
+ */
+static void on_pattern_event(const brain_event_t* event, void* context) {
+    executive_middleware_adapter_t* adapter = (executive_middleware_adapter_t*)context;
+    if (!adapter || !event) {
+        return;
+    }
+
+    // Extract pattern info from event data
+    uint32_t pattern_id = 0;
+    float confidence = 0.5F;
+    uint32_t target_region = TARGET_ALL_REGIONS;
+
+    if (event->data.size >= sizeof(uint32_t)) {
+        pattern_id = *(const uint32_t*)event->data.data;
+    }
+    if (event->data.size >= sizeof(uint32_t) + sizeof(float)) {
+        confidence = *(const float*)(event->data.data + sizeof(uint32_t));
+    }
+    if (event->data.size >= 2 * sizeof(uint32_t) + sizeof(float)) {
+        target_region = *(const uint32_t*)(event->data.data + sizeof(uint32_t) + sizeof(float));
+    }
+
+    executive_middleware_adapter_on_pattern_detected(adapter, pattern_id, confidence, target_region);
+}
+
+//=============================================================================
 // Configuration
 //=============================================================================
 
@@ -237,6 +331,13 @@ executive_middleware_adapter_t* executive_middleware_adapter_create_custom(
     adapter->next_command_id = 1;
     adapter->last_command_time_us = nimcp_time_get_us();
 
+    // Initialize event bus integration
+    adapter->registered_event_bus = NULL;
+    adapter->num_subscriptions = 0;
+    for (uint32_t i = 0; i < MAX_EVENT_SUBSCRIPTIONS; i++) {
+        adapter->subscriptions[i] = INVALID_SUBSCRIPTION_HANDLE;
+    }
+
     // Bio-async registration
     adapter->bio_ctx = NULL;
     adapter->bio_async_enabled = false;
@@ -285,7 +386,7 @@ void executive_middleware_adapter_destroy(executive_middleware_adapter_t* adapte
 
 bool executive_middleware_adapter_register_handlers(
     executive_middleware_adapter_t* adapter,
-    event_bus_t* event_bus
+    event_bus_t event_bus
 ) {
     // Guard: NULL checks
     if (!adapter || !event_bus) {
@@ -293,25 +394,98 @@ bool executive_middleware_adapter_register_handlers(
         return false;
     }
 
-    // TODO: Register event handlers with event bus
-    // This requires event bus API to be available
+    // Check if already registered to a different event bus
+    if (adapter->registered_event_bus && adapter->registered_event_bus != event_bus) {
+        LOG_WARN("Adapter already registered to different event bus, unregistering first");
+        executive_middleware_adapter_unregister_handlers(adapter, adapter->registered_event_bus);
+    }
 
-    // For MVP, handlers will be called manually via the on_* functions
-    LOG_INFO("Executive middleware adapter handlers registered");
+    adapter->num_subscriptions = 0;
 
-    return true;
+    // Register for attention shift events
+    event_subscription_handle_t handle = event_bus_subscribe(
+        event_bus,
+        EVENT_ATTENTION_SHIFT,
+        on_attention_shift_event,
+        adapter
+    );
+    if (handle != INVALID_SUBSCRIPTION_HANDLE && adapter->num_subscriptions < MAX_EVENT_SUBSCRIPTIONS) {
+        adapter->subscriptions[adapter->num_subscriptions++] = handle;
+    }
+
+    // Register for health/load change events
+    handle = event_bus_subscribe(
+        event_bus,
+        EVENT_HEALTH_DEGRADED,
+        on_health_event,
+        adapter
+    );
+    if (handle != INVALID_SUBSCRIPTION_HANDLE && adapter->num_subscriptions < MAX_EVENT_SUBSCRIPTIONS) {
+        adapter->subscriptions[adapter->num_subscriptions++] = handle;
+    }
+
+    handle = event_bus_subscribe(
+        event_bus,
+        EVENT_HEALTH_CRITICAL,
+        on_health_event,
+        adapter
+    );
+    if (handle != INVALID_SUBSCRIPTION_HANDLE && adapter->num_subscriptions < MAX_EVENT_SUBSCRIPTIONS) {
+        adapter->subscriptions[adapter->num_subscriptions++] = handle;
+    }
+
+    handle = event_bus_subscribe(
+        event_bus,
+        EVENT_HEALTH_RECOVERED,
+        on_health_event,
+        adapter
+    );
+    if (handle != INVALID_SUBSCRIPTION_HANDLE && adapter->num_subscriptions < MAX_EVENT_SUBSCRIPTIONS) {
+        adapter->subscriptions[adapter->num_subscriptions++] = handle;
+    }
+
+    // Register for inference/pattern events
+    handle = event_bus_subscribe(
+        event_bus,
+        EVENT_FORWARD_PASS_COMPLETE,
+        on_pattern_event,
+        adapter
+    );
+    if (handle != INVALID_SUBSCRIPTION_HANDLE && adapter->num_subscriptions < MAX_EVENT_SUBSCRIPTIONS) {
+        adapter->subscriptions[adapter->num_subscriptions++] = handle;
+    }
+
+    adapter->registered_event_bus = event_bus;
+    LOG_INFO("Executive middleware adapter registered %u event handlers", adapter->num_subscriptions);
+
+    return adapter->num_subscriptions > 0;
 }
 
 void executive_middleware_adapter_unregister_handlers(
     executive_middleware_adapter_t* adapter,
-    event_bus_t* event_bus
+    event_bus_t event_bus
 ) {
     // Guard: NULL checks
     if (!adapter || !event_bus) {
         return;
     }
 
-    // TODO: Unregister event handlers
+    // Verify we're unregistering from the correct event bus
+    if (adapter->registered_event_bus != event_bus) {
+        LOG_WARN("Attempt to unregister from non-registered event bus");
+        return;
+    }
+
+    // Unregister all subscriptions
+    for (uint32_t i = 0; i < adapter->num_subscriptions; i++) {
+        if (adapter->subscriptions[i] != INVALID_SUBSCRIPTION_HANDLE) {
+            event_bus_unsubscribe(event_bus, adapter->subscriptions[i]);
+            adapter->subscriptions[i] = INVALID_SUBSCRIPTION_HANDLE;
+        }
+    }
+
+    adapter->num_subscriptions = 0;
+    adapter->registered_event_bus = NULL;
     LOG_INFO("Executive middleware adapter handlers unregistered");
 }
 
@@ -346,8 +520,22 @@ bool executive_middleware_adapter_on_task_switched(
 
     // Record with Shannon monitor if available
     if (adapter->shannon_monitor) {
-        // TODO: Create event_t and record
-        // shannon_monitor_record_event(adapter->shannon_monitor, &event);
+        // Create event for Shannon monitor recording
+        event_t mw_event = {
+            .type = EVENT_TYPE_ATTENTION_SHIFT,
+            .priority = (priority > 0.7F) ? MW_EVENT_PRIORITY_HIGH :
+                        (priority > 0.3F) ? MW_EVENT_PRIORITY_NORMAL : MW_EVENT_PRIORITY_LOW,
+            .source = EVENT_SOURCE_BRAIN,
+            .timestamp_us = start_time,
+            .sequence_number = adapter->metrics.total_events_received,
+            .data.attention_shift = {
+                .previous_item = 0,  // Not tracked at this level
+                .current_item = task_id,
+                .attention_strength = priority,
+                .shift_reason = "task_switch"
+            }
+        };
+        shannon_monitor_record_event(adapter->shannon_monitor, &mw_event);
     }
 
     // Filter low-priority tasks

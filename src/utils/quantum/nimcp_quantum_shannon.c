@@ -239,13 +239,47 @@ static float compute_synapse_capacity(neural_network_t network,
     // Guard: NULL checks
     if (!network || !config) return 0.0F;
 
-    // Suppress unused parameter warning
-    (void)synapse_idx;
+    // Access synapse properties to compute capacity
+    // BIOLOGICAL BASIS:
+    // - Synaptic bandwidth: determined by firing rate and release probability
+    // - Signal: synaptic weight × presynaptic activity
+    // - Noise: stochastic vesicle release, receptor desensitization
+    //
+    // APPROACH: Sample synapses by iterating through neurons' incoming connections
+    // synapse_idx is mapped to (neuron_id, local_synapse_idx) pair
 
-    // TODO: Access synapse at index (needs network API)
-    // For now, use simplified capacity estimation
-    float bandwidth = 50.0F;  // 50 Hz average firing rate
-    float snr = 5.0F;         // Typical SNR = 5
+    float bandwidth = 50.0F;  // Default 50 Hz average firing rate
+    float snr = 5.0F;         // Default SNR = 5
+
+    // Map linear synapse index to (neuron, synapse) pair
+    // Assume average 50 synapses per neuron (from get_num_synapses estimate)
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+    if (num_neurons > 0) {
+        uint32_t avg_synapses = 50;
+        uint32_t neuron_id = synapse_idx / avg_synapses;
+        uint32_t local_idx = synapse_idx % avg_synapses;
+
+        if (neuron_id < num_neurons) {
+            // Get incoming synapses for this neuron
+            const synapse_t* synapses = NULL;
+            uint32_t syn_count = neural_network_get_incoming_synapses(network, neuron_id, &synapses);
+
+            if (synapses && local_idx < syn_count) {
+                const synapse_t* syn = &synapses[local_idx];
+
+                // Compute bandwidth from synaptic strength
+                // Stronger synapses have higher effective bandwidth
+                float weight = fabsf(syn->weight);
+                bandwidth = 20.0F + weight * 100.0F;  // 20-120 Hz range
+
+                // Compute SNR from weight stability (plasticity as noise proxy)
+                // Higher plasticity = more noise = lower SNR
+                float noise_factor = syn->plasticity > 0.0F ? syn->plasticity : 0.1F;
+                snr = weight / (noise_factor + 0.01F);
+                snr = fmaxf(1.0F, fminf(20.0F, snr));  // Clamp to [1, 20]
+            }
+        }
+    }
 
     float capacity = shannon_channel_capacity(bandwidth, snr);
 
@@ -492,12 +526,71 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
 
     float total_distance = 0.0F;
     float total_prob = 0.0F;
+
+    // Use actual graph distance from quantum walker's adjacency structure
+    // APPROACH: BFS-based hop count from source to each node
+    // For large networks, use the walker's cached adjacency list to compute
+    // graph distance (shortest path in hops)
+    //
+    // OPTIMIZATION: Pre-compute distances from source on first call
+    // For now, use adjacency-based distance approximation
+    quantum_walker_t* walker = qsd->walker;
+
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (probs[i] > MIN_INFORMATION) {
-            // Approximate distance as difference in node IDs
-            // TODO: Use actual graph distance if available
-            uint32_t dist = (i > qsd->source_node) ?
-                           (i - qsd->source_node) : (qsd->source_node - i);
+            uint32_t dist;
+
+            // Use graph structure if available, otherwise fall back to node ID difference
+            if (walker && walker->adjacency_list && walker->node_degrees) {
+                // Approximate graph distance using adjacency structure
+                // If node i is a direct neighbor of source, dist = 1
+                // Otherwise, estimate based on degree connectivity
+                bool is_neighbor = false;
+                uint32_t source_degree = walker->node_degrees[qsd->source_node];
+                uint32_t* source_neighbors = walker->adjacency_list[qsd->source_node];
+
+                if (source_neighbors && source_degree > 0) {
+                    for (uint32_t n = 0; n < source_degree; n++) {
+                        if (source_neighbors[n] == i) {
+                            is_neighbor = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (i == qsd->source_node) {
+                    dist = 0;
+                } else if (is_neighbor) {
+                    dist = 1;  // Direct neighbor
+                } else {
+                    // Estimate distance using small-world property
+                    // In small-world networks, avg path length ~ log(N)
+                    // Use degree-based heuristic: d ~ log(N) / log(avg_degree)
+                    // Estimate average degree from node degrees array
+                    float avg_degree = 0.0F;
+                    if (walker->node_degrees != NULL) {
+                        // Use local node's degree as proxy (faster than computing full average)
+                        avg_degree = (float)(walker->node_degrees[qsd->source_node] +
+                                           walker->node_degrees[i]) / 2.0F;
+                    } else {
+                        // Default estimate for sparse neural networks
+                        avg_degree = sqrtf((float)num_neurons);
+                    }
+                    if (avg_degree > 1.0F) {
+                        dist = (uint32_t)(logf((float)num_neurons) / logf(avg_degree) + 0.5F);
+                        dist = dist > 0 ? dist : 2;  // Minimum 2 hops for non-neighbors
+                    } else {
+                        // Sparse network: fall back to ID-based estimate
+                        dist = (i > qsd->source_node) ?
+                               (i - qsd->source_node) : (qsd->source_node - i);
+                    }
+                }
+            } else {
+                // Fall back to node ID difference (original approximation)
+                dist = (i > qsd->source_node) ?
+                       (i - qsd->source_node) : (qsd->source_node - i);
+            }
+
             total_distance += (float)dist * probs[i];
             total_prob += probs[i];
         }
@@ -750,8 +843,36 @@ static bool detect_bottlenecks(quantum_shannon_diffusion_t* qsd) {
             quantum_shannon_bottleneck_t* bn =
                 &qsd->bottlenecks[qsd->num_bottlenecks];
 
-            bn->pre_node = 0;  // TODO: Extract from network
-            bn->post_node = 0; // TODO: Extract from network
+            // Extract pre/post nodes from network using sampled synapse index
+            // Map linear synapse index to (neuron, synapse) pair
+            uint32_t synapse_idx = qsd->sampled_synapses[i];
+            neural_network_t network = qsd->walker->network;
+            uint32_t num_neurons = neural_network_get_num_neurons(network);
+            uint32_t avg_synapses = 50;  // Same estimate as in compute_synapse_capacity
+
+            uint32_t neuron_id = synapse_idx / avg_synapses;
+            uint32_t local_idx = synapse_idx % avg_synapses;
+
+            bn->pre_node = 0;
+            bn->post_node = 0;
+
+            if (num_neurons > 0 && neuron_id < num_neurons) {
+                // Get incoming synapses for this neuron (post-synaptic)
+                const synapse_t* synapses = NULL;
+                uint32_t syn_count = neural_network_get_incoming_synapses(network, neuron_id, &synapses);
+
+                if (synapses && local_idx < syn_count) {
+                    const synapse_t* syn = &synapses[local_idx];
+                    // Pre-synaptic node is the source, post-synaptic is neuron_id
+                    bn->pre_node = syn->source_neuron_id;
+                    bn->post_node = neuron_id;
+                } else {
+                    // Fallback: use synapse index distribution
+                    bn->pre_node = synapse_idx % num_neurons;
+                    bn->post_node = (synapse_idx / num_neurons) % num_neurons;
+                }
+            }
+
             bn->capacity = capacity;
             bn->demand = demand;
             bn->deficit = (demand - capacity) / demand;

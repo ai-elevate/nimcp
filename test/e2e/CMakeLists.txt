@@ -3018,6 +3018,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain_regions/CMakeLists.txt)
     add_subdirectory(brain_regions)
 endif()
 
+# Include Genius Profiles E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/genius/CMakeLists.txt)
+    message(STATUS "Adding Genius Profiles E2E tests...")
+    add_subdirectory(genius)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

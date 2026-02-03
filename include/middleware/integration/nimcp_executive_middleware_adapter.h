@@ -63,6 +63,7 @@
 #include <stdbool.h>
 #include "middleware/integration/nimcp_middleware_command.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
+#include "core/events/nimcp_event_bus.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,7 +72,10 @@ extern "C" {
 // Forward declarations
 typedef struct executive_controller executive_controller_t;
 typedef struct quantum_command_propagator quantum_command_propagator_t;
-typedef struct event_bus event_bus_t;
+
+// Use event_bus_t from core events header (typedef struct event_bus_internal* event_bus_t)
+// Note: Must match the typedef in core/events/nimcp_event_bus.h
+typedef struct event_bus_internal* event_bus_t;
 
 //=============================================================================
 // Configuration
@@ -253,7 +257,7 @@ void executive_middleware_adapter_destroy(executive_middleware_adapter_t* adapte
  */
 bool executive_middleware_adapter_register_handlers(
     executive_middleware_adapter_t* adapter,
-    event_bus_t* event_bus
+    event_bus_t event_bus
 );
 
 /**
@@ -267,7 +271,7 @@ bool executive_middleware_adapter_register_handlers(
  */
 void executive_middleware_adapter_unregister_handlers(
     executive_middleware_adapter_t* adapter,
-    event_bus_t* event_bus
+    event_bus_t event_bus
 );
 
 //=============================================================================
