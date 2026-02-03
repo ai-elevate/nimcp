@@ -1,14 +1,19 @@
 # Genius Profiles Module - CMakeLists.txt
 # Configurable genius brain profiles based on cognitive neuroscience research
 
+# Include eidetic subdirectory
+add_subdirectory(eidetic)
+
 set(GENIUS_SOURCES
     nimcp_genius_profiles.c
+    eidetic/nimcp_eidetic_memory.c
 )
 
 set(GENIUS_HEADERS
     ${PROJECT_SOURCE_DIR}/include/core/brain/genius/nimcp_genius_types.h
     ${PROJECT_SOURCE_DIR}/include/core/brain/genius/nimcp_genius_traits.h
     ${PROJECT_SOURCE_DIR}/include/core/brain/genius/nimcp_genius_profiles.h
+    ${PROJECT_SOURCE_DIR}/include/core/brain/genius/eidetic/nimcp_eidetic_memory.h
 )
 
 # Create static library

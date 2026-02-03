@@ -46,6 +46,51 @@ set_tests_properties(e2e_genius_profiles
 )
 
 # =============================================================================
+# Eidetic Memory E2E Test
+# =============================================================================
+# Tests:
+# - Tesla workflow (visual-spatial eidetic genius)
+# - Mozart workflow (auditory eidetic genius)
+# - von Neumann workflow (verbal-numerical eidetic genius)
+# - Polymath workflow (combined eidetic profiles)
+# - Full system workflow (bridge creation through eidetic application)
+# - Profile switching workflow (mathematical -> musical)
+# - Utility function E2E tests (scale value, decay resistance)
+# - Error handling workflow
+# - Preset comparison workflow
+# =============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_eidetic_e2e.cpp")
+    add_executable(e2e_eidetic_memory
+        test_eidetic_e2e.cpp
+    )
+
+    target_link_libraries(e2e_eidetic_memory
+        PRIVATE
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            pthread
+            m
+    )
+
+    target_compile_features(e2e_eidetic_memory PRIVATE cxx_std_17)
+
+    add_test(
+        NAME e2e_eidetic_memory
+        COMMAND e2e_eidetic_memory
+    )
+
+    set_tests_properties(e2e_eidetic_memory
+        PROPERTIES
+        LABELS "e2e;genius;eidetic;memory"
+        TIMEOUT 300
+    )
+
+    message(STATUS "  Added E2E test: e2e_eidetic_memory")
+endif()
+
+# =============================================================================
 # Custom Target: Run All Genius E2E Tests
 # =============================================================================
 add_custom_target(test_genius_e2e

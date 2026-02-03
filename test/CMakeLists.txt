@@ -2188,6 +2188,32 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/statistics")
 endif()
 
 # ============================================================================
+# Genius Profiles Unit Tests
+# ============================================================================
+# WHAT: Unit tests for genius profiles system and eidetic memory integration
+# WHY:  Tests profile APIs, eidetic apply functions, utility functions
+# HOW:  GTest-based unit tests for individual components
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/genius/CMakeLists.txt")
+    message(STATUS "Adding Genius Profiles unit tests...")
+    add_subdirectory(unit/genius)
+endif()
+
+# ============================================================================
+# Genius Profiles Integration Tests
+# ============================================================================
+# WHAT: Integration tests for genius profiles cross-system communication
+# WHY:  Tests bio-async, memory systems, and eidetic integration
+# HOW:  GTest-based integration tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/genius/CMakeLists.txt")
+    message(STATUS "Adding Genius Profiles integration tests...")
+    add_subdirectory(integration/genius)
+endif()
+
+# ============================================================================
 # Genius Profiles Regression Tests
 # ============================================================================
 # WHAT: Regression tests for genius profiles system

@@ -44,6 +44,46 @@ set_tests_properties(regression_genius_profiles
 )
 
 # =============================================================================
+# Eidetic Memory Regression Tests
+# =============================================================================
+# Tests:
+# - Preset consistency (Tesla, Mozart, von Neumann, Kim Peek, Wiltshire)
+# - Validation rule consistency
+# - Utility function determinism (scale, decay)
+# - Error code stability
+# =============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_eidetic_regression.cpp")
+    add_executable(regression_eidetic_memory
+        test_eidetic_regression.cpp
+    )
+
+    target_link_libraries(regression_eidetic_memory
+        PRIVATE
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            pthread
+            m
+    )
+
+    target_compile_features(regression_eidetic_memory PRIVATE cxx_std_17)
+
+    add_test(
+        NAME regression_eidetic_memory
+        COMMAND regression_eidetic_memory
+    )
+
+    set_tests_properties(regression_eidetic_memory
+        PROPERTIES
+        LABELS "regression;genius;eidetic"
+        TIMEOUT 120
+    )
+
+    message(STATUS "  Added Regression test: regression_eidetic_memory")
+endif()
+
+# =============================================================================
 # Custom Target: Run All Genius Regression Tests
 # =============================================================================
 add_custom_target(test_genius_regression
