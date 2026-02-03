@@ -762,6 +762,25 @@ TEST_F(GeniusProfilesTest, HealthAgentStartStop) {
 }
 
 //=============================================================================
+// 16. CONFIG TEST MODE TESTS
+//=============================================================================
+
+TEST_F(GeniusProfilesTest, ConfigDefaultTestModeDisabled) {
+    // Default config should have test_mode disabled
+    genius_profiles_config_t default_config;
+    ASSERT_EQ(genius_profiles_config_default(&default_config), GENIUS_ERROR_SUCCESS);
+    EXPECT_FALSE(default_config.test_mode);
+}
+
+TEST_F(GeniusProfilesTest, ConfigTestModeCanBeEnabled) {
+    // Test mode can be enabled in config
+    genius_profiles_config_t test_config;
+    ASSERT_EQ(genius_profiles_config_default(&test_config), GENIUS_ERROR_SUCCESS);
+    test_config.test_mode = true;
+    EXPECT_TRUE(test_config.test_mode);
+}
+
+//=============================================================================
 // Main
 //=============================================================================
 

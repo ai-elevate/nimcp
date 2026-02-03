@@ -1469,6 +1469,8 @@ genius_error_t genius_profiles_config_default(genius_profiles_config_t* config) 
 
     config->enable_quantum_optimization = false;
 
+    config->test_mode = false;  /* Normal mode - full brain initialization */
+
     return GENIUS_ERROR_SUCCESS;
 }
 
@@ -2980,6 +2982,10 @@ static void apply_genius_region_config(
 }
 
 brain_t genius_brain_create(genius_type_t type) {
+    return genius_brain_create_ex(type, false);
+}
+
+brain_t genius_brain_create_ex(genius_type_t type, bool test_mode) {
     if (!genius_type_is_valid(type)) {
         NIMCP_THROW_TO_IMMUNE(GENIUS_ERROR_INVALID_TYPE, "Invalid genius type");
         return NULL;
@@ -2993,6 +2999,42 @@ brain_t genius_brain_create(genius_type_t type) {
 
     /* Get base configuration from COGNITIVE profile (most features enabled) */
     brain_config_t config = brain_config_from_profile(BRAIN_CONFIG_COGNITIVE);
+
+    /* TEST MODE: Enable lazy initialization for fast brain creation (5-10x speedup).
+     * This defers initialization of heavy subsystems until first use:
+     * - Ethics engine, Theory of Mind, Mirror neurons
+     * - Glial networks, Neuromodulators
+     * - Cortical columns, Topographic maps
+     * - Perception systems (visual, audio, speech)
+     * - Memory consolidation, Meta-learning
+     * - Global workspace, Executive controller
+     */
+    if (test_mode) {
+        config.lazy_init_mode = true;  /* Master flag for ALL lazy inits */
+
+        /* Also explicitly set individual flags for clarity and older configs */
+        config.lazy_dendrite_init = true;
+        config.lazy_axon_init = true;
+        config.lazy_visual_init = true;
+        config.lazy_audio_init = true;
+        config.lazy_speech_init = true;
+        config.lazy_working_memory_init = true;
+        config.lazy_theory_of_mind_init = true;
+        config.lazy_global_workspace_init = true;
+        config.lazy_ethics_init = true;
+        config.lazy_mirror_neurons_init = true;
+        config.lazy_executive_init = true;
+        config.lazy_consolidation_init = true;
+        config.lazy_meta_learning_init = true;
+        config.lazy_neuromod_init = true;
+        config.lazy_glial_init = true;
+        config.lazy_cortical_init = true;
+        config.lazy_topographic_init = true;
+        config.lazy_pr_memory_init = true;
+
+        NIMCP_LOGGING_DEBUG("Test mode enabled: using lazy initialization for %s",
+                           genius_type_name(type));
+    }
 
     /* Set brain name based on genius type */
     char name[256];
@@ -3050,8 +3092,9 @@ brain_t genius_brain_create(genius_type_t type) {
         }
     }
 
-    NIMCP_LOGGING_INFO("Created genius brain: %s (size=%d, sparsity=%.2f)",
-                       genius_type_name(type), config.size, config.sparsity_target);
+    NIMCP_LOGGING_INFO("Created genius brain: %s (size=%d, sparsity=%.2f, test_mode=%s)",
+                       genius_type_name(type), config.size, config.sparsity_target,
+                       test_mode ? "true" : "false");
 
     return brain;
 }
@@ -3104,6 +3147,10 @@ static void apply_genius_lateralization(
 }
 
 hemispheric_brain_t* genius_hemispheric_brain_create(genius_type_t type) {
+    return genius_hemispheric_brain_create_ex(type, false);
+}
+
+hemispheric_brain_t* genius_hemispheric_brain_create_ex(genius_type_t type, bool test_mode) {
     if (!genius_type_is_valid(type)) {
         NIMCP_THROW_TO_IMMUNE(GENIUS_ERROR_INVALID_TYPE, "Invalid genius type for hemispheric brain");
         return NULL;
@@ -3117,6 +3164,16 @@ hemispheric_brain_t* genius_hemispheric_brain_create(genius_type_t type) {
 
     /* Get default hemispheric brain configuration */
     hemispheric_brain_config_t hemi_config = hemispheric_brain_default_config();
+
+    /* TEST MODE: For hemispheric brains, test_mode currently uses a smaller brain size
+     * to reduce initialization time. Full lazy initialization support requires
+     * propagating lazy flags to the underlying hemisphere_config_t structures.
+     * TODO: Add lazy_*_init flags to hemisphere_config_t for full test mode support. */
+    if (test_mode) {
+        hemi_config.size = BRAIN_SIZE_SMALL;  /* Use smaller brain for faster creation */
+        NIMCP_LOGGING_DEBUG("Test mode enabled for hemispheric brain: %s (using smaller size)",
+                           genius_type_name(type));
+    }
 
     /* Set brain name */
     char name[256];
@@ -3151,10 +3208,11 @@ hemispheric_brain_t* genius_hemispheric_brain_create(genius_type_t type) {
      */
     (void)profile;  /* Silence unused warning - profile was used for KG metadata */
 
-    NIMCP_LOGGING_INFO("Created hemispheric genius brain: %s (lat: lang=%.2f, spatial=%.2f)",
+    NIMCP_LOGGING_INFO("Created hemispheric genius brain: %s (lat: lang=%.2f, spatial=%.2f, test_mode=%s)",
                        genius_type_name(type),
                        profile->lateralization.language_dominance,
-                       profile->lateralization.spatial_dominance);
+                       profile->lateralization.spatial_dominance,
+                       test_mode ? "true" : "false");
 
     return hemi_brain;
 }

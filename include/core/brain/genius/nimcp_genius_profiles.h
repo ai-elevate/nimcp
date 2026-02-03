@@ -236,6 +236,13 @@ typedef struct {
 
     /* Quantum */
     bool enable_quantum_optimization;       /**< Enable quantum algorithms */
+
+    /* Test Mode - Fast Brain Creation */
+    bool test_mode;                         /**< Enable fast brain creation for tests.
+                                                 When true, enables lazy initialization
+                                                 of heavy subsystems (5-10x faster).
+                                                 Skips: ethics, ToM, perception, glial,
+                                                 neuromod, cortical columns, etc. */
 } genius_profiles_config_t;
 
 /**
@@ -882,6 +889,20 @@ genius_error_t genius_profiles_quantum_optimize(
 brain_t genius_brain_create(genius_type_t type);
 
 /**
+ * @brief Create brain with genius profile (extended version)
+ *
+ * Creates a new brain instance configured with the specified genius profile.
+ * Supports test_mode for faster brain creation via lazy initialization.
+ *
+ * @param type Genius type
+ * @param test_mode When true, enables lazy initialization of heavy subsystems
+ *                  (5-10x faster creation). Skips: ethics, ToM, perception,
+ *                  glial networks, neuromodulators, cortical columns, etc.
+ * @return Brain instance or NULL on failure
+ */
+brain_t genius_brain_create_ex(genius_type_t type, bool test_mode);
+
+/**
  * @brief Create hemispheric brain with genius profile
  *
  * Creates a two-hemisphere brain with lateralization configured
@@ -891,6 +912,21 @@ brain_t genius_brain_create(genius_type_t type);
  * @return Hemispheric brain instance or NULL on failure
  */
 hemispheric_brain_t* genius_hemispheric_brain_create(genius_type_t type);
+
+/**
+ * @brief Create hemispheric brain with genius profile (extended version)
+ *
+ * Creates a two-hemisphere brain with lateralization configured
+ * according to the genius profile. Supports test_mode for faster creation.
+ *
+ * @param type Genius type
+ * @param test_mode When true, uses smaller brain size for faster creation.
+ *                  Note: Full lazy initialization is not yet supported for
+ *                  hemispheric brains. Use genius_brain_create_ex() for full
+ *                  lazy init support with standard brains.
+ * @return Hemispheric brain instance or NULL on failure
+ */
+hemispheric_brain_t* genius_hemispheric_brain_create_ex(genius_type_t type, bool test_mode);
 
 /* ============================================================================
  * UTILITY FUNCTIONS
