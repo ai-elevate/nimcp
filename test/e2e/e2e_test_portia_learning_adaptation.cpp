@@ -369,7 +369,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, AdaptiveResponseImprovement) {
         .allowed_modes = LEARNING_MODE_FULL,
         .max_habituation_entries = 100,
         .max_association_entries = 100,
-        .default_learning_rate = 0.2f,
+        .default_learning_rate = 0.03f,
         .default_forgetting_rate = 0.005f,
         .consolidation_interval_ms = 2000,
         .habituation_threshold = 0.1f,
@@ -402,7 +402,12 @@ TEST_F(PortiaLearningAdaptationE2ETest, AdaptiveResponseImprovement) {
                                           true, timestamp);
 
                 // Reinforce with varying reward
-                float reward = 0.8f + (stim * 0.1f);
+                // BUG FIX: Use small rewards (0.02-0.04) so strength doesn't instantly
+                // saturate to 1.0. The portia_learning_reinforce function adds the full
+                // reward value directly to association_strength. With rewards of 0.8+,
+                // strength hits 1.0 after just 1 episode, leaving no room to measure
+                // improvement. Small rewards allow gradual improvement over 30 episodes.
+                float reward = 0.02f + (stim * 0.005f);
                 portia_learning_reinforce(learning_state_, stimulus_id, response_id,
                                           reward, timestamp);
             }

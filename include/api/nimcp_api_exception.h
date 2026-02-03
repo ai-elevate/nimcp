@@ -285,7 +285,7 @@ extern "C" {
     do { \
         if (!(validation_passed)) { \
             LOG_WARN("BBB rejected input: %s", (result).reason); \
-            NIMCP_THROW_SECURITY(NIMCP_ERROR_BBB_REJECTED, "BBB", \
+            NIMCP_THROW_SECURITY(NIMCP_ERROR_BBB_REJECTED, (uint32_t)(result).threat, \
                                 "BBB rejected input: %s", (result).reason); \
             NIMCP_API_SET_ERROR("BBB rejected: %s", (result).reason); \
             return (code); \

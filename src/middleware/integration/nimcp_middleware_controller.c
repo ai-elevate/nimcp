@@ -1040,32 +1040,63 @@ void middleware_controller_on_pattern_match(
     if (controller == NULL) return;
     if (!controller->config.enable_pattern_notifications) return;
 
+    /* BUG FIX: Collect all matching callbacks while holding lock to prevent
+     * use-after-free race condition. Previously, unlocking during the loop
+     * allowed another thread to unsubscribe and free user_data while the
+     * callback was being invoked.
+     *
+     * Pattern: Snapshot-then-invoke
+     * 1. Hold lock while collecting matching subscriptions
+     * 2. Release lock before invoking callbacks (prevents deadlock)
+     * 3. Reacquire lock to update metrics
+     */
+    typedef struct {
+        pattern_match_callback_t callback;
+        void* user_data;
+        uint32_t index;  /* For updating notifications_sent after */
+    } pending_callback_t;
+
+    pending_callback_t pending[MIDDLEWARE_CTRL_MAX_SUBSCRIPTIONS];
+    uint32_t pending_count = 0;
+
     nimcp_mutex_lock(&controller->mutex);
 
-    /* Find matching subscriptions and fire callbacks */
+    /* Phase 1: Collect matching subscriptions (under lock) */
     for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
         pattern_subscription_t* sub = &controller->subscriptions[i];
 
         if (sub->active &&
             sub->pattern_id == pattern_id &&
-            similarity >= sub->confidence_threshold) {
+            similarity >= sub->confidence_threshold &&
+            sub->callback != NULL) {
 
-            /* Fire callback (outside mutex to prevent deadlock) */
-            pattern_match_callback_t cb = sub->callback;
-            void* user_data = sub->user_data;
-
-            nimcp_mutex_unlock(&controller->mutex);
-
-            if (cb != NULL) {
-                cb(pattern_id, similarity, region_id, user_data);
-            }
-
-            nimcp_mutex_lock(&controller->mutex);
-
-            sub->notifications_sent++;
-            controller->metrics.pattern_notifications_sent++;
+            pending[pending_count].callback = sub->callback;
+            pending[pending_count].user_data = sub->user_data;
+            pending[pending_count].index = i;
+            pending_count++;
         }
     }
 
     nimcp_mutex_unlock(&controller->mutex);
+
+    /* Phase 2: Fire callbacks (outside lock to prevent deadlock) */
+    for (uint32_t i = 0; i < pending_count; i++) {
+        pending[i].callback(pattern_id, similarity, region_id, pending[i].user_data);
+    }
+
+    /* Phase 3: Update metrics (under lock) */
+    if (pending_count > 0) {
+        nimcp_mutex_lock(&controller->mutex);
+
+        for (uint32_t i = 0; i < pending_count; i++) {
+            /* Re-check that subscription is still active before updating */
+            pattern_subscription_t* sub = &controller->subscriptions[pending[i].index];
+            if (sub->active) {
+                sub->notifications_sent++;
+            }
+        }
+        controller->metrics.pattern_notifications_sent += pending_count;
+
+        nimcp_mutex_unlock(&controller->mutex);
+    }
 }

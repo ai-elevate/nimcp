@@ -30,6 +30,11 @@ protected:
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         bio_config.enable_logging = false;
         bio_config.enable_statistics = true;
+        // BUG FIX: Enable simulation time mode so nimcp_bio_async_step() affects
+        // concentration decay calculations in ConfidenceDecaysOverTime test.
+        // With use_real_time=true (default), step() advances simulation_time_ms
+        // but bio_time_ms() returns wall-clock time, so decay isn't affected.
+        bio_config.use_real_time = false;
         nimcp_error_t err = nimcp_bio_async_init(&bio_config);
         ASSERT_EQ(err, NIMCP_SUCCESS) << "Failed to initialize bio-async";
 

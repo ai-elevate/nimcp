@@ -585,6 +585,23 @@ neuromodulator_system_t brain_get_neuromodulator_system(brain_t brain)
     return brain->neuromodulator_system;
 }
 
+/**
+ * WHAT: Get brain regions module from brain
+ * WHY:  Middleware and other subsystems need access to brain region hierarchy
+ * HOW:  Returns pointer to brain_module_t, no COW needed (per-brain state)
+ *
+ * SAFETY: Brain regions module is not shared (unlike network), so no COW needed
+ */
+struct brain_module_struct* brain_get_brain_regions(brain_t brain)
+{
+    if (!brain) {
+        set_error("NULL brain passed to brain_get_brain_regions");
+        return NULL;
+    }
+
+    return brain->brain_regions;
+}
+
 //=============================================================================
 // Size Presets - Builder Helpers
 //=============================================================================

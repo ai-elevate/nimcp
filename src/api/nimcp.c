@@ -505,7 +505,11 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 }
 
 nimcp_brain_t nimcp_brain_load(const char* filepath) {
-    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
+        set_error("Filepath is NULL");
+        return NULL;
+    }
 
     // Allocate handle
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));

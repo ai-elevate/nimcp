@@ -128,7 +128,7 @@ TEST_F(PortiaLearningCapacityTest, LearningUnderMemoryPressure) {
 }
 
 TEST_F(PortiaLearningCapacityTest, ForgettingRateAccurate) {
-    // Create entries
+    // Create habituation entries - repeated exposure reduces response strength
     for (uint32_t i = 0; i < 10; i++) {
         portia_learning_habituate(state, i, 0);
     }
@@ -137,6 +137,9 @@ TEST_F(PortiaLearningCapacityTest, ForgettingRateAccurate) {
     float strength_before = stats_before.avg_habituation_strength;
 
     // Apply forgetting multiple times
+    // Note: In the habituation model, "forgetting" means decaying back toward
+    // baseline response (1.0). Habituation reduces response (strength < 1.0),
+    // so forgetting the habituation increases strength back toward 1.0.
     for (int i = 0; i < 10; i++) {
         portia_learning_forget(state, i * 1000);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -145,11 +148,10 @@ TEST_F(PortiaLearningCapacityTest, ForgettingRateAccurate) {
     portia_learning_stats_t stats_after = portia_learning_get_stats(state);
     float strength_after = stats_after.avg_habituation_strength;
 
-    // Forgetting behavior is implementation-dependent
-    // Some implementations may use time-based decay that requires actual time passing
-    // Key test is that the system handles forgetting calls without crashing
-    EXPECT_LE(strength_after, strength_before)
-        << "Forgetting increased strength unexpectedly";
+    // Forgetting habituation should increase strength toward baseline (1.0)
+    // since habituation = reduced response, forgetting = returning to baseline
+    EXPECT_GE(strength_after, strength_before)
+        << "Forgetting should decay habituation toward baseline (increase strength)";
 
     std::cout << "Strength before: " << strength_before
               << ", after: " << strength_after << "\n";

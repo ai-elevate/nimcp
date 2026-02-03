@@ -385,8 +385,9 @@ TEST_F(PortiaTierSwitchStabilityTest, EmergencyDowngradeSpeed) {
     // Verify tier was downgraded (emergency_mode may or may not be set depending on implementation)
     tier_switch_state_t state;
     portia_tier_switch_get_state(switcher, &state);
-    // Check that we've moved to a lower tier (higher enum value = worse tier)
-    EXPECT_GT(state.current_tier, PLATFORM_TIER_FULL)
+    // Check that we've moved to a lower tier (lower enum value = reduced capabilities)
+    // Note: PLATFORM_TIER_BASIC=0, PLATFORM_TIER_FULL=4, so downgrade means smaller number
+    EXPECT_LT(state.current_tier, PLATFORM_TIER_FULL)
         << "Emergency downgrade should have reduced tier";
 }
 

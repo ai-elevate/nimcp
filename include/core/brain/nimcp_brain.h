@@ -90,6 +90,10 @@ typedef struct global_workspace_struct* global_workspace_t;  // Opaque pointer
 // Neuromodulator System (for mental health interventions)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
 
+// Brain Regions Module (for brain region hierarchy with cortical layers)
+// Forward-declared as opaque struct pointer for accessor function
+struct brain_module_struct;
+
 // Phase 9.4: Symbolic Logic & Reasoning
 typedef struct symbolic_logic symbolic_logic_t;
 
@@ -3442,6 +3446,18 @@ adaptive_network_t brain_get_network(brain_t brain);
  * @return Neuromodulator system handle (do not free!), or NULL if not initialized
  */
 neuromodulator_system_t brain_get_neuromodulator_system(brain_t brain);
+
+/**
+ * @brief Get brain regions module from brain
+ *
+ * WHAT: Accessor for brain's modular region hierarchy
+ * WHY:  Middleware and subsystems need access to brain region structure
+ * HOW:  Returns pointer to brain_module_t (NULL if not initialized)
+ *
+ * @param brain Brain handle
+ * @return Brain module handle (do not free!), or NULL if not initialized
+ */
+struct brain_module_struct* brain_get_brain_regions(brain_t brain);
 
 //=============================================================================
 // Phase 8: Unified Multi-Modal Processing API
