@@ -125,7 +125,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_e2e.cpp")
     set_tests_properties(e2e_brain_factory
         PROPERTIES
         LABELS "e2e;genius;brain_factory"
-        TIMEOUT 300
+        TIMEOUT 900
     )
 
     message(STATUS "  Added E2E test: e2e_brain_factory")

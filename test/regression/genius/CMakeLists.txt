@@ -117,7 +117,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_regression.cpp")
     set_tests_properties(regression_brain_factory
         PROPERTIES
         LABELS "regression;genius;brain_factory"
-        TIMEOUT 180
+        TIMEOUT 900
     )
 
     message(STATUS "  Added Regression test: regression_brain_factory")

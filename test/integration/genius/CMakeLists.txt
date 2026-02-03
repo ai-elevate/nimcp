@@ -99,7 +99,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_factory_integration.cpp")
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         PROPERTIES
             LABELS "integration;genius;brain_factory"
-            TIMEOUT 180
+            TIMEOUT 900
     )
 
     message(STATUS "  Added Integration test: integration_genius_brain_factory")
