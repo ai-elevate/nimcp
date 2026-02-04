@@ -472,6 +472,48 @@ void sat_solver_print(const sat_solver_t* solver);
  */
 void sat_solver_print_stats(const sat_stats_t* stats);
 
+/* ============================================================================
+ * BBB Integration API
+ * ============================================================================ */
+
+/**
+ * Forward declaration for BBB system
+ */
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/**
+ * @brief Set BBB system for SAT solver validation
+ *
+ * WHAT: Configure BBB for clause and constraint validation
+ * WHY:  Prevent malicious constraint injection
+ *
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void sat_solver_set_bbb(bbb_system_t bbb);
+
+/**
+ * @brief Get current BBB system for SAT solver
+ *
+ * @return BBB system or NULL
+ */
+bbb_system_t sat_solver_get_bbb(void);
+
+/**
+ * @brief Set health agent for SAT solver heartbeats
+ *
+ * WHAT: Configure health monitoring for long-running SAT solving
+ * WHY:  Enable timeout/watchdog for computationally intensive solves
+ *
+ * @param agent Health agent (can be NULL to disable)
+ */
+void sat_solver_set_health_agent(nimcp_health_agent_t* agent);
+
 #ifdef __cplusplus
 }
 #endif

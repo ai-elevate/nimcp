@@ -678,6 +678,45 @@ nimcp_error_t mesh_channel_manager_create_standard_channels(
 );
 
 /* ============================================================================
+ * BBB Integration API
+ * ============================================================================ */
+
+/**
+ * Forward declaration for BBB system
+ */
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/**
+ * @brief Set BBB system for mesh channel validation
+ *
+ * WHAT: Configure BBB for belief validation
+ * WHY:  Prevent malicious data injection via beliefs
+ *
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void mesh_channel_set_bbb(bbb_system_t bbb);
+
+/**
+ * @brief Get current BBB system for mesh channel
+ *
+ * @return BBB system or NULL
+ */
+bbb_system_t mesh_channel_get_bbb(void);
+
+/**
+ * @brief Set health agent for mesh channel heartbeats
+ *
+ * @param agent Health agent (can be NULL to disable)
+ */
+void mesh_channel_set_health_agent(nimcp_health_agent_t* agent);
+
+/* ============================================================================
  * Utility Functions
  * ============================================================================ */
 

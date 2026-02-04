@@ -122,3 +122,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_plasticity_anomaly_detectio
 # Fault Tolerance Exception Handling Tests (NIMCP_THROW_TO_IMMUNE)
 add_fault_tolerance_test(test_fault_tolerance_exception)
 set_tests_properties(unit_utils_fault_tolerance_test_fault_tolerance_exception PROPERTIES TIMEOUT 120)
+
+# Health Agent Macros Tests (P0-P2 fixes: NIMCP_DECLARE_HEALTH_AGENT macro validation)
+add_fault_tolerance_test(test_health_agent_macros)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_macros PROPERTIES TIMEOUT 60)

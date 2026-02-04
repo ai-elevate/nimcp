@@ -1,4 +1,3 @@
-#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_portia.c - Portia Spider Adaptive Intelligence Implementation
 //=============================================================================
@@ -25,6 +24,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -37,29 +37,7 @@
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for portia module */
-static nimcp_health_agent_t* g_portia_health_agent = NULL;
-
-/**
- * @brief Set health agent for portia heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void portia_set_health_agent(nimcp_health_agent_t* agent) {
-    g_portia_health_agent = agent;
-}
-
-/** @brief Send heartbeat from portia module */
-static inline void portia_heartbeat(const char* operation, float progress) {
-    if (g_portia_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_portia_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT(portia)
 
 
 //=============================================================================

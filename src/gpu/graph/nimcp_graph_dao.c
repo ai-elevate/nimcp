@@ -14,6 +14,8 @@
 #include "gpu/graph/nimcp_graph_dao.h"
 #include "gpu/graph/nimcp_graph_gpu.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -96,7 +98,7 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
         return NULL;
     }
 
-    nimcp_gpu_graph_dao_t* dao = (nimcp_gpu_graph_dao_t*)calloc(
+    nimcp_gpu_graph_dao_t* dao = (nimcp_gpu_graph_dao_t*)nimcp_calloc(
         1, sizeof(nimcp_gpu_graph_dao_t));
     if (!dao) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao is NULL");
@@ -120,19 +122,19 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
     dao->cache_size = (cache_size > 0) ? cache_size : NIMCP_DAO_DEFAULT_CACHE_SIZE;
     dao->host_cache = lru_cache_create(dao->cache_size);
     if (!dao->host_cache) {
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
 
     // Initialize GPU storage
     dao->gpu_capacity = NIMCP_DAO_DEFAULT_GPU_CAPACITY;
-    dao->gpu_storage = (void**)calloc(dao->gpu_capacity, sizeof(void*));
-    dao->gpu_ids = (int*)calloc(dao->gpu_capacity, sizeof(int));
+    dao->gpu_storage = (void**)nimcp_calloc(dao->gpu_capacity, sizeof(void*));
+    dao->gpu_ids = (int*)nimcp_calloc(dao->gpu_capacity, sizeof(int));
     if (!dao->gpu_storage || !dao->gpu_ids) {
         lru_cache_destroy(dao->host_cache);
-        free(dao->gpu_storage);
-        free(dao->gpu_ids);
-        free(dao);
+        nimcp_free(dao->gpu_storage);
+        nimcp_free(dao->gpu_ids);
+        nimcp_free(dao);
         return NULL;
     }
 
@@ -145,11 +147,11 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
     dao->next_id = 1;
 
     // Initialize mutex
-    if (pthread_mutex_init(&dao->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&dao->lock, NULL) != NIMCP_SUCCESS) {
         lru_cache_destroy(dao->host_cache);
-        free(dao->gpu_storage);
-        free(dao->gpu_ids);
-        free(dao);
+        nimcp_free(dao->gpu_storage);
+        nimcp_free(dao->gpu_ids);
+        nimcp_free(dao);
         return NULL;
     }
 
@@ -166,12 +168,12 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_hybrid(
 
     if (dao && gpu_capacity > 0) {
         // Reallocate GPU storage with custom capacity
-        free(dao->gpu_storage);
-        free(dao->gpu_ids);
+        nimcp_free(dao->gpu_storage);
+        nimcp_free(dao->gpu_ids);
 
         dao->gpu_capacity = gpu_capacity;
-        dao->gpu_storage = (void**)calloc(gpu_capacity, sizeof(void*));
-        dao->gpu_ids = (int*)calloc(gpu_capacity, sizeof(int));
+        dao->gpu_storage = (void**)nimcp_calloc(gpu_capacity, sizeof(void*));
+        dao->gpu_ids = (int*)nimcp_calloc(gpu_capacity, sizeof(int));
 
         if (!dao->gpu_storage || !dao->gpu_ids) {
             nimcp_graph_dao_destroy(dao);
@@ -192,7 +194,7 @@ void nimcp_graph_dao_destroy(nimcp_gpu_graph_dao_t* dao)
         return;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Free GPU-resident graphs
     for (size_t i = 0; i < dao->gpu_capacity; i++) {
@@ -201,17 +203,17 @@ void nimcp_graph_dao_destroy(nimcp_gpu_graph_dao_t* dao)
         }
     }
 
-    free(dao->gpu_storage);
-    free(dao->gpu_ids);
+    nimcp_free(dao->gpu_storage);
+    nimcp_free(dao->gpu_ids);
 
     if (dao->host_cache) {
         lru_cache_destroy(dao->host_cache);
     }
 
-    pthread_mutex_unlock(&dao->lock);
-    pthread_mutex_destroy(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
+    nimcp_mutex_destroy(&dao->lock);
 
-    free(dao);
+    nimcp_free(dao);
 }
 
 //=============================================================================
@@ -226,7 +228,7 @@ int nimcp_graph_dao_create(
         return -1;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Allocate ID
     int id = dao->next_id++;
@@ -243,12 +245,12 @@ int nimcp_graph_dao_create(
     } else {
         // Store in cache only
         if (!lru_cache_put(dao->host_cache, id, graph)) {
-            pthread_mutex_unlock(&dao->lock);
+            nimcp_mutex_unlock(&dao->lock);
             return -1;
         }
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return id;
 }
 
@@ -263,14 +265,14 @@ nimcp_error_t nimcp_graph_dao_read(
 
     *out_graph = NULL;
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Check cache first
     nimcp_graph_cache_entry_t* entry = lru_cache_get(dao->host_cache, id);
     if (entry) {
         *out_graph = (nimcp_gpu_graph_t*)entry->graph_data;
         dao->host_cache->hits++;
-        pthread_mutex_unlock(&dao->lock);
+        nimcp_mutex_unlock(&dao->lock);
         return NIMCP_SUCCESS;
     }
 
@@ -284,11 +286,11 @@ nimcp_error_t nimcp_graph_dao_read(
         // Add to cache for faster future access
         lru_cache_put(dao->host_cache, id, *out_graph);
 
-        pthread_mutex_unlock(&dao->lock);
+        nimcp_mutex_unlock(&dao->lock);
         return NIMCP_SUCCESS;
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -301,7 +303,7 @@ nimcp_error_t nimcp_graph_dao_update(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Update in GPU storage
     int slot = find_gpu_slot(dao, id);
@@ -326,11 +328,11 @@ nimcp_error_t nimcp_graph_dao_update(
         entry->dirty = true;
     } else if (slot < 0) {
         // Not in GPU storage or cache - create new entry
-        pthread_mutex_unlock(&dao->lock);
+        nimcp_mutex_unlock(&dao->lock);
         return NIMCP_ERROR_NOT_FOUND;
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return NIMCP_SUCCESS;
 }
 
@@ -342,7 +344,7 @@ nimcp_error_t nimcp_graph_dao_delete(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     bool found = false;
 
@@ -366,7 +368,7 @@ nimcp_error_t nimcp_graph_dao_delete(
         found = true;
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return found ? NIMCP_SUCCESS : NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -733,7 +735,7 @@ size_t nimcp_graph_dao_find(
         return nimcp_graph_dao_list_ids(dao, out_ids, max_results);
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     size_t count = 0;
 
@@ -747,7 +749,7 @@ size_t nimcp_graph_dao_find(
         }
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return count;
 }
 
@@ -764,13 +766,13 @@ size_t nimcp_graph_dao_count(
 
     // If no valid filter, return total count
     if (!filter || filter[0] == '\0' || !cond.valid) {
-        pthread_mutex_lock(&dao->lock);
+        nimcp_mutex_lock(&dao->lock);
         size_t count = dao->gpu_count + (dao->host_cache ? dao->host_cache->count : 0);
-        pthread_mutex_unlock(&dao->lock);
+        nimcp_mutex_unlock(&dao->lock);
         return count;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     size_t count = 0;
 
@@ -784,7 +786,7 @@ size_t nimcp_graph_dao_count(
         }
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return count;
 }
 
@@ -798,13 +800,13 @@ nimcp_error_t nimcp_graph_dao_sync_to_gpu(nimcp_gpu_graph_dao_t* dao)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Sync dirty cache entries to GPU
     // This would involve copying modified graphs from host to device
     // Implementation depends on how graph data is structured
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return NIMCP_SUCCESS;
 }
 
@@ -814,13 +816,13 @@ nimcp_error_t nimcp_graph_dao_sync_from_gpu(nimcp_gpu_graph_dao_t* dao)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Sync GPU graphs to host cache
     // This would involve copying graph data from device to host
     // Implementation depends on how graph data is structured
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return NIMCP_SUCCESS;
 }
 
@@ -876,7 +878,7 @@ nimcp_error_t nimcp_graph_dao_cache_clear(
         }
     }
 
-    pthread_mutex_lock(&dao->lock);
+    nimcp_mutex_lock(&dao->lock);
 
     // Clear cache entries (don't free graphs that are in GPU storage)
     while (dao->host_cache->count > 0) {
@@ -888,11 +890,11 @@ nimcp_error_t nimcp_graph_dao_cache_clear(
                 // Not in GPU storage, safe to free
                 nimcp_gpu_graph_destroy((nimcp_gpu_graph_t*)entry->graph_data);
             }
-            free(entry);
+            nimcp_free(entry);
         }
     }
 
-    pthread_mutex_unlock(&dao->lock);
+    nimcp_mutex_unlock(&dao->lock);
     return NIMCP_SUCCESS;
 }
 
@@ -929,7 +931,7 @@ bool nimcp_graph_dao_exists(
     }
 
     nimcp_gpu_graph_dao_t* mut_dao = (nimcp_gpu_graph_dao_t*)dao;
-    pthread_mutex_lock(&mut_dao->lock);
+    nimcp_mutex_lock(&mut_dao->lock);
 
     bool exists = false;
 
@@ -943,7 +945,7 @@ bool nimcp_graph_dao_exists(
         exists = (slot >= 0);
     }
 
-    pthread_mutex_unlock(&mut_dao->lock);
+    nimcp_mutex_unlock(&mut_dao->lock);
     return exists;
 }
 
@@ -976,7 +978,7 @@ size_t nimcp_graph_dao_list_ids(
     }
 
     nimcp_gpu_graph_dao_t* mut_dao = (nimcp_gpu_graph_dao_t*)dao;
-    pthread_mutex_lock(&mut_dao->lock);
+    nimcp_mutex_lock(&mut_dao->lock);
 
     size_t count = 0;
 
@@ -987,7 +989,7 @@ size_t nimcp_graph_dao_list_ids(
         }
     }
 
-    pthread_mutex_unlock(&mut_dao->lock);
+    nimcp_mutex_unlock(&mut_dao->lock);
     return count;
 }
 
@@ -1057,7 +1059,7 @@ static int dao_sync_from_gpu_impl(void* dao)
 
 static nimcp_graph_lru_cache_t* lru_cache_create(size_t capacity)
 {
-    nimcp_graph_lru_cache_t* cache = (nimcp_graph_lru_cache_t*)calloc(
+    nimcp_graph_lru_cache_t* cache = (nimcp_graph_lru_cache_t*)nimcp_calloc(
         1, sizeof(nimcp_graph_lru_cache_t));
     if (!cache) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache is NULL");
@@ -1065,10 +1067,10 @@ static nimcp_graph_lru_cache_t* lru_cache_create(size_t capacity)
         return NULL;
     }
 
-    cache->entries = (nimcp_graph_cache_entry_t**)calloc(
+    cache->entries = (nimcp_graph_cache_entry_t**)nimcp_calloc(
         HASH_TABLE_SIZE, sizeof(nimcp_graph_cache_entry_t*));
     if (!cache->entries) {
-        free(cache);
+        nimcp_free(cache);
         return NULL;
     }
 
@@ -1093,12 +1095,12 @@ static void lru_cache_destroy(nimcp_graph_lru_cache_t* cache)
     while (entry) {
         nimcp_graph_cache_entry_t* next = entry->next;
         // Don't free graph_data here - it may be shared with GPU storage
-        free(entry);
+        nimcp_free(entry);
         entry = next;
     }
 
-    free(cache->entries);
-    free(cache);
+    nimcp_free(cache->entries);
+    nimcp_free(cache);
 }
 
 static int hash_id(int id)
@@ -1148,12 +1150,12 @@ static bool lru_cache_put(nimcp_graph_lru_cache_t* cache, int id, void* data)
         nimcp_graph_cache_entry_t* evicted = lru_cache_evict(cache);
         if (evicted) {
             // Note: caller is responsible for freeing graph_data if needed
-            free(evicted);
+            nimcp_free(evicted);
         }
     }
 
     // Create new entry
-    nimcp_graph_cache_entry_t* entry = (nimcp_graph_cache_entry_t*)calloc(
+    nimcp_graph_cache_entry_t* entry = (nimcp_graph_cache_entry_t*)nimcp_calloc(
         1, sizeof(nimcp_graph_cache_entry_t));
     if (!entry) {
         return false;
@@ -1221,7 +1223,7 @@ static void lru_cache_remove(nimcp_graph_lru_cache_t* cache, int id)
             }
 
             cache->count--;
-            free(entry);
+            nimcp_free(entry);
             return;
         }
         prev = entry;

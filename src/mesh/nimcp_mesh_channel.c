@@ -14,14 +14,87 @@
 #include "mesh/nimcp_mesh_channel.h"
 #include "swarm/nimcp_collective_workspace.h"
 #include "core/brain/nimcp_kg_module_wiring.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdatomic.h>
+
+/* ============================================================================
+ * BBB Integration for Mesh Channel
+ * ============================================================================ */
+
+/** Global BBB system for mesh channel module - thread-safe access */
+static _Atomic(bbb_system_t) g_mesh_channel_bbb = NULL;
+
+/* Health agent boilerplate - thread-safe for mesh module */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mesh_channel)
+
+/**
+ * @brief Set BBB system for mesh channel validation
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void mesh_channel_set_bbb(bbb_system_t bbb) {
+    atomic_store(&g_mesh_channel_bbb, bbb);
+}
+
+/**
+ * @brief Get current BBB system for mesh channel
+ * @return BBB system or NULL
+ */
+bbb_system_t mesh_channel_get_bbb(void) {
+    return atomic_load(&g_mesh_channel_bbb);
+}
+
+/**
+ * @brief Validate belief data using BBB before processing
+ *
+ * WHAT: Validate incoming belief data for security threats
+ * WHY:  Prevent malicious data injection via beliefs
+ * HOW:  Use BBB input validation on belief content
+ *
+ * @param belief Belief to validate
+ * @return true if valid, false if threat detected
+ */
+static bool validate_belief_bbb(const mesh_belief_t* belief) {
+    if (!belief) return false;
+
+    bbb_system_t bbb = atomic_load(&g_mesh_channel_bbb);
+    if (!bbb) return true;  /* BBB not configured, allow */
+
+    bbb_validation_result_t result;
+
+    /* Validate belief vector data */
+    bool valid = bbb_validate_input(
+        bbb,
+        belief->belief_vector,
+        belief->vector_dim * sizeof(float),
+        &result
+    );
+
+    if (!valid) {
+        LOG_WARN("BBB rejected belief %u from source 0x%lx: %s (threat=%s, severity=%s)",
+                 belief->belief_id,
+                 (unsigned long)belief->source,
+                 result.reason,
+                 bbb_threat_type_name(result.threat),
+                 bbb_severity_name(result.severity));
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected incoming belief data");
+        return false;
+    }
+
+    return true;
+}
 
 /* ============================================================================
  * Internal Structures
@@ -898,6 +971,13 @@ nimcp_error_t mesh_channel_introduce_belief(
     if (!validate_channel(channel)) return NIMCP_ERROR_INVALID_PARAM;
     if (!belief) return NIMCP_ERROR_NULL_POINTER;
 
+    /* BBB validation of incoming belief data */
+    if (!validate_belief_bbb(belief)) {
+        LOG_ERROR("Rejecting belief %u from source 0x%lx - BBB validation failed",
+                  belief->belief_id, (unsigned long)belief->source);
+        return NIMCP_ERROR_BBB_VALIDATION;
+    }
+
     nimcp_mutex_lock(channel->mutex);
 
     /* Check capacity */
@@ -929,9 +1009,18 @@ nimcp_error_t mesh_channel_gossip_round(mesh_channel_t* channel) {
 
     nimcp_mutex_lock(channel->mutex);
 
+    /* Send heartbeat at start of gossip round */
+    mesh_channel_heartbeat("gossip_round", 0.0f);
+
     /* Simplified gossip: propagate beliefs to world state */
     for (size_t i = 0; i < channel->belief_count; i++) {
         mesh_belief_t* belief = &channel->beliefs[i];
+
+        /* Periodic heartbeat during long gossip iterations */
+        if (i > 0 && (i % 100) == 0) {
+            float progress = (float)i / (float)channel->belief_count;
+            mesh_channel_heartbeat("gossip_propagate", progress);
+        }
 
         /* Add belief to world state as item */
         collective_workspace_item_t item;

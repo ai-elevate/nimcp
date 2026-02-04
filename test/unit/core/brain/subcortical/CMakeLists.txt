@@ -121,3 +121,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bg_vigor.cpp
     unit
 )
+
+# Test: Subcortical KG Wiring Tests (hippocampus, amygdala node registration)
+add_test_binary(
+    unit_core_brain_subcortical_kg_wiring_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_subcortical_kg_wiring.cpp
+    unit
+)

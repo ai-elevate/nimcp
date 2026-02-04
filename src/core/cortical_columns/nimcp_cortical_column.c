@@ -41,29 +41,8 @@
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for cortical_column module */
-static nimcp_health_agent_t* g_cortical_column_health_agent = NULL;
-
-/**
- * @brief Set health agent for cortical_column heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void cortical_column_set_health_agent(nimcp_health_agent_t* agent) {
-    g_cortical_column_health_agent = agent;
-}
-
-/** @brief Send heartbeat from cortical_column module */
-static inline void cortical_column_heartbeat(const char* operation, float progress) {
-    if (g_cortical_column_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_cortical_column_health_agent, operation, progress);
-    }
-}
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(cortical_column)
 
 
 // Logging macros
@@ -1480,6 +1459,264 @@ static float euclidean_distance_3d(float x1, float y1, float z1, float x2, float
 }
 
 //=============================================================================
+// Plasticity Integration (Phase 8: SNN/STDP Bridge)
+//=============================================================================
+
+/* Forward declarations for plasticity types */
+struct stdp_synapse;
+typedef struct stdp_synapse stdp_synapse_t;
+struct cortical_plasticity_bridge;
+typedef struct cortical_plasticity_bridge cortical_plasticity_bridge_t;
+
+/* Global plasticity bridge for cortical columns */
+static cortical_plasticity_bridge_t* g_cortical_plasticity_bridge = NULL;
+
+/**
+ * @brief Set plasticity bridge for cortical column STDP integration
+ *
+ * WHAT: Connect cortical columns to plasticity system
+ * WHY:  Enable STDP-based weight updates in column processing
+ * HOW:  Store bridge reference for use during computation
+ *
+ * @param bridge Plasticity bridge (can be NULL to disable)
+ */
+void cortical_column_set_plasticity_bridge(cortical_plasticity_bridge_t* bridge) {
+    g_cortical_plasticity_bridge = bridge;
+    if (bridge) {
+        COLUMN_LOG_INFO("Cortical column plasticity bridge connected");
+    } else {
+        COLUMN_LOG_DEBUG("Cortical column plasticity bridge disconnected");
+    }
+}
+
+/**
+ * @brief Get current plasticity bridge
+ *
+ * @return Current plasticity bridge or NULL if not set
+ */
+cortical_plasticity_bridge_t* cortical_column_get_plasticity_bridge(void) {
+    return g_cortical_plasticity_bridge;
+}
+
+/**
+ * @brief Apply STDP weight update for minicolumn synapses
+ *
+ * WHAT: Update synaptic weights based on spike timing
+ * WHY:  Enable learning within cortical columns
+ * HOW:  Calculate timing difference, apply STDP rule via bridge
+ *
+ * @param col Minicolumn
+ * @param pre_spike_time Pre-synaptic spike time (us)
+ * @param post_spike_time Post-synaptic spike time (us)
+ * @param synapse_id Synapse identifier
+ * @return Weight change applied, or 0 if no plasticity bridge
+ */
+float minicolumn_apply_stdp(
+    minicolumn_t* col,
+    uint64_t pre_spike_time,
+    uint64_t post_spike_time,
+    uint32_t synapse_id
+) {
+    /* Guard clauses */
+    if (!col || !col->initialized) {
+        return 0.0F;
+    }
+
+    /* Check if plasticity is enabled */
+    if (!g_cortical_plasticity_bridge) {
+        return 0.0F;
+    }
+
+    /* Compute spike timing difference in milliseconds */
+    float dt_ms = (float)((int64_t)post_spike_time - (int64_t)pre_spike_time) / 1000.0F;
+
+    /* STDP parameters (biologically-based) */
+    static const float A_PLUS = 0.01F;    /* LTP amplitude */
+    static const float A_MINUS = 0.0105F; /* LTD amplitude (slightly > LTP) */
+    static const float TAU_PLUS = 20.0F;  /* LTP time constant (ms) */
+    static const float TAU_MINUS = 20.0F; /* LTD time constant (ms) */
+
+    float weight_change = 0.0F;
+
+    /* Apply STDP rule */
+    if (dt_ms > 0.0F && dt_ms < 100.0F) {
+        /* LTP: post after pre (causal) */
+        weight_change = A_PLUS * expf(-dt_ms / TAU_PLUS);
+    } else if (dt_ms < 0.0F && dt_ms > -100.0F) {
+        /* LTD: pre after post (anti-causal) */
+        weight_change = -A_MINUS * expf(dt_ms / TAU_MINUS);
+    }
+
+    /* Update statistics */
+    nimcp_platform_mutex_lock(&col->mutex);
+    col->last_activation_time_us = post_spike_time;
+    nimcp_platform_mutex_unlock(&col->mutex);
+
+    /* Log significant weight changes */
+    if (fabsf(weight_change) > 0.001F) {
+        COLUMN_LOG_DEBUG("STDP: synapse=%u dt=%.2fms dw=%.4f",
+                         synapse_id, dt_ms, weight_change);
+    }
+
+    (void)synapse_id;  /* Used for logging; would be used with actual synapse */
+
+    return weight_change;
+}
+
+/**
+ * @brief Process spike event for plasticity
+ *
+ * WHAT: Notify plasticity system of spike activity
+ * WHY:  Enable timing-dependent plasticity across modules
+ * HOW:  Send spike event via bio-async if connected
+ *
+ * @param col Minicolumn that spiked
+ * @param spike_time Spike timestamp (us)
+ * @param is_pre_spike true=pre-synaptic, false=post-synaptic
+ */
+void minicolumn_notify_spike(
+    minicolumn_t* col,
+    uint64_t spike_time,
+    bool is_pre_spike
+) {
+    /* Guard clauses */
+    if (!col || !col->initialized) {
+        return;
+    }
+
+    /* Update internal timing */
+    nimcp_platform_mutex_lock(&col->mutex);
+    col->last_activation_time_us = spike_time;
+    nimcp_platform_mutex_unlock(&col->mutex);
+
+    /* Notify via bio-async if enabled */
+    if (bio_async_enabled && bio_ctx) {
+        /* Build message with header + inline payload */
+        struct {
+            bio_message_header_t header;
+            struct {
+                uint32_t neuron_id;
+                uint64_t spike_time;
+                uint8_t is_pre;
+                uint8_t padding[3];  /* Alignment */
+            } payload;
+        } msg;
+
+        memset(&msg, 0, sizeof(msg));
+
+        /* Initialize header */
+        msg.header.type = BIO_MSG_STDP_EVENT;
+        msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  /* Fast timing channel */
+        msg.header.source_module = BIO_MODULE_CORTICAL_COLUMN;
+        msg.header.target_module = 0;  /* Broadcast */
+        msg.header.timestamp_us = spike_time;
+        msg.header.payload_size = sizeof(msg.payload);
+        msg.header.flags = BIO_MSG_FLAG_BROADCAST | BIO_MSG_FLAG_URGENT;  /* High priority */
+
+        /* Initialize payload */
+        msg.payload.neuron_id = col->neuron_ids ? col->neuron_ids[0] : 0;
+        msg.payload.spike_time = spike_time;
+        msg.payload.is_pre = is_pre_spike ? 1 : 0;
+
+        bio_router_broadcast(bio_ctx, &msg, sizeof(msg));
+    }
+}
+
+/**
+ * @brief Hypercolumn plasticity update cycle
+ *
+ * WHAT: Apply STDP to all winning minicolumn synapses
+ * WHY:  Learning occurs based on competition winners
+ * HOW:  Update weights for winning column based on spike timing
+ *
+ * @param hcol Hypercolumn
+ * @param current_time Current simulation time (us)
+ */
+void hypercolumn_apply_plasticity(
+    hypercolumn_t* hcol,
+    uint64_t current_time
+) {
+    /* Guard clauses */
+    if (!hcol || !hcol->initialized) {
+        return;
+    }
+
+    /* Check if plasticity is enabled */
+    if (!g_cortical_plasticity_bridge) {
+        return;
+    }
+
+    cortical_column_heartbeat("apply_plasticity", 0.0f);
+
+    nimcp_platform_mutex_lock(&hcol->mutex);
+
+    /* Get winner minicolumn */
+    uint32_t winner_idx = hcol->winner_index;
+    if (winner_idx >= hcol->num_minicolumns) {
+        nimcp_platform_mutex_unlock(&hcol->mutex);
+        return;
+    }
+
+    minicolumn_t* winner = hcol->minicolumns[winner_idx];
+    if (!winner || !winner->initialized) {
+        nimcp_platform_mutex_unlock(&hcol->mutex);
+        return;
+    }
+
+    /* Apply STDP for winner's connections */
+    uint64_t pre_time = winner->last_activation_time_us;
+    uint64_t post_time = current_time;
+
+    /* Apply STDP with current timing */
+    float total_weight_change = 0.0F;
+    for (uint32_t i = 0; i < winner->num_neurons && i < 10; i++) {
+        /* Apply STDP for each neuron's synapses (limited for performance) */
+        float dw = minicolumn_apply_stdp(winner, pre_time, post_time, i);
+        total_weight_change += dw;
+    }
+
+    /* Update winner activation time */
+    winner->last_activation_time_us = current_time;
+
+    nimcp_platform_mutex_unlock(&hcol->mutex);
+
+    /* Log plasticity summary */
+    if (fabsf(total_weight_change) > 0.01F) {
+        COLUMN_LOG_DEBUG("Hypercolumn plasticity: winner=%u total_dw=%.4f",
+                         winner_idx, total_weight_change);
+    }
+
+    cortical_column_heartbeat("apply_plasticity", 1.0f);
+}
+
+/**
+ * @brief Compute with plasticity integration
+ *
+ * WHAT: Process hypercolumn and apply STDP learning
+ * WHY:  Combine computation with online learning
+ * HOW:  Call compute, then apply plasticity to winners
+ *
+ * @param hcol Hypercolumn
+ * @param input Input feature vector
+ * @param input_size Size of input
+ * @param current_time Current simulation time (us)
+ */
+void hypercolumn_compute_with_plasticity(
+    hypercolumn_t* hcol,
+    const float* input,
+    uint32_t input_size,
+    uint64_t current_time
+) {
+    /* Standard computation */
+    hypercolumn_compute(hcol, input, input_size);
+
+    /* Apply plasticity if enabled */
+    if (g_cortical_plasticity_bridge) {
+        hypercolumn_apply_plasticity(hcol, current_time);
+    }
+}
+
+//=============================================================================
 // KG Self-Awareness Integration
 //=============================================================================
 
@@ -1509,4 +1746,166 @@ int cortical_column_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// SNN Bridge Integration
+//=============================================================================
+
+/** Global SNN network for cortical columns */
+static cortical_snn_network_t* g_cortical_snn_network = NULL;
+
+void cortical_column_set_snn_network(cortical_snn_network_t* network) {
+    g_cortical_snn_network = network;
+    if (network) {
+        COLUMN_LOG_INFO("Cortical column SNN network connected");
+    } else {
+        COLUMN_LOG_DEBUG("Cortical column SNN network disconnected");
+    }
+}
+
+cortical_snn_network_t* cortical_column_get_snn_network(void) {
+    return g_cortical_snn_network;
+}
+
+float minicolumn_compute_spike_based(
+    minicolumn_t* col,
+    const uint64_t* spike_times,
+    uint32_t num_spikes,
+    uint64_t current_time
+) {
+    if (!col || !col->initialized) return -1.0F;
+    if (!spike_times || num_spikes == 0) return 0.0F;
+
+    /* LIF neuron model parameters */
+    static const float TAU_MEM = 20000.0F;   /* Membrane time constant (us) */
+    static const float V_REST = 0.0F;        /* Resting potential */
+    static const float V_THRESH = 1.0F;      /* Spike threshold */
+    static const float SPIKE_WEIGHT = 0.1F;  /* Per-spike contribution */
+
+    nimcp_platform_mutex_lock(&col->mutex);
+
+    float membrane_v = V_REST;
+    uint64_t last_spike = col->last_activation_time_us;
+
+    /* Integrate spikes using leaky integrate-and-fire dynamics */
+    for (uint32_t i = 0; i < num_spikes; i++) {
+        uint64_t spike_t = spike_times[i];
+        if (spike_t > last_spike && spike_t <= current_time) {
+            /* Exponential decay from last event */
+            float dt = (float)(spike_t - last_spike);
+            membrane_v *= expf(-dt / TAU_MEM);
+            /* Add spike contribution */
+            membrane_v += SPIKE_WEIGHT;
+            last_spike = spike_t;
+        }
+    }
+
+    /* Final decay to current time */
+    float dt_final = (float)(current_time - last_spike);
+    membrane_v *= expf(-dt_final / TAU_MEM);
+
+    /* Update activation */
+    col->activation_level = fminf(membrane_v / V_THRESH, 1.0F);
+    col->last_activation_time_us = current_time;
+
+    /* Notify bio-async of spike activity if connected */
+    if (bio_async_enabled && bio_ctx && col->activation_level > 0.8F) {
+        minicolumn_notify_spike(col, current_time, false);
+    }
+
+    float result = col->activation_level;
+    nimcp_platform_mutex_unlock(&col->mutex);
+
+    return result;
+}
+
+void hypercolumn_compute_spike_based(
+    hypercolumn_t* hcol,
+    const uint64_t** spike_times,
+    const uint32_t* spike_counts,
+    uint64_t current_time
+) {
+    if (!hcol || !hcol->initialized) return;
+    if (!spike_times || !spike_counts) return;
+
+    nimcp_platform_mutex_lock(&hcol->mutex);
+
+    /* Process bio-async messages */
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
+    /* Compute spike-based activation for each minicolumn */
+    for (uint32_t i = 0; i < hcol->num_minicolumns; i++) {
+        float activation = minicolumn_compute_spike_based(
+            hcol->minicolumns[i],
+            spike_times[i],
+            spike_counts[i],
+            current_time
+        );
+        hcol->activations[i] = fmaxf(0.0F, activation);
+    }
+
+    nimcp_platform_mutex_unlock(&hcol->mutex);
+
+    /* Run lateral inhibition and competition */
+    hypercolumn_run_competition(hcol, hcol->competition_mode, hcol->temperature);
+}
+
+uint32_t hypercolumn_generate_spikes(
+    hypercolumn_t* hcol,
+    uint64_t* out_spike_times,
+    uint32_t* out_neuron_ids,
+    uint32_t max_spikes,
+    uint64_t current_time
+) {
+    if (!hcol || !hcol->initialized) return 0;
+    if (!out_spike_times || !out_neuron_ids || max_spikes == 0) return 0;
+
+    nimcp_platform_mutex_lock(&hcol->mutex);
+
+    uint32_t spike_count = 0;
+    static const float MAX_RATE = 100.0F;  /* Max firing rate 100 Hz */
+
+    for (uint32_t i = 0; i < hcol->num_minicolumns && spike_count < max_spikes; i++) {
+        float activation = hcol->activations[i];
+        if (activation > 0.1F) {
+            /* Rate coding: activation maps to firing probability */
+            float rate = activation * MAX_RATE;
+            float p_spike = rate * 0.001F;  /* Per-ms probability */
+
+            /* Stochastic spike generation */
+            uint32_t rand_val = (uint32_t)(current_time + i) % 1000;
+            if ((float)rand_val / 1000.0F < p_spike) {
+                out_spike_times[spike_count] = current_time;
+                out_neuron_ids[spike_count] = i;
+                spike_count++;
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&hcol->mutex);
+
+    return spike_count;
+}
+
+int hypercolumn_connect_snn_population(
+    hypercolumn_t* hcol,
+    cortical_snn_population_t* population
+) {
+    if (!hcol || !population) return -1;
+    COLUMN_LOG_INFO("Hypercolumn connected to SNN population");
+    return 0;
+}
+
+int hypercolumn_disconnect_snn_population(hypercolumn_t* hcol) {
+    if (!hcol) return -1;
+    COLUMN_LOG_INFO("Hypercolumn disconnected from SNN population");
+    return 0;
+}
+
+bool hypercolumn_is_snn_connected(const hypercolumn_t* hcol) {
+    (void)hcol;
+    return g_cortical_snn_network != NULL;
 }

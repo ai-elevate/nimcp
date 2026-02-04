@@ -17,6 +17,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/statistics/nimcp_statistics.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -547,7 +549,7 @@ emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* co
     emotion_tensor_heartbeat("emotion_tens_create", 0.0f);
 
 
-    emotion_tensor_system_t* system = calloc(1, sizeof(emotion_tensor_system_t));
+    emotion_tensor_system_t* system = nimcp_calloc(1, sizeof(emotion_tensor_system_t));
     if (!system) {
         TENSOR_LOG_ERROR("Failed to allocate emotion tensor system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
@@ -569,9 +571,9 @@ emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* co
     memset(&system->tensor, 0, sizeof(emotion_tensor_t));
 
     /* Initialize lock */
-    if (pthread_rwlock_init(&system->lock, NULL) != 0) {
+    if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         TENSOR_LOG_ERROR("Failed to initialize rwlock");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -589,8 +591,8 @@ void emotion_tensor_destroy(emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_destroy", 0.0f);
 
 
-    pthread_rwlock_destroy(&system->lock);
-    free(system);
+    nimcp_rwlock_destroy(&system->lock);
+    nimcp_free(system);
     TENSOR_LOG_INFO("Emotion tensor system destroyed");
 }
 
@@ -607,9 +609,9 @@ bool emotion_tensor_get(const emotion_tensor_system_t* system, emotion_tensor_t*
     emotion_tensor_heartbeat("emotion_tens_get", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     *tensor = system->tensor;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return true;
 }
@@ -626,9 +628,9 @@ float emotion_tensor_get_channel(const emotion_tensor_system_t* system, emotion_
         return -1.0F;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float value = system->tensor.channels[emotion];
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return value;
 }
@@ -645,9 +647,9 @@ float emotion_tensor_get_compound(const emotion_tensor_system_t* system, emotion
         return -1.0F;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float value = system->tensor.compounds[compound];
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return value;
 }
@@ -661,7 +663,7 @@ bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, floa
     emotion_tensor_heartbeat("emotion_tens_is_contradictory", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     const float* c = system->tensor.channels;
 
     /* Check opposing emotion pairs */
@@ -676,7 +678,7 @@ bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, floa
         contradictory = true;
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
     return contradictory;
 }
 
@@ -689,9 +691,9 @@ float emotion_tensor_get_valence(const emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_get_valence", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float valence = system->tensor.overall_valence;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return valence;
 }
@@ -705,9 +707,9 @@ float emotion_tensor_get_arousal(const emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_get_arousal", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float arousal = system->tensor.overall_arousal;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return arousal;
 }
@@ -735,7 +737,7 @@ bool emotion_tensor_set_channel(
 
     activation = fmaxf(0.0F, fminf(1.0F, activation));
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     system->tensor.channels[emotion] = activation;
     system->tensor.last_update_ms = timestamp_ms;
@@ -748,7 +750,7 @@ bool emotion_tensor_set_channel(
         system->tensor.stability = compute_stability(&system->tensor);
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     TENSOR_LOG_DEBUG("Set %s to %.3f", emotion_tensor_emotion_name(emotion), activation);
     return true;
@@ -767,7 +769,7 @@ bool emotion_tensor_set_channels(
     emotion_tensor_heartbeat("emotion_tens_set_channels", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -788,7 +790,7 @@ bool emotion_tensor_set_channels(
         system->tensor.stability = compute_stability(&system->tensor);
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     TENSOR_LOG_DEBUG("Set all emotion channels");
     return true;
@@ -816,9 +818,9 @@ bool emotion_tensor_set_appraisal(
 
     value = fmaxf(0.0F, fminf(1.0F, value));
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     system->tensor.appraisals[emotion][dimension] = value;
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     return true;
 }
@@ -843,7 +845,7 @@ bool emotion_tensor_apply_stimulus(
 
     intensity = fmaxf(0.0F, fminf(1.0F, intensity));
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     float current = system->tensor.channels[emotion];
     float change = is_positive ? intensity : -intensity * 0.5F;
@@ -860,7 +862,7 @@ bool emotion_tensor_apply_stimulus(
         system->tensor.stability = compute_stability(&system->tensor);
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     TENSOR_LOG_DEBUG("Applied %s stimulus to %s: %.3f -> %.3f",
               is_positive ? "positive" : "negative",
@@ -889,7 +891,7 @@ bool emotion_tensor_update(
         return false;
     }
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     /* Apply decay */
     float decay_factor = expf(-system->config.decay_rate * delta_time);
@@ -945,7 +947,7 @@ bool emotion_tensor_update(
         system->tensor.stability = compute_stability(&system->tensor);
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     return true;
 }
@@ -959,9 +961,9 @@ bool emotion_tensor_compute_compounds(emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_compute_compounds", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     update_compounds(&system->tensor);
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     return true;
 }
@@ -975,7 +977,7 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
     emotion_tensor_heartbeat("emotion_tens_apply_interactions", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     float new_channels[EMOTION_TENSOR_PRIMARY_COUNT];
     memcpy(new_channels, system->tensor.channels, sizeof(new_channels));
@@ -1008,7 +1010,7 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
     update_compounds(&system->tensor);
     update_aggregates(&system->tensor);
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     return true;
 }
@@ -1022,7 +1024,7 @@ bool emotion_tensor_reset(emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_reset", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     memset(system->tensor.channels, 0, sizeof(system->tensor.channels));
     memset(system->tensor.compounds, 0, sizeof(system->tensor.compounds));
@@ -1040,7 +1042,7 @@ bool emotion_tensor_reset(emotion_tensor_system_t* system) {
     system->tensor.secondary_strength = 0.0F;
     system->tensor.blend_ratio = 0.0F;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     TENSOR_LOG_INFO("Emotion tensor reset to neutral");
     return true;
@@ -1059,9 +1061,9 @@ float emotion_tensor_get_entropy(const emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_get_entropy", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float entropy = system->tensor.emotional_entropy;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return entropy;
 }
@@ -1075,9 +1077,9 @@ float emotion_tensor_get_stability(const emotion_tensor_system_t* system) {
     emotion_tensor_heartbeat("emotion_tens_get_stability", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float stability = system->tensor.stability;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return stability;
 }
@@ -1096,11 +1098,11 @@ bool emotion_tensor_get_dominant(
     emotion_tensor_heartbeat("emotion_tens_get_dominant", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     *primary = system->tensor.primary_emotion;
     *secondary = system->tensor.secondary_emotion;
     *blend_ratio = system->tensor.blend_ratio;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return true;
 }

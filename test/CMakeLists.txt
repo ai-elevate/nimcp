@@ -1118,6 +1118,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/memory")
     add_subdirectory(regression/utils/memory)
 endif()
 
+# Constants Validation Tests (P0-P2 fixes: magic value constants validation)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/constants/CMakeLists.txt")
+    message(STATUS "Adding constants validation unit tests...")
+    add_subdirectory(unit/constants)
+endif()
+
 # Utils Thread Tests
 # ============================================================================
 
@@ -1635,6 +1643,11 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/mesh")
     message(STATUS "Adding mesh network integration tests...")
     add_subdirectory(integration/mesh)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/knowledge")
+    message(STATUS "Adding knowledge graph integration tests...")
+    add_subdirectory(integration/knowledge)
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/mesh")

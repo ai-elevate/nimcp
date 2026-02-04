@@ -20,12 +20,12 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
-
-#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -197,7 +197,7 @@ nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
     memset(&ctx->stats, 0, sizeof(nimcp_pq_stats_t));
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&ctx->stats_lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->stats_lock, NULL) != 0) {
         LOG_ERROR("nimcp_pq_context_create: Mutex initialization failed");
         nimcp_free(ctx);
         return NULL;
@@ -275,7 +275,7 @@ void nimcp_pq_context_destroy(nimcp_pq_context_t ctx) {
     }
 
     /* Destroy mutex */
-    pthread_mutex_destroy(&ctx->stats_lock);
+    nimcp_mutex_destroy(&ctx->stats_lock);
 
     /* Clear magic */
     ctx->magic = 0;
@@ -291,9 +291,9 @@ nimcp_error_t nimcp_pq_get_stats(nimcp_pq_context_t ctx, nimcp_pq_stats_t* stats
         return NIMCP_ERROR_INVALID;
     }
 
-    pthread_mutex_lock(&ctx->stats_lock);
+    nimcp_mutex_lock(&ctx->stats_lock);
     memcpy(stats, &ctx->stats, sizeof(nimcp_pq_stats_t));
-    pthread_mutex_unlock(&ctx->stats_lock);
+    nimcp_mutex_unlock(&ctx->stats_lock);
 
     return NIMCP_OK;
 }
@@ -304,9 +304,9 @@ nimcp_error_t nimcp_pq_get_stats(nimcp_pq_context_t ctx, nimcp_pq_stats_t* stats
 
 static void increment_stat(nimcp_pq_context_t ctx, uint64_t* stat) {
     if (!ctx) return;
-    pthread_mutex_lock(&ctx->stats_lock);
+    nimcp_mutex_lock(&ctx->stats_lock);
     (*stat)++;
-    pthread_mutex_unlock(&ctx->stats_lock);
+    nimcp_mutex_unlock(&ctx->stats_lock);
 }
 
 /* ========================================================================

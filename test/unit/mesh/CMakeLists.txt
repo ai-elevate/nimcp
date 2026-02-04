@@ -237,6 +237,13 @@ add_test_binary(
     unit
 )
 
+# Test: BBB Validation - Blood-Brain Barrier validation for mesh network security
+add_test_binary(
+    test_mesh_bbb_validation
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_bbb_validation.cpp
+    unit
+)
+
 # ============================================================================
 # Phase 15: Deep Integration Components
 # ============================================================================

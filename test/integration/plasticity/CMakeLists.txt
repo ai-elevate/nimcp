@@ -327,3 +327,38 @@ gtest_discover_tests(integration_plasticity_eligibility_utils_quantum
 # ============================================================================
 
 add_subdirectory(exception)
+
+# ============================================================================
+# Bio-Async Plasticity Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for bio-async plasticity bridge
+# WHY:  Validates spike timing messages carry STDP data across module boundaries
+
+add_executable(test_plasticity_bridge_integration
+    test_plasticity_bridge_integration.cpp
+)
+
+target_include_directories(test_plasticity_bridge_integration
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_plasticity_bridge_integration
+    PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+
+target_compile_features(test_plasticity_bridge_integration PRIVATE cxx_std_17)
+
+add_test(NAME PlasticityBridgeIntegration
+    COMMAND test_plasticity_bridge_integration
+)
+
+set_tests_properties(PlasticityBridgeIntegration PROPERTIES
+    TIMEOUT 300
+    LABELS "integration;plasticity;bridge;bio-async"
+)

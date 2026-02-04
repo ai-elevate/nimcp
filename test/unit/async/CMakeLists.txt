@@ -393,6 +393,35 @@ gtest_discover_tests(unit_async_self_assembly
 )
 
 # ============================================================================
+# Plasticity Bio-Async Bridge Unit Tests
+# ============================================================================
+# Tests for plasticity-bio-async coordination bridge
+
+add_executable(unit_async_plasticity_bridge
+    test_bio_async_plasticity_bridge.cpp
+)
+target_link_libraries(unit_async_plasticity_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_async_plasticity_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_plasticity_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;plasticity;bridge"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Async Exception Macros Unit Tests - DISABLED (API issues)
 # Tests moved to existing exception test suite
 # ============================================================================

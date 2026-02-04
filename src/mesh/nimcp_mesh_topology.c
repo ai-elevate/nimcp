@@ -12,12 +12,148 @@
  */
 
 #include "mesh/nimcp_mesh_topology.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdatomic.h>
+
+/* ============================================================================
+ * BBB Integration for Mesh Topology
+ * ============================================================================ */
+
+/** Global BBB system for mesh topology module - thread-safe access */
+static _Atomic(bbb_system_t) g_mesh_topology_bbb = NULL;
+
+/** Global health agent for mesh topology module */
+static _Atomic(nimcp_health_agent_t*) g_mesh_topology_health_agent = NULL;
+
+/**
+ * @brief Set BBB system for mesh topology validation
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void mesh_topology_set_bbb(bbb_system_t bbb) {
+    atomic_store(&g_mesh_topology_bbb, bbb);
+}
+
+/**
+ * @brief Get current BBB system for mesh topology
+ * @return BBB system or NULL
+ */
+bbb_system_t mesh_topology_get_bbb(void) {
+    return atomic_load(&g_mesh_topology_bbb);
+}
+
+/**
+ * @brief Set health agent for mesh topology heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void mesh_topology_set_health_agent(nimcp_health_agent_t* agent) {
+    atomic_store(&g_mesh_topology_health_agent, agent);
+}
+
+/**
+ * @brief Send heartbeat from mesh topology module
+ */
+static inline void mesh_topology_heartbeat(const char* operation, float progress) {
+    nimcp_health_agent_t* agent = atomic_load(&g_mesh_topology_health_agent);
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
+    }
+}
+
+/**
+ * @brief Validate topology change (add participant) using BBB
+ *
+ * WHAT: Validate participant ID before adding to topology
+ * WHY:  Prevent unauthorized topology modifications
+ * HOW:  Use BBB integer validation for participant ID
+ *
+ * @param ctx Topology context
+ * @param participant_id Participant to validate
+ * @return true if valid, false if threat detected
+ */
+static bool validate_topology_change_bbb(
+    mesh_topology_ctx_t ctx,
+    mesh_participant_id_t participant_id
+) {
+    (void)ctx;  /* May be used for context-specific validation later */
+
+    bbb_system_t bbb = atomic_load(&g_mesh_topology_bbb);
+    if (!bbb) return true;  /* BBB not configured, allow */
+
+    bbb_validation_result_t result;
+
+    /* Validate participant ID as integer */
+    bool valid = bbb_validate_integer(bbb, (int64_t)participant_id, &result);
+    if (!valid) {
+        LOG_WARN("BBB rejected topology change for participant 0x%lx: %s (threat=%s)",
+                 (unsigned long)participant_id, result.reason,
+                 bbb_threat_type_name(result.threat));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected topology participant ID");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Validate connection parameters using BBB
+ *
+ * WHAT: Validate connection weight and participant IDs
+ * WHY:  Prevent malicious connection injection
+ * HOW:  Use BBB validation for numeric values
+ *
+ * @param from Source participant ID
+ * @param to Destination participant ID
+ * @param weight Connection weight
+ * @return true if valid, false if threat detected
+ */
+static bool validate_connection_bbb(
+    mesh_participant_id_t from,
+    mesh_participant_id_t to,
+    float weight
+) {
+    bbb_system_t bbb = atomic_load(&g_mesh_topology_bbb);
+    if (!bbb) return true;  /* BBB not configured, allow */
+
+    bbb_validation_result_t result;
+
+    /* Validate from participant ID */
+    if (!bbb_validate_integer(bbb, (int64_t)from, &result)) {
+        LOG_WARN("BBB rejected connection from 0x%lx: %s",
+                 (unsigned long)from, result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected connection source");
+        return false;
+    }
+
+    /* Validate to participant ID */
+    if (!bbb_validate_integer(bbb, (int64_t)to, &result)) {
+        LOG_WARN("BBB rejected connection to 0x%lx: %s",
+                 (unsigned long)to, result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected connection destination");
+        return false;
+    }
+
+    /* Validate weight range (check for suspicious values) */
+    if (weight < -1e10f || weight > 1e10f || weight != weight /* NaN check */) {
+        LOG_WARN("BBB rejected connection weight %.2f - out of range or NaN", weight);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected connection weight");
+        return false;
+    }
+
+    return true;
+}
 
 /* Error code compatibility aliases */
 
@@ -263,6 +399,16 @@ nimcp_error_t mesh_topology_add_participant(
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* BBB validation before topology modification */
+    if (!validate_topology_change_bbb(ctx, participant_id)) {
+        LOG_ERROR("Rejecting topology add for participant 0x%lx - BBB validation failed",
+                  (unsigned long)participant_id);
+        return NIMCP_ERROR_BBB_VALIDATION;
+    }
+
+    /* Send heartbeat for topology modification */
+    mesh_topology_heartbeat("add_participant", 0.0f);
+
     /* Check if already exists */
     if (find_node(ctx, participant_id)) {
         return NIMCP_SUCCESS; /* Already present */
@@ -310,6 +456,16 @@ nimcp_error_t mesh_topology_add_connection(
     float weight
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* BBB validation of connection parameters */
+    if (!validate_connection_bbb(from, to, weight)) {
+        LOG_ERROR("Rejecting connection 0x%lx -> 0x%lx - BBB validation failed",
+                  (unsigned long)from, (unsigned long)to);
+        return NIMCP_ERROR_BBB_VALIDATION;
+    }
+
+    /* Send heartbeat for connection modification */
+    mesh_topology_heartbeat("add_connection", 0.0f);
 
     topo_node_t* from_node = find_node(ctx, from);
     topo_node_t* to_node = find_node(ctx, to);
@@ -544,6 +700,9 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
     if (ctx->node_count < 3) return NIMCP_SUCCESS;
 
+    /* Send heartbeat at start of long computation */
+    mesh_topology_heartbeat("compute_betweenness", 0.0f);
+
     /* Simplified betweenness: count shortest paths through each node */
     /* Using BFS-based approximation for efficiency */
 
@@ -560,6 +719,12 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
     for (size_t src_idx = 0; src_idx < ctx->node_capacity && sampled < sample_count; src_idx++) {
         if (!ctx->nodes[src_idx].valid) continue;
         sampled++;
+
+        /* Periodic heartbeat during long computation */
+        if ((sampled % 10) == 0) {
+            float progress = (float)sampled / (float)sample_count;
+            mesh_topology_heartbeat("betweenness_bfs", progress);
+        }
 
         /* BFS from this source */
         uint32_t* dist = (uint32_t*)malloc(ctx->node_capacity * sizeof(uint32_t));

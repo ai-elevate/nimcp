@@ -267,3 +267,28 @@ set_tests_properties(e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e PR
 # B25nb: Memory/Core non-bridge module heartbeat/utility E2E tests
 add_e2e_fault_tolerance_test(test_memory_core_nonbridge_B25nb_e2e)
 set_tests_properties(e2e_fault_tolerance_test_memory_core_nonbridge_B25nb_e2e PROPERTIES TIMEOUT 300)
+
+# Health Agent E2E Tests - System-wide health agent macro validation
+add_executable(e2e_fault_tolerance_test_health_agent_e2e
+    test_health_agent_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_fault_tolerance_test_health_agent_e2e
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(e2e_fault_tolerance_test_health_agent_e2e
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_compile_features(e2e_fault_tolerance_test_health_agent_e2e PRIVATE cxx_std_17)
+add_test(NAME e2e_fault_tolerance_test_health_agent_e2e
+         COMMAND e2e_fault_tolerance_test_health_agent_e2e)
+set_tests_properties(e2e_fault_tolerance_test_health_agent_e2e PROPERTIES
+    LABELS "e2e"
+    TIMEOUT 600
+)

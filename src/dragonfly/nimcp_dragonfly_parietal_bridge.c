@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_dimension_constants.h"  /* Centralized dimension constants */
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -189,10 +190,10 @@ parietal_bridge_config_t parietal_bridge_default_config(void) {
     config.auto_transform = true;
     config.default_output_frame = COORD_FRAME_BODY;
 
-    /* Attention */
+    /* Attention - use centralized dimension constants */
     config.enable_attention = true;
-    config.attention_map_width = 64;
-    config.attention_map_height = 32;
+    config.attention_map_width = NIMCP_ATTENTION_MAP_WIDTH;   /* Was: 64 */
+    config.attention_map_height = NIMCP_ATTENTION_MAP_WIDTH / 2;  /* Was: 32 */
     config.attention_decay = 0.95f;
 
     /* Motor commands */
@@ -215,9 +216,10 @@ parietal_bridge_config_t parietal_bridge_default_config(void) {
 bool parietal_bridge_validate_config(const parietal_bridge_config_t* config) {
     if (!config) return false;
 
-    if (config->attention_map_width == 0 || config->attention_map_width > 256)
+    /* Use centralized constants for validation limits */
+    if (config->attention_map_width == 0 || config->attention_map_width > NIMCP_ATTENTION_MAP_MAX_WIDTH)
         return false;
-    if (config->attention_map_height == 0 || config->attention_map_height > 128)
+    if (config->attention_map_height == 0 || config->attention_map_height > NIMCP_ATTENTION_MAP_MAX_HEIGHT / 2)
         return false;
     if (config->attention_decay < 0 || config->attention_decay > 1.0f)
         return false;

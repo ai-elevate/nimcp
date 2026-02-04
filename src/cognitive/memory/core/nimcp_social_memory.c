@@ -17,6 +17,7 @@
 
 #include "cognitive/memory/core/nimcp_social_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"  /* Centralized buffer size constants */
 
 #include <stdlib.h>
 #include <string.h>
@@ -34,14 +35,14 @@ static inline void social_memory_heartbeat(const char* operation, float progress
 /** Hash table load factor threshold */
 #define HASH_LOAD_FACTOR_THRESHOLD 0.75f
 
-/** Initial hash table capacity */
-#define HASH_INITIAL_CAPACITY 64
+/** Initial hash table capacity - use centralized constant */
+#define HASH_INITIAL_CAPACITY NIMCP_HASH_TABLE_SMALL
 
 /** Magic number for validation */
 #define SOCIAL_MEM_MAGIC 0x534F4349  // "SOCI"
 
-/** Thread-local error buffer size */
-#define ERROR_BUFFER_SIZE 256
+/** Thread-local error buffer size - use centralized constant */
+#define ERROR_BUFFER_SIZE NIMCP_ERROR_BUFFER_SIZE
 
 //=============================================================================
 // Internal Type Definitions

@@ -200,3 +200,38 @@ message(STATUS "  - e2e_attack_simulation (C++/GTest)")
 message(STATUS "  - e2e_crypto_operations (C++/GTest)")
 message(STATUS "  - e2e_security_recovery (C++/GTest)")
 message(STATUS "  - e2e_security_pipeline (C++/GTest)")
+
+# ============================================================================
+# Mesh Security E2E Test
+# ============================================================================
+# WHAT: End-to-end tests for mesh security with BBB integration
+# WHY:  Verify complete security pipeline: mesh + BBB + immune system
+
+add_executable(e2e_mesh_security
+    test_mesh_security_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_include_directories(e2e_mesh_security PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/security
+    ${CMAKE_SOURCE_DIR}/include/mesh
+    ${CMAKE_SOURCE_DIR}/include/async
+    ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_link_libraries(e2e_mesh_security
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_compile_features(e2e_mesh_security PRIVATE cxx_std_17)
+add_test(NAME e2e_mesh_security COMMAND e2e_mesh_security)
+set_tests_properties(e2e_mesh_security PROPERTIES
+    LABELS "e2e;security;mesh;bbb"
+    TIMEOUT 600
+)
+
+message(STATUS "  - e2e_mesh_security (C++/GTest)")

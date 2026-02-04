@@ -502,12 +502,6 @@ Check_DIR:PATH=Check_DIR-NOTFOUND
 //Enable AddressSanitizer
 ENABLE_ASAN:BOOL=OFF
 
-//No help, variable specified on the command line.
-ENABLE_GPU:UNINITIALIZED=OFF
-
-//No help, variable specified on the command line.
-ENABLE_TESTING:UNINITIALIZED=ON
-
 //Enable ThreadSanitizer
 ENABLE_TSAN:BOOL=OFF
 
@@ -520,9 +514,6 @@ NIMCP_ASAN:BOOL=OFF
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
-//No help, variable specified on the command line.
-NIMCP_BUILD_TESTS:UNINITIALIZED=ON
-
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
 
@@ -531,9 +522,6 @@ NIMCP_DISABLE_CUDA:BOOL=OFF
 
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
-
-//No help, variable specified on the command line.
-NIMCP_ENABLE_CUDA:UNINITIALIZED=ON
 
 //Enable clang-tidy during build
 NIMCP_ENABLE_LINT:BOOL=OFF
@@ -737,7 +725,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=548
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=562
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

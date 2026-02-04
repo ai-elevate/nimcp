@@ -169,3 +169,16 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator_integration.cpp
     integration
 )
+
+# ============================================================================
+# Phase 17: BBB Validation Integration Tests
+# ============================================================================
+# WHAT: Integration tests for BBB validation across mesh components
+# WHY:  Validates security perimeter for mesh channel, participant, topology
+
+# Test 19: BBB Integration - Blood-Brain Barrier validation across mesh components
+add_test_binary(
+    test_mesh_bbb_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_bbb_integration.cpp
+    integration
+)

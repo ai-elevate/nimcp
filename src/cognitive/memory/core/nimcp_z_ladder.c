@@ -22,6 +22,8 @@
 
 #include "cognitive/memory/core/nimcp_z_ladder.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -262,7 +264,7 @@ static bool hash_insert(z_ladder_t ladder, uint64_t node_id,
     }
 
     // Create new entry
-    z_hash_entry_t* entry = (z_hash_entry_t*)malloc(sizeof(z_hash_entry_t));
+    z_hash_entry_t* entry = (z_hash_entry_t*)nimcp_malloc(sizeof(z_hash_entry_t));
     if (!entry) {
         return false;
     }
@@ -291,7 +293,7 @@ static bool hash_remove(z_ladder_t ladder, uint64_t node_id) {
     while (entry) {
         if (entry->node_id == node_id) {
             *prev_ptr = entry->next;
-            free(entry);
+            nimcp_free(entry);
             return true;
         }
         prev_ptr = &entry->next;
@@ -330,7 +332,7 @@ static void hash_clear(z_ladder_t ladder) {
         z_hash_entry_t* entry = ladder->hash_buckets[i];
         while (entry) {
             z_hash_entry_t* next = entry->next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         ladder->hash_buckets[i] = NULL;
@@ -355,7 +357,7 @@ static bool tier_storage_init(z_tier_storage_t* tier, const z_tier_config_t* con
     }
 
     tier->capacity = initial_cap;
-    tier->nodes = (pr_memory_node_t**)calloc(tier->capacity, sizeof(pr_memory_node_t*));
+    tier->nodes = (pr_memory_node_t**)nimcp_calloc(tier->capacity, sizeof(pr_memory_node_t*));
 
     return tier->nodes != NULL;
 }
@@ -365,7 +367,7 @@ static bool tier_storage_init(z_tier_storage_t* tier, const z_tier_config_t* con
  */
 static void tier_storage_destroy(z_tier_storage_t* tier) {
     if (tier->nodes) {
-        free(tier->nodes);
+        nimcp_free(tier->nodes);
         tier->nodes = NULL;
     }
     tier->count = 0;
@@ -383,7 +385,7 @@ static bool tier_storage_grow(z_tier_storage_t* tier) {
         new_capacity = tier->config.capacity * 2;
     }
 
-    pr_memory_node_t** new_nodes = (pr_memory_node_t**)realloc(
+    pr_memory_node_t** new_nodes = (pr_memory_node_t**)nimcp_realloc(
         tier->nodes, new_capacity * sizeof(pr_memory_node_t*));
 
     if (!new_nodes) {
@@ -1090,7 +1092,7 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
     }
 
     // Allocate ladder structure
-    z_ladder_t ladder = (z_ladder_t)calloc(1, sizeof(struct z_ladder_struct));
+    z_ladder_t ladder = (z_ladder_t)nimcp_calloc(1, sizeof(struct z_ladder_struct));
     if (!ladder) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ladder");
 
@@ -1098,8 +1100,8 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&ladder->mutex, NULL) != 0) {
-        free(ladder);
+    if (nimcp_mutex_init(&ladder->mutex, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(ladder);
         return NULL;
     }
     ladder->mutex_initialized = true;
@@ -1123,8 +1125,8 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
 
                 tier_storage_destroy(&ladder->tiers[j]);
             }
-            pthread_mutex_destroy(&ladder->mutex);
-            free(ladder);
+            nimcp_mutex_destroy(&ladder->mutex);
+            nimcp_free(ladder);
             return NULL;
         }
     }
@@ -1134,7 +1136,7 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
     // Initialize event tracking
     ladder->enable_events = cfg.enable_event_tracking;
     if (cfg.enable_event_tracking && cfg.max_events > 0) {
-        ladder->events = (z_consolidation_event_t*)calloc(
+        ladder->events = (z_consolidation_event_t*)nimcp_calloc(
             cfg.max_events, sizeof(z_consolidation_event_t));
         if (ladder->events) {
             ladder->event_capacity = cfg.max_events;
@@ -1166,7 +1168,7 @@ void z_ladder_destroy(z_ladder_t ladder) {
 
 
     if (ladder->mutex_initialized) {
-        pthread_mutex_lock(&ladder->mutex);
+        nimcp_mutex_lock(&ladder->mutex);
     }
 
     // Destroy all nodes in all tiers
@@ -1198,16 +1200,16 @@ void z_ladder_destroy(z_ladder_t ladder) {
 
     // Free events buffer
     if (ladder->events) {
-        free(ladder->events);
+        nimcp_free(ladder->events);
     }
 
     // Unlock before destroying mutex
     if (ladder->mutex_initialized) {
-        pthread_mutex_unlock(&ladder->mutex);
-        pthread_mutex_destroy(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_destroy(&ladder->mutex);
     }
 
-    free(ladder);
+    nimcp_free(ladder);
 }
 
 z_ladder_error_t z_ladder_clear(z_ladder_t ladder) {
@@ -1219,7 +1221,7 @@ z_ladder_error_t z_ladder_clear(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_clear", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     // Destroy all nodes
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
@@ -1261,7 +1263,7 @@ z_ladder_error_t z_ladder_clear(z_ladder_t ladder) {
         ladder->event_head = 0;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1288,11 +1290,11 @@ z_ladder_error_t z_ladder_insert(z_ladder_t ladder, pr_memory_node_t* node,
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_ladder_error_t err = insert_node_unlocked(ladder, node, tier);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1306,11 +1308,11 @@ z_ladder_error_t z_ladder_remove(z_ladder_t ladder, uint64_t node_id) {
     z_ladder_heartbeat("z_ladder_remove", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_ladder_error_t err = remove_node_unlocked(ladder, node_id, true);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1326,7 +1328,7 @@ pr_memory_node_t* z_ladder_find(z_ladder_t ladder, uint64_t node_id) {
     z_ladder_heartbeat("z_ladder_find", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     pr_memory_node_t* node = entry ? entry->node : NULL;
@@ -1337,7 +1339,7 @@ pr_memory_node_t* z_ladder_find(z_ladder_t ladder, uint64_t node_id) {
         atomic_fetch_add(&node->access_count, 1);
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return node;
 }
@@ -1352,7 +1354,7 @@ z_ladder_error_t z_ladder_get_tier(z_ladder_t ladder, uint64_t node_id,
     z_ladder_heartbeat("z_ladder_get_tier", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     z_ladder_error_t err;
@@ -1364,7 +1366,7 @@ z_ladder_error_t z_ladder_get_tier(z_ladder_t ladder, uint64_t node_id,
         err = Z_LADDER_ERROR_NOT_FOUND;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1383,17 +1385,17 @@ z_ladder_error_t z_ladder_move(z_ladder_t ladder, uint64_t node_id,
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     if (!entry) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NOT_FOUND;
     }
 
     // If already in target tier, nothing to do
     if (entry->tier == new_tier) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_SUCCESS;
     }
 
@@ -1403,7 +1405,7 @@ z_ladder_error_t z_ladder_move(z_ladder_t ladder, uint64_t node_id,
     // Remove from current tier
     z_ladder_error_t err = remove_node_unlocked(ladder, node_id, false);
     if (err != Z_LADDER_SUCCESS) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return err;
     }
 
@@ -1412,11 +1414,11 @@ z_ladder_error_t z_ladder_move(z_ladder_t ladder, uint64_t node_id,
     if (err != Z_LADDER_SUCCESS) {
         // Rollback
         insert_node_unlocked(ladder, node, old_tier);
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return err;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1434,11 +1436,11 @@ bool z_ladder_check_promotion(z_ladder_t ladder, const pr_memory_node_t* node) {
     z_ladder_heartbeat("z_ladder_check_promotion", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     bool eligible = check_promotion_unlocked(ladder, node);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return eligible;
 }
@@ -1452,11 +1454,11 @@ bool z_ladder_check_demotion(z_ladder_t ladder, const pr_memory_node_t* node) {
     z_ladder_heartbeat("z_ladder_check_demotion", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     bool should_demote = check_demotion_unlocked(ladder, node);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return should_demote;
 }
@@ -1470,11 +1472,11 @@ z_ladder_error_t z_ladder_promote(z_ladder_t ladder, uint64_t node_id) {
     z_ladder_heartbeat("z_ladder_promote", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_ladder_error_t err = promote_unlocked(ladder, node_id);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1488,11 +1490,11 @@ z_ladder_error_t z_ladder_demote(z_ladder_t ladder, uint64_t node_id) {
     z_ladder_heartbeat("z_ladder_demote", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     if (!entry) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NOT_FOUND;
     }
 
@@ -1506,7 +1508,7 @@ z_ladder_error_t z_ladder_demote(z_ladder_t ladder, uint64_t node_id) {
         err = demote_unlocked(ladder, node_id);
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1520,7 +1522,7 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_process_promotions", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     size_t promoted_count = 0;
 
@@ -1536,7 +1538,7 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
 
         // Collect eligible nodes first (to avoid modifying while iterating)
         size_t eligible_count = 0;
-        uint64_t* eligible_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
+        uint64_t* eligible_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
         if (!eligible_ids) {
             continue;
         }
@@ -1566,10 +1568,10 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
             }
         }
 
-        free(eligible_ids);
+        nimcp_free(eligible_ids);
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return promoted_count;
 }
@@ -1583,7 +1585,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_process_demotions", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     size_t demoted_count = 0;
 
@@ -1593,7 +1595,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
 
         // Collect nodes to demote
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
         if (!demote_ids) {
             continue;
         }
@@ -1623,7 +1625,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
             }
         }
 
-        free(demote_ids);
+        nimcp_free(demote_ids);
     }
 
     // Handle Z0 evictions (nodes below threshold get evicted)
@@ -1632,7 +1634,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
 
     // Collect nodes to evict from Z0
     size_t evict_count = 0;
-    size_t* evict_indices = (size_t*)malloc(z0->count * sizeof(size_t));
+    size_t* evict_indices = (size_t*)nimcp_malloc(z0->count * sizeof(size_t));
     if (evict_indices) {
         for (size_t i = 0; i < z0->count; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -1654,10 +1656,10 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
             }
         }
 
-        free(evict_indices);
+        nimcp_free(evict_indices);
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return demoted_count;
 }
@@ -1679,7 +1681,7 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
         return Z_LADDER_SUCCESS;  // No decay to apply
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     // Apply decay to each tier (except Z3 which has zero decay)
     for (int tier_idx = 0; tier_idx < Z_LADDER_NUM_TIERS; tier_idx++) {
@@ -1715,7 +1717,7 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
 
     ladder->last_decay_time_ms = get_current_time_ms();
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1738,7 +1740,7 @@ z_ladder_error_t z_ladder_decay_tier(z_ladder_t ladder, pr_memory_tier_t tier,
         return Z_LADDER_SUCCESS;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
 
@@ -1759,7 +1761,7 @@ z_ladder_error_t z_ladder_decay_tier(z_ladder_t ladder, pr_memory_tier_t tier,
         }
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1795,7 +1797,7 @@ z_ladder_error_t z_ladder_set_decay_rate(z_ladder_t ladder, pr_memory_tier_t tie
         return Z_LADDER_ERROR_INVALID_CONFIG;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     ladder->tiers[tier].config.decay_rate = rate;
 
@@ -1811,7 +1813,7 @@ z_ladder_error_t z_ladder_set_decay_rate(z_ladder_t ladder, pr_memory_tier_t tie
         storage->nodes[i]->decay_rate = rate;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1833,19 +1835,19 @@ z_ladder_error_t z_ladder_evict_weakest(z_ladder_t ladder, pr_memory_tier_t tier
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
 
     if (storage->count == 0) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NOT_FOUND;
     }
 
     size_t evict_index = tier_storage_find_evict_target(storage);
     z_ladder_error_t err = evict_unlocked(ladder, tier, evict_index);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return err;
 }
@@ -1859,7 +1861,7 @@ size_t z_ladder_evict_if_full(z_ladder_t ladder, pr_memory_tier_t tier) {
     z_ladder_heartbeat("z_ladder_evict_if_full", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
     size_t evicted = 0;
@@ -1874,7 +1876,7 @@ size_t z_ladder_evict_if_full(z_ladder_t ladder, pr_memory_tier_t tier) {
         }
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return evicted;
 }
@@ -1893,11 +1895,11 @@ z_ladder_error_t z_ladder_set_eviction_policy(z_ladder_t ladder, pr_memory_tier_
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     ladder->tiers[tier].config.eviction_policy = policy;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1921,7 +1923,7 @@ z_ladder_error_t z_ladder_get_nodes(z_ladder_t ladder, pr_memory_tier_t tier,
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
     size_t to_copy = (storage->count < max_nodes) ? storage->count : max_nodes;
@@ -1938,7 +1940,7 @@ z_ladder_error_t z_ladder_get_nodes(z_ladder_t ladder, pr_memory_tier_t tier,
 
     *count = to_copy;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -1952,11 +1954,11 @@ size_t z_ladder_get_count(z_ladder_t ladder, pr_memory_tier_t tier) {
     z_ladder_heartbeat("z_ladder_get_count", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     size_t count = ladder->tiers[tier].count;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return count;
 }
@@ -1970,11 +1972,11 @@ size_t z_ladder_get_total_count(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_get_total_count", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     size_t total = ladder->total_nodes;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return total;
 }
@@ -2013,15 +2015,15 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
 
     // Copy pointers to temporary array
     size_t n = storage->count;
-    pr_memory_node_t** temp = (pr_memory_node_t**)malloc(n * sizeof(pr_memory_node_t*));
+    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
     if (!temp) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NO_MEMORY;
     }
 
@@ -2044,9 +2046,9 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
 
     *count = result_count;
 
-    free(temp);
+    nimcp_free(temp);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2066,14 +2068,14 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
 
     size_t n = storage->count;
-    pr_memory_node_t** temp = (pr_memory_node_t**)malloc(n * sizeof(pr_memory_node_t*));
+    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
     if (!temp) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NO_MEMORY;
     }
 
@@ -2096,9 +2098,9 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
 
     *count = result_count;
 
-    free(temp);
+    nimcp_free(temp);
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2116,7 +2118,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_consolidate", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     uint64_t now = get_current_time_ms();
     float dt_seconds = (float)(now - ladder->last_decay_time_ms) / 1000.0f;
@@ -2156,7 +2158,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
         // Collect nodes to demote
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2180,7 +2182,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
                 demote_unlocked(ladder, demote_ids[i]);
             }
 
-            free(demote_ids);
+            nimcp_free(demote_ids);
         }
     }
 
@@ -2203,7 +2205,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2227,7 +2229,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
-            free(promote_ids);
+            nimcp_free(promote_ids);
         }
     }
 
@@ -2253,7 +2255,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
     ladder->last_consolidation_time_ms = now;
     ladder->total_consolidations++;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2271,7 +2273,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         return Z_LADDER_ERROR_INVALID_TIER;
     }
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     uint64_t now = get_current_time_ms();
     float dt_seconds = (float)(now - ladder->last_decay_time_ms) / 1000.0f;
@@ -2299,7 +2301,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
     // Process demotions (if not Z0)
     if (tier > PR_MEMORY_TIER_Z0) {
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)malloc(storage->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(storage->count * sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2323,14 +2325,14 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
                 demote_unlocked(ladder, demote_ids[i]);
             }
 
-            free(demote_ids);
+            nimcp_free(demote_ids);
         }
     }
 
     // Process promotions (if not Z3)
     if (tier < PR_MEMORY_TIER_Z3) {
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)malloc(storage->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(storage->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2354,7 +2356,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
-            free(promote_ids);
+            nimcp_free(promote_ids);
         }
     }
 
@@ -2366,7 +2368,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         }
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2380,7 +2382,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_sleep_consolidate", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     // Sleep consolidation: multiple passes with relaxed thresholds
     for (int pass = 0; pass < SLEEP_CONSOLIDATION_PASSES; pass++) {
@@ -2403,7 +2405,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
         // Sort by emotional salience (emotional memories consolidate first)
         size_t n = z1->count;
-        pr_memory_node_t** sorted = (pr_memory_node_t**)malloc(n * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** sorted = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
         if (sorted) {
             memcpy(sorted, z1->nodes, n * sizeof(pr_memory_node_t*));
 
@@ -2439,7 +2441,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
                 }
             }
 
-            free(sorted);
+            nimcp_free(sorted);
         }
 
         // Restore threshold
@@ -2463,7 +2465,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
         // Check for promotions after boost
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)malloc(z0->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(z0->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < z0->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2487,14 +2489,14 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
-            free(promote_ids);
+            nimcp_free(promote_ids);
         }
     }
 
     ladder->last_consolidation_time_ms = get_current_time_ms();
     ladder->total_consolidations++;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2511,11 +2513,11 @@ z_ladder_error_t z_ladder_get_consolidation_events(z_ladder_t ladder,
     z_ladder_heartbeat("z_ladder_get_consolidation_ev", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     if (!ladder->events || ladder->event_count == 0) {
         *count = 0;
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_SUCCESS;
     }
 
@@ -2539,7 +2541,7 @@ z_ladder_error_t z_ladder_get_consolidation_events(z_ladder_t ladder,
 
     *count = to_copy;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2553,7 +2555,7 @@ z_ladder_error_t z_ladder_clear_events(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_clear_events", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     if (ladder->events) {
         memset(ladder->events, 0,
@@ -2562,7 +2564,7 @@ z_ladder_error_t z_ladder_clear_events(z_ladder_t ladder) {
         ladder->event_head = 0;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2580,11 +2582,11 @@ float z_ladder_reinforce(z_ladder_t ladder, uint64_t node_id, float amount) {
     z_ladder_heartbeat("z_ladder_reinforce", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     if (!entry) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return -1.0f;
     }
 
@@ -2599,7 +2601,7 @@ float z_ladder_reinforce(z_ladder_t ladder, uint64_t node_id, float amount) {
 
     float result = node->current_strength;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return result;
 }
@@ -2613,11 +2615,11 @@ z_ladder_error_t z_ladder_access(z_ladder_t ladder, uint64_t node_id) {
     z_ladder_heartbeat("z_ladder_access", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     if (!entry) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NOT_FOUND;
     }
 
@@ -2632,7 +2634,7 @@ z_ladder_error_t z_ladder_access(z_ladder_t ladder, uint64_t node_id) {
     node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
     node->state.w = node->current_strength;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2646,11 +2648,11 @@ float z_ladder_emotional_boost(z_ladder_t ladder, uint64_t node_id, float valenc
     z_ladder_heartbeat("z_ladder_emotional_boost", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
     if (!entry) {
-        pthread_mutex_unlock(&ladder->mutex);
+        nimcp_mutex_unlock(&ladder->mutex);
         return -1.0f;
     }
 
@@ -2672,7 +2674,7 @@ float z_ladder_emotional_boost(z_ladder_t ladder, uint64_t node_id, float valenc
 
     float result = node->current_strength;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return result;
 }
@@ -2690,7 +2692,7 @@ z_ladder_error_t z_ladder_get_stats(z_ladder_t ladder, z_ladder_stats_t* stats) 
     z_ladder_heartbeat("z_ladder_get_stats", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     memset(stats, 0, sizeof(z_ladder_stats_t));
 
@@ -2760,7 +2762,7 @@ z_ladder_error_t z_ladder_get_stats(z_ladder_t ladder, z_ladder_stats_t* stats) 
     }
     stats->memory_bytes = mem;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2848,14 +2850,14 @@ void z_ladder_reset_stats(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_reset_stats", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     memset(ladder->promotions, 0, sizeof(ladder->promotions));
     memset(ladder->demotions, 0, sizeof(ladder->demotions));
     memset(ladder->evictions, 0, sizeof(ladder->evictions));
     ladder->total_consolidations = 0;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 }
 
 //=============================================================================
@@ -2873,12 +2875,12 @@ z_ladder_error_t z_ladder_set_promotion_callback(z_ladder_t ladder,
     z_ladder_heartbeat("z_ladder_set_promotion_callba", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     ladder->promotion_callback = callback;
     ladder->promotion_user_data = user_data;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2894,12 +2896,12 @@ z_ladder_error_t z_ladder_set_eviction_callback(z_ladder_t ladder,
     z_ladder_heartbeat("z_ladder_set_eviction_callbac", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     ladder->eviction_callback = callback;
     ladder->eviction_user_data = user_data;
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return Z_LADDER_SUCCESS;
 }
@@ -2986,7 +2988,7 @@ bool z_ladder_validate(z_ladder_t ladder) {
     z_ladder_heartbeat("z_ladder_validate", 0.0f);
 
 
-    pthread_mutex_lock(&ladder->mutex);
+    nimcp_mutex_lock(&ladder->mutex);
 
     bool valid = true;
     size_t counted_total = 0;
@@ -3046,7 +3048,7 @@ bool z_ladder_validate(z_ladder_t ladder) {
         valid = false;
     }
 
-    pthread_mutex_unlock(&ladder->mutex);
+    nimcp_mutex_unlock(&ladder->mutex);
 
     return valid;
 }

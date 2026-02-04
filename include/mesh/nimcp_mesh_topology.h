@@ -515,6 +515,45 @@ void mesh_topology_print_debug(mesh_topology_ctx_t ctx);
  */
 void mesh_coord_placement_free(mesh_coord_placement_t* placement);
 
+/* ============================================================================
+ * BBB Integration API
+ * ============================================================================ */
+
+/**
+ * Forward declaration for BBB system
+ */
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
+/**
+ * @brief Set BBB system for mesh topology validation
+ *
+ * WHAT: Configure BBB for topology change validation
+ * WHY:  Prevent unauthorized topology modifications
+ *
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void mesh_topology_set_bbb(bbb_system_t bbb);
+
+/**
+ * @brief Get current BBB system for mesh topology
+ *
+ * @return BBB system or NULL
+ */
+bbb_system_t mesh_topology_get_bbb(void);
+
+/**
+ * @brief Set health agent for mesh topology heartbeats
+ *
+ * @param agent Health agent (can be NULL to disable)
+ */
+void mesh_topology_set_health_agent(nimcp_health_agent_t* agent);
+
 #ifdef __cplusplus
 }
 #endif

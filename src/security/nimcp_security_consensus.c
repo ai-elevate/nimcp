@@ -16,6 +16,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -227,7 +228,7 @@ static nimcp_error_t append_log_entry(
 ) {
     if (c->log_size >= c->log_capacity) {
         size_t new_capacity = c->log_capacity * 2;
-        consensus_log_entry_t* new_log = realloc(c->log, new_capacity * sizeof(consensus_log_entry_t));
+        consensus_log_entry_t* new_log = nimcp_realloc(c->log, new_capacity * sizeof(consensus_log_entry_t));
         if (!new_log) {
             LOG_ERROR("Failed to resize log");
             return NIMCP_ERROR_NO_MEMORY;
@@ -466,7 +467,7 @@ static void* timer_thread_func(void* arg) {
     nimcp_security_consensus_t c = (nimcp_security_consensus_t)arg;
 
     while (c->running) {
-        pthread_mutex_lock(&c->mutex);
+        nimcp_mutex_lock(&c->mutex);
 
         if (c->role == NIMCP_CONSENSUS_FOLLOWER || c->role == NIMCP_CONSENSUS_CANDIDATE) {
             if (is_election_timeout(c)) {
@@ -491,7 +492,7 @@ static void* timer_thread_func(void* arg) {
             }
         }
 
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
 
         /* Sleep 10ms */
         usleep(10000);
@@ -507,7 +508,7 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
         return NULL;
     }
 
-    nimcp_security_consensus_t c = calloc(1, sizeof(struct nimcp_security_consensus));
+    nimcp_security_consensus_t c = nimcp_calloc(1, sizeof(struct nimcp_security_consensus));
     if (!c) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_consensus_create: failed to allocate consensus");
         LOG_ERROR("Failed to allocate consensus");
@@ -535,10 +536,10 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
     c->current_term = 0;
     c->voted_for = 0;
     c->log_capacity = config->max_log_entries > 0 ? config->max_log_entries : 1024;
-    c->log = calloc(c->log_capacity, sizeof(consensus_log_entry_t));
+    c->log = nimcp_calloc(c->log_capacity, sizeof(consensus_log_entry_t));
     if (!c->log) {
         LOG_ERROR("Failed to allocate log");
-        free(c);
+        nimcp_free(c);
         return NULL;
     }
 
@@ -549,10 +550,10 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
     c->current_leader = 0;
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&c->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&c->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize mutex");
-        free(c->log);
-        free(c);
+        nimcp_free(c->log);
+        nimcp_free(c);
         return NULL;
     }
 
@@ -573,12 +574,12 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
     gettimeofday(&c->last_heartbeat_sent, NULL);
     gettimeofday(&c->last_heartbeat_received, NULL);
 
-    if (nimcp_thread_create(&c->timer_thread, timer_thread_func, c, NULL) != 0) {
+    if (nimcp_thread_create(&c->timer_thread, timer_thread_func, c, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to create timer thread");
         if (c->bio_ctx) bio_router_unregister_module(c->bio_ctx);
-        pthread_mutex_destroy(&c->mutex);
-        free(c->log);
-        free(c);
+        nimcp_mutex_destroy(&c->mutex);
+        nimcp_free(c->log);
+        nimcp_free(c);
         return NULL;
     }
 
@@ -597,7 +598,7 @@ void nimcp_consensus_destroy(nimcp_security_consensus_t c) {
     c->running = false;
     nimcp_thread_join(c->timer_thread, NULL);
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     /* Unregister from bio-async */
     if (c->bio_ctx) {
@@ -608,18 +609,18 @@ void nimcp_consensus_destroy(nimcp_security_consensus_t c) {
     nimcp_cluster_node_t* node = c->nodes;
     while (node) {
         nimcp_cluster_node_t* next = node->next;
-        free(node);
+        nimcp_free(node);
         node = next;
     }
 
     /* Free leader state */
-    if (c->next_index) free(c->next_index);
-    if (c->match_index) free(c->match_index);
+    if (c->next_index) nimcp_free(c->next_index);
+    if (c->match_index) nimcp_free(c->match_index);
 
     /* Free log */
     if (c->log) {
         memset(c->log, 0, c->log_capacity * sizeof(consensus_log_entry_t));
-        free(c->log);
+        nimcp_free(c->log);
     }
 
     LOG_INFO("Consensus destroyed: node_id=%lu, term=%lu, elections=%lu",
@@ -629,10 +630,10 @@ void nimcp_consensus_destroy(nimcp_security_consensus_t c) {
 
     c->magic = 0;
 
-    pthread_mutex_unlock(&c->mutex);
-    pthread_mutex_destroy(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
+    nimcp_mutex_destroy(&c->mutex);
 
-    free(c);
+    nimcp_free(c);
 }
 
 nimcp_error_t nimcp_consensus_join(
@@ -662,7 +663,7 @@ nimcp_error_t nimcp_consensus_leave(nimcp_security_consensus_t c) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     if (c->router) {
         char msg[256];
@@ -673,7 +674,7 @@ nimcp_error_t nimcp_consensus_leave(nimcp_security_consensus_t c) {
 
     LOG_INFO("Node %lu leaving cluster", (unsigned long)c->node_id);
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -686,11 +687,11 @@ nimcp_error_t nimcp_consensus_propose_policy(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     /* Only leader can propose */
     if (c->role != NIMCP_CONSENSUS_LEADER) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -703,7 +704,7 @@ nimcp_error_t nimcp_consensus_propose_policy(
     /* Append to log */
     nimcp_error_t err = append_log_entry(c, &entry);
     if (err != NIMCP_SUCCESS) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return err;
     }
 
@@ -720,7 +721,7 @@ nimcp_error_t nimcp_consensus_propose_policy(
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
     }
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -733,11 +734,11 @@ nimcp_error_t nimcp_consensus_share_threat(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     /* Only leader can propose */
     if (c->role != NIMCP_CONSENSUS_LEADER) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -750,7 +751,7 @@ nimcp_error_t nimcp_consensus_share_threat(
     /* Append to log */
     nimcp_error_t err = append_log_entry(c, &entry);
     if (err != NIMCP_SUCCESS) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return err;
     }
 
@@ -761,7 +762,7 @@ nimcp_error_t nimcp_consensus_share_threat(
                    threat->type,
                    threat->severity);
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -775,10 +776,10 @@ nimcp_error_t nimcp_consensus_initiate_response(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     if (c->role != NIMCP_CONSENSUS_LEADER) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -794,7 +795,7 @@ nimcp_error_t nimcp_consensus_initiate_response(
     /* Append to log */
     nimcp_error_t err = append_log_entry(c, &entry);
     if (err != NIMCP_SUCCESS) {
-        pthread_mutex_unlock(&c->mutex);
+        nimcp_mutex_unlock(&c->mutex);
         return err;
     }
 
@@ -802,7 +803,7 @@ nimcp_error_t nimcp_consensus_initiate_response(
 
     LOG_WARN("Coordinated response initiated: type=%d", response);
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -812,9 +813,9 @@ nimcp_consensus_role_t nimcp_consensus_get_role(nimcp_security_consensus_t c) {
         return NIMCP_CONSENSUS_FOLLOWER;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
     nimcp_consensus_role_t role = c->role;
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return role;
 }
@@ -824,9 +825,9 @@ nimcp_node_id_t nimcp_consensus_get_leader(nimcp_security_consensus_t c) {
         return 0;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
     nimcp_node_id_t leader = c->current_leader;
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return leader;
 }
@@ -839,7 +840,7 @@ nimcp_error_t nimcp_consensus_get_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     stats->current_role = c->role;
     stats->current_term = c->current_term;
@@ -860,7 +861,7 @@ nimcp_error_t nimcp_consensus_get_stats(
     stats->responses_coordinated = c->responses_coordinated;
     stats->last_heartbeat_time = c->last_heartbeat_received.tv_sec;
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -875,7 +876,7 @@ nimcp_error_t nimcp_consensus_get_nodes(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&c->mutex);
+    nimcp_mutex_lock(&c->mutex);
 
     size_t count = 0;
     nimcp_cluster_node_t* node = c->nodes;
@@ -895,7 +896,7 @@ nimcp_error_t nimcp_consensus_get_nodes(
 
     *count_out = count;
 
-    pthread_mutex_unlock(&c->mutex);
+    nimcp_mutex_unlock(&c->mutex);
 
     return NIMCP_SUCCESS;
 }

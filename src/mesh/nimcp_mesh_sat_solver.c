@@ -20,22 +20,114 @@
 
 #include "mesh/nimcp_mesh_sat_solver.h"
 #include "mesh/nimcp_mesh_participant.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-/* BBB integration disabled for now - using immune system directly */
-/* #include "security/nimcp_blood_brain_barrier.h" */
 #include "core/brain/nimcp_kg_module_wiring.h"
 #include "utils/fault_tolerance/nimcp_health_agent.h"
+#include <stdatomic.h>
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <ctype.h>
+
+/* ============================================================================
+ * BBB and Health Agent Integration
+ * ============================================================================ */
+
+/** Global BBB system for SAT solver - thread-safe access */
+static _Atomic(bbb_system_t) g_sat_solver_bbb = NULL;
+
+/** Global health agent for SAT solver heartbeats */
+static _Atomic(nimcp_health_agent_t*) g_sat_solver_health_agent = NULL;
+
+/**
+ * @brief Set BBB system for SAT solver validation
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void sat_solver_set_bbb(bbb_system_t bbb) {
+    atomic_store(&g_sat_solver_bbb, bbb);
+}
+
+/**
+ * @brief Get current BBB system for SAT solver
+ * @return BBB system or NULL
+ */
+bbb_system_t sat_solver_get_bbb(void) {
+    return atomic_load(&g_sat_solver_bbb);
+}
+
+/**
+ * @brief Set health agent for SAT solver heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void sat_solver_set_health_agent(nimcp_health_agent_t* agent) {
+    atomic_store(&g_sat_solver_health_agent, agent);
+}
+
+/**
+ * @brief Send heartbeat from SAT solver module
+ */
+static inline void sat_solver_heartbeat(const char* operation, float progress) {
+    nimcp_health_agent_t* agent = atomic_load(&g_sat_solver_health_agent);
+    if (agent) {
+        nimcp_health_agent_heartbeat_ex(agent, operation, progress);
+    }
+}
+
+/**
+ * @brief Validate clause data using BBB
+ *
+ * WHAT: Validate clause literals and weights before adding
+ * WHY:  Prevent malicious constraint injection
+ * HOW:  Use BBB input validation on clause data
+ *
+ * @param literals Clause literals
+ * @param count Number of literals
+ * @param weight Clause weight
+ * @return true if valid, false if threat detected
+ */
+static bool validate_clause_bbb(const sat_literal_t* literals, size_t count, float weight) {
+    bbb_system_t bbb = atomic_load(&g_sat_solver_bbb);
+    if (!bbb) return true;  /* BBB not configured, allow */
+
+    bbb_validation_result_t result;
+
+    /* Validate clause data buffer */
+    bool valid = bbb_validate_input(
+        bbb,
+        literals,
+        count * sizeof(sat_literal_t),
+        &result
+    );
+
+    if (!valid) {
+        LOG_WARN("BBB rejected clause data: %s (threat=%s, severity=%s)",
+                 result.reason,
+                 bbb_threat_type_name(result.threat),
+                 bbb_severity_name(result.severity));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected SAT clause data");
+        return false;
+    }
+
+    /* Validate weight range */
+    if (weight < 0.0f || weight > 1e10f || weight != weight /* NaN check */) {
+        LOG_WARN("BBB rejected clause weight %.2f - out of range or NaN", weight);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                              "BBB rejected SAT clause weight");
+        return false;
+    }
+
+    return true;
+}
 
 /* ============================================================================
  * Internal Structures
@@ -421,6 +513,13 @@ static sat_result_t dpll_solve(sat_solver_t* solver, int depth) {
         return SAT_RESULT_ERROR;
     }
 
+    /* Periodic heartbeat during long-running SAT solving */
+    if ((depth % 10) == 0) {
+        float progress = (solver->variable_count > 0) ?
+                         (float)solver->trail_size / (float)solver->variable_count : 0.0f;
+        sat_solver_heartbeat("dpll_solve", progress);
+    }
+
     /* Unit propagation */
     if (!unit_propagate(solver)) {
         return SAT_RESULT_UNSATISFIABLE;  /* Conflict */
@@ -698,6 +797,12 @@ nimcp_error_t sat_solver_add_clause(
     if (!literals || count == 0) return NIMCP_ERROR_NULL_POINTER;
     if (count > SAT_MAX_LITERALS_PER_CLAUSE) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* BBB validation of clause data before adding */
+    if (!validate_clause_bbb(literals, count, weight)) {
+        LOG_ERROR("Rejecting clause with %zu literals - BBB validation failed", count);
+        return NIMCP_ERROR_BBB_VALIDATION;
+    }
+
     nimcp_mutex_lock(solver->mutex);
 
     if (solver->clause_count >= SAT_MAX_CLAUSES) {
@@ -936,9 +1041,28 @@ sat_result_t sat_solver_solve(sat_solver_t* solver) {
 
     nimcp_mutex_lock(solver->mutex);
 
-    /* BBB validation disabled - using immune system directly for security
-     * TODO: Re-enable when BBB integration is fully implemented
-     */
+    /* Send heartbeat at start of solve */
+    sat_solver_heartbeat("sat_solve_start", 0.0f);
+
+    /* BBB validation of solver state before solving */
+    bbb_system_t bbb = atomic_load(&g_sat_solver_bbb);
+    if (bbb) {
+        bbb_validation_result_t result;
+        /* Validate variable data integrity */
+        bool valid = bbb_validate_input(
+            bbb,
+            solver->variables,
+            solver->variable_count * sizeof(sat_variable_t),
+            &result
+        );
+        if (!valid) {
+            LOG_ERROR("BBB validation failed for SAT solver state: %s", result.reason);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                                  "BBB rejected SAT solver state");
+            nimcp_mutex_unlock(solver->mutex);
+            return SAT_RESULT_ERROR;
+        }
+    }
 
     solver->solve_start_ns = nimcp_time_now_ns();
     memset(&solver->stats, 0, sizeof(solver->stats));

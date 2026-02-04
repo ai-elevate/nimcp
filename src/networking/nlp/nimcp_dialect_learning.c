@@ -13,6 +13,8 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -214,7 +216,7 @@ static dialect_entry_t* create_dialect_entry(
     if (!dl || dim == 0) return NULL;
 
     // Allocate entry
-    dialect_entry_t* entry = (dialect_entry_t*)calloc(1, sizeof(dialect_entry_t));
+    dialect_entry_t* entry = (dialect_entry_t*)nimcp_calloc(1, sizeof(dialect_entry_t));
     if (!entry) {
         set_error("Failed to allocate dialect entry");
         return NULL;
@@ -230,10 +232,11 @@ static dialect_entry_t* create_dialect_entry(
 
     // Allocate translation matrix
     size_t matrix_size = dim * dim * sizeof(float);
-    entry->dialect.translation_matrix = (float*)calloc(dim * dim, sizeof(float));
+    (void)matrix_size;  // suppress unused warning
+    entry->dialect.translation_matrix = (float*)nimcp_calloc(dim * dim, sizeof(float));
     if (!entry->dialect.translation_matrix) {
         set_error("Failed to allocate translation matrix");
-        free(entry);
+        nimcp_free(entry);
         return NULL;
     }
 
@@ -363,7 +366,7 @@ static nimcp_error_t handle_dialect_learned(
 
 dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config) {
     // Allocate structure
-    dialect_learner_t dl = (dialect_learner_t)malloc(sizeof(dialect_learner_struct));
+    dialect_learner_t dl = (dialect_learner_t)nimcp_malloc(sizeof(dialect_learner_struct));
     if (!dl) {
         set_error("Failed to allocate dialect learner structure");
         return NULL;
@@ -382,9 +385,9 @@ dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config)
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&dl->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&dl->lock, NULL) != NIMCP_SUCCESS) {
         set_error("Failed to initialize mutex");
-        free(dl);
+        nimcp_free(dl);
         return NULL;
     }
 
@@ -450,18 +453,18 @@ void dialect_learner_destroy(dialect_learner_t dl) {
         while (entry) {
             dialect_entry_t* next = entry->next;
             if (entry->dialect.translation_matrix) {
-                free(entry->dialect.translation_matrix);
+                nimcp_free(entry->dialect.translation_matrix);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&dl->lock);
+    nimcp_mutex_destroy(&dl->lock);
 
     // Free structure
-    free(dl);
+    nimcp_free(dl);
 }
 
 int dialect_learn_from_pairs(
@@ -484,20 +487,20 @@ int dialect_learn_from_pairs(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     // Find or create dialect entry
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (!entry) {
         if (dl->dialect_count >= dl->config.max_dialects) {
-            pthread_mutex_unlock(&dl->lock);
+            nimcp_mutex_unlock(&dl->lock);
             set_error("Maximum dialects reached");
             return -1;
         }
 
         entry = create_dialect_entry(dl, source, target, signal_size);
         if (!entry) {
-            pthread_mutex_unlock(&dl->lock);
+            nimcp_mutex_unlock(&dl->lock);
             return -1;
         }
         insert_dialect_entry(dl, entry);
@@ -553,7 +556,7 @@ int dialect_learn_from_pairs(
         }
     }
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     LOG_DEBUG("Learned dialect %u->%u from %u pairs (compat=%.3f)",
               source, target, num_pairs, entry->dialect.compatibility_score);
@@ -575,11 +578,11 @@ int dialect_update_online(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (!entry) {
-        pthread_mutex_unlock(&dl->lock);
+        nimcp_mutex_unlock(&dl->lock);
         set_error("Dialect not found");
         return -1;
     }
@@ -599,7 +602,7 @@ int dialect_update_online(
     entry->last_used_us = get_time_us();
     dl->stats.total_updates++;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -619,7 +622,7 @@ int dialect_translate(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (!entry) {
@@ -627,7 +630,7 @@ int dialect_translate(
         uint32_t path[MAX_PATH_LENGTH];
         uint32_t path_len;
         int result = dialect_get_bridge_path(dl, source, target, path, &path_len);
-        pthread_mutex_unlock(&dl->lock);
+        nimcp_mutex_unlock(&dl->lock);
 
         if (result == 0) {
             return dialect_translate_path(dl, path, path_len, signal, signal_size,
@@ -646,7 +649,7 @@ int dialect_translate(
     entry->last_used_us = get_time_us();
     dl->stats.total_translations++;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -665,7 +668,7 @@ int dialect_translate_with(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     matrix_vector_mult(dialect->translation_matrix, signal, translated,
                       dialect->matrix_rows, dialect->matrix_cols);
@@ -673,7 +676,7 @@ int dialect_translate_with(
 
     dl->stats.total_translations++;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -690,11 +693,11 @@ int dialect_get(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (!entry) {
-        pthread_mutex_unlock(&dl->lock);
+        nimcp_mutex_unlock(&dl->lock);
         set_error("Dialect not found");
         return -1;
     }
@@ -702,7 +705,7 @@ int dialect_get(
     // Copy dialect (shallow copy - matrix pointer shared)
     *dialect = entry->dialect;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -711,9 +714,9 @@ bool dialect_exists(dialect_learner_t dl, uint32_t source, uint32_t target) {
     // Guard clause
     if (!dl) return false;
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
     bool exists = (find_dialect_entry(dl, source, target) != NULL);
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return exists;
 }
@@ -722,12 +725,12 @@ float dialect_get_compatibility(dialect_learner_t dl, uint32_t source, uint32_t 
     // Guard clause
     if (!dl) return -1.0F;
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     float compat = entry ? entry->dialect.compatibility_score : -1.0F;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return compat;
 }
@@ -747,18 +750,18 @@ int dialect_get_bridge_path(
 
     // Simple BFS implementation (placeholder - full implementation would use queue)
     // For now, just check for direct connection
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (entry) {
         path[0] = source;
         path[1] = target;
         *path_len = 2;
-        pthread_mutex_unlock(&dl->lock);
+        nimcp_mutex_unlock(&dl->lock);
         return 0;
     }
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
     set_error("No path found (multi-hop search not yet implemented)");
     return -1;
 }
@@ -809,9 +812,9 @@ int dialect_translate_path(
     memcpy(translated, current, current_size * sizeof(float));
     *translated_size = current_size;
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
     dl->stats.multihop_translations++;
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -828,7 +831,7 @@ int dialect_get_all(
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     uint32_t num_copied = 0;
     for (uint32_t i = 0; i < DIALECT_HASH_SIZE && num_copied < max_count; i++) {
@@ -841,7 +844,7 @@ int dialect_get_all(
 
     *count = num_copied;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -853,7 +856,7 @@ int dialect_remove(dialect_learner_t dl, uint32_t source, uint32_t target) {
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     uint32_t hash = dialect_hash(source, target);
     dialect_entry_t** prev = &dl->dialect_table[hash];
@@ -864,18 +867,18 @@ int dialect_remove(dialect_learner_t dl, uint32_t source, uint32_t target) {
             entry->dialect.target_region == target) {
             *prev = entry->next;
             if (entry->dialect.translation_matrix) {
-                free(entry->dialect.translation_matrix);
+                nimcp_free(entry->dialect.translation_matrix);
             }
-            free(entry);
+            nimcp_free(entry);
             dl->dialect_count--;
-            pthread_mutex_unlock(&dl->lock);
+            nimcp_mutex_unlock(&dl->lock);
             return 0;
         }
         prev = &entry->next;
         entry = entry->next;
     }
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
     set_error("Dialect not found");
     return -1;
 }
@@ -887,16 +890,16 @@ int dialect_clear_all(dialect_learner_t dl) {
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
 
     for (uint32_t i = 0; i < DIALECT_HASH_SIZE; i++) {
         dialect_entry_t* entry = dl->dialect_table[i];
         while (entry) {
             dialect_entry_t* next = entry->next;
             if (entry->dialect.translation_matrix) {
-                free(entry->dialect.translation_matrix);
+                nimcp_free(entry->dialect.translation_matrix);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         dl->dialect_table[i] = NULL;
@@ -904,7 +907,7 @@ int dialect_clear_all(dialect_learner_t dl) {
 
     dl->dialect_count = 0;
 
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     LOG_INFO("Cleared all dialects");
 
@@ -918,10 +921,10 @@ int dialect_get_stats(dialect_learner_t dl, dialect_learner_stats_t* stats) {
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
     *stats = dl->stats;
     stats->active_dialects = dl->dialect_count;
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -933,9 +936,9 @@ int dialect_reset_stats(dialect_learner_t dl) {
         return -1;
     }
 
-    pthread_mutex_lock(&dl->lock);
+    nimcp_mutex_lock(&dl->lock);
     memset(&dl->stats, 0, sizeof(dialect_learner_stats_t));
-    pthread_mutex_unlock(&dl->lock);
+    nimcp_mutex_unlock(&dl->lock);
 
     return 0;
 }
@@ -956,7 +959,7 @@ int dialect_clone(const neural_dialect_t* original, neural_dialect_t* clone) {
 
     // Deep copy matrix
     size_t matrix_size = original->matrix_rows * original->matrix_cols * sizeof(float);
-    clone->translation_matrix = (float*)malloc(matrix_size);
+    clone->translation_matrix = (float*)nimcp_malloc(matrix_size);
     if (!clone->translation_matrix) {
         set_error("Failed to allocate cloned matrix");
         return -1;
@@ -972,7 +975,7 @@ void dialect_free(neural_dialect_t* dialect) {
     if (!dialect) return;
 
     if (dialect->translation_matrix) {
-        free(dialect->translation_matrix);
+        nimcp_free(dialect->translation_matrix);
         dialect->translation_matrix = NULL;
     }
 }

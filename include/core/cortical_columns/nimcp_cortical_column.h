@@ -566,6 +566,209 @@ void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats);
  */
 void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats);
 
+//=============================================================================
+// Plasticity Integration API
+//=============================================================================
+
+/* Forward declaration for plasticity bridge */
+struct cortical_plasticity_bridge;
+typedef struct cortical_plasticity_bridge cortical_plasticity_bridge_t;
+
+/**
+ * @brief Set plasticity bridge for cortical columns
+ *
+ * WHAT: Connect cortical columns to plasticity system
+ * WHY:  Enable STDP-based weight updates in column processing
+ * HOW:  Store bridge reference for use during computation
+ *
+ * @param bridge Plasticity bridge (can be NULL to disable)
+ *
+ * THREAD-SAFE: Yes
+ */
+void cortical_column_set_plasticity_bridge(cortical_plasticity_bridge_t* bridge);
+
+/**
+ * @brief Get current plasticity bridge
+ *
+ * @return Current plasticity bridge or NULL if not set
+ */
+cortical_plasticity_bridge_t* cortical_column_get_plasticity_bridge(void);
+
+/**
+ * @brief Apply STDP weight update for minicolumn synapses
+ *
+ * WHAT: Update synaptic weights based on spike timing
+ * WHY:  Enable learning within cortical columns
+ * HOW:  Calculate timing difference, apply STDP rule via bridge
+ *
+ * @param col Minicolumn
+ * @param pre_spike_time Pre-synaptic spike time (us)
+ * @param post_spike_time Post-synaptic spike time (us)
+ * @param synapse_id Synapse identifier
+ * @return Weight change applied, or 0 if no plasticity bridge
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float minicolumn_apply_stdp(
+    minicolumn_t* col,
+    uint64_t pre_spike_time,
+    uint64_t post_spike_time,
+    uint32_t synapse_id
+);
+
+/**
+ * @brief Notify plasticity system of spike event
+ *
+ * WHAT: Report spike activity for plasticity processing
+ * WHY:  Enable timing-dependent plasticity across modules
+ * HOW:  Send spike event via bio-async if connected
+ *
+ * @param col Minicolumn that spiked
+ * @param spike_time Spike timestamp (us)
+ * @param is_pre_spike true=pre-synaptic, false=post-synaptic
+ *
+ * THREAD-SAFE: Yes
+ */
+void minicolumn_notify_spike(
+    minicolumn_t* col,
+    uint64_t spike_time,
+    bool is_pre_spike
+);
+
+/**
+ * @brief Apply plasticity to hypercolumn winners
+ *
+ * WHAT: Update weights for winning minicolumns
+ * WHY:  Learning occurs based on competition winners
+ * HOW:  Apply STDP to winner's synaptic connections
+ *
+ * @param hcol Hypercolumn
+ * @param current_time Current simulation time (us)
+ *
+ * THREAD-SAFE: Yes
+ */
+void hypercolumn_apply_plasticity(
+    hypercolumn_t* hcol,
+    uint64_t current_time
+);
+
+/**
+ * @brief Compute hypercolumn with plasticity integration
+ *
+ * WHAT: Process hypercolumn and apply STDP learning
+ * WHY:  Combine computation with online learning
+ * HOW:  Call compute, then apply plasticity to winners
+ *
+ * @param hcol Hypercolumn
+ * @param input Input feature vector
+ * @param input_size Size of input
+ * @param current_time Current simulation time (us)
+ *
+ * THREAD-SAFE: Yes
+ */
+void hypercolumn_compute_with_plasticity(
+    hypercolumn_t* hcol,
+    const float* input,
+    uint32_t input_size,
+    uint64_t current_time
+);
+
+//=============================================================================
+// SNN Bridge Integration API
+//=============================================================================
+
+/** Forward declaration for SNN network */
+struct snn_network_s;
+typedef struct snn_network_s cortical_snn_network_t;
+
+/** Forward declaration for SNN population */
+struct snn_population_s;
+typedef struct snn_population_s cortical_snn_population_t;
+
+/**
+ * @brief Set SNN network for spike-based cortical column processing
+ * @param network SNN network or NULL to disconnect
+ */
+void cortical_column_set_snn_network(cortical_snn_network_t* network);
+
+/**
+ * @brief Get current SNN network
+ * @return Current SNN network or NULL
+ */
+cortical_snn_network_t* cortical_column_get_snn_network(void);
+
+/**
+ * @brief Compute minicolumn activation using SNN spike integration
+ * @param col Minicolumn
+ * @param spike_times Array of spike timestamps (microseconds)
+ * @param num_spikes Number of spikes
+ * @param current_time Current simulation time (us)
+ * @return Computed activation level [0,1] or -1 on error
+ */
+float minicolumn_compute_spike_based(
+    minicolumn_t* col,
+    const uint64_t* spike_times,
+    uint32_t num_spikes,
+    uint64_t current_time
+);
+
+/**
+ * @brief Hypercolumn spike-based computation
+ * @param hcol Hypercolumn
+ * @param spike_times Array of spike time arrays per minicolumn
+ * @param spike_counts Number of spikes per minicolumn
+ * @param current_time Current simulation time (us)
+ */
+void hypercolumn_compute_spike_based(
+    hypercolumn_t* hcol,
+    const uint64_t** spike_times,
+    const uint32_t* spike_counts,
+    uint64_t current_time
+);
+
+/**
+ * @brief Generate output spikes from hypercolumn activity
+ * @param hcol Hypercolumn
+ * @param out_spike_times Output buffer for spike times
+ * @param out_neuron_ids Output buffer for neuron IDs
+ * @param max_spikes Maximum spikes to generate
+ * @param current_time Current simulation time (us)
+ * @return Number of spikes generated
+ */
+uint32_t hypercolumn_generate_spikes(
+    hypercolumn_t* hcol,
+    uint64_t* out_spike_times,
+    uint32_t* out_neuron_ids,
+    uint32_t max_spikes,
+    uint64_t current_time
+);
+
+/**
+ * @brief Connect hypercolumn to SNN population
+ * @param hcol Hypercolumn
+ * @param population SNN population
+ * @return 0 on success, -1 on error
+ */
+int hypercolumn_connect_snn_population(
+    hypercolumn_t* hcol,
+    cortical_snn_population_t* population
+);
+
+/**
+ * @brief Disconnect hypercolumn from SNN population
+ * @param hcol Hypercolumn
+ * @return 0 on success, -1 on error
+ */
+int hypercolumn_disconnect_snn_population(hypercolumn_t* hcol);
+
+/**
+ * @brief Check if hypercolumn is connected to SNN
+ * @param hcol Hypercolumn
+ * @return true if connected
+ */
+bool hypercolumn_is_snn_connected(const hypercolumn_t* hcol);
+
 #ifdef __cplusplus
 }
 #endif

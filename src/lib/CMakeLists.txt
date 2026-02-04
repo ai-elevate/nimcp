@@ -461,6 +461,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_striosome_matrix.c     # Striosome-matrix compartmentalization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_sequence_chunking.c    # Action sequence chunking
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_vigor.c                # Vigor/effort modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/bridges/nimcp_subcortical_kg_wiring.c  # Subcortical KG wiring (basal ganglia, thalamus, NAc)
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -1021,6 +1022,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive_fep_bridge.c
+    # Plasticity Bio-Async Bridge (P0-P2 unified bridge)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/integration/nimcp_plasticity_bio_async_bridge.c
     # Additional Cognitive FEP Bridges (Emotion/Epistemic/Predictive)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_analysis_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging_fep_bridge.c
@@ -1911,6 +1914,9 @@ set(NIMCP_CORE_SOURCES
 
     # Async - Surface Geometry Bio-Async Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/bridges/nimcp_surface_bio_async_bridge.c
+
+    # Async - Bio-Async Plasticity Bridge (SNN/STDP integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/bridges/nimcp_bio_async_plasticity_bridge.c
 
     # Quantum - Surface Geometry Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../quantum/integration/nimcp_surface_quantum_bridge.c

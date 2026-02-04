@@ -12,13 +12,95 @@
  */
 
 #include "mesh/nimcp_mesh_participant.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent.h"
 
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
+
+/* ============================================================================
+ * BBB Integration for Mesh Participant
+ * ============================================================================ */
+
+/** Global BBB system for mesh participant module - thread-safe access */
+static _Atomic(bbb_system_t) g_mesh_participant_bbb = NULL;
+
+/* Health agent boilerplate - thread-safe for mesh module */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mesh_participant)
+
+/**
+ * @brief Set BBB system for mesh participant validation
+ * @param bbb BBB system (can be NULL to disable)
+ */
+void mesh_participant_set_bbb(bbb_system_t bbb) {
+    atomic_store(&g_mesh_participant_bbb, bbb);
+}
+
+/**
+ * @brief Get current BBB system for mesh participant
+ * @return BBB system or NULL
+ */
+bbb_system_t mesh_participant_get_bbb(void) {
+    return atomic_load(&g_mesh_participant_bbb);
+}
+
+/**
+ * @brief Validate participant registration data using BBB
+ *
+ * WHAT: Validate participant interface and config before registration
+ * WHY:  Prevent malicious module registration
+ * HOW:  Use BBB input validation on string/pointer data
+ *
+ * @param interface Participant interface to validate
+ * @param config Participant config to validate
+ * @return true if valid, false if threat detected
+ */
+static bool validate_registration_bbb(
+    const mesh_participant_interface_t* interface,
+    const mesh_participant_config_t* config
+) {
+    if (!interface || !config) return false;
+
+    bbb_system_t bbb = atomic_load(&g_mesh_participant_bbb);
+    if (!bbb) return true;  /* BBB not configured, allow */
+
+    bbb_validation_result_t result;
+    bool valid = true;
+
+    /* Validate module name string */
+    if (config->module_name) {
+        valid = bbb_validate_string(bbb, config->module_name, &result);
+        if (!valid) {
+            LOG_WARN("BBB rejected participant name '%s': %s (threat=%s)",
+                     config->module_name, result.reason,
+                     bbb_threat_type_name(result.threat));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                                  "BBB rejected participant module name");
+            return false;
+        }
+    }
+
+    /* Validate user context pointer if present */
+    if (config->user_context) {
+        valid = bbb_validate_pointer(bbb, config->user_context, sizeof(void*), &result);
+        if (!valid) {
+            LOG_WARN("BBB rejected participant user_context: %s (threat=%s)",
+                     result.reason, bbb_threat_type_name(result.threat));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION,
+                                  "BBB rejected participant user context pointer");
+            return false;
+        }
+    }
+
+    return true;
+}
 
 /* ============================================================================
  * Internal Structures
@@ -257,6 +339,16 @@ nimcp_error_t mesh_participant_register(
 ) {
     if (!validate_registry(registry)) return NIMCP_ERROR_INVALID_PARAM;
     if (!interface || !config || !id_out) return NIMCP_ERROR_NULL_POINTER;
+
+    /* BBB validation of registration data before processing */
+    if (!validate_registration_bbb(interface, config)) {
+        LOG_ERROR("Rejecting participant registration '%s' - BBB validation failed",
+                  config->module_name ? config->module_name : "(null)");
+        return NIMCP_ERROR_BBB_VALIDATION;
+    }
+
+    /* Send heartbeat for registration operation */
+    mesh_participant_heartbeat("participant_register", 0.0f);
 
     nimcp_mutex_lock(registry->mutex);
 

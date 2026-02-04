@@ -9,6 +9,7 @@
 #include "utils/fault_tolerance/nimcp_recovery.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "constants/nimcp_timing_constants.h"  /* Centralized timing constants */
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -101,12 +102,13 @@ static recovery_stats_t g_recovery_stats = {0};
 //=============================================================================
 
 // Strategy for SIGSEGV (segmentation fault)
+// Uses centralized timing constants for consistency
 static recovery_strategy_t g_strategy_sigsegv = {
     .tier = RECOVERY_TIER_STRATEGIC,
     .primary = RECOVERY_ACTION_RELOAD_CHECKPOINT,
     .fallback = RECOVERY_ACTION_EMERGENCY_SAVE,
     .max_retries = 1,
-    .timeout_ms = 1000,
+    .timeout_ms = NIMCP_RECOVERY_TIMEOUT_MS,  /* Was: 1000 */
     .success_threshold = 0.7F,
     .description = "Rollback to checkpoint after segmentation fault"
 };
@@ -117,7 +119,7 @@ static recovery_strategy_t g_strategy_sigfpe = {
     .primary = RECOVERY_ACTION_CLEAR_NAN,
     .fallback = RECOVERY_ACTION_REDUCE_LR,
     .max_retries = 3,
-    .timeout_ms = 100,
+    .timeout_ms = NIMCP_FAST_TIMEOUT_MS,  /* Was: 100 */
     .success_threshold = 0.8F,
     .description = "Clear NaN/Inf and reduce learning rate"
 };
@@ -128,7 +130,7 @@ static recovery_strategy_t g_strategy_memory = {
     .primary = RECOVERY_ACTION_TRIGGER_GC,
     .fallback = RECOVERY_ACTION_REDUCE_BATCH,
     .max_retries = 2,
-    .timeout_ms = 500,
+    .timeout_ms = NIMCP_SHORT_TIMEOUT_MS,  /* Was: 500 */
     .success_threshold = 0.75F,
     .description = "Free memory and reduce batch size"
 };
@@ -139,7 +141,7 @@ static recovery_strategy_t g_strategy_performance = {
     .primary = RECOVERY_ACTION_FALLBACK_CPU,
     .fallback = RECOVERY_ACTION_REDUCE_MODEL,
     .max_retries = 1,
-    .timeout_ms = 2000,
+    .timeout_ms = NIMCP_RECOVERY_L2_TIMEOUT_MS,  /* Was: 2000 */
     .success_threshold = 0.6F,
     .description = "Fallback to CPU or reduce model complexity"
 };
@@ -150,7 +152,7 @@ static recovery_strategy_t g_strategy_corruption = {
     .primary = RECOVERY_ACTION_RELOAD_CHECKPOINT,
     .fallback = RECOVERY_ACTION_REINIT_LAYER,
     .max_retries = 2,
-    .timeout_ms = 1000,
+    .timeout_ms = NIMCP_RECOVERY_TIMEOUT_MS,  /* Was: 1000 */
     .success_threshold = 0.7F,
     .description = "Reload checkpoint or reinitialize corrupted layers"
 };
