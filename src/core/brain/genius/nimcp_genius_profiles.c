@@ -49,6 +49,11 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(genius_profiles)
+
+/* Internal heartbeat stub for migration compatibility */
+static inline void genius_profiles_heartbeat_internal(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

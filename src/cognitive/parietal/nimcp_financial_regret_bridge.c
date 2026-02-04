@@ -36,6 +36,11 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_regret)
+
+/* Stub heartbeat for migration compatibility */
+static inline void fin_regret_heartbeat_global(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

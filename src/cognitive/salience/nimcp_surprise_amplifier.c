@@ -53,6 +53,16 @@
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_amplifier_health_agent = NULL;
 
+
+
+/* Stub for migration compatibility */
+static inline void surprise_amplifier_set_health_agent_internal(nimcp_health_agent_t* agent) {
+    (void)agent;
+}
+/* Stub heartbeat for migration compatibility */
+static inline void surprise_amplifier_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

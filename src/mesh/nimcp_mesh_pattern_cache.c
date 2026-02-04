@@ -24,6 +24,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/cache/nimcp_cache.h"
 #include "cognitive/immune/nimcp_brain_immune.h"

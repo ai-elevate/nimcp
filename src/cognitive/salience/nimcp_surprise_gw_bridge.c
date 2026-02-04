@@ -40,6 +40,11 @@
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_gw_bridge_health_agent = NULL;
 
+
+/* Stub heartbeat for migration compatibility */
+static inline void surprise_gw_bridge_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

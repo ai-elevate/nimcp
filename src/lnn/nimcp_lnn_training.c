@@ -32,6 +32,11 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_STATIC(lnn)
 
+
+/* Stub heartbeat for migration compatibility */
+static inline void lnn_training_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 static float compute_step_schedule_lr(
     float base_lr,
     uint64_t step,

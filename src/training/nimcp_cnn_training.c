@@ -35,6 +35,11 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cnn)
 
+
+/* Stub heartbeat for migration compatibility */
+static inline void cnn_training_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 static inline void nimcp_tensor_fill(nimcp_tensor_t* t, float value) {
     if (!t) return;
     float* data = (float*)nimcp_tensor_data(t);

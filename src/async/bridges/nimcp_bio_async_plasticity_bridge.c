@@ -30,6 +30,11 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_async_plasticity_bridge)
 
+
+/* Stub heartbeat for migration compatibility */
+static inline void bio_async_plasticity_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 static void handle_incoming_batch_event(
     bio_async_plasticity_bridge_t* bridge,
     const void* payload,

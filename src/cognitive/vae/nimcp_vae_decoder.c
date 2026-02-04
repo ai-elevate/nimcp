@@ -38,6 +38,11 @@
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_vae_decoder_health_agent = NULL;
 
+
+/* Stub heartbeat for migration compatibility */
+static inline void vae_decoder_heartbeat(const char* op, float progress) {
+    (void)op; (void)progress;
+}
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

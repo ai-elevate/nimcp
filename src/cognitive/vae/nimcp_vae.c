@@ -87,6 +87,19 @@ struct vae_system {
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
+/* Timestamp utility stub */
+#include <time.h>
+static inline uint64_t get_timestamp_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+}
+
+/* Stub heartbeat for migration compatibility */
+static inline void vae_heartbeat(void* vae, const char* op) {
+    (void)vae; (void)op;
+}
+
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_vae_health_agent = NULL;
 

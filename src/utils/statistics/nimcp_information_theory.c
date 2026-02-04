@@ -34,6 +34,9 @@
 /** Forward declaration for health agent */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
+/* Heartbeat macro for migration compatibility */
+#define INFO_THEORY_HEARTBEAT(op, progress) do { (void)(op); (void)(progress); } while(0)
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(info_theory)
 
 /* Module state globals */
