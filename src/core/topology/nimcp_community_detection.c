@@ -22,36 +22,12 @@
 #include <time.h>
 #include <stdarg.h>
 #include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #define LOG_MODULE "community_detection"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for community_detection module */
-static nimcp_health_agent_t* g_community_detection_health_agent = NULL;
-
-/**
- * @brief Set health agent for community_detection heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void community_detection_set_health_agent(nimcp_health_agent_t* agent) {
-    g_community_detection_health_agent = agent;
-}
-
-/** @brief Send heartbeat from community_detection module */
-static inline void community_detection_heartbeat(const char* operation, float progress) {
-    if (g_community_detection_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_community_detection_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(community_detection)
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)
@@ -60,7 +36,7 @@ static inline void community_detection_heartbeat(const char* operation, float pr
 static bio_module_context_t bio_ctx = NULL;
 static bool bio_async_enabled = false;
 static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t bio_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t bio_cleanup_mutex = NIMCP_MUTEX_INITIALIZER;
 
 static void community_detection_bio_init_impl(void) {
     if (!bio_router_is_initialized()) {
@@ -88,14 +64,14 @@ static void community_detection_bio_init(void) {
 
 __attribute__((destructor))
 static void community_detection_bio_cleanup(void) {
-    pthread_mutex_lock(&bio_cleanup_mutex);
+    nimcp_mutex_lock(&bio_cleanup_mutex);
     if (bio_async_enabled && bio_ctx) {
         bio_router_unregister_module(bio_ctx);
         bio_ctx = NULL;
         bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for community_detection module");
     }
-    pthread_mutex_unlock(&bio_cleanup_mutex);
+    nimcp_mutex_unlock(&bio_cleanup_mutex);
 }
 
 //=============================================================================

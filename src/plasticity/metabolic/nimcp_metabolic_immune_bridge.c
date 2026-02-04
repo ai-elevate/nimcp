@@ -13,36 +13,13 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for metabolic_immune_bridge module */
-static nimcp_health_agent_t* g_metabolic_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for metabolic_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void metabolic_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_metabolic_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from metabolic_immune_bridge module */
-static inline void metabolic_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_metabolic_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_metabolic_immune_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metabolic_immune_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(metabolic_immune_bridge)
@@ -219,7 +196,7 @@ void metabolic_immune_bridge_destroy(metabolic_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -243,7 +220,7 @@ int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_metabolic_burden) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_metabolic_effects_t* effects = &bridge->cytokine_effects;
@@ -270,7 +247,7 @@ int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
     effects->total_cost_multiplier = 1.0f + effects->total_baseline_increase;
     effects->total_cost_multiplier = clamp_f(effects->total_cost_multiplier, 0.5f, 3.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +263,7 @@ int metabolic_immune_apply_inflammation_effects(metabolic_immune_bridge_t* bridg
     if (!bridge->enable_inflammation_cost_increase) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get current inflammation level */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -313,7 +290,7 @@ int metabolic_immune_apply_inflammation_effects(metabolic_immune_bridge_t* bridg
         bridge->inflammation_cost_increases++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -365,7 +342,7 @@ int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
     if (!bridge->enable_atp_immune_feedback) return 0;
     if (!bridge->metabolic) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get current ATP state */
     float atp_level = metabolic_plasticity_get_atp_level(bridge->metabolic);
@@ -389,7 +366,7 @@ int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
         bridge->immune_suppression_events++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -423,7 +400,7 @@ int metabolic_immune_bridge_update(
 
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update inflammation duration */
     if (bridge->inflammation_state.current_level > INFLAMMATION_NONE) {
@@ -435,7 +412,7 @@ int metabolic_immune_bridge_update(
     /* Update statistics */
     bridge->total_updates++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Apply effects (both directions) */
     metabolic_immune_apply_cytokine_effects(bridge);
@@ -457,9 +434,9 @@ int metabolic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_metabolic_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -470,9 +447,9 @@ int metabolic_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_metabolic_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -483,9 +460,9 @@ int metabolic_immune_get_atp_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->atp_effects, sizeof(atp_immune_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

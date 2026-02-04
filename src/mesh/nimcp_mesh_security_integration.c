@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -154,11 +155,13 @@ static nimcp_error_t queue_event(
     const mesh_security_event_t* event
 ) {
     if (si->pending_count >= MESH_SECURITY_MAX_PENDING_EVENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_security_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
     pending_event_t* pending = nimcp_calloc(1, sizeof(pending_event_t));
     if (!pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_security_integration: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -224,6 +227,7 @@ static int immune_action_to_msp_event(mesh_immune_action_t action) {
 
 nimcp_error_t mesh_security_default_config(mesh_security_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_security_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -332,6 +336,7 @@ nimcp_error_t mesh_security_set_bbb(
     bbb_system_t bbb
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -352,6 +357,7 @@ nimcp_error_t mesh_security_set_immune(
     brain_immune_system_t* immune
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -366,6 +372,7 @@ nimcp_error_t mesh_security_set_msp(
     mesh_msp_t* msp
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -380,6 +387,7 @@ nimcp_error_t mesh_security_set_exception_bridge(
     mesh_exception_bridge_t* bridge
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -409,6 +417,7 @@ nimcp_error_t mesh_security_route_exception(
     mesh_exception_response_t* response_out
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -533,6 +542,7 @@ nimcp_error_t mesh_security_present_antigen(
     mesh_exception_response_t* response_out
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC || !antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -627,6 +637,7 @@ nimcp_error_t mesh_security_validate_transaction(
     float* threat_score_out
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC || !tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -648,6 +659,7 @@ nimcp_error_t mesh_security_validate_transaction(
             si->stats.bbb_threats_detected++;
             record_threat(si, tx->proposer_id, threat_score);
             nimcp_mutex_unlock(si->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_security_integration: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -675,6 +687,7 @@ nimcp_error_t mesh_security_validate_transaction(
 
             if (threat_score_out) *threat_score_out = threat_score;
             nimcp_mutex_unlock(si->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_security_integration: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -687,6 +700,7 @@ nimcp_error_t mesh_security_validate_transaction(
             si->stats.bbb_threats_detected++;
             if (threat_score_out) *threat_score_out = threat_score;
             nimcp_mutex_unlock(si->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_security_integration: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -696,6 +710,7 @@ nimcp_error_t mesh_security_validate_transaction(
         if (mesh_msp_is_quarantined(si->msp, tx->proposer_id)) {
             if (threat_score_out) *threat_score_out = 1.0f;
             nimcp_mutex_unlock(si->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_security_integration: error condition");
             return NIMCP_ERROR_ACCESS_DENIED;
         }
     }
@@ -712,6 +727,7 @@ nimcp_error_t mesh_security_validate_credential(
     const credential_t* credential
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC || !credential) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -720,6 +736,7 @@ nimcp_error_t mesh_security_validate_credential(
     /* Validate credential state */
     if (credential->state != CREDENTIAL_STATE_VALID) {
         nimcp_mutex_unlock(si->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_security_integration: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -727,6 +744,7 @@ nimcp_error_t mesh_security_validate_credential(
     uint64_t now = get_time_ns();
     if (credential->expires_at_ns > 0 && now > credential->expires_at_ns) {
         nimcp_mutex_unlock(si->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_TIMEOUT, "mesh_security_integration: error condition");
         return NIMCP_ERROR_TIMEOUT;  /* Credential expired */
     }
 
@@ -748,6 +766,7 @@ nimcp_error_t mesh_security_validate_credential(
             si->stats.bbb_threats_detected++;
             record_threat(si, participant, 0.8f);
             nimcp_mutex_unlock(si->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_security_integration: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -763,6 +782,7 @@ nimcp_error_t mesh_security_check_participant(
     float* threat_level_out
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -800,6 +820,7 @@ nimcp_error_t mesh_security_quarantine(
     const char* reason
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -873,6 +894,7 @@ nimcp_error_t mesh_security_release_quarantine(
     mesh_participant_id_t participant
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -916,6 +938,7 @@ nimcp_error_t mesh_security_revoke_credential(
     const char* reason
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -968,6 +991,7 @@ nimcp_error_t mesh_security_handle_immune_response(
     float inflammation_level
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1033,6 +1057,7 @@ nimcp_error_t mesh_security_notify_recovery(
     bool success
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1076,6 +1101,7 @@ nimcp_error_t mesh_security_broadcast_event(
     const mesh_security_event_t* event
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1151,6 +1177,7 @@ nimcp_error_t mesh_security_set_event_callback(
     void* user_data
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1168,6 +1195,7 @@ nimcp_error_t mesh_security_set_quarantine_callback(
     void* user_data
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1185,6 +1213,7 @@ nimcp_error_t mesh_security_set_bbb_validate_callback(
     void* user_data
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1205,6 +1234,7 @@ nimcp_error_t mesh_security_update(
     uint64_t delta_ms
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1265,6 +1295,7 @@ nimcp_error_t mesh_security_get_stats(
     mesh_security_stats_t* stats
 ) {
     if (!si || si->magic != SECURITY_INTEGRATION_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_security_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

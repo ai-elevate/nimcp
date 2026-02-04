@@ -20,6 +20,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/rng/nimcp_rand.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -294,6 +295,7 @@ int vae_imag_bridge_connect_vae(vae_imag_bridge_t* bridge, vae_system_t* vae) {
 
     if (!bridge->latent_buffer || !bridge->decode_buffer || !bridge->sample_buffer) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate working buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -400,6 +402,7 @@ static int decode_latent(vae_imag_bridge_t* bridge, const float* latent,
     if (!latent_tensor || !output_tensor) {
         if (latent_tensor) nimcp_tensor_destroy(latent_tensor);
         if (output_tensor) nimcp_tensor_destroy(output_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -410,6 +413,7 @@ static int decode_latent(vae_imag_bridge_t* bridge, const float* latent,
     if (ret != 0) {
         nimcp_tensor_destroy(latent_tensor);
         nimcp_tensor_destroy(output_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_DECODE_FAILED;
     }
 
@@ -473,6 +477,7 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
 
     if (ret != 0) {
         bridge->state = VAE_IMAG_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_SAMPLE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_SAMPLE_FAILED;
     }
 
@@ -480,6 +485,7 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
     ret = decode_latent(bridge, bridge->latent_buffer, bridge->decode_buffer);
     if (ret != 0) {
         bridge->state = VAE_IMAG_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_DECODE_FAILED;
     }
 
@@ -493,6 +499,7 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
         result->generated = NULL;
         result->latent = NULL;
         bridge->state = VAE_IMAG_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -609,6 +616,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
         if (result->trajectory) nimcp_free(result->trajectory);
         if (result->decoded_trajectory) nimcp_free(result->decoded_trajectory);
         if (result->coherence_scores) nimcp_free(result->coherence_scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -618,6 +626,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
         nimcp_free(result->trajectory);
         nimcp_free(result->decoded_trajectory);
         nimcp_free(result->coherence_scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -641,6 +650,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
             nimcp_free(result->decoded_trajectory);
             nimcp_free(result->coherence_scores);
             nimcp_free(current_latent);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
             return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
         }
 
@@ -685,6 +695,7 @@ int vae_imag_counterfactual(vae_imag_bridge_t* bridge,
                              uint32_t num_steps,
                              vae_imag_trajectory_result_t* result) {
     if (!bridge || !original_state || !intervention || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NULL, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NULL;
     }
 
@@ -728,6 +739,7 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
         if (result->trajectory) nimcp_free(result->trajectory);
         if (result->decoded_trajectory) nimcp_free(result->decoded_trajectory);
         if (result->coherence_scores) nimcp_free(result->coherence_scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -748,6 +760,7 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
             nimcp_free(result->trajectory);
             nimcp_free(result->decoded_trajectory);
             nimcp_free(result->coherence_scores);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
             return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
         }
 
@@ -805,6 +818,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
         if (best_sample) nimcp_free(best_sample);
         if (current_sample) nimcp_free(current_sample);
         if (proposal) nimcp_free(proposal);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -879,6 +893,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     result->generated = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
     if (!result->generated) {
         nimcp_free(best_sample);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -887,6 +902,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
         nimcp_free(best_sample);
         nimcp_free(result->generated);
         result->generated = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_DECODE_FAILED;
     }
 
@@ -952,6 +968,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     if (!result->generated) {
         nimcp_free(position);
         result->latent = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -961,6 +978,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
         nimcp_free(result->generated);
         result->latent = NULL;
         result->generated = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_DECODE_FAILED;
     }
 
@@ -990,6 +1008,7 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
         if (state) nimcp_free(state);
         if (best_state) nimcp_free(best_state);
         if (proposal) nimcp_free(proposal);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -1150,6 +1169,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     float* direction = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
     if (!direction) {
         nimcp_free(latent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -1166,6 +1186,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     if (!result_point) {
         nimcp_free(latent);
         nimcp_free(direction);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -1181,6 +1202,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     if (!result->generated) {
         nimcp_free(result_point);
         result->latent = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 
@@ -1190,6 +1212,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
         nimcp_free(result->generated);
         result->latent = NULL;
         result->generated = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_DECODE_FAILED;
     }
 
@@ -1361,6 +1384,7 @@ int vae_imag_evaluate_coherence(vae_imag_bridge_t* bridge,
     if (!input || !recon) {
         if (input) nimcp_tensor_destroy(input);
         if (recon) nimcp_tensor_destroy(recon);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
 

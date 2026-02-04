@@ -19,29 +19,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(phonological_analyzer)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for phonological_analyzer module */
-static nimcp_health_agent_t* g_phonological_analyzer_health_agent = NULL;
+static mesh_participant_id_t g_phonological_analyzer_mesh_id = 0;
+static mesh_participant_registry_t* g_phonological_analyzer_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for phonological_analyzer heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void phonological_analyzer_set_health_agent(nimcp_health_agent_t* agent) {
-    g_phonological_analyzer_health_agent = agent;
+nimcp_error_t phonological_analyzer_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_phonological_analyzer_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "phonological_analyzer", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "phonological_analyzer";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_phonological_analyzer_mesh_id);
+    if (err == NIMCP_SUCCESS) g_phonological_analyzer_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from phonological_analyzer module */
-static inline void phonological_analyzer_heartbeat(const char* operation, float progress) {
-    if (g_phonological_analyzer_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_phonological_analyzer_health_agent, operation, progress);
+void phonological_analyzer_mesh_unregister(void) {
+    if (g_phonological_analyzer_mesh_registry && g_phonological_analyzer_mesh_id != 0) {
+        mesh_participant_unregister(g_phonological_analyzer_mesh_registry, g_phonological_analyzer_mesh_id);
+        g_phonological_analyzer_mesh_id = 0;
+        g_phonological_analyzer_mesh_registry = NULL;
     }
 }
 
@@ -207,7 +220,7 @@ static float detect_pitch(const float* signal, uint32_t length, uint32_t sample_
 static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uint32_t order)
 {
     /* Compute autocorrelation */
-    float* r = (float*)calloc(order + 1, sizeof(float));
+    float* r = (float*)nimcp_calloc(order + 1, sizeof(float));
     if (!r) return false;
 
     for (uint32_t i = 0; i <= order; i++) {
@@ -219,18 +232,18 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
 
     /* Check for silence */
     if (r[0] < 1e-10f) {
-        free(r);
+        nimcp_free(r);
         for (uint32_t i = 0; i < order; i++) coeffs[i] = 0.0f;
         return true;
     }
 
     /* Levinson-Durbin recursion */
-    float* a = (float*)calloc(order + 1, sizeof(float));
-    float* a_prev = (float*)calloc(order + 1, sizeof(float));
+    float* a = (float*)nimcp_calloc(order + 1, sizeof(float));
+    float* a_prev = (float*)nimcp_calloc(order + 1, sizeof(float));
     if (!a || !a_prev) {
-        free(r);
-        if (a) free(a);
-        if (a_prev) free(a_prev);
+        nimcp_free(r);
+        if (a) nimcp_free(a);
+        if (a_prev) nimcp_free(a_prev);
         return false;
     }
 
@@ -261,9 +274,9 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
         coeffs[i] = a[i + 1];
     }
 
-    free(r);
-    free(a);
-    free(a_prev);
+    nimcp_free(r);
+    nimcp_free(a);
+    nimcp_free(a_prev);
     return true;
 }
 
@@ -366,7 +379,7 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
 {
     phonological_config_t cfg = config ? *config : wernicke_phonological_default_config();
 
-    phonological_analyzer_t* analyzer = (phonological_analyzer_t*)calloc(1, sizeof(phonological_analyzer_t));
+    phonological_analyzer_t* analyzer = (phonological_analyzer_t*)nimcp_calloc(1, sizeof(phonological_analyzer_t));
     if (!analyzer) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
@@ -384,10 +397,10 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
     analyzer->lpc_order = 12;  /* Typical for formant analysis */
 
     /* Allocate buffers */
-    analyzer->window = (float*)calloc(analyzer->frame_size_samples, sizeof(float));
-    analyzer->fft_buffer = (float*)calloc(cfg.fft_size, sizeof(float));
-    analyzer->power_spectrum = (float*)calloc(analyzer->spectrum_size, sizeof(float));
-    analyzer->lpc_coeffs = (float*)calloc(analyzer->lpc_order, sizeof(float));
+    analyzer->window = (float*)nimcp_calloc(analyzer->frame_size_samples, sizeof(float));
+    analyzer->fft_buffer = (float*)nimcp_calloc(cfg.fft_size, sizeof(float));
+    analyzer->power_spectrum = (float*)nimcp_calloc(analyzer->spectrum_size, sizeof(float));
+    analyzer->lpc_coeffs = (float*)nimcp_calloc(analyzer->lpc_order, sizeof(float));
 
     if (!analyzer->window || !analyzer->fft_buffer ||
         !analyzer->power_spectrum || !analyzer->lpc_coeffs) {
@@ -408,12 +421,12 @@ void wernicke_phonological_destroy(phonological_analyzer_t* analyzer)
 {
     if (!analyzer) return;
 
-    if (analyzer->window) free(analyzer->window);
-    if (analyzer->fft_buffer) free(analyzer->fft_buffer);
-    if (analyzer->power_spectrum) free(analyzer->power_spectrum);
-    if (analyzer->lpc_coeffs) free(analyzer->lpc_coeffs);
+    if (analyzer->window) nimcp_free(analyzer->window);
+    if (analyzer->fft_buffer) nimcp_free(analyzer->fft_buffer);
+    if (analyzer->power_spectrum) nimcp_free(analyzer->power_spectrum);
+    if (analyzer->lpc_coeffs) nimcp_free(analyzer->lpc_coeffs);
 
-    free(analyzer);
+    nimcp_free(analyzer);
 }
 
 bool wernicke_phonological_reset(phonological_analyzer_t* analyzer)
@@ -438,7 +451,7 @@ bool phonological_extract_formants(
     if (!analyzer || !audio || !result) return false;
 
     /* Apply pre-emphasis */
-    float* pre_emph = (float*)calloc(num_samples, sizeof(float));
+    float* pre_emph = (float*)nimcp_calloc(num_samples, sizeof(float));
     if (!pre_emph) return false;
 
     pre_emph[0] = audio[0];
@@ -453,7 +466,7 @@ bool phonological_extract_formants(
     estimate_formants_from_lpc(analyzer->lpc_coeffs, analyzer->lpc_order,
                                analyzer->config.sample_rate, result);
 
-    free(pre_emph);
+    nimcp_free(pre_emph);
     return true;
 }
 
@@ -840,10 +853,10 @@ bool phonological_extract_prosody(
 
     /* Allocate contours if needed */
     if (!prosody->pitch_contour) {
-        prosody->pitch_contour = (float*)calloc(num_frames, sizeof(float));
+        prosody->pitch_contour = (float*)nimcp_calloc(num_frames, sizeof(float));
     }
     if (!prosody->intensity_contour) {
-        prosody->intensity_contour = (float*)calloc(num_frames, sizeof(float));
+        prosody->intensity_contour = (float*)nimcp_calloc(num_frames, sizeof(float));
     }
     if (!prosody->pitch_contour || !prosody->intensity_contour) {
         return false;
@@ -943,7 +956,7 @@ phonological_result_t* phonological_result_alloc(
     uint32_t max_syllables,
     uint32_t max_frames)
 {
-    phonological_result_t* result = (phonological_result_t*)calloc(1, sizeof(phonological_result_t));
+    phonological_result_t* result = (phonological_result_t*)nimcp_calloc(1, sizeof(phonological_result_t));
     if (!result) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -952,10 +965,10 @@ phonological_result_t* phonological_result_alloc(
 
     }
 
-    result->phonemes = (phoneme_event_t*)calloc(max_phonemes, sizeof(phoneme_event_t));
-    result->syllables = (syllable_t*)calloc(max_syllables, sizeof(syllable_t));
-    result->prosody.pitch_contour = (float*)calloc(max_frames, sizeof(float));
-    result->prosody.intensity_contour = (float*)calloc(max_frames, sizeof(float));
+    result->phonemes = (phoneme_event_t*)nimcp_calloc(max_phonemes, sizeof(phoneme_event_t));
+    result->syllables = (syllable_t*)nimcp_calloc(max_syllables, sizeof(syllable_t));
+    result->prosody.pitch_contour = (float*)nimcp_calloc(max_frames, sizeof(float));
+    result->prosody.intensity_contour = (float*)nimcp_calloc(max_frames, sizeof(float));
 
     if (!result->phonemes || !result->syllables ||
         !result->prosody.pitch_contour || !result->prosody.intensity_contour) {
@@ -970,12 +983,12 @@ void phonological_result_free(phonological_result_t* result)
 {
     if (!result) return;
 
-    if (result->phonemes) free(result->phonemes);
-    if (result->syllables) free(result->syllables);
-    if (result->prosody.pitch_contour) free(result->prosody.pitch_contour);
-    if (result->prosody.intensity_contour) free(result->prosody.intensity_contour);
+    if (result->phonemes) nimcp_free(result->phonemes);
+    if (result->syllables) nimcp_free(result->syllables);
+    if (result->prosody.pitch_contour) nimcp_free(result->prosody.pitch_contour);
+    if (result->prosody.intensity_contour) nimcp_free(result->prosody.intensity_contour);
 
-    free(result);
+    nimcp_free(result);
 }
 
 /*=============================================================================

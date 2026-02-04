@@ -13,6 +13,8 @@
 #include "utils/quantum/nimcp_quantum_shannon.h"  // Phase C4.1: Quantum-Shannon diffusion
 #include "information/nimcp_cross_modal.h"  // Phase C4.7: Cross-modal information flow
 #include "async/nimcp_future.h"  // Async futures for non-blocking operations
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -204,10 +206,10 @@ typedef struct knowledge_system_struct* knowledge_system_t;
  * use external synchronization:
  *
  * ```c
- * pthread_mutex_lock(&app_mutex);
+ * nimcp_mutex_lock(&app_mutex);
  * brain_learn_example(brain, features, label, confidence);
  * brain_decision_t* decision = brain_decide(brain, features, num);
- * pthread_mutex_unlock(&app_mutex);
+ * nimcp_mutex_unlock(&app_mutex);
  * ```
  *
  * ## Reference Counting for COW Clones
@@ -3713,7 +3715,7 @@ typedef struct {
  * };
  *
  * brain_multimodal_output_t output = {0};
- * output.output_vector = malloc(128 * sizeof(float));
+ * output.output_vector = nimcp_malloc(128 * sizeof(float));
  * output.output_dim = 128;
  *
  * // Process through FULL 7-stage cognitive pipeline:
@@ -3740,7 +3742,7 @@ typedef struct {
  * if (output.language_response) {
  *     printf("Brain response: %s (conf: %.2f)\n",
  *            output.language_response, output.language_confidence);
- *     free(output.language_response);  // Caller must free
+ *     nimcp_free(output.language_response);  // Caller must free
  * }
  *
  * printf("Explanation: %s\n", output.explanation);

@@ -61,18 +61,9 @@ DEFINE_HANDLER_CALLBACK(thalamic_router, thalamic_router_t, router)
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *============================================================================*/
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/* Global health agent for thalamic router operations */
-static nimcp_health_agent_t* g_thalamic_router_health_agent = NULL;
-
-void thalamic_router_set_health_agent(struct nimcp_health_agent* agent) {
-    g_thalamic_router_health_agent = (nimcp_health_agent_t*)agent;
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thalamic_router)
 
 static inline void thalamic_heartbeat(const char* operation, float progress) {
     if (g_thalamic_router_health_agent) {

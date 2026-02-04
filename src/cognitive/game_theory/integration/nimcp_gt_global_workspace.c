@@ -23,34 +23,44 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gt_global_workspace)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for gt_global_workspace module */
-static nimcp_health_agent_t* g_gt_global_workspace_health_agent = NULL;
+static mesh_participant_id_t g_gt_global_workspace_mesh_id = 0;
+static mesh_participant_registry_t* g_gt_global_workspace_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for gt_global_workspace heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void gt_global_workspace_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gt_global_workspace_health_agent = agent;
+nimcp_error_t gt_global_workspace_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_gt_global_workspace_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "gt_global_workspace", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "gt_global_workspace";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_gt_global_workspace_mesh_id);
+    if (err == NIMCP_SUCCESS) g_gt_global_workspace_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from gt_global_workspace module */
-static inline void gt_global_workspace_heartbeat(const char* operation, float progress) {
-    if (g_gt_global_workspace_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gt_global_workspace_health_agent, operation, progress);
+void gt_global_workspace_mesh_unregister(void) {
+    if (g_gt_global_workspace_mesh_registry && g_gt_global_workspace_mesh_id != 0) {
+        mesh_participant_unregister(g_gt_global_workspace_mesh_registry, g_gt_global_workspace_mesh_id);
+        g_gt_global_workspace_mesh_id = 0;
+        g_gt_global_workspace_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from gt_global_workspace module (instance-level) */
 static inline void gt_global_workspace_heartbeat_instance(

@@ -19,33 +19,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for calcium_adapter module */
-static nimcp_health_agent_t* g_calcium_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for calcium_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void calcium_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_calcium_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from calcium_adapter module */
-static inline void calcium_adapter_heartbeat(const char* operation, float progress) {
-    if (g_calcium_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_calcium_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(calcium_adapter)
 
 //=============================================================================
 // Internal Structure
@@ -96,8 +73,8 @@ static nimcp_layer_error_t calcium_init(void* module, void* config) {
 
     /* Allocate arrays */
     uint32_t n = adapter->config.num_compartments;
-    adapter->calcium_conc = (float*)calloc(n, sizeof(float));
-    adapter->calcium_er = (float*)calloc(n, sizeof(float));
+    adapter->calcium_conc = (float*)nimcp_calloc(n, sizeof(float));
+    adapter->calcium_er = (float*)nimcp_calloc(n, sizeof(float));
 
     if (!adapter->calcium_conc || !adapter->calcium_er) {
         return NIMCP_LAYER_ERR_NO_MEMORY;
@@ -122,8 +99,8 @@ static nimcp_layer_error_t calcium_shutdown(void* module) {
     nimcp_calcium_adapter_t adapter = (nimcp_calcium_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
 
-    free(adapter->calcium_conc);
-    free(adapter->calcium_er);
+    nimcp_free(adapter->calcium_conc);
+    nimcp_free(adapter->calcium_er);
 
     adapter->calcium_conc = NULL;
     adapter->calcium_er = NULL;
@@ -293,7 +270,7 @@ nimcp_calcium_adapter_config_t nimcp_calcium_adapter_default_config(void) {
 nimcp_calcium_adapter_t nimcp_calcium_adapter_create(
     const nimcp_calcium_adapter_config_t* config
 ) {
-    nimcp_calcium_adapter_t adapter = (nimcp_calcium_adapter_t)calloc(
+    nimcp_calcium_adapter_t adapter = (nimcp_calcium_adapter_t)nimcp_calloc(
         1, sizeof(struct nimcp_calcium_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate calcium adapter");
 
@@ -318,7 +295,7 @@ void nimcp_calcium_adapter_destroy(nimcp_calcium_adapter_t adapter) {
         calcium_shutdown(adapter);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_calcium_adapter_get_interface(

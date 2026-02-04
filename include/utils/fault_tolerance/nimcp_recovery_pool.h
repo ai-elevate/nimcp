@@ -38,7 +38,7 @@
  * // ... application runs ...
  *
  * // 3. OOM Detected: Switch to emergency mode
- * if (malloc(size) == NULL) {
+ * if (nimcp_malloc(size) == NULL) {
  *     recovery_pool_enter_emergency_mode(pool);
  *
  *     // 4. Recovery: Use pool allocations
@@ -78,6 +78,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,7 +193,7 @@ void recovery_pool_destroy(recovery_pool_t* pool);
  * HOW:  Set emergency flag, increment activation counter
  *
  * USAGE:
- * - Call when malloc() fails and recovery is needed
+ * - Call when nimcp_malloc() fails and recovery is needed
  * - All subsequent pool_alloc() calls will succeed (if space available)
  * - Exit emergency mode after recovery complete
  *

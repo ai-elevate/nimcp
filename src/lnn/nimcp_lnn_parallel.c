@@ -24,38 +24,13 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <stdatomic.h>
 
 #ifdef __x86_64__
 #include <cpuid.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for lnn_parallel module */
-static nimcp_health_agent_t* g_lnn_parallel_health_agent = NULL;
-
-/**
- * @brief Set health agent for lnn_parallel heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lnn_parallel_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lnn_parallel_health_agent = agent;
-}
-
-/** @brief Send heartbeat from lnn_parallel module */
-static inline void lnn_parallel_heartbeat(const char* operation, float progress) {
-    if (g_lnn_parallel_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lnn_parallel_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_parallel)
 
 #endif
 
@@ -103,7 +78,7 @@ static nimcp_mutex_t* lnn_mutex_create(void) {
  *===========================================================================*/
 
 /* Mutex protecting global state modifications */
-static pthread_mutex_t g_parallel_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_parallel_state_mutex = NIMCP_MUTEX_INITIALIZER;
 
 /* Global state with atomic flag for thread-safe quick checks */
 static nimcp_thread_pool_t* g_thread_pool = NULL;
@@ -317,11 +292,11 @@ int lnn_parallel_init(uint32_t n_threads) {
     }
 
     /* Lock to prevent concurrent initialization */
-    pthread_mutex_lock(&g_parallel_state_mutex);
+    nimcp_mutex_lock(&g_parallel_state_mutex);
 
     /* Double-check under lock (another thread may have initialized) */
     if (atomic_load(&g_parallel_initialized)) {
-        pthread_mutex_unlock(&g_parallel_state_mutex);
+        nimcp_mutex_unlock(&g_parallel_state_mutex);
         NIMCP_LOGGING_WARN("LNN parallel already initialized");
         return LNN_SUCCESS;
     }
@@ -335,7 +310,7 @@ int lnn_parallel_init(uint32_t n_threads) {
     /* Create mutex */
     g_parallel_mutex = lnn_mutex_create();
     if (!g_parallel_mutex) {
-        pthread_mutex_unlock(&g_parallel_state_mutex);
+        nimcp_mutex_unlock(&g_parallel_state_mutex);
         NIMCP_LOGGING_ERROR("Failed to create parallel mutex");
         return LNN_ERROR_OUT_OF_MEMORY;
     }
@@ -346,7 +321,7 @@ int lnn_parallel_init(uint32_t n_threads) {
         NIMCP_LOGGING_ERROR("Failed to create thread pool with %u threads", n_threads);
         nimcp_mutex_free(g_parallel_mutex);
         g_parallel_mutex = NULL;
-        pthread_mutex_unlock(&g_parallel_state_mutex);
+        nimcp_mutex_unlock(&g_parallel_state_mutex);
         return LNN_ERROR_THREAD_FAILURE;
     }
 
@@ -356,7 +331,7 @@ int lnn_parallel_init(uint32_t n_threads) {
     /* Set initialized flag atomically (must be last) */
     atomic_store(&g_parallel_initialized, true);
 
-    pthread_mutex_unlock(&g_parallel_state_mutex);
+    nimcp_mutex_unlock(&g_parallel_state_mutex);
 
     NIMCP_LOGGING_INFO("LNN parallel initialized with %u threads", n_threads);
 
@@ -374,11 +349,11 @@ void lnn_parallel_shutdown(void) {
     }
 
     /* Lock to prevent concurrent shutdown/init */
-    pthread_mutex_lock(&g_parallel_state_mutex);
+    nimcp_mutex_lock(&g_parallel_state_mutex);
 
     /* Double-check under lock */
     if (!atomic_load(&g_parallel_initialized)) {
-        pthread_mutex_unlock(&g_parallel_state_mutex);
+        nimcp_mutex_unlock(&g_parallel_state_mutex);
         return;
     }
 
@@ -400,7 +375,7 @@ void lnn_parallel_shutdown(void) {
     /* Clear thread count atomically */
     atomic_store(&g_num_threads, 0);
 
-    pthread_mutex_unlock(&g_parallel_state_mutex);
+    nimcp_mutex_unlock(&g_parallel_state_mutex);
 
     NIMCP_LOGGING_INFO("LNN parallel shutdown complete");
 }

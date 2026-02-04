@@ -17,33 +17,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for knowledge_py module */
-static nimcp_health_agent_t* g_knowledge_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for knowledge_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void knowledge_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_knowledge_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from knowledge_py module */
-static inline void knowledge_py_heartbeat(const char* operation, float progress) {
-    if (g_knowledge_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_knowledge_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(knowledge_py)
 
 /* ============================================================================
  * KnowledgeItem Type (read-only container for retrieved knowledge)
@@ -62,15 +39,15 @@ typedef struct {
 static void KnowledgeItem_dealloc(KnowledgeItemObject* self)
 {
     if (self->concept_name) {
-        free(self->concept_name);
+        nimcp_free(self->concept_name);
         self->concept_name = NULL;
     }
     if (self->definition) {
-        free(self->definition);
+        nimcp_free(self->definition);
         self->definition = NULL;
     }
     if (self->context) {
-        free(self->context);
+        nimcp_free(self->context);
         self->context = NULL;
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -421,7 +398,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
         max_connections = 10;
     }
 
-    knowledge_item_t* connections = (knowledge_item_t*)calloc(max_connections, sizeof(knowledge_item_t));
+    knowledge_item_t* connections = (knowledge_item_t*)nimcp_calloc(max_connections, sizeof(knowledge_item_t));
     if (connections == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -435,7 +412,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
 
     PyObject* result = PyList_New((Py_ssize_t)num_found);
     if (result == NULL) {
-        free(connections);
+        nimcp_free(connections);
         return NULL;
     }
 
@@ -443,13 +420,13 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
         PyObject* item = KnowledgeItem_FromC(&connections[i]);
         if (item == NULL) {
             Py_DECREF(result);
-            free(connections);
+            nimcp_free(connections);
             return NULL;
         }
         PyList_SET_ITEM(result, (Py_ssize_t)i, item);
     }
 
-    free(connections);
+    nimcp_free(connections);
     return result;
 }
 
@@ -680,7 +657,7 @@ static PyObject* KnowledgeSystem_get_by_confidence_range(KnowledgeSystemObject* 
 
     PyObject* result_list = PyList_New((Py_ssize_t)num_results);
     if (result_list == NULL) {
-        free(results);
+        nimcp_free(results);
         return NULL;
     }
 
@@ -688,13 +665,13 @@ static PyObject* KnowledgeSystem_get_by_confidence_range(KnowledgeSystemObject* 
         PyObject* item = KnowledgeItem_FromC(&results[i]);
         if (item == NULL) {
             Py_DECREF(result_list);
-            free(results);
+            nimcp_free(results);
             return NULL;
         }
         PyList_SET_ITEM(result_list, (Py_ssize_t)i, item);
     }
 
-    free(results);
+    nimcp_free(results);
     return result_list;
 }
 

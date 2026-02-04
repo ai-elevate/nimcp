@@ -11,36 +11,11 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for neuromodulator_immune module */
-static nimcp_health_agent_t* g_neuromodulator_immune_health_agent = NULL;
-
-/**
- * @brief Set health agent for neuromodulator_immune heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neuromodulator_immune_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neuromodulator_immune_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neuromodulator_immune module */
-static inline void neuromodulator_immune_heartbeat(const char* operation, float progress) {
-    if (g_neuromodulator_immune_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neuromodulator_immune_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromodulator_immune)
 
 /* ============================================================================
  * Internal Helpers
@@ -263,7 +238,7 @@ void neuromod_immune_destroy(neuromod_immune_system_t* system) {
     if (!system) return;
 
     if (system->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)system->mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)system->mutex);
     }
 
     if (system->imbalances) {
@@ -287,9 +262,9 @@ int neuromod_immune_connect_immune(
 
     if (!system || !immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->immune_system = immune_system;
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Connected to brain immune system");
@@ -308,9 +283,9 @@ int neuromod_immune_connect_neuromod(
 
     if (!system || !neuromod_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->neuromod_system = neuromod_system;
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Connected to neuromodulator system");
@@ -344,7 +319,7 @@ int neuromod_immune_apply_cytokine_effect(
     }
     if (concentration < 0.0f || concentration > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     float effect_strength = system->cytokine_sensitivity * concentration;
 
@@ -400,7 +375,7 @@ int neuromod_immune_apply_cytokine_effect(
         break;
 
     default:
-        pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
         return -1;
     }
 
@@ -412,7 +387,7 @@ int neuromod_immune_apply_cytokine_effect(
     system->cytokine_effects.norepinephrine_synthesis_multiplier = fminf(1.5f, fmaxf(0.1f,
         system->cytokine_effects.norepinephrine_synthesis_multiplier));
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     return 0;
 }
@@ -438,7 +413,7 @@ int neuromod_immune_apply_proinflammatory_effect(
     }
     if (severity < 0.0f || severity > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     /* Suppress enzyme activity */
     float enzyme_suppression = 0.4f * severity;
@@ -465,7 +440,7 @@ int neuromod_immune_apply_proinflammatory_effect(
         (system->cytokine_effects.avg_suppression_magnitude * (system->cytokine_effects.total_suppressions - 1) + severity) /
         system->cytokine_effects.total_suppressions;
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_DEBUG(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Applied pro-inflammatory effect: severity=%.2f", severity);
@@ -494,7 +469,7 @@ int neuromod_immune_apply_antiinflammatory_effect(
     }
     if (il10_concentration < 0.0f || il10_concentration > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     float restoration = 0.3f * il10_concentration;
 
@@ -524,7 +499,7 @@ int neuromod_immune_apply_antiinflammatory_effect(
 
     system->cytokine_effects.total_enhancements++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_DEBUG(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Applied anti-inflammatory effect: IL-10=%.2f", il10_concentration);
@@ -550,7 +525,7 @@ int neuromod_immune_detect_imbalance(
 
     *imbalance_out = NULL;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     /* Query current levels */
     float da_current = neuromodulator_get_level(system->neuromod_system, NEUROMOD_DOPAMINE);
@@ -569,7 +544,7 @@ int neuromod_immune_detect_imbalance(
         da_dev, sert_dev, ne_dev, ach_dev, system->imbalance_detection_threshold);
 
     if (type == NEUROMOD_IMBALANCE_NONE) {
-        pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
         return -1;  /* No imbalance */
     }
 
@@ -577,7 +552,7 @@ int neuromod_immune_detect_imbalance(
     for (size_t i = 0; i < system->imbalance_count; i++) {
         if (system->imbalances[i].type == type && !system->imbalances[i].corrective_action_taken) {
             *imbalance_out = &system->imbalances[i];
-            pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+            nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
             return 0;  /* Existing imbalance */
         }
     }
@@ -589,7 +564,7 @@ int neuromod_immune_detect_imbalance(
         neuromod_imbalance_t* new_array = (neuromod_imbalance_t*)nimcp_malloc(
             new_capacity * sizeof(neuromod_imbalance_t));
         if (!new_array) {
-            pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+            nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
             return -1;
         }
         memcpy(new_array, system->imbalances,
@@ -621,7 +596,7 @@ int neuromod_immune_detect_imbalance(
     *imbalance_out = imbalance;
     system->total_imbalances_detected++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
               "Detected neuromodulator imbalance: type=%s severity=%.2f",
@@ -693,7 +668,7 @@ int neuromod_immune_correct_imbalance(
     if (!system || !imbalance) return -1;
     if (imbalance->corrective_action_taken) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     /* Apply correction based on imbalance type */
     switch (imbalance->type) {
@@ -718,14 +693,14 @@ int neuromod_immune_correct_imbalance(
         break;
 
     default:
-        pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
         return -1;
     }
 
     imbalance->corrective_action_taken = true;
     system->total_corrections++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
               "Applied homeostatic correction for imbalance: type=%s",
@@ -761,7 +736,7 @@ int neuromod_immune_update(
 
     float dt_sec = delta_ms / 1000.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     /* 1. Query immune system for cytokine levels */
     if (system->immune_system) {
@@ -799,7 +774,7 @@ int neuromod_immune_update(
     phasic_tonic_update(&system->serotonin_phasic, dt_sec, current_time_us);
     phasic_tonic_update(&system->norepinephrine_phasic, dt_sec, current_time_us);
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     /* 4. Detect imbalances */
     neuromod_imbalance_t* imbalance = NULL;
@@ -825,9 +800,9 @@ int neuromod_immune_get_cytokine_effects(
 {
     if (!system || !effects_out) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(effects_out, &system->cytokine_effects, sizeof(cytokine_neuromod_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     return 0;
 }
@@ -840,14 +815,14 @@ int neuromod_immune_get_imbalances(
 {
     if (!system || !imbalances_out || !count_out) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     size_t count = system->imbalance_count < count_in ?
                    system->imbalance_count : count_in;
     memcpy(imbalances_out, system->imbalances, count * sizeof(neuromod_imbalance_t));
     *count_out = count;
 
-    pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     return 0;
 }

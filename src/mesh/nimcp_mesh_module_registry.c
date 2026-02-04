@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -221,9 +222,11 @@ nimcp_error_t mesh_module_registry_register(
     const mesh_module_descriptor_t* descriptor
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_module_registry: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!descriptor || !descriptor->module_name || !descriptor->module_instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_module_registry: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -233,6 +236,7 @@ nimcp_error_t mesh_module_registry_register(
     if (registry->module_count >= registry->module_capacity) {
         nimcp_mutex_unlock(registry->mutex);
         LOG_ERROR("Module registry full (capacity=%zu)", registry->module_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_module_registry: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -245,6 +249,7 @@ nimcp_error_t mesh_module_registry_register(
             if (registry->config.verbose_logging) {
                 LOG_WARN("Duplicate module name: %s", descriptor->module_name);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_module_registry: error condition");
             return NIMCP_ERROR_ALREADY_EXISTS;
         }
     }
@@ -257,6 +262,7 @@ nimcp_error_t mesh_module_registry_register(
             nimcp_mutex_unlock(registry->mutex);
             LOG_ERROR("Magic validation failed for %s (expected 0x%08X)",
                      descriptor->module_name, descriptor->module_magic);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_module_registry: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -274,6 +280,7 @@ nimcp_error_t mesh_module_registry_register(
         nimcp_mutex_unlock(registry->mutex);
         LOG_ERROR("Failed to allocate adapter for %s", descriptor->module_name);
         registry->stats.registration_failures++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY, "mesh_module_registry: error condition");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
 
@@ -325,6 +332,7 @@ nimcp_error_t mesh_module_registry_unregister(
     const char* module_name
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_module_registry: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_name) return NIMCP_ERROR_NULL_POINTER;
@@ -334,6 +342,7 @@ nimcp_error_t mesh_module_registry_unregister(
     int idx = find_module_by_name(registry, module_name);
     if (idx < 0) {
         nimcp_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_module_registry: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -433,6 +442,7 @@ nimcp_error_t mesh_module_registry_get_by_category(
     size_t* count_out
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_module_registry: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!modules || !count_out) return NIMCP_ERROR_NULL_POINTER;
@@ -473,6 +483,7 @@ nimcp_error_t mesh_module_registry_validate_all(
     size_t* invalid_count
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_module_registry: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -504,6 +515,7 @@ nimcp_error_t mesh_module_registry_get_stats(
     mesh_module_registry_stats_t* stats
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_module_registry: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;

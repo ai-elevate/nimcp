@@ -18,6 +18,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -140,12 +141,12 @@ void nimcp_survival_set_gpu(bool enable) {
 nimcp_survival_data_t* nimcp_survival_data_create(uint32_t n, uint32_t n_covariates) {
     if (n == 0) return NULL;
 
-    nimcp_survival_data_t* data = (nimcp_survival_data_t*)calloc(1, sizeof(nimcp_survival_data_t));
+    nimcp_survival_data_t* data = (nimcp_survival_data_t*)nimcp_calloc(1, sizeof(nimcp_survival_data_t));
     if (!data) return NULL;
 
-    data->observations = (nimcp_survival_obs_t*)calloc(n, sizeof(nimcp_survival_obs_t));
+    data->observations = (nimcp_survival_obs_t*)nimcp_calloc(n, sizeof(nimcp_survival_obs_t));
     if (!data->observations) {
-        free(data);
+        nimcp_free(data);
         return NULL;
     }
 
@@ -153,10 +154,10 @@ nimcp_survival_data_t* nimcp_survival_data_create(uint32_t n, uint32_t n_covaria
     data->n_covariates = n_covariates;
 
     if (n_covariates > 0) {
-        data->covariates = (float*)calloc((size_t)n * n_covariates, sizeof(float));
+        data->covariates = (float*)nimcp_calloc((size_t)n * n_covariates, sizeof(float));
         if (!data->covariates) {
-            free(data->observations);
-            free(data);
+            nimcp_free(data->observations);
+            nimcp_free(data);
             return NULL;
         }
     }
@@ -167,17 +168,17 @@ nimcp_survival_data_t* nimcp_survival_data_create(uint32_t n, uint32_t n_covaria
 void nimcp_survival_data_destroy(nimcp_survival_data_t* data) {
     if (!data) return;
 
-    free(data->observations);
-    free(data->covariates);
+    nimcp_free(data->observations);
+    nimcp_free(data->covariates);
 
     if (data->covariate_names) {
         for (uint32_t i = 0; i < data->n_covariates; i++) {
-            free(data->covariate_names[i]);
+            nimcp_free(data->covariate_names[i]);
         }
-        free(data->covariate_names);
+        nimcp_free(data->covariate_names);
     }
 
-    free(data);
+    nimcp_free(data);
 }
 
 //=============================================================================
@@ -185,7 +186,7 @@ void nimcp_survival_data_destroy(nimcp_survival_data_t* data) {
 //=============================================================================
 
 nimcp_km_estimator_t* nimcp_km_create(void) {
-    nimcp_km_estimator_t* km = (nimcp_km_estimator_t*)calloc(1, sizeof(nimcp_km_estimator_t));
+    nimcp_km_estimator_t* km = (nimcp_km_estimator_t*)nimcp_calloc(1, sizeof(nimcp_km_estimator_t));
     if (!km) return NULL;
 
     km->median_survival = NAN;
@@ -199,8 +200,8 @@ nimcp_km_estimator_t* nimcp_km_create(void) {
 
 void nimcp_km_destroy(nimcp_km_estimator_t* km) {
     if (!km) return;
-    free(km->curve);
-    free(km);
+    nimcp_free(km->curve);
+    nimcp_free(km);
 }
 
 nimcp_survival_result_t nimcp_km_fit(
@@ -218,7 +219,7 @@ nimcp_survival_result_t nimcp_km_fit(
     if (confidence <= 0.0f || confidence >= 1.0f) confidence = NIMCP_SURVIVAL_DEFAULT_CONFIDENCE;
 
     // Sort observations by time
-    sorted_obs_t* sorted = (sorted_obs_t*)malloc(n * sizeof(sorted_obs_t));
+    sorted_obs_t* sorted = (sorted_obs_t*)nimcp_malloc(n * sizeof(sorted_obs_t));
     if (!sorted) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sorted array");
         return NIMCP_SURVIVAL_ERROR_MEMORY;
@@ -233,7 +234,7 @@ nimcp_survival_result_t nimcp_km_fit(
     }
 
     if (n_events_total == 0) {
-        free(sorted);
+        nimcp_free(sorted);
         return NIMCP_SURVIVAL_ERROR_NO_EVENTS;
     }
 
@@ -250,10 +251,10 @@ nimcp_survival_result_t nimcp_km_fit(
     }
 
     // Allocate curve (include time=0 point)
-    free(km->curve);
-    km->curve = (nimcp_km_point_t*)calloc(n_unique + 1, sizeof(nimcp_km_point_t));
+    nimcp_free(km->curve);
+    km->curve = (nimcp_km_point_t*)nimcp_calloc(n_unique + 1, sizeof(nimcp_km_point_t));
     if (!km->curve) {
-        free(sorted);
+        nimcp_free(sorted);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate KM curve");
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
@@ -368,7 +369,7 @@ nimcp_survival_result_t nimcp_km_fit(
     }
     km->restricted_mean = (float)rmst;
 
-    free(sorted);
+    nimcp_free(sorted);
     return NIMCP_SURVIVAL_OK;
 }
 
@@ -451,16 +452,16 @@ nimcp_survival_result_t nimcp_km_plot_data(
     // Step function needs 2 points per change
     uint32_t n_plot = km->n_points * 2;
 
-    *times = (float*)malloc(n_plot * sizeof(float));
-    *survival = (float*)malloc(n_plot * sizeof(float));
+    *times = (float*)nimcp_malloc(n_plot * sizeof(float));
+    *survival = (float*)nimcp_malloc(n_plot * sizeof(float));
     if (!*times || !*survival) {
-        free(*times);
-        free(*survival);
+        nimcp_free(*times);
+        nimcp_free(*survival);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
-    if (ci_lower) *ci_lower = (float*)malloc(n_plot * sizeof(float));
-    if (ci_upper) *ci_upper = (float*)malloc(n_plot * sizeof(float));
+    if (ci_lower) *ci_lower = (float*)nimcp_malloc(n_plot * sizeof(float));
+    if (ci_upper) *ci_upper = (float*)nimcp_malloc(n_plot * sizeof(float));
 
     uint32_t idx = 0;
     for (uint32_t i = 0; i < km->n_points; i++) {
@@ -538,16 +539,16 @@ nimcp_cox_model_t* nimcp_cox_create(uint32_t n_covariates) {
         return NULL;
     }
 
-    nimcp_cox_model_t* cox = (nimcp_cox_model_t*)calloc(1, sizeof(nimcp_cox_model_t));
+    nimcp_cox_model_t* cox = (nimcp_cox_model_t*)nimcp_calloc(1, sizeof(nimcp_cox_model_t));
     if (!cox) return NULL;
 
-    cox->coefficients = (nimcp_cox_coefficient_t*)calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
-    cox->variance_matrix = (float*)calloc((size_t)n_covariates * n_covariates, sizeof(float));
+    cox->coefficients = (nimcp_cox_coefficient_t*)nimcp_calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
+    cox->variance_matrix = (float*)nimcp_calloc((size_t)n_covariates * n_covariates, sizeof(float));
 
     if (!cox->coefficients || !cox->variance_matrix) {
-        free(cox->coefficients);
-        free(cox->variance_matrix);
-        free(cox);
+        nimcp_free(cox->coefficients);
+        nimcp_free(cox->variance_matrix);
+        nimcp_free(cox);
         return NULL;
     }
 
@@ -562,11 +563,11 @@ nimcp_cox_model_t* nimcp_cox_create(uint32_t n_covariates) {
 void nimcp_cox_destroy(nimcp_cox_model_t* cox) {
     if (!cox) return;
 
-    free(cox->coefficients);
-    free(cox->variance_matrix);
-    free(cox->baseline_hazard);
-    free(cox->baseline_times);
-    free(cox);
+    nimcp_free(cox->coefficients);
+    nimcp_free(cox->variance_matrix);
+    nimcp_free(cox->baseline_hazard);
+    nimcp_free(cox->baseline_times);
+    nimcp_free(cox);
 }
 
 /**
@@ -587,7 +588,7 @@ static void cox_partial_likelihood(
     double* hessian
 ) {
     // Sort indices by time (descending for efficient risk set computation)
-    uint32_t* order = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* order = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     for (uint32_t i = 0; i < n; i++) order[i] = i;
 
     // Simple insertion sort for stability
@@ -607,7 +608,7 @@ static void cox_partial_likelihood(
     if (hessian) memset(hessian, 0, (size_t)p * p * sizeof(double));
 
     // Compute linear predictors exp(β'X)
-    double* exp_eta = (double*)malloc(n * sizeof(double));
+    double* exp_eta = (double*)nimcp_malloc(n * sizeof(double));
     for (uint32_t i = 0; i < n; i++) {
         double eta = 0.0;
         for (uint32_t j = 0; j < p; j++) {
@@ -618,8 +619,8 @@ static void cox_partial_likelihood(
 
     // Running sums for risk set (in descending time order)
     double sum_exp = 0.0;
-    double* sum_x_exp = (double*)calloc(p, sizeof(double));
-    double* sum_xx_exp = (double*)calloc((size_t)p * p, sizeof(double));
+    double* sum_x_exp = (double*)nimcp_calloc(p, sizeof(double));
+    double* sum_xx_exp = (double*)nimcp_calloc((size_t)p * p, sizeof(double));
 
     for (uint32_t k = 0; k < n; k++) {
         uint32_t i = order[k];
@@ -662,10 +663,10 @@ static void cox_partial_likelihood(
         }
     }
 
-    free(order);
-    free(exp_eta);
-    free(sum_x_exp);
-    free(sum_xx_exp);
+    nimcp_free(order);
+    nimcp_free(exp_eta);
+    nimcp_free(sum_x_exp);
+    nimcp_free(sum_xx_exp);
 }
 
 /**
@@ -740,13 +741,13 @@ nimcp_survival_result_t nimcp_cox_fit(
     if (n_events == 0) return NIMCP_SURVIVAL_ERROR_NO_EVENTS;
 
     // Initialize beta to zeros
-    double* beta = (double*)calloc(p, sizeof(double));
-    double* gradient = (double*)malloc(p * sizeof(double));
-    double* hessian = (double*)malloc((size_t)p * p * sizeof(double));
-    double* delta = (double*)malloc(p * sizeof(double));
+    double* beta = (double*)nimcp_calloc(p, sizeof(double));
+    double* gradient = (double*)nimcp_malloc(p * sizeof(double));
+    double* hessian = (double*)nimcp_malloc((size_t)p * p * sizeof(double));
+    double* delta = (double*)nimcp_malloc(p * sizeof(double));
 
     if (!beta || !gradient || !hessian || !delta) {
-        free(beta); free(gradient); free(hessian); free(delta);
+        nimcp_free(beta); nimcp_free(gradient); nimcp_free(hessian); nimcp_free(delta);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Memory allocation failed in Cox fit");
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
@@ -772,7 +773,7 @@ nimcp_survival_result_t nimcp_cox_fit(
         for (uint32_t i = 0; i < p * p; i++) hessian[i] = -hessian[i];
 
         if (cholesky_invert(hessian, p) != 0) {
-            free(beta); free(gradient); free(hessian); free(delta);
+            nimcp_free(beta); nimcp_free(gradient); nimcp_free(hessian); nimcp_free(delta);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Singular Hessian in Cox fit");
             return NIMCP_SURVIVAL_ERROR_SINGULAR;
         }
@@ -824,9 +825,9 @@ nimcp_survival_result_t nimcp_cox_fit(
 
     // Compute model statistics
     double null_log_lik = 0.0;
-    double* zero_beta = (double*)calloc(p, sizeof(double));
+    double* zero_beta = (double*)nimcp_calloc(p, sizeof(double));
     cox_partial_likelihood(times, events, covariates, n, p, zero_beta, &null_log_lik, NULL, NULL);
-    free(zero_beta);
+    nimcp_free(zero_beta);
 
     cox->stats.log_likelihood = (float)log_lik;
     cox->stats.log_likelihood_null = (float)null_log_lik;
@@ -866,10 +867,10 @@ nimcp_survival_result_t nimcp_cox_fit(
     cox->confidence_level = confidence;
     cox->fitted = true;
 
-    free(beta);
-    free(gradient);
-    free(hessian);
-    free(delta);
+    nimcp_free(beta);
+    nimcp_free(gradient);
+    nimcp_free(hessian);
+    nimcp_free(delta);
 
     return converged ? NIMCP_SURVIVAL_OK : NIMCP_SURVIVAL_ERROR_CONVERGE;
 }
@@ -1015,16 +1016,16 @@ nimcp_survival_result_t nimcp_cox_schoenfeld_residuals(
 
     if (ne == 0) return NIMCP_SURVIVAL_ERROR_NO_EVENTS;
 
-    *residuals = (float*)malloc((size_t)ne * p * sizeof(float));
-    *event_times = (float*)malloc(ne * sizeof(float));
+    *residuals = (float*)nimcp_malloc((size_t)ne * p * sizeof(float));
+    *event_times = (float*)nimcp_malloc(ne * sizeof(float));
     if (!*residuals || !*event_times) {
-        free(*residuals);
-        free(*event_times);
+        nimcp_free(*residuals);
+        nimcp_free(*event_times);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
     // Compute exp(beta'X) for all observations
-    double* exp_eta = (double*)malloc(n * sizeof(double));
+    double* exp_eta = (double*)nimcp_malloc(n * sizeof(double));
     for (uint32_t i = 0; i < n; i++) {
         double eta = 0.0;
         for (uint32_t j = 0; j < p; j++) {
@@ -1042,7 +1043,7 @@ nimcp_survival_result_t nimcp_cox_schoenfeld_residuals(
 
         // Compute weighted mean of covariates in risk set
         double sum_exp = 0.0;
-        double* sum_x_exp = (double*)calloc(p, sizeof(double));
+        double* sum_x_exp = (double*)nimcp_calloc(p, sizeof(double));
 
         for (uint32_t j = 0; j < n; j++) {
             if (times[j] >= times[i]) {  // In risk set
@@ -1058,11 +1059,11 @@ nimcp_survival_result_t nimcp_cox_schoenfeld_residuals(
             (*residuals)[event_idx * p + k] = covariates[i * p + k] - (float)(sum_x_exp[k] / sum_exp);
         }
 
-        free(sum_x_exp);
+        nimcp_free(sum_x_exp);
         event_idx++;
     }
 
-    free(exp_eta);
+    nimcp_free(exp_eta);
     return NIMCP_SURVIVAL_OK;
 }
 
@@ -1085,8 +1086,8 @@ nimcp_survival_result_t nimcp_cox_martingale_residuals(
     uint32_t p = cox->n_covariates;
 
     // Compute exp(beta'X) for all observations
-    double* exp_eta = (double*)malloc(n * sizeof(double));
-    double* cum_hazard = (double*)calloc(n, sizeof(double));
+    double* exp_eta = (double*)nimcp_malloc(n * sizeof(double));
+    double* cum_hazard = (double*)nimcp_calloc(n, sizeof(double));
 
     for (uint32_t i = 0; i < n; i++) {
         double eta = 0.0;
@@ -1097,7 +1098,7 @@ nimcp_survival_result_t nimcp_cox_martingale_residuals(
     }
 
     // Sort by time
-    uint32_t* order = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* order = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     for (uint32_t i = 0; i < n; i++) order[i] = i;
 
     // Simple sort
@@ -1136,9 +1137,9 @@ nimcp_survival_result_t nimcp_cox_martingale_residuals(
         residuals[i] = (events[i] ? 1.0f : 0.0f) - (float)cum_hazard[i];
     }
 
-    free(exp_eta);
-    free(cum_hazard);
-    free(order);
+    nimcp_free(exp_eta);
+    nimcp_free(cum_hazard);
+    nimcp_free(order);
 
     return NIMCP_SURVIVAL_OK;
 }
@@ -1157,14 +1158,14 @@ nimcp_survival_result_t nimcp_cox_deviance_residuals(
     if (!cox->fitted) return NIMCP_SURVIVAL_ERROR_NOT_FIT;
 
     // First get martingale residuals
-    float* martingale = (float*)malloc(n * sizeof(float));
+    float* martingale = (float*)nimcp_malloc(n * sizeof(float));
     if (!martingale) return NIMCP_SURVIVAL_ERROR_MEMORY;
 
     nimcp_survival_result_t result = nimcp_cox_martingale_residuals(
         cox, times, events, covariates, n, martingale);
 
     if (result != NIMCP_SURVIVAL_OK) {
-        free(martingale);
+        nimcp_free(martingale);
         return result;
     }
 
@@ -1185,7 +1186,7 @@ nimcp_survival_result_t nimcp_cox_deviance_residuals(
         residuals[i] = (m >= 0 ? 1.0f : -1.0f) * sqrtf(dev_sq);
     }
 
-    free(martingale);
+    nimcp_free(martingale);
     return NIMCP_SURVIVAL_OK;
 }
 
@@ -1205,7 +1206,7 @@ nimcp_survival_result_t nimcp_logrank_test(
     if (n == 0 || n_groups < 2) return NIMCP_SURVIVAL_ERROR_SIZE;
 
     // Sort observations
-    sorted_obs_t* sorted = (sorted_obs_t*)malloc(n * sizeof(sorted_obs_t));
+    sorted_obs_t* sorted = (sorted_obs_t*)nimcp_malloc(n * sizeof(sorted_obs_t));
     if (!sorted) return NIMCP_SURVIVAL_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1217,17 +1218,17 @@ nimcp_survival_result_t nimcp_logrank_test(
     qsort(sorted, n, sizeof(sorted_obs_t), compare_obs_time);
 
     // Initialize result
-    result->observed = (float*)calloc(n_groups, sizeof(float));
-    result->expected = (float*)calloc(n_groups, sizeof(float));
+    result->observed = (float*)nimcp_calloc(n_groups, sizeof(float));
+    result->expected = (float*)nimcp_calloc(n_groups, sizeof(float));
     if (!result->observed || !result->expected) {
-        free(sorted);
-        free(result->observed);
-        free(result->expected);
+        nimcp_free(sorted);
+        nimcp_free(result->observed);
+        nimcp_free(result->expected);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
     // Count at risk in each group
-    uint32_t* at_risk = (uint32_t*)malloc(n_groups * sizeof(uint32_t));
+    uint32_t* at_risk = (uint32_t*)nimcp_malloc(n_groups * sizeof(uint32_t));
     for (uint32_t g = 0; g < n_groups; g++) {
         at_risk[g] = 0;
         for (uint32_t i = 0; i < n; i++) {
@@ -1245,7 +1246,7 @@ nimcp_survival_result_t nimcp_logrank_test(
         // Count events and at-risk at this time
         uint32_t d_total = 0;
         uint32_t n_total = 0;
-        uint32_t* d_group = (uint32_t*)calloc(n_groups, sizeof(uint32_t));
+        uint32_t* d_group = (uint32_t*)nimcp_calloc(n_groups, sizeof(uint32_t));
 
         for (uint32_t g = 0; g < n_groups; g++) {
             n_total += at_risk[g];
@@ -1282,7 +1283,7 @@ nimcp_survival_result_t nimcp_logrank_test(
             i++;
         }
 
-        free(d_group);
+        nimcp_free(d_group);
     }
 
     // Compute chi-squared statistic
@@ -1306,8 +1307,8 @@ nimcp_survival_result_t nimcp_logrank_test(
     result->p_value = 1.0f - nimcp_stats_cdf_chi_squared(result->chi_squared, result->df);
     result->n_groups = n_groups;
 
-    free(sorted);
-    free(at_risk);
+    nimcp_free(sorted);
+    nimcp_free(at_risk);
 
     return NIMCP_SURVIVAL_OK;
 }
@@ -1326,7 +1327,7 @@ nimcp_survival_result_t nimcp_wilcoxon_survival_test(
     // Peto-Peto version of Wilcoxon (Gehan) test
     // Uses survival estimate as weight
 
-    sorted_obs_t* sorted = (sorted_obs_t*)malloc(n * sizeof(sorted_obs_t));
+    sorted_obs_t* sorted = (sorted_obs_t*)nimcp_malloc(n * sizeof(sorted_obs_t));
     if (!sorted) return NIMCP_SURVIVAL_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1336,14 +1337,14 @@ nimcp_survival_result_t nimcp_wilcoxon_survival_test(
     }
     qsort(sorted, n, sizeof(sorted_obs_t), compare_obs_time);
 
-    result->observed = (float*)calloc(n_groups, sizeof(float));
-    result->expected = (float*)calloc(n_groups, sizeof(float));
+    result->observed = (float*)nimcp_calloc(n_groups, sizeof(float));
+    result->expected = (float*)nimcp_calloc(n_groups, sizeof(float));
     if (!result->observed || !result->expected) {
-        free(sorted);
+        nimcp_free(sorted);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
-    uint32_t* at_risk = (uint32_t*)malloc(n_groups * sizeof(uint32_t));
+    uint32_t* at_risk = (uint32_t*)nimcp_malloc(n_groups * sizeof(uint32_t));
     for (uint32_t g = 0; g < n_groups; g++) {
         at_risk[g] = 0;
         for (uint32_t i = 0; i < n; i++) {
@@ -1360,7 +1361,7 @@ nimcp_survival_result_t nimcp_wilcoxon_survival_test(
 
         uint32_t d_total = 0;
         uint32_t n_total = 0;
-        uint32_t* d_group = (uint32_t*)calloc(n_groups, sizeof(uint32_t));
+        uint32_t* d_group = (uint32_t*)nimcp_calloc(n_groups, sizeof(uint32_t));
 
         for (uint32_t g = 0; g < n_groups; g++) {
             n_total += at_risk[g];
@@ -1399,7 +1400,7 @@ nimcp_survival_result_t nimcp_wilcoxon_survival_test(
             i++;
         }
 
-        free(d_group);
+        nimcp_free(d_group);
     }
 
     if (n_groups == 2 && variance > 0) {
@@ -1421,8 +1422,8 @@ nimcp_survival_result_t nimcp_wilcoxon_survival_test(
     result->p_value = 1.0f - nimcp_stats_cdf_chi_squared(result->chi_squared, result->df);
     result->n_groups = n_groups;
 
-    free(sorted);
-    free(at_risk);
+    nimcp_free(sorted);
+    nimcp_free(at_risk);
 
     return NIMCP_SURVIVAL_OK;
 }
@@ -1458,14 +1459,14 @@ nimcp_survival_result_t nimcp_ph_test(
     // where V is the variance-covariance matrix
 
     // Allocate result arrays
-    result->covariate_chi_sq = (float*)malloc(p * sizeof(float));
-    result->covariate_p_value = (float*)malloc(p * sizeof(float));
-    result->covariate_rho = (float*)malloc(p * sizeof(float));
+    result->covariate_chi_sq = (float*)nimcp_malloc(p * sizeof(float));
+    result->covariate_p_value = (float*)nimcp_malloc(p * sizeof(float));
+    result->covariate_rho = (float*)nimcp_malloc(p * sizeof(float));
     result->n_covariates = p;
 
     if (!result->covariate_chi_sq || !result->covariate_p_value || !result->covariate_rho) {
-        free(schoenfeld);
-        free(event_times);
+        nimcp_free(schoenfeld);
+        nimcp_free(event_times);
         nimcp_ph_test_free(result);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
@@ -1476,7 +1477,7 @@ nimcp_survival_result_t nimcp_ph_test(
 
     for (uint32_t j = 0; j < p; j++) {
         // Extract residuals for this covariate
-        float* resid_j = (float*)malloc(n_events * sizeof(float));
+        float* resid_j = (float*)nimcp_malloc(n_events * sizeof(float));
         for (uint32_t i = 0; i < n_events; i++) {
             // Scale residual (simplified - just use raw for now)
             resid_j[i] = schoenfeld[i * p + j] * n_events + cox->coefficients[j].beta;
@@ -1499,23 +1500,23 @@ nimcp_survival_result_t nimcp_ph_test(
             result->ph_assumption_holds = false;
         }
 
-        free(resid_j);
+        nimcp_free(resid_j);
     }
 
     result->global_chi_squared = (float)global_chi_sq;
     result->global_p_value = 1.0f - nimcp_stats_cdf_chi_squared(result->global_chi_squared, (float)p);
 
-    free(schoenfeld);
-    free(event_times);
+    nimcp_free(schoenfeld);
+    nimcp_free(event_times);
 
     return NIMCP_SURVIVAL_OK;
 }
 
 void nimcp_ph_test_free(nimcp_ph_test_result_t* result) {
     if (!result) return;
-    free(result->covariate_chi_sq);
-    free(result->covariate_p_value);
-    free(result->covariate_rho);
+    nimcp_free(result->covariate_chi_sq);
+    nimcp_free(result->covariate_p_value);
+    nimcp_free(result->covariate_rho);
     result->covariate_chi_sq = NULL;
     result->covariate_p_value = NULL;
     result->covariate_rho = NULL;
@@ -1523,8 +1524,8 @@ void nimcp_ph_test_free(nimcp_ph_test_result_t* result) {
 
 void nimcp_logrank_free(nimcp_logrank_result_t* result) {
     if (!result) return;
-    free(result->observed);
-    free(result->expected);
+    nimcp_free(result->observed);
+    nimcp_free(result->expected);
     result->observed = NULL;
     result->expected = NULL;
 }
@@ -1538,13 +1539,13 @@ nimcp_cif_estimator_t* nimcp_cif_create(uint32_t n_event_types) {
         return NULL;
     }
 
-    nimcp_cif_estimator_t* cif = (nimcp_cif_estimator_t*)calloc(1, sizeof(nimcp_cif_estimator_t));
+    nimcp_cif_estimator_t* cif = (nimcp_cif_estimator_t*)nimcp_calloc(1, sizeof(nimcp_cif_estimator_t));
     if (!cif) return NULL;
 
     cif->n_event_types = n_event_types;
-    cif->n_events = (uint32_t*)calloc(n_event_types, sizeof(uint32_t));
+    cif->n_events = (uint32_t*)nimcp_calloc(n_event_types, sizeof(uint32_t));
     if (!cif->n_events) {
-        free(cif);
+        nimcp_free(cif);
         return NULL;
     }
 
@@ -1559,15 +1560,15 @@ void nimcp_cif_destroy(nimcp_cif_estimator_t* cif) {
 
     if (cif->curve) {
         for (uint32_t i = 0; i < cif->n_points; i++) {
-            free(cif->curve[i].cif);
-            free(cif->curve[i].std_error);
-            free(cif->curve[i].ci_lower);
-            free(cif->curve[i].ci_upper);
+            nimcp_free(cif->curve[i].cif);
+            nimcp_free(cif->curve[i].std_error);
+            nimcp_free(cif->curve[i].ci_lower);
+            nimcp_free(cif->curve[i].ci_upper);
         }
-        free(cif->curve);
+        nimcp_free(cif->curve);
     }
-    free(cif->n_events);
-    free(cif);
+    nimcp_free(cif->n_events);
+    nimcp_free(cif);
 }
 
 nimcp_survival_result_t nimcp_cif_fit(
@@ -1583,7 +1584,7 @@ nimcp_survival_result_t nimcp_cif_fit(
     uint32_t k = cif->n_event_types;
 
     // Sort observations
-    sorted_obs_t* sorted = (sorted_obs_t*)malloc(n * sizeof(sorted_obs_t));
+    sorted_obs_t* sorted = (sorted_obs_t*)nimcp_malloc(n * sizeof(sorted_obs_t));
     if (!sorted) return NIMCP_SURVIVAL_ERROR_MEMORY;
 
     uint32_t n_events_total = 0;
@@ -1613,26 +1614,26 @@ nimcp_survival_result_t nimcp_cif_fit(
     // Allocate curve
     if (cif->curve) {
         for (uint32_t i = 0; i < cif->n_points; i++) {
-            free(cif->curve[i].cif);
-            free(cif->curve[i].std_error);
-            free(cif->curve[i].ci_lower);
-            free(cif->curve[i].ci_upper);
+            nimcp_free(cif->curve[i].cif);
+            nimcp_free(cif->curve[i].std_error);
+            nimcp_free(cif->curve[i].ci_lower);
+            nimcp_free(cif->curve[i].ci_upper);
         }
-        free(cif->curve);
+        nimcp_free(cif->curve);
     }
 
-    cif->curve = (nimcp_cif_point_t*)calloc(n_unique + 1, sizeof(nimcp_cif_point_t));
+    cif->curve = (nimcp_cif_point_t*)nimcp_calloc(n_unique + 1, sizeof(nimcp_cif_point_t));
     if (!cif->curve) {
-        free(sorted);
+        nimcp_free(sorted);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
     // Allocate arrays for each curve point
     for (uint32_t i = 0; i <= n_unique; i++) {
-        cif->curve[i].cif = (float*)calloc(k, sizeof(float));
-        cif->curve[i].std_error = (float*)calloc(k, sizeof(float));
-        cif->curve[i].ci_lower = (float*)calloc(k, sizeof(float));
-        cif->curve[i].ci_upper = (float*)calloc(k, sizeof(float));
+        cif->curve[i].cif = (float*)nimcp_calloc(k, sizeof(float));
+        cif->curve[i].std_error = (float*)nimcp_calloc(k, sizeof(float));
+        cif->curve[i].ci_lower = (float*)nimcp_calloc(k, sizeof(float));
+        cif->curve[i].ci_upper = (float*)nimcp_calloc(k, sizeof(float));
         cif->curve[i].n_events = k;
     }
 
@@ -1642,7 +1643,7 @@ nimcp_survival_result_t nimcp_cif_fit(
     // Aalen-Johansen estimator
     float z_alpha = nimcp_stats_quantile_standard_normal(1.0f - (1.0f - confidence) / 2.0f);
     double survival = 1.0;  // Overall survival (for all causes combined)
-    double* cumulative_incidence = (double*)calloc(k, sizeof(double));
+    double* cumulative_incidence = (double*)nimcp_calloc(k, sizeof(double));
     uint32_t n_at_risk = n;
     uint32_t curve_idx = 1;
     uint32_t i = 0;
@@ -1651,7 +1652,7 @@ nimcp_survival_result_t nimcp_cif_fit(
         float current_time = sorted[i].time;
 
         // Count events of each type at this time
-        uint32_t* d_type = (uint32_t*)calloc(k, sizeof(uint32_t));
+        uint32_t* d_type = (uint32_t*)nimcp_calloc(k, sizeof(uint32_t));
         uint32_t d_total = 0;
         uint32_t c_total = 0;
 
@@ -1693,7 +1694,7 @@ nimcp_survival_result_t nimcp_cif_fit(
         }
 
         n_at_risk -= (d_total + c_total);
-        free(d_type);
+        nimcp_free(d_type);
     }
 
     cif->n_points = curve_idx;
@@ -1702,8 +1703,8 @@ nimcp_survival_result_t nimcp_cif_fit(
     cif->confidence_level = confidence;
     cif->fitted = true;
 
-    free(sorted);
-    free(cumulative_incidence);
+    nimcp_free(sorted);
+    nimcp_free(cumulative_incidence);
 
     return NIMCP_SURVIVAL_OK;
 }
@@ -1734,16 +1735,16 @@ float nimcp_cif_at(const nimcp_cif_estimator_t* cif, float t, uint8_t event_type
 nimcp_fine_gray_model_t* nimcp_fine_gray_create(uint32_t n_covariates, uint8_t target_event) {
     if (n_covariates == 0 || target_event == 0) return NULL;
 
-    nimcp_fine_gray_model_t* fg = (nimcp_fine_gray_model_t*)calloc(1, sizeof(nimcp_fine_gray_model_t));
+    nimcp_fine_gray_model_t* fg = (nimcp_fine_gray_model_t*)nimcp_calloc(1, sizeof(nimcp_fine_gray_model_t));
     if (!fg) return NULL;
 
-    fg->coefficients = (nimcp_cox_coefficient_t*)calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
-    fg->variance_matrix = (float*)calloc((size_t)n_covariates * n_covariates, sizeof(float));
+    fg->coefficients = (nimcp_cox_coefficient_t*)nimcp_calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
+    fg->variance_matrix = (float*)nimcp_calloc((size_t)n_covariates * n_covariates, sizeof(float));
 
     if (!fg->coefficients || !fg->variance_matrix) {
-        free(fg->coefficients);
-        free(fg->variance_matrix);
-        free(fg);
+        nimcp_free(fg->coefficients);
+        nimcp_free(fg->variance_matrix);
+        nimcp_free(fg);
         return NULL;
     }
 
@@ -1757,9 +1758,9 @@ nimcp_fine_gray_model_t* nimcp_fine_gray_create(uint32_t n_covariates, uint8_t t
 
 void nimcp_fine_gray_destroy(nimcp_fine_gray_model_t* fg) {
     if (!fg) return;
-    free(fg->coefficients);
-    free(fg->variance_matrix);
-    free(fg);
+    nimcp_free(fg->coefficients);
+    nimcp_free(fg->variance_matrix);
+    nimcp_free(fg);
 }
 
 nimcp_survival_result_t nimcp_fine_gray_fit(
@@ -1784,7 +1785,7 @@ nimcp_survival_result_t nimcp_fine_gray_fit(
     uint8_t target = fg->target_event;
 
     // Create modified events: target event = 1, others = censored
-    bool* modified_events = (bool*)malloc(n * sizeof(bool));
+    bool* modified_events = (bool*)nimcp_malloc(n * sizeof(bool));
     if (!modified_events) return NIMCP_SURVIVAL_ERROR_MEMORY;
 
     uint32_t n_target = 0;
@@ -1794,14 +1795,14 @@ nimcp_survival_result_t nimcp_fine_gray_fit(
     }
 
     if (n_target == 0) {
-        free(modified_events);
+        nimcp_free(modified_events);
         return NIMCP_SURVIVAL_ERROR_NO_EVENTS;
     }
 
     // Create temporary Cox model
     nimcp_cox_model_t* cox = nimcp_cox_create(p);
     if (!cox) {
-        free(modified_events);
+        nimcp_free(modified_events);
         return NIMCP_SURVIVAL_ERROR_MEMORY;
     }
 
@@ -1820,7 +1821,7 @@ nimcp_survival_result_t nimcp_fine_gray_fit(
     }
 
     nimcp_cox_destroy(cox);
-    free(modified_events);
+    nimcp_free(modified_events);
 
     return result;
 }

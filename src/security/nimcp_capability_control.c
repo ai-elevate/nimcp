@@ -36,24 +36,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_capability_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(capability)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void capability_control_set_health_agent(nimcp_health_agent_t* agent) {
-    g_capability_health_agent = agent;
+static mesh_participant_id_t g_capability_mesh_id = 0;
+static mesh_participant_registry_t* g_capability_mesh_registry = NULL;
+
+static nimcp_error_t capability_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_capability_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "capability", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "capability";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_capability_mesh_id);
+    if (err == NIMCP_SUCCESS) g_capability_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void capability_heartbeat(const char* operation, float progress) {
-    if (g_capability_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_capability_health_agent, operation, progress);
+static void capability_mesh_unregister(void) {
+    if (g_capability_mesh_registry && g_capability_mesh_id != 0) {
+        mesh_participant_unregister(g_capability_mesh_registry, g_capability_mesh_id);
+        g_capability_mesh_id = 0;
+        g_capability_mesh_registry = NULL;
     }
 }
+
 
 /* SAT variable names for capability constraints */
 static const char* SELF_MOD_VAR_NAMES[] = {
@@ -351,6 +372,7 @@ nimcp_error_t capability_control_verify_envelope(
     size_t report_size)
 {
     if (!is_valid_handle(system) || valid == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -405,6 +427,7 @@ nimcp_error_t capability_control_verify_no_escalation(
     bool* escalation_possible)
 {
     if (!is_valid_handle(system) || escalation_possible == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -437,6 +460,7 @@ nimcp_error_t capability_control_check_action(
     capability_check_result_t* result)
 {
     if (!is_valid_handle(system) || action == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -570,6 +594,7 @@ nimcp_error_t capability_control_check_network(
     size_t reason_size)
 {
     if (!is_valid_handle(system) || allowed == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -601,6 +626,7 @@ nimcp_error_t capability_control_check_resources(
     bool* allowed)
 {
     if (!is_valid_handle(system) || allowed == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -629,6 +655,7 @@ nimcp_error_t capability_control_update_usage(
     const capability_resource_usage_t* usage)
 {
     if (!is_valid_handle(system) || usage == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -644,6 +671,7 @@ nimcp_error_t capability_control_get_usage(
     capability_resource_usage_t* usage)
 {
     if (!is_valid_handle(system) || usage == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -662,6 +690,7 @@ nimcp_error_t capability_control_check_limits(
     size_t report_size)
 {
     if (!is_valid_handle(system) || exceeded == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -704,6 +733,7 @@ nimcp_error_t capability_control_get_envelope(
     capability_envelope_t* envelope)
 {
     if (!is_valid_handle(system) || envelope == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -720,6 +750,7 @@ nimcp_error_t capability_control_add_allowed_domain(
     const char* domain)
 {
     if (!is_valid_handle(system) || domain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -727,6 +758,7 @@ nimcp_error_t capability_control_add_allowed_domain(
 
     if (system->config.envelope.network.allowed_domain_count >= CAPABILITY_MAX_ALLOWED_DOMAINS) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "capability_control: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -747,6 +779,7 @@ nimcp_error_t capability_control_remove_allowed_domain(
     const char* domain)
 {
     if (!is_valid_handle(system) || domain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -773,6 +806,7 @@ nimcp_error_t capability_control_remove_allowed_domain(
         NIMCP_LOG_INFO(LOG_CATEGORY, "Removed allowed domain: %s", domain);
         return NIMCP_OK;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "capability_control: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -785,6 +819,7 @@ nimcp_error_t capability_control_get_stats(
     capability_control_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -803,6 +838,7 @@ nimcp_error_t capability_control_get_action_history(
     size_t* count_out)
 {
     if (!is_valid_handle(system) || records == NULL || count_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -833,6 +869,7 @@ nimcp_error_t capability_control_get_action_history(
 nimcp_error_t capability_control_connect_bio_async(capability_control_t* system)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -868,6 +905,7 @@ nimcp_error_t capability_control_connect_tripwires(
     void* tripwires)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -933,6 +971,7 @@ nimcp_error_t capability_control_connect_corrigibility(
     struct corrigibility* corrigibility)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -950,6 +989,7 @@ nimcp_error_t capability_control_check_action_with_corrigibility(
     capability_check_result_t* result)
 {
     if (!is_valid_handle(system) || action == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1024,6 +1064,7 @@ nimcp_error_t capability_control_verify_corrigibility_sync(
     size_t report_size)
 {
     if (!is_valid_handle(system) || synchronized == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "capability_control: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

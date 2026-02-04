@@ -32,31 +32,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_sleep_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_sleep_bridge module */
-static nimcp_health_agent_t* g_pr_sleep_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_sleep_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_sleep_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_sleep_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_sleep_bridge_health_agent = agent;
+nimcp_error_t pr_sleep_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_sleep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_sleep_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_sleep_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_sleep_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_sleep_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_sleep_bridge module */
-static inline void pr_sleep_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_sleep_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_sleep_bridge_health_agent, operation, progress);
+void pr_sleep_bridge_mesh_unregister(void) {
+    if (g_pr_sleep_bridge_mesh_registry && g_pr_sleep_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_sleep_bridge_mesh_registry, g_pr_sleep_bridge_mesh_id);
+        g_pr_sleep_bridge_mesh_id = 0;
+        g_pr_sleep_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_sleep_bridge module (instance-level) */
 static inline void pr_sleep_bridge_heartbeat_instance(
@@ -275,7 +289,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
     }
 
     // Allocate bridge structure
-    pr_sleep_bridge_t bridge = (pr_sleep_bridge_t)calloc(1, sizeof(struct pr_sleep_bridge_struct));
+    pr_sleep_bridge_t bridge = (pr_sleep_bridge_t)nimcp_calloc(1, sizeof(struct pr_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
@@ -289,10 +303,10 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
 
     // Allocate replay buffer
     bridge->replay_buffer_capacity = cfg.replay_buffer_capacity;
-    bridge->replay_buffer = (pr_replay_candidate_t*)calloc(
+    bridge->replay_buffer = (pr_replay_candidate_t*)nimcp_calloc(
         bridge->replay_buffer_capacity, sizeof(pr_replay_candidate_t));
     if (!bridge->replay_buffer) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->replay_buffer_count = 0;
@@ -300,11 +314,11 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
     // Allocate replay history if enabled
     if (cfg.track_replay_history && cfg.max_replay_history > 0) {
         bridge->replay_history_capacity = cfg.max_replay_history;
-        bridge->replay_history = (pr_replay_event_t*)calloc(
+        bridge->replay_history = (pr_replay_event_t*)nimcp_calloc(
             bridge->replay_history_capacity, sizeof(pr_replay_event_t));
         if (!bridge->replay_history) {
-            free(bridge->replay_buffer);
-            free(bridge);
+            nimcp_free(bridge->replay_buffer);
+            nimcp_free(bridge);
             return NULL;
         }
     }
@@ -328,9 +342,9 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
 #ifdef NIMCP_HAS_THREADS
     if (bridge_base_init(&bridge->base, 0, "pr_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
-        free(bridge->replay_history);
-        free(bridge->replay_buffer);
-        free(bridge);
+        nimcp_free(bridge->replay_history);
+        nimcp_free(bridge->replay_buffer);
+        nimcp_free(bridge);
         return NULL;
     }
 #endif
@@ -355,14 +369,14 @@ NIMCP_EXPORT void pr_sleep_bridge_destroy(pr_sleep_bridge_t bridge) {
 #endif
 
     if (bridge->replay_history) {
-        free(bridge->replay_history);
+        nimcp_free(bridge->replay_history);
     }
 
     if (bridge->replay_buffer) {
-        free(bridge->replay_buffer);
+        nimcp_free(bridge->replay_buffer);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_ladder(
@@ -1010,7 +1024,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         }
     } else {
         // Random order - use simple Fisher-Yates shuffle
-        uint64_t* shuffled = (uint64_t*)malloc(count * sizeof(uint64_t));
+        uint64_t* shuffled = (uint64_t*)nimcp_malloc(count * sizeof(uint64_t));
         if (!shuffled) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate shuffled");
 
@@ -1039,7 +1053,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
             }
         }
 
-        free(shuffled);
+        nimcp_free(shuffled);
     }
 
     // Strengthen associations between co-replayed memories
@@ -1940,7 +1954,7 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
                        count : bridge->config.max_replay_per_cycle;
 
     // Build replay sequence
-    uint64_t* replay_ids = (uint64_t*)malloc(to_replay * sizeof(uint64_t));
+    uint64_t* replay_ids = (uint64_t*)nimcp_malloc(to_replay * sizeof(uint64_t));
     if (!replay_ids) {
         return 0;
     }
@@ -1966,7 +1980,7 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
                                         PR_REPLAY_REVERSE);
     }
 
-    free(replay_ids);
+    nimcp_free(replay_ids);
 
     // Promote eligible memories (main promotion happens in SWS)
     pr_sleep_bridge_promote_z_ladder(bridge);
@@ -1994,7 +2008,7 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
         // Replay with random order (creative recombination)
         size_t to_replay = count < 30 ? count : 30;
 
-        uint64_t* replay_ids = (uint64_t*)malloc(to_replay * sizeof(uint64_t));
+        uint64_t* replay_ids = (uint64_t*)nimcp_malloc(to_replay * sizeof(uint64_t));
         if (replay_ids) {
             for (size_t i = 0; i < to_replay; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2013,7 +2027,7 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
                                                            direction);
             total_processed += replayed;
 
-            free(replay_ids);
+            nimcp_free(replay_ids);
         }
     }
 

@@ -27,32 +27,41 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pq_hybrid)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for pq_hybrid module */
-static nimcp_health_agent_t* g_pq_hybrid_health_agent = NULL;
+static mesh_participant_id_t g_pq_hybrid_mesh_id = 0;
+static mesh_participant_registry_t* g_pq_hybrid_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pq_hybrid heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pq_hybrid_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pq_hybrid_health_agent = agent;
+nimcp_error_t pq_hybrid_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pq_hybrid_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pq_hybrid", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pq_hybrid";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pq_hybrid_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pq_hybrid_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pq_hybrid module */
-static inline void pq_hybrid_heartbeat(const char* operation, float progress) {
-    if (g_pq_hybrid_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pq_hybrid_health_agent, operation, progress);
+void pq_hybrid_mesh_unregister(void) {
+    if (g_pq_hybrid_mesh_registry && g_pq_hybrid_mesh_id != 0) {
+        mesh_participant_unregister(g_pq_hybrid_mesh_registry, g_pq_hybrid_mesh_id);
+        g_pq_hybrid_mesh_id = 0;
+        g_pq_hybrid_mesh_registry = NULL;
     }
 }
 
@@ -117,6 +126,7 @@ static nimcp_error_t x25519_exchange(const uint8_t* private_key,
                                       const uint8_t* public_key,
                                       uint8_t* shared_secret) {
     if (!private_key || !public_key || !shared_secret) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -139,6 +149,7 @@ static nimcp_error_t ed25519_sign(const uint8_t* secret_key,
                                    uint8_t* signature,
                                    size_t* signature_len) {
     if (!secret_key || !message || !signature || !signature_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -167,10 +178,12 @@ static nimcp_error_t ed25519_verify(const uint8_t* public_key,
                                      const uint8_t* signature,
                                      size_t signature_len) {
     if (!public_key || !message || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
     if (signature_len != 64) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "pq_hybrid: operation failed");
         return NIMCP_ERROR;
     }
 
@@ -184,6 +197,7 @@ static nimcp_error_t ed25519_verify(const uint8_t* public_key,
     }
 
     if (!has_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "pq_hybrid: operation failed");
         return NIMCP_ERROR;
     }
 
@@ -214,6 +228,7 @@ nimcp_error_t nimcp_hybrid_key_exchange(
     if (!classical_private || !classical_public || !pq_public ||
         !combined_secret || secret_len != NIMCP_HYBRID_SHARED_SECRET_BYTES) {
         LOG_ERROR("nimcp_hybrid_key_exchange: Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -245,6 +260,7 @@ nimcp_error_t nimcp_hybrid_key_exchange(
         LOG_ERROR("nimcp_hybrid_key_exchange: Invalid PQ public key length %zu",
                        pq_public_len);
         secure_zero(classical_secret, sizeof(classical_secret));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -296,6 +312,7 @@ nimcp_error_t nimcp_hybrid_sign(
 {
     if (!classical_key || !pq_key || !message || !signature || !signature_len) {
         LOG_ERROR("nimcp_hybrid_sign: Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -314,6 +331,7 @@ nimcp_error_t nimcp_hybrid_sign(
         pq_sig_len = NIMCP_DILITHIUM_5_SIGNATURE_BYTES;
     } else {
         LOG_ERROR("nimcp_hybrid_sign: Invalid PQ key length %zu", pq_key_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -321,6 +339,7 @@ nimcp_error_t nimcp_hybrid_sign(
     size_t required_len = 64 + pq_sig_len;  /* Ed25519 + Dilithium */
     if (*signature_len < required_len) {
         LOG_ERROR("nimcp_hybrid_sign: Signature buffer too small");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -372,6 +391,7 @@ nimcp_error_t nimcp_hybrid_verify(
 {
     if (!classical_pubkey || !pq_pubkey || !message || !signature) {
         LOG_ERROR("nimcp_hybrid_verify: Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -391,6 +411,7 @@ nimcp_error_t nimcp_hybrid_verify(
     } else {
         LOG_ERROR("nimcp_hybrid_verify: Invalid PQ pubkey length %zu",
                        pq_pubkey_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "pq_hybrid: error condition");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -399,6 +420,7 @@ nimcp_error_t nimcp_hybrid_verify(
     if (signature_len != expected_len) {
         LOG_ERROR("nimcp_hybrid_verify: Invalid signature length %zu (expected %zu)",
                        signature_len, expected_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "pq_hybrid: operation failed");
         return NIMCP_ERROR;
     }
 
@@ -409,6 +431,7 @@ nimcp_error_t nimcp_hybrid_verify(
                          signature, 64);
     if (err != NIMCP_OK) {
         LOG_ERROR("nimcp_hybrid_verify: Classical verification failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "pq_hybrid: operation failed");
         return NIMCP_ERROR;
     }
 
@@ -417,6 +440,7 @@ nimcp_error_t nimcp_hybrid_verify(
                                   signature + 64, pq_sig_len);
     if (err != NIMCP_OK) {
         LOG_ERROR("nimcp_hybrid_verify: PQ verification failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "pq_hybrid: operation failed");
         return NIMCP_ERROR;
     }
 

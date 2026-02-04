@@ -18,32 +18,9 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for hippocampus_thalamic_bridge module */
-static nimcp_health_agent_t* g_hippocampus_thalamic_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for hippocampus_thalamic_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void hippocampus_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_hippocampus_thalamic_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from hippocampus_thalamic_bridge module */
-static inline void hippocampus_thalamic_bridge_heartbeat(const char* operation, float progress) {
-    if (g_hippocampus_thalamic_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hippocampus_thalamic_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hippocampus_thalamic_bridge)
 
 #define LOG_MODULE "HIPPOCAMPUS_THALAMIC_BRIDGE"
 

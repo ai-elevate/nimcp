@@ -17,36 +17,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dendritic_immune_bridge module */
-static nimcp_health_agent_t* g_dendritic_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dendritic_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dendritic_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dendritic_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dendritic_immune_bridge module */
-static inline void dendritic_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dendritic_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dendritic_immune_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dendritic_immune_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(dendritic_immune_bridge)
@@ -236,7 +212,7 @@ void dendritic_immune_bridge_destroy(dendritic_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -260,7 +236,7 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_dendritic_modulation) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_dendritic_effects_t* effects = &bridge->cytokine_effects;
@@ -311,7 +287,7 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     }
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -327,7 +303,7 @@ int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridg
     if (!bridge->enable_inflammation_atrophy) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     inflammation_dendritic_state_t* state = &bridge->inflammation_state;
 
@@ -356,7 +332,7 @@ int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridg
     /* Calcium dysregulation */
     state->calcium_dysregulation = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -392,7 +368,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_trigger_t* trigger = &bridge->damage_trigger;
 
@@ -429,7 +405,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
         trigger->danger_signal_strength = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -445,7 +421,7 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_trigger_t* trigger = &bridge->damage_trigger;
 
@@ -471,7 +447,7 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
         trigger->compensation_failure = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -487,7 +463,7 @@ int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_recovery_immune_support) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_support_t* support = &bridge->recovery_support;
 
@@ -518,7 +494,7 @@ int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
         support->inflammation_clearance = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -566,9 +542,9 @@ int dendritic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_dendritic_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -579,9 +555,9 @@ int dendritic_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_dendritic_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

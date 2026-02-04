@@ -80,7 +80,7 @@ wernicke_gpu_context_t* wernicke_gpu_create(
 {
     (void)gpu_ctx;  /* Not used in CPU fallback */
 
-    wernicke_gpu_context_t* ctx = calloc(1, sizeof(wernicke_gpu_context_t));
+    wernicke_gpu_context_t* ctx = nimcp_calloc(1, sizeof(wernicke_gpu_context_t));
     if (!ctx) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -92,12 +92,12 @@ wernicke_gpu_context_t* wernicke_gpu_create(
     ctx->config = config ? *config : wernicke_gpu_default_config();
 
     /* Allocate working memory */
-    ctx->wm_phonemes = calloc(ctx->config.working_memory_slots, sizeof(uint8_t));
-    ctx->wm_activations = calloc(ctx->config.working_memory_slots, sizeof(float));
+    ctx->wm_phonemes = nimcp_calloc(ctx->config.working_memory_slots, sizeof(uint8_t));
+    ctx->wm_activations = nimcp_calloc(ctx->config.working_memory_slots, sizeof(float));
 
     /* Allocate cohort buffers */
-    ctx->cohort = calloc(ctx->config.max_cohort_size, sizeof(wernicke_gpu_word_candidate_t));
-    ctx->current_phoneme_seq = calloc(ctx->config.max_phonemes_per_word, sizeof(uint8_t));
+    ctx->cohort = nimcp_calloc(ctx->config.max_cohort_size, sizeof(wernicke_gpu_word_candidate_t));
+    ctx->current_phoneme_seq = nimcp_calloc(ctx->config.max_phonemes_per_word, sizeof(uint8_t));
 
     if (!ctx->wm_phonemes || !ctx->wm_activations || !ctx->cohort || !ctx->current_phoneme_seq) {
         wernicke_gpu_destroy(ctx);
@@ -110,13 +110,13 @@ wernicke_gpu_context_t* wernicke_gpu_create(
 void wernicke_gpu_destroy(wernicke_gpu_context_t* ctx) {
     if (!ctx) return;
 
-    free(ctx->phoneme_embeddings);
-    free(ctx->lexicon);
-    free(ctx->wm_phonemes);
-    free(ctx->wm_activations);
-    free(ctx->cohort);
-    free(ctx->current_phoneme_seq);
-    free(ctx);
+    nimcp_free(ctx->phoneme_embeddings);
+    nimcp_free(ctx->lexicon);
+    nimcp_free(ctx->wm_phonemes);
+    nimcp_free(ctx->wm_activations);
+    nimcp_free(ctx->cohort);
+    nimcp_free(ctx->current_phoneme_seq);
+    nimcp_free(ctx);
 }
 
 bool wernicke_gpu_synchronize(wernicke_gpu_context_t* ctx) {
@@ -132,8 +132,8 @@ bool wernicke_gpu_upload_phoneme_embeddings(
 {
     if (!ctx || !embeddings) return false;
 
-    free(ctx->phoneme_embeddings);
-    ctx->phoneme_embeddings = malloc(num_phonemes * embed_dim * sizeof(float));
+    nimcp_free(ctx->phoneme_embeddings);
+    ctx->phoneme_embeddings = nimcp_malloc(num_phonemes * embed_dim * sizeof(float));
     if (!ctx->phoneme_embeddings) return false;
 
     memcpy(ctx->phoneme_embeddings, embeddings, num_phonemes * embed_dim * sizeof(float));
@@ -216,8 +216,8 @@ bool wernicke_gpu_upload_lexicon(
 {
     if (!ctx || !entries || count == 0) return false;
 
-    free(ctx->lexicon);
-    ctx->lexicon = malloc(count * sizeof(wernicke_gpu_lexical_entry_t));
+    nimcp_free(ctx->lexicon);
+    ctx->lexicon = nimcp_malloc(count * sizeof(wernicke_gpu_lexical_entry_t));
     if (!ctx->lexicon) return false;
 
     memcpy(ctx->lexicon, entries, count * sizeof(wernicke_gpu_lexical_entry_t));
@@ -228,7 +228,7 @@ bool wernicke_gpu_upload_lexicon(
 
 bool wernicke_gpu_clear_lexicon(wernicke_gpu_context_t* ctx) {
     if (!ctx) return false;
-    free(ctx->lexicon);
+    nimcp_free(ctx->lexicon);
     ctx->lexicon = NULL;
     ctx->lexicon_size = 0;
     return true;
@@ -491,15 +491,15 @@ bool wernicke_gpu_comprehend(
     if (!ctx || !frames) return false;
 
     /* Step 1: Recognize phonemes */
-    wernicke_gpu_phoneme_result_t* phonemes = calloc(num_frames, sizeof(wernicke_gpu_phoneme_result_t));
+    wernicke_gpu_phoneme_result_t* phonemes = nimcp_calloc(num_frames, sizeof(wernicke_gpu_phoneme_result_t));
     if (!phonemes) return false;
 
     wernicke_gpu_recognize_phonemes(ctx, frames, num_frames, phonemes);
 
     /* Step 2: Extract phoneme sequence */
-    uint8_t* phoneme_seq = calloc(num_frames, sizeof(uint8_t));
+    uint8_t* phoneme_seq = nimcp_calloc(num_frames, sizeof(uint8_t));
     if (!phoneme_seq) {
-        free(phonemes);
+        nimcp_free(phonemes);
         return false;
     }
 
@@ -516,8 +516,8 @@ bool wernicke_gpu_comprehend(
     /* Step 4: Generate semantic activations */
     if (semantic_activations && num_semantic_activations) {
         uint32_t num_words = num_word_candidates ? *num_word_candidates : 0;
-        uint32_t* concepts = calloc(num_words, sizeof(uint32_t));
-        float* acts = calloc(num_words, sizeof(float));
+        uint32_t* concepts = nimcp_calloc(num_words, sizeof(uint32_t));
+        float* acts = nimcp_calloc(num_words, sizeof(float));
 
         if (concepts && acts) {
             for (uint32_t i = 0; i < num_words; i++) {
@@ -529,12 +529,12 @@ bool wernicke_gpu_comprehend(
                                             num_semantic_activations);
         }
 
-        free(concepts);
-        free(acts);
+        nimcp_free(concepts);
+        nimcp_free(acts);
     }
 
-    free(phonemes);
-    free(phoneme_seq);
+    nimcp_free(phonemes);
+    nimcp_free(phoneme_seq);
 
     return true;
 }
@@ -673,7 +673,7 @@ bool wernicke_cpu_spread_activation(
     }
 
     /* Simple spreading activation */
-    float* temp = calloc(num_concepts, sizeof(float));
+    float* temp = nimcp_calloc(num_concepts, sizeof(float));
     if (!temp) return false;
 
     for (uint32_t iter = 0; iter < iterations; iter++) {
@@ -696,7 +696,7 @@ bool wernicke_cpu_spread_activation(
         }
     }
 
-    free(temp);
+    nimcp_free(temp);
     return true;
 }
 
@@ -717,7 +717,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
 
     if (!dims || ndim == 0) return NULL;
 
-    nimcp_gpu_tensor_t* tensor = calloc(1, sizeof(nimcp_gpu_tensor_t));
+    nimcp_gpu_tensor_t* tensor = nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
     if (!tensor) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
@@ -732,8 +732,8 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     tensor->owns_data = true;
 
     /* Allocate dims and strides on CPU */
-    tensor->dims = malloc(ndim * sizeof(size_t));
-    tensor->strides = malloc(ndim * sizeof(size_t));
+    tensor->dims = nimcp_malloc(ndim * sizeof(size_t));
+    tensor->strides = nimcp_malloc(ndim * sizeof(size_t));
     if (!tensor->dims || !tensor->strides) {
         nimcp_gpu_tensor_destroy(tensor);
         return NULL;
@@ -772,7 +772,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     }
 
     /* Allocate data on CPU */
-    tensor->data = calloc(tensor->numel, tensor->elem_size);
+    tensor->data = nimcp_calloc(tensor->numel, tensor->elem_size);
     if (!tensor->data) {
         nimcp_gpu_tensor_destroy(tensor);
         return NULL;
@@ -808,11 +808,11 @@ void nimcp_gpu_tensor_destroy(nimcp_gpu_tensor_t* tensor) {
     if (!tensor) return;
 
     if (tensor->owns_data) {
-        free(tensor->data);
+        nimcp_free(tensor->data);
     }
-    free(tensor->dims);
-    free(tensor->strides);
-    free(tensor);
+    nimcp_free(tensor->dims);
+    nimcp_free(tensor->strides);
+    nimcp_free(tensor);
 }
 
 nimcp_gpu_tensor_t* nimcp_gpu_tensor_clone(const nimcp_gpu_tensor_t* tensor) {
@@ -1447,10 +1447,10 @@ void nimcp_gpu_graph_destroy(nimcp_gpu_graph_t* graph) {
     if (!graph) return;
 
     /* Free CSR arrays - these are CPU memory in stub mode */
-    free(graph->d_row_offsets);
-    free(graph->d_col_indices);
-    free(graph->d_edge_weights);
-    free(graph);
+    nimcp_free(graph->d_row_offsets);
+    nimcp_free(graph->d_col_indices);
+    nimcp_free(graph->d_edge_weights);
+    nimcp_free(graph);
 }
 
 /*=============================================================================
@@ -1518,7 +1518,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
 {
     if (num_layers == 0) return NULL;
 
-    nimcp_jepa_gpu_predictor_t* pred = calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
+    nimcp_jepa_gpu_predictor_t* pred = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
     if (!pred) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred is NULL");
@@ -1534,9 +1534,9 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     pred->num_layers = num_layers;
 
     /* Allocate layers array */
-    pred->layers = calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    pred->layers = nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!pred->layers) {
-        free(pred);
+        nimcp_free(pred);
         return NULL;
     }
 
@@ -1551,8 +1551,8 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
             for (uint32_t j = 0; j < i; j++) {
                 destroy_cpu_layer(&pred->layers[j]);
             }
-            free(pred->layers);
-            free(pred);
+            nimcp_free(pred->layers);
+            nimcp_free(pred);
             return NULL;
         }
     }
@@ -1571,7 +1571,7 @@ void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
         for (uint32_t i = 0; i < predictor->num_layers; i++) {
             destroy_cpu_layer(&predictor->layers[i]);
         }
-        free(predictor->layers);
+        nimcp_free(predictor->layers);
     }
 
     /* Free activation buffers if allocated */
@@ -1581,7 +1581,7 @@ void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
                 nimcp_gpu_tensor_destroy(predictor->activations[i]);
             }
         }
-        free(predictor->activations);
+        nimcp_free(predictor->activations);
     }
     if (predictor->pre_activations) {
         for (uint32_t i = 0; i < predictor->num_layers; i++) {
@@ -1589,10 +1589,10 @@ void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
                 nimcp_gpu_tensor_destroy(predictor->pre_activations[i]);
             }
         }
-        free(predictor->pre_activations);
+        nimcp_free(predictor->pre_activations);
     }
 
-    free(predictor);
+    nimcp_free(predictor);
 }
 
 bool nimcp_jepa_gpu_predictor_upload_weights(
@@ -1677,11 +1677,11 @@ bool nimcp_jepa_gpu_forward_predict(
     float* output = (float*)prediction->data;
 
     /* Allocate temp buffers for intermediate layers */
-    float* temp1 = calloc(batch_size * predictor->hidden_dim, sizeof(float));
-    float* temp2 = calloc(batch_size * predictor->hidden_dim, sizeof(float));
+    float* temp1 = nimcp_calloc(batch_size * predictor->hidden_dim, sizeof(float));
+    float* temp2 = nimcp_calloc(batch_size * predictor->hidden_dim, sizeof(float));
     if (!temp1 || !temp2) {
-        free(temp1);
-        free(temp2);
+        nimcp_free(temp1);
+        nimcp_free(temp2);
         return false;
     }
 
@@ -1692,8 +1692,8 @@ bool nimcp_jepa_gpu_forward_predict(
     for (uint32_t layer_idx = 0; layer_idx < predictor->num_layers; layer_idx++) {
         nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
         if (!layer->weights || !layer->bias) {
-            free(temp1);
-            free(temp2);
+            nimcp_free(temp1);
+            nimcp_free(temp2);
             return false;
         }
 
@@ -1724,8 +1724,8 @@ bool nimcp_jepa_gpu_forward_predict(
         current_output = (current_output == temp1) ? temp2 : temp1;
     }
 
-    free(temp1);
-    free(temp2);
+    nimcp_free(temp1);
+    nimcp_free(temp2);
     return true;
 }
 
@@ -1749,7 +1749,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
 {
     if (num_layers == 0) return NULL;
 
-    nimcp_jepa_gpu_inverse_t* inv = calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
+    nimcp_jepa_gpu_inverse_t* inv = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
     if (!inv) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inv is NULL");
@@ -1764,9 +1764,9 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     inv->num_layers = num_layers;
 
     /* Allocate layers array */
-    inv->layers = calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    inv->layers = nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!inv->layers) {
-        free(inv);
+        nimcp_free(inv);
         return NULL;
     }
 
@@ -1782,8 +1782,8 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
             for (uint32_t j = 0; j < i; j++) {
                 destroy_cpu_layer(&inv->layers[j]);
             }
-            free(inv->layers);
-            free(inv);
+            nimcp_free(inv->layers);
+            nimcp_free(inv);
             return NULL;
         }
 
@@ -1804,9 +1804,9 @@ void nimcp_jepa_gpu_inverse_destroy(nimcp_jepa_gpu_inverse_t* inverse) {
         for (uint32_t i = 0; i < inverse->num_layers; i++) {
             destroy_cpu_layer(&inverse->layers[i]);
         }
-        free(inverse->layers);
+        nimcp_free(inverse->layers);
     }
-    free(inverse);
+    nimcp_free(inverse);
 }
 
 bool nimcp_jepa_gpu_inverse_infer(
@@ -1830,14 +1830,14 @@ bool nimcp_jepa_gpu_inverse_infer(
     /* Get hidden_dim from first layer's output dim (or second layer's input dim) */
     uint32_t hidden_dim = (inverse->num_layers > 1) ? inverse->layers[0].out_dim : inverse->layers[0].in_dim;
 
-    float* concat = calloc(batch_size * input_dim, sizeof(float));
-    float* temp1 = calloc(batch_size * hidden_dim, sizeof(float));
-    float* temp2 = calloc(batch_size * hidden_dim, sizeof(float));
+    float* concat = nimcp_calloc(batch_size * input_dim, sizeof(float));
+    float* temp1 = nimcp_calloc(batch_size * hidden_dim, sizeof(float));
+    float* temp2 = nimcp_calloc(batch_size * hidden_dim, sizeof(float));
 
     if (!concat || !temp1 || !temp2) {
-        free(concat);
-        free(temp1);
-        free(temp2);
+        nimcp_free(concat);
+        nimcp_free(temp1);
+        nimcp_free(temp2);
         return false;
     }
 
@@ -1878,9 +1878,9 @@ bool nimcp_jepa_gpu_inverse_infer(
         current_output = (current_output == temp1) ? temp2 : temp1;
     }
 
-    free(concat);
-    free(temp1);
-    free(temp2);
+    nimcp_free(concat);
+    nimcp_free(temp1);
+    nimcp_free(temp2);
     return true;
 }
 
@@ -2046,34 +2046,10 @@ bool nimcp_jepa_gpu_synchronize(nimcp_gpu_context_t* ctx) {
  *=============================================================================*/
 
 #include "gpu/cognitive/nimcp_broca_gpu.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for gpu_stubs module */
-static nimcp_health_agent_t* g_gpu_stubs_health_agent = NULL;
-
-/**
- * @brief Set health agent for gpu_stubs heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void gpu_stubs_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gpu_stubs_health_agent = agent;
-}
-
-/** @brief Send heartbeat from gpu_stubs module */
-static inline void gpu_stubs_heartbeat(const char* operation, float progress) {
-    if (g_gpu_stubs_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gpu_stubs_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_stubs)
 
 /* Internal CPU-based Broca context for fallback */
 struct broca_gpu_context {
@@ -2106,7 +2082,7 @@ broca_gpu_context_t* broca_gpu_create(
     nimcp_gpu_context_t* gpu_ctx,
     const broca_gpu_config_t* config)
 {
-    broca_gpu_context_t* ctx = calloc(1, sizeof(broca_gpu_context_t));
+    broca_gpu_context_t* ctx = nimcp_calloc(1, sizeof(broca_gpu_context_t));
     if (!ctx) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -2120,20 +2096,20 @@ broca_gpu_context_t* broca_gpu_create(
 
     /* Allocate lexicon storage */
     ctx->lexicon_capacity = ctx->config.max_lexicon_size;
-    ctx->lexicon = calloc(ctx->lexicon_capacity, sizeof(broca_gpu_lexical_entry_t));
+    ctx->lexicon = nimcp_calloc(ctx->lexicon_capacity, sizeof(broca_gpu_lexical_entry_t));
     if (!ctx->lexicon) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     /* Allocate working memory */
-    ctx->wm_word_ids = calloc(ctx->config.working_memory_slots, sizeof(uint32_t));
-    ctx->wm_activations = calloc(ctx->config.working_memory_slots, sizeof(float));
+    ctx->wm_word_ids = nimcp_calloc(ctx->config.working_memory_slots, sizeof(uint32_t));
+    ctx->wm_activations = nimcp_calloc(ctx->config.working_memory_slots, sizeof(float));
     if (!ctx->wm_word_ids || !ctx->wm_activations) {
-        free(ctx->lexicon);
-        free(ctx->wm_word_ids);
-        free(ctx->wm_activations);
-        free(ctx);
+        nimcp_free(ctx->lexicon);
+        nimcp_free(ctx->wm_word_ids);
+        nimcp_free(ctx->wm_activations);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -2142,10 +2118,10 @@ broca_gpu_context_t* broca_gpu_create(
 
 void broca_gpu_destroy(broca_gpu_context_t* ctx) {
     if (!ctx) return;
-    free(ctx->lexicon);
-    free(ctx->wm_word_ids);
-    free(ctx->wm_activations);
-    free(ctx);
+    nimcp_free(ctx->lexicon);
+    nimcp_free(ctx->wm_word_ids);
+    nimcp_free(ctx->wm_activations);
+    nimcp_free(ctx);
 }
 
 bool broca_gpu_synchronize(broca_gpu_context_t* ctx) {
@@ -2454,21 +2430,21 @@ bool broca_gpu_produce_utterance(
 
     /* Allocate phoneme buffer */
     uint32_t max_phonemes = word_count * ctx->config.max_phonemes_per_word;
-    uint8_t* phonemes = calloc(max_phonemes, sizeof(uint8_t));
+    uint8_t* phonemes = nimcp_calloc(max_phonemes, sizeof(uint8_t));
     if (!phonemes) return false;
 
     uint32_t phoneme_count = 0;
     bool result = broca_gpu_encode_phonemes(ctx, word_ids, word_count, phonemes,
                                             max_phonemes, &phoneme_count, NULL);
     if (!result) {
-        free(phonemes);
+        nimcp_free(phonemes);
         return false;
     }
 
     result = broca_gpu_generate_motor_commands(ctx, phonemes, phoneme_count,
                                                commands, max_commands, command_count,
                                                base_timestamp);
-    free(phonemes);
+    nimcp_free(phonemes);
     return result;
 }
 

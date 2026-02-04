@@ -13,7 +13,7 @@
  *
  *   Traditional Checkpoint (Slow):
  *   ┌──────────────────────────────────────────┐
- *   │ 1. malloc(brain_size)  → 1-2ms           │
+ *   │ 1. nimcp_malloc(brain_size)  → 1-2ms           │
  *   │ 2. memcpy(brain_state) → 10-50ms         │
  *   │ 3. compress()          → 20-100ms        │
  *   │ 4. write(disk)         → 50-500ms        │
@@ -69,6 +69,7 @@
 #include <stdbool.h>
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {

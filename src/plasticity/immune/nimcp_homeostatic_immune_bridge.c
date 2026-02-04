@@ -17,36 +17,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for homeostatic_immune_bridge module */
-static nimcp_health_agent_t* g_homeostatic_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for homeostatic_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void homeostatic_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_homeostatic_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from homeostatic_immune_bridge module */
-static inline void homeostatic_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_homeostatic_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_homeostatic_immune_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(homeostatic_immune_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(homeostatic_immune_bridge)
@@ -245,7 +221,7 @@ void homeostatic_immune_bridge_destroy(homeostatic_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -271,7 +247,7 @@ int homeostatic_immune_apply_cytokine_effects(
     if (!bridge->enable_cytokine_homeostasis_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_homeostatic_effects_t* effects = &bridge->cytokine_effects;
@@ -344,7 +320,7 @@ int homeostatic_immune_apply_cytokine_effects(
         clamp_f(bridge->current_threshold, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -362,7 +338,7 @@ int homeostatic_immune_apply_inflammation_effects(
     if (!bridge->enable_inflammation_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     inflammation_homeostatic_state_t* state = &bridge->inflammation_state;
 
@@ -414,7 +390,7 @@ int homeostatic_immune_apply_inflammation_effects(
         bridge->homeostatic_failures++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -496,7 +472,7 @@ int homeostatic_immune_trigger_from_instability(
     if (!bridge->enable_instability_immune_trigger) return 0;
     if (!bridge->immune_system || !firing_rates) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     homeostatic_immune_trigger_t* trigger = &bridge->instability_trigger;
 
@@ -540,7 +516,7 @@ int homeostatic_immune_trigger_from_instability(
         trigger->immune_activation_strength = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -610,7 +586,7 @@ int homeostatic_immune_boost_from_recovery(
     if (!bridge->enable_recovery_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     homeostatic_recovery_immune_boost_t* boost = &bridge->recovery_boost;
 
@@ -651,7 +627,7 @@ int homeostatic_immune_boost_from_recovery(
         boost->immune_resolution_speed = 1.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -677,9 +653,9 @@ int homeostatic_immune_bridge_update(
 
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Immune → Homeostasis */
     homeostatic_immune_apply_cytokine_effects(bridge);
@@ -706,9 +682,9 @@ int homeostatic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -720,9 +696,9 @@ int homeostatic_immune_get_inflammation_state(
     if (!bridge || !state) return -1;
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -732,9 +708,9 @@ bool homeostatic_immune_is_homeostatic_failure(
 ) {
     if (!bridge) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool failure = bridge->inflammation_state.homeostatic_failure;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return failure;
 }
@@ -744,9 +720,9 @@ float homeostatic_immune_get_current_scaling_factor(
 ) {
     if (!bridge) return 1.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     float factor = bridge->current_scaling_factor;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return factor;
 }
@@ -756,9 +732,9 @@ float homeostatic_immune_get_current_target_rate(
 ) {
     if (!bridge) return 5.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     float rate = bridge->current_target_rate;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return rate;
 }
@@ -768,9 +744,9 @@ float homeostatic_immune_get_current_threshold(
 ) {
     if (!bridge) return 0.5f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     float threshold = bridge->current_threshold;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return threshold;
 }
@@ -780,9 +756,9 @@ float homeostatic_immune_get_disruption_level(
 ) {
     if (!bridge) return 0.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     float disruption = bridge->cytokine_effects.homeostatic_disruption_level;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return disruption;
 }

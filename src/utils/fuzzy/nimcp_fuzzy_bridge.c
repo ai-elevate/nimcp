@@ -10,6 +10,7 @@
  */
 
 #include "utils/fuzzy/nimcp_fuzzy_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,35 +37,12 @@ extern int brain_immune_present_antigen(brain_immune_system_t* immune, uint32_t 
 struct bbb_system_struct;
 typedef struct bbb_system_struct* bbb_system_t;
 extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, const char* context);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
+/* Manual health agent declaration - custom heartbeat function defined below */
 static nimcp_health_agent_t* g_fuzzy_bridge_health_agent = NULL;
 
-void fuzzy_bridge_set_health_agent_global(nimcp_health_agent_t* agent) {
-    g_fuzzy_bridge_health_agent = agent;
-}
-
-static inline void fuzzy_bridge_global_heartbeat(const char* operation, float progress) {
-    if (g_fuzzy_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fuzzy_bridge_health_agent, operation, progress);
-    }
-}
-
-/* Note: fuzzy_bridge_heartbeat_instance defined after struct fuzzy_bridge */
-
-//=============================================================================
-// Exception Handling
-//=============================================================================
-#include "utils/exception/nimcp_exception_macros.h"
-
-//=============================================================================
-// Thread-Local Error Storage
-//=============================================================================
-
-#ifdef _MSC_VER
-static __declspec(thread) char tls_fuzzy_bridge_error[256] = {0};
-#else
 static __thread char tls_fuzzy_bridge_error[256] = {0};
-#endif
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -286,7 +264,7 @@ fuzzy_bridge_config_t fuzzy_bridge_default_config(void) {
 }
 
 fuzzy_bridge_t* fuzzy_bridge_create(const fuzzy_bridge_config_t* config) {
-    fuzzy_bridge_t* bridge = (fuzzy_bridge_t*)calloc(1, sizeof(fuzzy_bridge_t));
+    fuzzy_bridge_t* bridge = (fuzzy_bridge_t*)nimcp_calloc(1, sizeof(fuzzy_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fuzzy bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "fuzzy_bridge_create: Failed to allocate fuzzy bridge");
@@ -319,7 +297,7 @@ void fuzzy_bridge_destroy(fuzzy_bridge_t* bridge) {
     if (bridge->lr_schedule_fis) fuzzy_inference_destroy(bridge->lr_schedule_fis);
     if (bridge->plasticity_fis) fuzzy_inference_destroy(bridge->plasticity_fis);
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 fuzzy_bridge_state_t fuzzy_bridge_get_state(const fuzzy_bridge_t* bridge) {

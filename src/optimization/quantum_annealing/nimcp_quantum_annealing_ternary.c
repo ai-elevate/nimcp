@@ -12,34 +12,9 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for quantum_annealing_ternary module */
-static nimcp_health_agent_t* g_quantum_annealing_ternary_health_agent = NULL;
-
-/**
- * @brief Set health agent for quantum_annealing_ternary heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void quantum_annealing_ternary_set_health_agent(nimcp_health_agent_t* agent) {
-    g_quantum_annealing_ternary_health_agent = agent;
-}
-
-/** @brief Send heartbeat from quantum_annealing_ternary module */
-static inline void quantum_annealing_ternary_heartbeat(const char* operation, float progress) {
-    if (g_quantum_annealing_ternary_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_quantum_annealing_ternary_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantum_annealing_ternary)
 
 //=============================================================================
 // RNG Utilities (xorshift64)
@@ -151,7 +126,7 @@ int quantum_ternary_anneal(
     trit_t* best_spins = NULL;
     if (config->track_best) {
         size_t best_spins_size = ising->n_spins * sizeof(trit_t);
-        best_spins = (trit_t*)malloc(best_spins_size);
+        best_spins = (trit_t*)nimcp_malloc(best_spins_size);
         if (!best_spins) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, best_spins_size,
                               "Failed to allocate best_spins array for ternary annealing (n_spins=%u)",
@@ -213,7 +188,7 @@ int quantum_ternary_anneal(
                 trit_ising_measure(ising, i, best_spins[i]);
             }
         }
-        free(best_spins);
+        nimcp_free(best_spins);
     }
 
     /* Fill result */

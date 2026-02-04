@@ -21,7 +21,7 @@
 #define NIMCP_TENSOR_INTERNAL_H
 
 #include "utils/tensor/nimcp_tensor.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,7 +46,7 @@ struct nimcp_tensor_s {
     bool requires_grad;            /**< Track gradients */
     nimcp_tensor_t* grad;          /**< Accumulated gradient */
     uint32_t refcount;             /**< Reference count */
-    pthread_mutex_t lock;          /**< Thread safety lock */
+    nimcp_mutex_t lock;          /**< Thread safety lock */
 };
 
 //=============================================================================

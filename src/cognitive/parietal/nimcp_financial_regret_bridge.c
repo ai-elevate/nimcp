@@ -26,29 +26,49 @@
 
 #include "cognitive/parietal/nimcp_financial_regret_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_regret)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial regret bridge module */
-static nimcp_health_agent_t* g_fin_regret_health_agent = NULL;
+static mesh_participant_id_t g_fin_regret_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_regret_mesh_registry = NULL;
 
-void financial_regret_bridge_set_health_agent_global(void* agent) {
-    g_fin_regret_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_regret_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_regret_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_regret", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_regret";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_regret_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_regret_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_regret_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_regret_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_regret_health_agent, operation, progress);
+void fin_regret_mesh_unregister(void) {
+    if (g_fin_regret_mesh_registry && g_fin_regret_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_regret_mesh_registry, g_fin_regret_mesh_id);
+        g_fin_regret_mesh_id = 0;
+        g_fin_regret_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -258,7 +278,7 @@ financial_regret_bridge_t* financial_regret_bridge_create(
     fin_regret_heartbeat_global("fin_regret_create", 0.0f);
 
     financial_regret_bridge_t* bridge = (financial_regret_bridge_t*)
-        malloc(sizeof(financial_regret_bridge_t));
+        nimcp_malloc(sizeof(financial_regret_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_regret_bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -279,21 +299,21 @@ financial_regret_bridge_t* financial_regret_bridge_create(
     /* Allocate trade history */
     bridge->history_capacity = FIN_REGRET_MAX_HISTORY;
     bridge->history = (fin_trade_record_t*)
-        calloc(bridge->history_capacity, sizeof(fin_trade_record_t));
+        nimcp_calloc(bridge->history_capacity, sizeof(fin_trade_record_t));
     if (!bridge->history) {
         set_error("Failed to allocate trade history");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Allocate lesson storage */
     bridge->lesson_capacity = FIN_REGRET_MAX_LESSONS;
     bridge->lessons = (fin_lesson_t*)
-        calloc(bridge->lesson_capacity, sizeof(fin_lesson_t));
+        nimcp_calloc(bridge->lesson_capacity, sizeof(fin_lesson_t));
     if (!bridge->lessons) {
         set_error("Failed to allocate lesson storage");
-        free(bridge->history);
-        free(bridge);
+        nimcp_free(bridge->history);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -314,14 +334,14 @@ void financial_regret_bridge_destroy(financial_regret_bridge_t* bridge) {
 
     if (bridge) {
         if (bridge->history) {
-            free(bridge->history);
+            nimcp_free(bridge->history);
         }
         if (bridge->lessons) {
-            free(bridge->lessons);
+            nimcp_free(bridge->lessons);
         }
         bridge->magic = 0;
         bridge->op_state = FIN_REGRET_STATE_UNINITIALIZED;
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 

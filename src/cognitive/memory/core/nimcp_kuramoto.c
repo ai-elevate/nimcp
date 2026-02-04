@@ -25,31 +25,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kuramoto)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for kuramoto module */
-static nimcp_health_agent_t* g_kuramoto_health_agent = NULL;
+static mesh_participant_id_t g_kuramoto_mesh_id = 0;
+static mesh_participant_registry_t* g_kuramoto_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for kuramoto heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void kuramoto_set_health_agent(nimcp_health_agent_t* agent) {
-    g_kuramoto_health_agent = agent;
+nimcp_error_t kuramoto_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_kuramoto_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "kuramoto", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "kuramoto";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_kuramoto_mesh_id);
+    if (err == NIMCP_SUCCESS) g_kuramoto_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from kuramoto module */
-static inline void kuramoto_heartbeat(const char* operation, float progress) {
-    if (g_kuramoto_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_kuramoto_health_agent, operation, progress);
+void kuramoto_mesh_unregister(void) {
+    if (g_kuramoto_mesh_registry && g_kuramoto_mesh_id != 0) {
+        mesh_participant_unregister(g_kuramoto_mesh_registry, g_kuramoto_mesh_id);
+        g_kuramoto_mesh_id = 0;
+        g_kuramoto_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from kuramoto module (instance-level) */
 static inline void kuramoto_heartbeat_instance(
@@ -202,7 +216,7 @@ static void update_module_mapping(kuramoto_system_t* system,
         while (new_size <= module_id) {
             new_size *= 2;
         }
-        uint32_t* new_map = realloc(system->module_to_index,
+        uint32_t* new_map = nimcp_realloc(system->module_to_index,
                                      new_size * sizeof(uint32_t));
         if (new_map) {
             /* Initialize new entries to invalid */
@@ -354,7 +368,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
     }
 
     /* Allocate system structure */
-    kuramoto_system_t* system = calloc(1, sizeof(kuramoto_system_t));
+    kuramoto_system_t* system = nimcp_calloc(1, sizeof(kuramoto_system_t));
     if (!system) {
         set_error("Failed to allocate system structure");
         return NULL;
@@ -367,7 +381,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
     seed_rng(cfg.seed);
 
     /* Allocate oscillator array */
-    system->oscillators = calloc(cfg.max_oscillators, sizeof(kuramoto_oscillator_t));
+    system->oscillators = nimcp_calloc(cfg.max_oscillators, sizeof(kuramoto_oscillator_t));
     if (!system->oscillators) {
         set_error("Failed to allocate oscillator array");
         goto error;
@@ -375,7 +389,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
     /* Allocate dense coupling matrix (default) */
     size_t matrix_size = (size_t)cfg.max_oscillators * cfg.max_oscillators;
-    system->coupling_matrix = calloc(matrix_size, sizeof(float));
+    system->coupling_matrix = nimcp_calloc(matrix_size, sizeof(float));
     if (!system->coupling_matrix) {
         set_error("Failed to allocate coupling matrix");
         goto error;
@@ -404,11 +418,11 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
     }
 
     /* Allocate RK4 workspace */
-    system->k1 = calloc(cfg.max_oscillators, sizeof(float));
-    system->k2 = calloc(cfg.max_oscillators, sizeof(float));
-    system->k3 = calloc(cfg.max_oscillators, sizeof(float));
-    system->k4 = calloc(cfg.max_oscillators, sizeof(float));
-    system->temp_phases = calloc(cfg.max_oscillators, sizeof(float));
+    system->k1 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
+    system->k2 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
+    system->k3 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
+    system->k4 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
+    system->temp_phases = nimcp_calloc(cfg.max_oscillators, sizeof(float));
 
     if (!system->k1 || !system->k2 || !system->k3 ||
         !system->k4 || !system->temp_phases) {
@@ -418,7 +432,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
     /* Allocate module ID mapping */
     system->module_map_size = MODULE_MAP_INITIAL_SIZE;
-    system->module_to_index = calloc(system->module_map_size, sizeof(uint32_t));
+    system->module_to_index = nimcp_calloc(system->module_map_size, sizeof(uint32_t));
     if (!system->module_to_index) {
         set_error("Failed to allocate module mapping");
         goto error;
@@ -435,7 +449,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
     /* Allocate pink noise generators if enabled */
     if (cfg.use_pink_noise) {
-        system->pink_generators = calloc(cfg.max_oscillators,
+        system->pink_generators = nimcp_calloc(cfg.max_oscillators,
                                           sizeof(pink_noise_generator_t));
         if (!system->pink_generators) {
             set_error("Failed to allocate pink noise generators");
@@ -465,21 +479,21 @@ NIMCP_EXPORT void kuramoto_destroy(kuramoto_system_t* system) {
     /* Free pink noise generators */
     if (system->pink_generators) {
         /* Note: Would call pink_noise_destroy() for each if linked */
-        free(system->pink_generators);
+        nimcp_free(system->pink_generators);
     }
 
     /* Free arrays */
-    free(system->oscillators);
-    free(system->coupling_matrix);
-    free(system->sparse_couplings);
-    free(system->k1);
-    free(system->k2);
-    free(system->k3);
-    free(system->k4);
-    free(system->temp_phases);
-    free(system->module_to_index);
+    nimcp_free(system->oscillators);
+    nimcp_free(system->coupling_matrix);
+    nimcp_free(system->sparse_couplings);
+    nimcp_free(system->k1);
+    nimcp_free(system->k2);
+    nimcp_free(system->k3);
+    nimcp_free(system->k4);
+    nimcp_free(system->temp_phases);
+    nimcp_free(system->module_to_index);
 
-    free(system);
+    nimcp_free(system);
 }
 
 NIMCP_EXPORT bool kuramoto_reset(kuramoto_system_t* system) {
@@ -860,7 +874,7 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
     if (system->use_sparse_coupling) {
         /* Already in sparse mode, just resize if needed */
         if (max_couplings > system->max_couplings) {
-            kuramoto_coupling_t* new_couplings = realloc(
+            kuramoto_coupling_t* new_couplings = nimcp_realloc(
                 system->sparse_couplings,
                 max_couplings * sizeof(kuramoto_coupling_t));
             if (!new_couplings) {
@@ -874,7 +888,7 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
     }
 
     /* Allocate sparse array */
-    system->sparse_couplings = calloc(max_couplings, sizeof(kuramoto_coupling_t));
+    system->sparse_couplings = nimcp_calloc(max_couplings, sizeof(kuramoto_coupling_t));
     if (!system->sparse_couplings) {
         set_error("Failed to allocate sparse couplings");
         return false;

@@ -30,33 +30,10 @@
 #include <float.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for event_driven_plasticity module */
-static nimcp_health_agent_t* g_event_driven_plasticity_health_agent = NULL;
-
-/**
- * @brief Set health agent for event_driven_plasticity heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void event_driven_plasticity_set_health_agent(nimcp_health_agent_t* agent) {
-    g_event_driven_plasticity_health_agent = agent;
-}
-
-/** @brief Send heartbeat from event_driven_plasticity module */
-static inline void event_driven_plasticity_heartbeat(const char* operation, float progress) {
-    if (g_event_driven_plasticity_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_event_driven_plasticity_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(event_driven_plasticity)
 
 /* ============================================================================
  * Internal Structures
@@ -176,7 +153,7 @@ const char* edp_mode_name(edp_processing_mode_t mode) {
 
 static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity)
 {
-    buf->spikes = (edp_spike_record_t*)calloc(capacity, sizeof(edp_spike_record_t));
+    buf->spikes = (edp_spike_record_t*)nimcp_calloc(capacity, sizeof(edp_spike_record_t));
     if (!buf->spikes) return false;
 
     buf->capacity = capacity;
@@ -185,7 +162,7 @@ static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity)
     buf->count = 0;
 
     if (nimcp_platform_mutex_init(&buf->mutex, false) != 0) {
-        free(buf->spikes);
+        nimcp_free(buf->spikes);
         return false;
     }
 
@@ -195,7 +172,7 @@ static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity)
 static void spike_buffer_destroy(spike_buffer_t* buf)
 {
     if (buf->spikes) {
-        free(buf->spikes);
+        nimcp_free(buf->spikes);
         buf->spikes = NULL;
     }
     nimcp_platform_mutex_destroy(&buf->mutex);
@@ -253,14 +230,14 @@ static uint32_t eligibility_hash(uint32_t pre, uint32_t post, uint32_t capacity)
 
 static bool eligibility_table_init(eligibility_table_t* table, uint32_t capacity)
 {
-    table->entries = (edp_eligibility_entry_t*)calloc(capacity, sizeof(edp_eligibility_entry_t));
+    table->entries = (edp_eligibility_entry_t*)nimcp_calloc(capacity, sizeof(edp_eligibility_entry_t));
     if (!table->entries) return false;
 
     table->capacity = capacity;
     table->count = 0;
 
     if (nimcp_platform_rwlock_init(&table->rwlock) != 0) {
-        free(table->entries);
+        nimcp_free(table->entries);
         return false;
     }
 
@@ -275,7 +252,7 @@ static bool eligibility_table_init(eligibility_table_t* table, uint32_t capacity
 static void eligibility_table_destroy(eligibility_table_t* table)
 {
     if (table->entries) {
-        free(table->entries);
+        nimcp_free(table->entries);
         table->entries = NULL;
     }
     nimcp_platform_rwlock_destroy(&table->rwlock);
@@ -584,7 +561,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         return NULL;
     }
 
-    edp_context_t* ctx = (edp_context_t*)calloc(1, sizeof(edp_context_t));
+    edp_context_t* ctx = (edp_context_t*)nimcp_calloc(1, sizeof(edp_context_t));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "edp_create: failed to allocate EDP context");
         LOG_ERROR("Failed to allocate EDP context");
@@ -597,7 +574,7 @@ edp_context_t* edp_create(const edp_config_t* config)
     /* Initialize spike buffer */
     if (!spike_buffer_init(&ctx->spike_buffer, EDP_SPIKE_BUFFER_SIZE)) {
         LOG_ERROR("Failed to initialize spike buffer");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -605,7 +582,7 @@ edp_context_t* edp_create(const edp_config_t* config)
     if (!eligibility_table_init(&ctx->eligibility, EDP_MAX_ELIGIBILITY_ENTRIES)) {
         LOG_ERROR("Failed to initialize eligibility table");
         spike_buffer_destroy(&ctx->spike_buffer);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -616,7 +593,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         LOG_ERROR("Failed to initialize mutexes");
         eligibility_table_destroy(&ctx->eligibility);
         spike_buffer_destroy(&ctx->spike_buffer);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -627,7 +604,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         nimcp_platform_mutex_destroy(&ctx->async_mutex);
         eligibility_table_destroy(&ctx->eligibility);
         spike_buffer_destroy(&ctx->spike_buffer);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -796,7 +773,7 @@ void edp_destroy(edp_context_t* ctx)
     nimcp_platform_mutex_destroy(&ctx->state_mutex);
 
     LOG_INFO("Event-Driven Plasticity adapter destroyed");
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 /* ============================================================================

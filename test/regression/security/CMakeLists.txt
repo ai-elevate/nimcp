@@ -984,3 +984,33 @@ set_tests_properties(regression_security_p0_fixes PROPERTIES
     LABELS "regression;security;p0;memory;thread-safety;asan;tsan"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security Return Codes Regression Tests (P2-7)
+# ============================================================================
+add_executable(regression_security_test_return_codes
+    test_security_return_codes_regression.cpp
+)
+target_link_libraries(regression_security_test_return_codes
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_security_test_return_codes
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_security_test_return_codes
+         COMMAND regression_security_test_return_codes)
+set_tests_properties(regression_security_test_return_codes PROPERTIES
+    LABELS "regression;security;return-codes;p2-7"
+    TIMEOUT 60
+)

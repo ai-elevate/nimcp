@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sensory_swarm_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for sensory_swarm_bridge module */
-static nimcp_health_agent_t* g_sensory_swarm_bridge_health_agent = NULL;
+static mesh_participant_id_t g_sensory_swarm_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_sensory_swarm_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for sensory_swarm_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void sensory_swarm_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_sensory_swarm_bridge_health_agent = agent;
+nimcp_error_t sensory_swarm_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_sensory_swarm_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "sensory_swarm_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "sensory_swarm_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_sensory_swarm_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_sensory_swarm_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from sensory_swarm_bridge module */
-static inline void sensory_swarm_bridge_heartbeat(const char* operation, float progress) {
-    if (g_sensory_swarm_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_sensory_swarm_bridge_health_agent, operation, progress);
+void sensory_swarm_bridge_mesh_unregister(void) {
+    if (g_sensory_swarm_bridge_mesh_registry && g_sensory_swarm_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_sensory_swarm_bridge_mesh_registry, g_sensory_swarm_bridge_mesh_id);
+        g_sensory_swarm_bridge_mesh_id = 0;
+        g_sensory_swarm_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "SENSORY_SWARM_BRIDGE"
 
@@ -134,7 +148,7 @@ int sensory_swarm_default_config(sensory_swarm_config_t* config) {
 }
 
 sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t* config) {
-    sensory_swarm_bridge_t* bridge = (sensory_swarm_bridge_t*)calloc(1, sizeof(sensory_swarm_bridge_t));
+    sensory_swarm_bridge_t* bridge = (sensory_swarm_bridge_t*)nimcp_calloc(1, sizeof(sensory_swarm_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -149,13 +163,13 @@ sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t
         sensory_swarm_default_config(&bridge->config);
     }
 
-    bridge->nodes = (sensory_swarm_node_t*)calloc(bridge->config.max_nodes, sizeof(sensory_swarm_node_t));
-    bridge->tasks = (sensory_swarm_task_t*)calloc(bridge->config.max_tasks, sizeof(sensory_swarm_task_t));
+    bridge->nodes = (sensory_swarm_node_t*)nimcp_calloc(bridge->config.max_nodes, sizeof(sensory_swarm_node_t));
+    bridge->tasks = (sensory_swarm_task_t*)nimcp_calloc(bridge->config.max_tasks, sizeof(sensory_swarm_task_t));
 
     if (!bridge->nodes || !bridge->tasks) {
-        free(bridge->nodes);
-        free(bridge->tasks);
-        free(bridge);
+        nimcp_free(bridge->nodes);
+        nimcp_free(bridge->tasks);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -172,16 +186,16 @@ void sensory_swarm_bridge_destroy(sensory_swarm_bridge_t* bridge) {
 
     /* Free task resources */
     for (uint32_t i = 0; i < bridge->num_tasks; i++) {
-        free(bridge->tasks[i].input_data);
-        free(bridge->tasks[i].target_position);
-        free(bridge->tasks[i].assigned_nodes);
-        free(bridge->tasks[i].node_results);
-        free(bridge->tasks[i].node_confidences);
+        nimcp_free(bridge->tasks[i].input_data);
+        nimcp_free(bridge->tasks[i].target_position);
+        nimcp_free(bridge->tasks[i].assigned_nodes);
+        nimcp_free(bridge->tasks[i].node_results);
+        nimcp_free(bridge->tasks[i].node_confidences);
     }
 
-    free(bridge->nodes);
-    free(bridge->tasks);
-    free(bridge);
+    nimcp_free(bridge->nodes);
+    nimcp_free(bridge->tasks);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================
@@ -292,7 +306,7 @@ int sensory_swarm_submit_task(sensory_swarm_bridge_t* bridge, sensory_swarm_task
     task->status = SENSORY_SWARM_STATUS_PENDING;
 
     if (input && input_dim > 0) {
-        task->input_data = (float*)calloc(input_dim, sizeof(float));
+        task->input_data = (float*)nimcp_calloc(input_dim, sizeof(float));
         if (task->input_data) {
             memcpy(task->input_data, input, input_dim * sizeof(float));
             task->input_dim = input_dim;
@@ -302,9 +316,9 @@ int sensory_swarm_submit_task(sensory_swarm_bridge_t* bridge, sensory_swarm_task
     /* Assign nodes of matching modality */
     uint32_t modality_count = sensory_swarm_get_node_count(bridge, modality);
     if (modality_count > 0) {
-        task->assigned_nodes = (uint32_t*)calloc(modality_count, sizeof(uint32_t));
-        task->node_results = (float*)calloc(modality_count, sizeof(float));
-        task->node_confidences = (float*)calloc(modality_count, sizeof(float));
+        task->assigned_nodes = (uint32_t*)nimcp_calloc(modality_count, sizeof(uint32_t));
+        task->node_results = (float*)nimcp_calloc(modality_count, sizeof(float));
+        task->node_confidences = (float*)nimcp_calloc(modality_count, sizeof(float));
 
         if (task->assigned_nodes && task->node_results && task->node_confidences) {
             uint32_t idx = 0;
@@ -395,7 +409,7 @@ int sensory_swarm_explore_tactile(sensory_swarm_bridge_t* bridge, const float* b
     result->map_dim[2] = 1;
     uint32_t map_size = result->map_dim[0] * result->map_dim[1] * result->map_dim[2];
 
-    result->explored_map = (float*)calloc(map_size, sizeof(float));
+    result->explored_map = (float*)nimcp_calloc(map_size, sizeof(float));
     if (!result->explored_map) return -1;
 
     /* Simulate distributed exploration */
@@ -413,7 +427,7 @@ int sensory_swarm_explore_tactile(sensory_swarm_bridge_t* bridge, const float* b
     result->num_hotspots = result->interesting_points / 2;
 
     if (result->num_hotspots > 0) {
-        result->hotspot_positions = (float*)calloc(result->num_hotspots * 3, sizeof(float));
+        result->hotspot_positions = (float*)nimcp_calloc(result->num_hotspots * 3, sizeof(float));
         if (result->hotspot_positions) {
             for (uint32_t i = 0; i < result->num_hotspots; i++) {
                 result->hotspot_positions[i * 3] = randf() * 10.0f;
@@ -438,7 +452,7 @@ int sensory_swarm_explore_olfactory(sensory_swarm_bridge_t* bridge, const float*
     result->map_dim[2] = 8;
     uint32_t map_size = result->map_dim[0] * result->map_dim[1] * result->map_dim[2];
 
-    result->explored_map = (float*)calloc(map_size, sizeof(float));
+    result->explored_map = (float*)nimcp_calloc(map_size, sizeof(float));
     if (!result->explored_map) return -1;
 
     uint32_t smell_nodes = sensory_swarm_get_node_count(bridge, SENSORY_SWARM_MODALITY_SMELL);
@@ -667,8 +681,8 @@ void sensory_swarm_print_summary(const sensory_swarm_bridge_t* bridge) {
 
 void sensory_swarm_exploration_free(sensory_swarm_exploration_t* result) {
     if (!result) return;
-    free(result->explored_map);
-    free(result->hotspot_positions);
+    nimcp_free(result->explored_map);
+    nimcp_free(result->hotspot_positions);
     result->explored_map = NULL;
     result->hotspot_positions = NULL;
 }

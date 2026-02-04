@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Internal Structures
@@ -142,7 +144,7 @@ bgv_system_t* bgv_create(const bgv_config_t* config) {
         config = &default_config;
     }
 
-    bgv_system_t* system = (bgv_system_t*)calloc(1, sizeof(bgv_system_t));
+    bgv_system_t* system = (bgv_system_t*)nimcp_calloc(1, sizeof(bgv_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate vigor system");
         return NULL;
@@ -153,11 +155,11 @@ bgv_system_t* bgv_create(const bgv_config_t* config) {
 
     /* Allocate action array */
     system->max_actions = config->max_actions;
-    system->actions = (bgv_action_vigor_t*)calloc(system->max_actions,
+    system->actions = (bgv_action_vigor_t*)nimcp_calloc(system->max_actions,
                                                    sizeof(bgv_action_vigor_t));
     if (!system->actions) {
         NIMCP_LOGGING_ERROR("Failed to allocate action array");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -178,9 +180,9 @@ void bgv_destroy(bgv_system_t* system) {
     if (!system) return;
 
     if (system->actions) {
-        free(system->actions);
+        nimcp_free(system->actions);
     }
-    free(system);
+    nimcp_free(system);
 
     NIMCP_LOGGING_DEBUG("Vigor system destroyed");
 }
@@ -226,12 +228,14 @@ int bgv_register_action(bgv_system_t* system,
     /* Check for duplicate */
     if (bgv_find_action(system, action_id) != NULL) {
         NIMCP_LOGGING_WARN("Action %u already registered", action_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "bg_vigor: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
     /* Check capacity */
     if (system->num_actions >= system->max_actions) {
         NIMCP_LOGGING_ERROR("Action registry full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "bg_vigor: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -294,6 +298,7 @@ int bgv_unregister_action(bgv_system_t* system, uint32_t action_id) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "bg_vigor: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 

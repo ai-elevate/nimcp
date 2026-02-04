@@ -17,36 +17,11 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for feature_extractor_immune_bridge module */
-static nimcp_health_agent_t* g_feature_extractor_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for feature_extractor_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void feature_extractor_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_feature_extractor_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from feature_extractor_immune_bridge module */
-static inline void feature_extractor_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_feature_extractor_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_feature_extractor_immune_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_extractor_immune_bridge)
 
 /* Chronic inflammation threshold (7 days in seconds) */
 #define CHRONIC_INFLAMMATION_THRESHOLD (86400.0f * 7.0f)
@@ -242,7 +217,7 @@ void feature_immune_bridge_destroy(feature_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -266,7 +241,7 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_feature_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine concentrations from immune system */
     /* Note: Would need actual implementation in brain_immune to query cytokines */
@@ -306,7 +281,7 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
     bridge->cytokine_effects.temporal_jitter = total_reduction * 5.0f;
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -323,7 +298,7 @@ int feature_immune_apply_inflammation_effects(feature_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_precision_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -349,7 +324,7 @@ int feature_immune_apply_inflammation_effects(feature_immune_bridge_t* bridge) {
     bridge->inflammation_state.threat_feature_bias = impairment * 0.5f;
     bridge->inflammation_state.non_threat_suppression = impairment * 0.4f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -375,13 +350,13 @@ int feature_immune_apply_threat_bias(feature_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_threat_feature_bias) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Threat bias is already computed in inflammation state */
     /* This function would adjust feature extractor thresholds */
     /* Implementation would depend on feature extractor API */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -398,7 +373,7 @@ int feature_immune_trigger_from_anomalies(
     if (!bridge->enable_feature_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Reset anomaly flags */
     memset(&bridge->immune_trigger, 0, sizeof(feature_immune_trigger_t));
@@ -501,7 +476,7 @@ int feature_immune_trigger_from_anomalies(
         bridge->anomalies_detected++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -513,7 +488,7 @@ int feature_immune_escalate_from_degradation(
     if (!bridge || !features) return -1;
     if (!bridge->enable_quality_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Compute current precision */
     float current_precision = feature_immune_compute_precision_reduction(bridge);
@@ -556,7 +531,7 @@ int feature_immune_escalate_from_degradation(
         bridge->quality_escalations++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 

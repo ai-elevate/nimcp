@@ -40,36 +40,9 @@
 #include <time.h>
 
 #define LOG_MODULE "ADV_TRAINING"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: Heartbeat for Long Operations)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for adversarial training (set via adv_set_health_agent) */
-static nimcp_health_agent_t* g_adv_health_agent = NULL;
-
-/**
- * @brief Set health agent for adversarial training heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void adv_set_health_agent(nimcp_health_agent_t* agent) {
-    g_adv_health_agent = agent;
-}
-
-/**
- * @brief Send heartbeat during adversarial training operations
- */
-static inline void adv_heartbeat(const char* operation, float progress) {
-    if (g_adv_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_adv_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adv)
 
 //=============================================================================
 // Internal Constants

@@ -20,29 +20,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(semantic_integrator)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for semantic_integrator module */
-static nimcp_health_agent_t* g_semantic_integrator_health_agent = NULL;
+static mesh_participant_id_t g_semantic_integrator_mesh_id = 0;
+static mesh_participant_registry_t* g_semantic_integrator_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for semantic_integrator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void semantic_integrator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_semantic_integrator_health_agent = agent;
+nimcp_error_t semantic_integrator_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_semantic_integrator_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "semantic_integrator", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "semantic_integrator";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_semantic_integrator_mesh_id);
+    if (err == NIMCP_SUCCESS) g_semantic_integrator_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from semantic_integrator module */
-static inline void semantic_integrator_heartbeat(const char* operation, float progress) {
-    if (g_semantic_integrator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_semantic_integrator_health_agent, operation, progress);
+void semantic_integrator_mesh_unregister(void) {
+    if (g_semantic_integrator_mesh_registry && g_semantic_integrator_mesh_id != 0) {
+        mesh_participant_unregister(g_semantic_integrator_mesh_registry, g_semantic_integrator_mesh_id);
+        g_semantic_integrator_mesh_id = 0;
+        g_semantic_integrator_mesh_registry = NULL;
     }
 }
 
@@ -200,7 +213,7 @@ static sense_entry_t* get_sense_entry(
     }
 
     /* Create new entry */
-    sense_bucket_t* new_bucket = calloc(1, sizeof(sense_bucket_t));
+    sense_bucket_t* new_bucket = nimcp_calloc(1, sizeof(sense_bucket_t));
     if (!new_bucket) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_bucket is NULL");
@@ -210,9 +223,9 @@ static sense_entry_t* get_sense_entry(
     }
 
     new_bucket->entry.word_id = word_id;
-    new_bucket->entry.senses = calloc(sem->config.max_senses, sizeof(word_sense_t));
+    new_bucket->entry.senses = nimcp_calloc(sem->config.max_senses, sizeof(word_sense_t));
     if (!new_bucket->entry.senses) {
-        free(new_bucket);
+        nimcp_free(new_bucket);
         return NULL;
     }
 
@@ -363,7 +376,7 @@ semantic_config_t semantic_default_config(void) {
 }
 
 semantic_integrator_t* semantic_create(const semantic_config_t* config) {
-    semantic_integrator_t* sem = calloc(1, sizeof(semantic_integrator_t));
+    semantic_integrator_t* sem = nimcp_calloc(1, sizeof(semantic_integrator_t));
     if (!sem) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sem is NULL");
@@ -381,17 +394,17 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
 
     /* Allocate sense table */
     sem->sense_table_size = SENSE_TABLE_SIZE;
-    sem->sense_table = calloc(sem->sense_table_size, sizeof(sense_bucket_t*));
+    sem->sense_table = nimcp_calloc(sem->sense_table_size, sizeof(sense_bucket_t*));
     if (!sem->sense_table) {
-        free(sem);
+        nimcp_free(sem);
         return NULL;
     }
 
     /* Allocate context */
     sem->context.max_words = sem->config.max_context_words;
-    sem->context.words = calloc(sem->context.max_words, sizeof(context_word_t));
+    sem->context.words = nimcp_calloc(sem->context.max_words, sizeof(context_word_t));
     sem->context.context_dim = sem->config.concept_feature_dim;
-    sem->context.context_vector = calloc(sem->context.context_dim, sizeof(float));
+    sem->context.context_vector = nimcp_calloc(sem->context.context_dim, sizeof(float));
 
     if (!sem->context.words || !sem->context.context_vector) {
         semantic_destroy(sem);
@@ -401,12 +414,12 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
     /* Allocate feature vectors for context words */
     for (uint32_t i = 0; i < sem->context.max_words; i++) {
         sem->context.words[i].concept_features =
-            calloc(sem->config.concept_feature_dim, sizeof(float));
+            nimcp_calloc(sem->config.concept_feature_dim, sizeof(float));
     }
 
     /* Allocate active concepts */
     sem->max_active = sem->config.max_active_concepts;
-    sem->active_concepts = calloc(sem->max_active, sizeof(active_concept_t));
+    sem->active_concepts = nimcp_calloc(sem->max_active, sizeof(active_concept_t));
     if (!sem->active_concepts) {
         semantic_destroy(sem);
         return NULL;
@@ -414,8 +427,8 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
 
     /* Allocate priming */
     sem->priming.max_primed = MAX_PRIMED_CONCEPTS;
-    sem->priming.primed_concepts = calloc(sem->priming.max_primed, sizeof(uint32_t));
-    sem->priming.priming_levels = calloc(sem->priming.max_primed, sizeof(float));
+    sem->priming.primed_concepts = nimcp_calloc(sem->priming.max_primed, sizeof(uint32_t));
+    sem->priming.priming_levels = nimcp_calloc(sem->priming.max_primed, sizeof(float));
 
     if (!sem->priming.primed_concepts || !sem->priming.priming_levels) {
         semantic_destroy(sem);
@@ -441,34 +454,34 @@ void semantic_destroy(semantic_integrator_t* sem) {
                 sense_bucket_t* next = bucket->next;
                 if (bucket->entry.senses) {
                     for (uint32_t j = 0; j < bucket->entry.num_senses; j++) {
-                        free(bucket->entry.senses[j].related_concepts);
+                        nimcp_free(bucket->entry.senses[j].related_concepts);
                     }
-                    free(bucket->entry.senses);
+                    nimcp_free(bucket->entry.senses);
                 }
-                free(bucket);
+                nimcp_free(bucket);
                 bucket = next;
             }
         }
-        free(sem->sense_table);
+        nimcp_free(sem->sense_table);
     }
 
     /* Free context */
     if (sem->context.words) {
         for (uint32_t i = 0; i < sem->context.max_words; i++) {
-            free(sem->context.words[i].concept_features);
+            nimcp_free(sem->context.words[i].concept_features);
         }
-        free(sem->context.words);
+        nimcp_free(sem->context.words);
     }
-    free(sem->context.context_vector);
+    nimcp_free(sem->context.context_vector);
 
     /* Free active concepts */
-    free(sem->active_concepts);
+    nimcp_free(sem->active_concepts);
 
     /* Free priming */
-    free(sem->priming.primed_concepts);
-    free(sem->priming.priming_levels);
+    nimcp_free(sem->priming.primed_concepts);
+    nimcp_free(sem->priming.priming_levels);
 
-    free(sem);
+    nimcp_free(sem);
 }
 
 bool semantic_reset(semantic_integrator_t* sem) {
@@ -530,7 +543,7 @@ bool semantic_register_senses(
 
     /* Clear existing senses */
     for (uint32_t i = 0; i < entry->num_senses; i++) {
-        free(entry->senses[i].related_concepts);
+        nimcp_free(entry->senses[i].related_concepts);
     }
     entry->num_senses = 0;
 
@@ -545,7 +558,7 @@ bool semantic_register_senses(
         /* Copy related concepts if present */
         if (senses[i].related_concepts && senses[i].num_related > 0) {
             entry->senses[i].related_concepts =
-                malloc(senses[i].num_related * sizeof(uint32_t));
+                nimcp_malloc(senses[i].num_related * sizeof(uint32_t));
             if (entry->senses[i].related_concepts) {
                 memcpy(entry->senses[i].related_concepts,
                        senses[i].related_concepts,
@@ -1368,7 +1381,7 @@ void semantic_free_result(semantic_result_t* result) {
     if (!result) return;
 
     if (result->active_senses) {
-        free(result->active_senses);
+        nimcp_free(result->active_senses);
         result->active_senses = NULL;
     }
 }

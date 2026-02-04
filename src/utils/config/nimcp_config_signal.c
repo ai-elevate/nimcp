@@ -34,36 +34,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <pthread.h>
 #include <time.h>
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for config_signal module */
-static nimcp_health_agent_t* g_config_signal_health_agent = NULL;
-
-/**
- * @brief Set health agent for config_signal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void config_signal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_config_signal_health_agent = agent;
-}
-
-/** @brief Send heartbeat from config_signal module */
-static inline void config_signal_heartbeat(const char* operation, float progress) {
-    if (g_config_signal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_config_signal_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(config_signal)
 
 //=============================================================================
 // Internal Data Structures
@@ -142,7 +117,7 @@ typedef struct {
 //=============================================================================
 
 static nimcp_platform_rwlock_t g_atomic_lock = PTHREAD_RWLOCK_INITIALIZER;
-static nimcp_platform_mutex_t g_callback_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_platform_mutex_t g_callback_lock = NIMCP_MUTEX_INITIALIZER;
 
 static uint32_t g_current_version = 1;
 static uint32_t g_max_history_size = CONFIG_DEFAULT_HISTORY_SIZE;

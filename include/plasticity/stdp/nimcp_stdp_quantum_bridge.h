@@ -116,6 +116,7 @@ void stdp_quantum_reset_stats(stdp_quantum_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 struct stdp_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -140,7 +141,7 @@ stdp_quantum_config_t stdp_quantum_default_config(void) {
 stdp_quantum_bridge_t* stdp_quantum_bridge_create(
     const stdp_quantum_config_t* config
 ) {
-    stdp_quantum_bridge_t* bridge = (stdp_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    stdp_quantum_bridge_t* bridge = (stdp_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_quantum_bridge_create: failed to allocate bridge");
         return NULL;
@@ -158,7 +159,7 @@ stdp_quantum_bridge_t* stdp_quantum_bridge_create(
     bridge->optimizer = qstdp_optimizer_create(&qconfig);
     if (!bridge->optimizer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_quantum_bridge_create: failed to create quantum optimizer");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -172,7 +173,7 @@ void stdp_quantum_bridge_destroy(stdp_quantum_bridge_t* bridge) {
         return;
     }
     if (bridge->optimizer) qstdp_optimizer_destroy(bridge->optimizer);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool stdp_quantum_bridge_is_enabled(const stdp_quantum_bridge_t* bridge) {

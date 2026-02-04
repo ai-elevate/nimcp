@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -271,6 +272,7 @@ nimcp_error_t mesh_health_bridge_register_agent(
     health_agent_t* agent
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -288,6 +290,7 @@ nimcp_error_t mesh_health_bridge_register_agent(
     /* Find slot */
     if (bridge->record_count >= MAX_HEALTH_RECORDS) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_health_bridge: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -317,6 +320,7 @@ nimcp_error_t mesh_health_bridge_unregister_agent(
     mesh_participant_id_t participant_id
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -325,6 +329,7 @@ nimcp_error_t mesh_health_bridge_unregister_agent(
     int idx = find_record_by_id(bridge, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_health_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -354,6 +359,7 @@ nimcp_error_t mesh_health_bridge_heartbeat(
     (void)progress;  /* Used for PROGRESS ops */
 
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -370,6 +376,7 @@ nimcp_error_t mesh_health_bridge_heartbeat(
         idx = find_record_by_id(bridge, participant_id);
         if (idx < 0) {
             nimcp_mutex_unlock(bridge->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SYSTEM, "mesh_health_bridge: error condition");
             return NIMCP_ERROR_SYSTEM;
         }
     }
@@ -409,6 +416,7 @@ nimcp_error_t mesh_health_bridge_update_metrics(
     const health_metrics_t* metrics
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!metrics) return NIMCP_ERROR_NULL_POINTER;
@@ -418,6 +426,7 @@ nimcp_error_t mesh_health_bridge_update_metrics(
     int idx = find_record_by_id(bridge, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_health_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -497,6 +506,7 @@ nimcp_error_t mesh_health_bridge_get_health(
     mesh_health_record_t* record_out
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!record_out) return NIMCP_ERROR_NULL_POINTER;
@@ -506,6 +516,7 @@ nimcp_error_t mesh_health_bridge_get_health(
     int idx = find_record_by_id(bridge, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(((mesh_health_bridge_t*)bridge)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_health_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -521,6 +532,7 @@ nimcp_error_t mesh_health_bridge_get_channel_health(
     mesh_channel_health_t* health_out
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!health_out) return NIMCP_ERROR_NULL_POINTER;
@@ -588,6 +600,7 @@ nimcp_error_t mesh_health_bridge_get_system_health(
     mesh_system_health_t* health_out
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!health_out) return NIMCP_ERROR_NULL_POINTER;
@@ -685,6 +698,7 @@ nimcp_error_t mesh_health_bridge_get_stats(
     mesh_health_bridge_stats_t* stats
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -700,6 +714,7 @@ nimcp_error_t mesh_health_bridge_reset_stats(
     mesh_health_bridge_t* bridge
 ) {
     if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

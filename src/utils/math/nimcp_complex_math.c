@@ -28,33 +28,9 @@
 #include <cpuid.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for complex_math module */
-static nimcp_health_agent_t* g_complex_math_health_agent = NULL;
-
-/**
- * @brief Set health agent for complex_math heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void complex_math_set_health_agent(nimcp_health_agent_t* agent) {
-    g_complex_math_health_agent = agent;
-}
-
-/** @brief Send heartbeat from complex_math module */
-static inline void complex_math_heartbeat(const char* operation, float progress) {
-    if (g_complex_math_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_complex_math_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(complex_math)
 
 #define NIMCP_HAS_CPUID 1
 #else

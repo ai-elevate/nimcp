@@ -14,29 +14,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_language)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for multimodal_language module */
-static nimcp_health_agent_t* g_multimodal_language_health_agent = NULL;
+static mesh_participant_id_t g_multimodal_language_mesh_id = 0;
+static mesh_participant_registry_t* g_multimodal_language_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for multimodal_language heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void multimodal_language_set_health_agent(nimcp_health_agent_t* agent) {
-    g_multimodal_language_health_agent = agent;
+nimcp_error_t multimodal_language_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_multimodal_language_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "multimodal_language", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "multimodal_language";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_multimodal_language_mesh_id);
+    if (err == NIMCP_SUCCESS) g_multimodal_language_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from multimodal_language module */
-static inline void multimodal_language_heartbeat(const char* operation, float progress) {
-    if (g_multimodal_language_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_multimodal_language_health_agent, operation, progress);
+void multimodal_language_mesh_unregister(void) {
+    if (g_multimodal_language_mesh_registry && g_multimodal_language_mesh_id != 0) {
+        mesh_participant_unregister(g_multimodal_language_mesh_registry, g_multimodal_language_mesh_id);
+        g_multimodal_language_mesh_id = 0;
+        g_multimodal_language_mesh_registry = NULL;
     }
 }
 
@@ -75,7 +88,7 @@ multimodal_config_t multimodal_lang_default_config(void) {
 }
 
 multimodal_language_t* multimodal_lang_create(const multimodal_config_t* config) {
-    multimodal_language_t* processor = (multimodal_language_t*)calloc(1, sizeof(multimodal_language_t));
+    multimodal_language_t* processor = (multimodal_language_t*)nimcp_calloc(1, sizeof(multimodal_language_t));
     if (!processor) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
@@ -97,7 +110,7 @@ multimodal_language_t* multimodal_lang_create(const multimodal_config_t* config)
 
 void multimodal_lang_destroy(multimodal_language_t* processor) {
     if (!processor) return;
-    free(processor);
+    nimcp_free(processor);
 }
 
 bool multimodal_lang_reset(multimodal_language_t* processor) {
@@ -147,7 +160,7 @@ bool multimodal_lang_generate_plan(
 
     /* Auto-generate gestures if enabled */
     if (processor->config.enable_auto_gestures) {
-        plan->gestures = (gesture_spec_t*)calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
+        plan->gestures = (gesture_spec_t*)nimcp_calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
         if (plan->gestures) {
             plan->gesture_count = multimodal_lang_auto_gestures(
                 processor, utterance, plan->gestures, processor->config.max_gestures);
@@ -156,7 +169,7 @@ bool multimodal_lang_generate_plan(
 
     /* Auto-generate expressions if enabled */
     if (processor->config.enable_auto_expressions) {
-        plan->expressions = (expression_spec_t*)calloc(processor->config.max_expressions, sizeof(expression_spec_t));
+        plan->expressions = (expression_spec_t*)nimcp_calloc(processor->config.max_expressions, sizeof(expression_spec_t));
         if (plan->expressions) {
             plan->expression_count = multimodal_lang_auto_expressions(
                 processor, utterance, 0.0f, plan->expressions, processor->config.max_expressions);
@@ -165,7 +178,7 @@ bool multimodal_lang_generate_plan(
 
     /* Add default gaze pattern */
     if (processor->config.enable_gaze_tracking) {
-        plan->gaze_events = (gaze_spec_t*)calloc(16, sizeof(gaze_spec_t));
+        plan->gaze_events = (gaze_spec_t*)nimcp_calloc(16, sizeof(gaze_spec_t));
         if (plan->gaze_events) {
             plan->gaze_events[0].target = GAZE_TARGET_ADDRESSEE;
             plan->gaze_events[0].start_time_ms = 0;
@@ -205,7 +218,7 @@ bool multimodal_lang_add_gesture(
     }
 
     if (!plan->gestures) {
-        plan->gestures = (gesture_spec_t*)calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
+        plan->gestures = (gesture_spec_t*)nimcp_calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
         if (!plan->gestures) return false;
     }
 
@@ -238,7 +251,7 @@ bool multimodal_lang_add_expression(
     }
 
     if (!plan->expressions) {
-        plan->expressions = (expression_spec_t*)calloc(processor->config.max_expressions, sizeof(expression_spec_t));
+        plan->expressions = (expression_spec_t*)nimcp_calloc(processor->config.max_expressions, sizeof(expression_spec_t));
         if (!plan->expressions) return false;
     }
 
@@ -271,7 +284,7 @@ bool multimodal_lang_add_gaze(
     }
 
     if (!plan->gaze_events) {
-        plan->gaze_events = (gaze_spec_t*)calloc(16, sizeof(gaze_spec_t));
+        plan->gaze_events = (gaze_spec_t*)nimcp_calloc(16, sizeof(gaze_spec_t));
         if (!plan->gaze_events) return false;
     }
 
@@ -288,9 +301,9 @@ bool multimodal_lang_add_gaze(
 void multimodal_lang_free_plan(multimodal_plan_t* plan) {
     if (!plan) return;
 
-    free(plan->gestures);
-    free(plan->expressions);
-    free(plan->gaze_events);
+    nimcp_free(plan->gestures);
+    nimcp_free(plan->expressions);
+    nimcp_free(plan->gaze_events);
 
     plan->gestures = NULL;
     plan->expressions = NULL;

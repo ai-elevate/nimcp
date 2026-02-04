@@ -19,33 +19,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for pr_memory_adapter module */
-static nimcp_health_agent_t* g_pr_memory_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for pr_memory_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pr_memory_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_memory_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from pr_memory_adapter module */
-static inline void pr_memory_adapter_heartbeat(const char* operation, float progress) {
-    if (g_pr_memory_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_memory_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_memory_adapter)
 
 #define PR_MAX_CONTENT_SIZE 256
 
@@ -139,7 +116,7 @@ static nimcp_layer_error_t pr_init(void* module, void* config) {
 
     if (config) adapter->config = *(nimcp_pr_memory_config_t*)config;
 
-    adapter->memories = (pr_memory_node_t*)calloc(adapter->config.max_memories, sizeof(pr_memory_node_t));
+    adapter->memories = (pr_memory_node_t*)nimcp_calloc(adapter->config.max_memories, sizeof(pr_memory_node_t));
     if (!adapter->memories) return NIMCP_LAYER_ERR_NO_MEMORY;
 
     adapter->memory_count = 0;
@@ -154,7 +131,7 @@ static nimcp_layer_error_t pr_shutdown(void* module) {
     nimcp_pr_memory_adapter_t adapter = (nimcp_pr_memory_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
 
-    free(adapter->memories);
+    nimcp_free(adapter->memories);
     adapter->memories = NULL;
     adapter->is_initialized = false;
     adapter->state.is_active = false;
@@ -290,7 +267,7 @@ nimcp_pr_memory_config_t nimcp_pr_memory_adapter_default_config(void) {
 }
 
 nimcp_pr_memory_adapter_t nimcp_pr_memory_adapter_create(const nimcp_pr_memory_config_t* config) {
-    nimcp_pr_memory_adapter_t adapter = (nimcp_pr_memory_adapter_t)calloc(
+    nimcp_pr_memory_adapter_t adapter = (nimcp_pr_memory_adapter_t)nimcp_calloc(
         1, sizeof(struct nimcp_pr_memory_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate PR memory adapter");
 
@@ -310,7 +287,7 @@ nimcp_pr_memory_adapter_t nimcp_pr_memory_adapter_create(const nimcp_pr_memory_c
 void nimcp_pr_memory_adapter_destroy(nimcp_pr_memory_adapter_t adapter) {
     if (!adapter) return;
     if (adapter->is_initialized) pr_shutdown(adapter);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_pr_memory_adapter_get_interface(nimcp_pr_memory_adapter_t adapter) {

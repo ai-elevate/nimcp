@@ -19,29 +19,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(discourse_manager)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for discourse_manager module */
-static nimcp_health_agent_t* g_discourse_manager_health_agent = NULL;
+static mesh_participant_id_t g_discourse_manager_mesh_id = 0;
+static mesh_participant_registry_t* g_discourse_manager_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for discourse_manager heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void discourse_manager_set_health_agent(nimcp_health_agent_t* agent) {
-    g_discourse_manager_health_agent = agent;
+nimcp_error_t discourse_manager_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_discourse_manager_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "discourse_manager", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "discourse_manager";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_discourse_manager_mesh_id);
+    if (err == NIMCP_SUCCESS) g_discourse_manager_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from discourse_manager module */
-static inline void discourse_manager_heartbeat(const char* operation, float progress) {
-    if (g_discourse_manager_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_discourse_manager_health_agent, operation, progress);
+void discourse_manager_mesh_unregister(void) {
+    if (g_discourse_manager_mesh_registry && g_discourse_manager_mesh_id != 0) {
+        mesh_participant_unregister(g_discourse_manager_mesh_registry, g_discourse_manager_mesh_id);
+        g_discourse_manager_mesh_id = 0;
+        g_discourse_manager_mesh_registry = NULL;
     }
 }
 
@@ -209,7 +222,7 @@ discourse_config_t discourse_default_config(void) {
 }
 
 discourse_manager_t* discourse_create(const discourse_config_t* config) {
-    discourse_manager_t* manager = (discourse_manager_t*)calloc(1, sizeof(discourse_manager_t));
+    discourse_manager_t* manager = (discourse_manager_t*)nimcp_calloc(1, sizeof(discourse_manager_t));
     if (!manager) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
@@ -225,29 +238,29 @@ discourse_manager_t* discourse_create(const discourse_config_t* config) {
     }
 
     /* Allocate referents */
-    manager->referents = (discourse_referent_t*)calloc(
+    manager->referents = (discourse_referent_t*)nimcp_calloc(
         manager->config.max_referents, sizeof(discourse_referent_t));
     if (!manager->referents) {
-        free(manager);
+        nimcp_free(manager);
         return NULL;
     }
 
     /* Allocate topics */
-    manager->topics = (discourse_topic_t*)calloc(
+    manager->topics = (discourse_topic_t*)nimcp_calloc(
         manager->config.max_topics, sizeof(discourse_topic_t));
     if (!manager->topics) {
-        free(manager->referents);
-        free(manager);
+        nimcp_free(manager->referents);
+        nimcp_free(manager);
         return NULL;
     }
 
     /* Allocate turns */
-    manager->turns = (discourse_turn_t*)calloc(
+    manager->turns = (discourse_turn_t*)nimcp_calloc(
         manager->config.max_turns, sizeof(discourse_turn_t));
     if (!manager->turns) {
-        free(manager->topics);
-        free(manager->referents);
-        free(manager);
+        nimcp_free(manager->topics);
+        nimcp_free(manager->referents);
+        nimcp_free(manager);
         return NULL;
     }
 
@@ -263,10 +276,10 @@ discourse_manager_t* discourse_create(const discourse_config_t* config) {
 void discourse_destroy(discourse_manager_t* manager) {
     if (!manager) return;
 
-    free(manager->turns);
-    free(manager->topics);
-    free(manager->referents);
-    free(manager);
+    nimcp_free(manager->turns);
+    nimcp_free(manager->topics);
+    nimcp_free(manager->referents);
+    nimcp_free(manager);
 }
 
 bool discourse_reset(discourse_manager_t* manager) {

@@ -58,7 +58,7 @@
  * quantum_shannon_optimize(qsd);
  *
  * // Get probability distribution
- * float* probs = malloc(network->num_neurons * sizeof(float));
+ * float* probs = nimcp_malloc(network->num_neurons * sizeof(float));
  * quantum_shannon_get_distribution(qsd, probs);
  * ```
  *
@@ -74,6 +74,7 @@
 #include "information/nimcp_shannon.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {

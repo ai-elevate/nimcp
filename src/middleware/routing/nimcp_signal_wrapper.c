@@ -1,35 +1,9 @@
 
 #define LOG_MODULE "nimcp_signal_wrapper"
 #define LOG_MODULE_ID 0x052B
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for signal_wrapper module */
-static nimcp_health_agent_t* g_signal_wrapper_health_agent = NULL;
-
-/**
- * @brief Set health agent for signal_wrapper heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void signal_wrapper_set_health_agent(nimcp_health_agent_t* agent) {
-    g_signal_wrapper_health_agent = agent;
-}
-
-/** @brief Send heartbeat from signal_wrapper module */
-static inline void signal_wrapper_heartbeat(const char* operation, float progress) {
-    if (g_signal_wrapper_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_signal_wrapper_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(signal_wrapper)
 
 //=============================================================================
 // nimcp_signal_wrapper.c - CoW-Based Signal Reference Wrapper Implementation

@@ -27,31 +27,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_nn)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for physics_nn module */
-static nimcp_health_agent_t* g_physics_nn_health_agent = NULL;
+static mesh_participant_id_t g_physics_nn_mesh_id = 0;
+static mesh_participant_registry_t* g_physics_nn_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for physics_nn heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void physics_nn_set_health_agent(nimcp_health_agent_t* agent) {
-    g_physics_nn_health_agent = agent;
+nimcp_error_t physics_nn_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_physics_nn_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "physics_nn", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "physics_nn";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_physics_nn_mesh_id);
+    if (err == NIMCP_SUCCESS) g_physics_nn_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from physics_nn module */
-static inline void physics_nn_heartbeat(const char* operation, float progress) {
-    if (g_physics_nn_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_physics_nn_health_agent, operation, progress);
+void physics_nn_mesh_unregister(void) {
+    if (g_physics_nn_mesh_registry && g_physics_nn_mesh_id != 0) {
+        mesh_participant_unregister(g_physics_nn_mesh_registry, g_physics_nn_mesh_id);
+        g_physics_nn_mesh_id = 0;
+        g_physics_nn_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from physics_nn module (instance-level) */
 static inline void physics_nn_heartbeat_instance(
@@ -251,7 +265,7 @@ static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out) {
  */
 static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
                                  physics_nn_optimizer_t optimizer) {
-    nn_layer_t* layer = (nn_layer_t*)calloc(1, sizeof(nn_layer_t));
+    nn_layer_t* layer = (nn_layer_t*)nimcp_calloc(1, sizeof(nn_layer_t));
     if (!layer) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate layer");
@@ -264,10 +278,10 @@ static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
     layer->output_size = output_size;
 
     /* Allocate weights and biases */
-    layer->weights = (float*)calloc(input_size * output_size, sizeof(float));
-    layer->biases = (float*)calloc(output_size, sizeof(float));
-    layer->weight_grads = (float*)calloc(input_size * output_size, sizeof(float));
-    layer->bias_grads = (float*)calloc(output_size, sizeof(float));
+    layer->weights = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
+    layer->biases = (float*)nimcp_calloc(output_size, sizeof(float));
+    layer->weight_grads = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
+    layer->bias_grads = (float*)nimcp_calloc(output_size, sizeof(float));
 
     if (!layer->weights || !layer->biases ||
         !layer->weight_grads || !layer->bias_grads) {
@@ -277,14 +291,14 @@ static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
     /* Allocate optimizer state */
     if (optimizer == PHYSICS_NN_OPTIMIZER_SGD_MOMENTUM ||
         optimizer == PHYSICS_NN_OPTIMIZER_ADAM) {
-        layer->weight_m = (float*)calloc(input_size * output_size, sizeof(float));
-        layer->bias_m = (float*)calloc(output_size, sizeof(float));
+        layer->weight_m = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
+        layer->bias_m = (float*)nimcp_calloc(output_size, sizeof(float));
         if (!layer->weight_m || !layer->bias_m) goto error;
     }
 
     if (optimizer == PHYSICS_NN_OPTIMIZER_ADAM) {
-        layer->weight_v = (float*)calloc(input_size * output_size, sizeof(float));
-        layer->bias_v = (float*)calloc(output_size, sizeof(float));
+        layer->weight_v = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
+        layer->bias_v = (float*)nimcp_calloc(output_size, sizeof(float));
         if (!layer->weight_v || !layer->bias_v) goto error;
     }
 
@@ -295,15 +309,15 @@ static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
 
 error:
     if (layer) {
-        free(layer->weights);
-        free(layer->biases);
-        free(layer->weight_grads);
-        free(layer->bias_grads);
-        free(layer->weight_m);
-        free(layer->bias_m);
-        free(layer->weight_v);
-        free(layer->bias_v);
-        free(layer);
+        nimcp_free(layer->weights);
+        nimcp_free(layer->biases);
+        nimcp_free(layer->weight_grads);
+        nimcp_free(layer->bias_grads);
+        nimcp_free(layer->weight_m);
+        nimcp_free(layer->bias_m);
+        nimcp_free(layer->weight_v);
+        nimcp_free(layer->bias_v);
+        nimcp_free(layer);
     }
     return NULL;
 }
@@ -313,15 +327,15 @@ error:
  */
 static void layer_destroy(nn_layer_t* layer) {
     if (!layer) return;
-    free(layer->weights);
-    free(layer->biases);
-    free(layer->weight_grads);
-    free(layer->bias_grads);
-    free(layer->weight_m);
-    free(layer->bias_m);
-    free(layer->weight_v);
-    free(layer->bias_v);
-    free(layer);
+    nimcp_free(layer->weights);
+    nimcp_free(layer->biases);
+    nimcp_free(layer->weight_grads);
+    nimcp_free(layer->bias_grads);
+    nimcp_free(layer->weight_m);
+    nimcp_free(layer->bias_m);
+    nimcp_free(layer->weight_v);
+    nimcp_free(layer->bias_v);
+    nimcp_free(layer);
 }
 
 /**
@@ -533,7 +547,7 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
         return NULL;
     }
 
-    physics_nn_t* nn = (physics_nn_t*)calloc(1, sizeof(physics_nn_t));
+    physics_nn_t* nn = (physics_nn_t*)nimcp_calloc(1, sizeof(physics_nn_t));
     if (!nn) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate physics_nn_t");
         return NULL;
@@ -544,9 +558,9 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     nn->num_layers = config->num_layers;
 
     /* Determine layer sizes */
-    uint32_t* sizes = (uint32_t*)malloc((config->num_layers + 1) * sizeof(uint32_t));
+    uint32_t* sizes = (uint32_t*)nimcp_malloc((config->num_layers + 1) * sizeof(uint32_t));
     if (!sizes) {
-        free(nn);
+        nimcp_free(nn);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate layer sizes");
         return NULL;
     }
@@ -558,10 +572,10 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     sizes[config->num_layers] = config->state_dim;  /* Output layer */
 
     /* Allocate layers */
-    nn->layers = (nn_layer_t*)calloc(config->num_layers, sizeof(nn_layer_t));
+    nn->layers = (nn_layer_t*)nimcp_calloc(config->num_layers, sizeof(nn_layer_t));
     if (!nn->layers) {
-        free(sizes);
-        free(nn);
+        nimcp_free(sizes);
+        nimcp_free(nn);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate layers");
         return NULL;
     }
@@ -586,20 +600,20 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
 
                 layer_destroy(&nn->layers[j]);
             }
-            free(nn->layers);
-            free(sizes);
-            free(nn);
+            nimcp_free(nn->layers);
+            nimcp_free(sizes);
+            nimcp_free(nn);
             snprintf(s_last_error, sizeof(s_last_error), "Failed to create layer %u", i);
             return NULL;
         }
         nn->layers[i] = *layer;
-        free(layer);  /* Just the container, not contents */
+        nimcp_free(layer);  /* Just the container, not contents */
     }
 
     /* Allocate forward pass cache */
-    nn->layer_inputs = (float**)calloc(config->num_layers, sizeof(float*));
-    nn->layer_outputs = (float**)calloc(config->num_layers, sizeof(float*));
-    nn->pre_activations = (float**)calloc(config->num_layers, sizeof(float*));
+    nn->layer_inputs = (float**)nimcp_calloc(config->num_layers, sizeof(float*));
+    nn->layer_outputs = (float**)nimcp_calloc(config->num_layers, sizeof(float*));
+    nn->pre_activations = (float**)nimcp_calloc(config->num_layers, sizeof(float*));
 
     if (!nn->layer_inputs || !nn->layer_outputs || !nn->pre_activations) {
         goto error;
@@ -612,9 +626,9 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
                              (float)(i + 1) / (float)config->num_layers);
         }
 
-        nn->layer_inputs[i] = (float*)calloc(sizes[i], sizeof(float));
-        nn->layer_outputs[i] = (float*)calloc(sizes[i + 1], sizeof(float));
-        nn->pre_activations[i] = (float*)calloc(sizes[i + 1], sizeof(float));
+        nn->layer_inputs[i] = (float*)nimcp_calloc(sizes[i], sizeof(float));
+        nn->layer_outputs[i] = (float*)nimcp_calloc(sizes[i + 1], sizeof(float));
+        nn->pre_activations[i] = (float*)nimcp_calloc(sizes[i + 1], sizeof(float));
 
         if (!nn->layer_inputs[i] || !nn->layer_outputs[i] || !nn->pre_activations[i]) {
             goto error;
@@ -627,9 +641,9 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
         if (sizes[i] > max_size) max_size = sizes[i];
     }
 
-    nn->temp_state = (float*)calloc(config->state_dim, sizeof(float));
-    nn->temp_deriv = (float*)calloc(config->state_dim, sizeof(float));
-    nn->delta = (float*)calloc(max_size, sizeof(float));
+    nn->temp_state = (float*)nimcp_calloc(config->state_dim, sizeof(float));
+    nn->temp_deriv = (float*)nimcp_calloc(config->state_dim, sizeof(float));
+    nn->delta = (float*)nimcp_calloc(max_size, sizeof(float));
 
     if (!nn->temp_state || !nn->temp_deriv || !nn->delta) {
         goto error;
@@ -644,11 +658,11 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     nn->stats.min_loss = INFINITY;
     nn->stats.current_learning_rate = config->learning_rate;
 
-    free(sizes);
+    nimcp_free(sizes);
     return nn;
 
 error:
-    free(sizes);
+    nimcp_free(sizes);
     physics_nn_destroy(nn);
     snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate internal buffers");
     return NULL;
@@ -671,16 +685,16 @@ void physics_nn_destroy(physics_nn_t* nn) {
             }
 
             nn_layer_t* layer = &nn->layers[i];
-            free(layer->weights);
-            free(layer->biases);
-            free(layer->weight_grads);
-            free(layer->bias_grads);
-            free(layer->weight_m);
-            free(layer->bias_m);
-            free(layer->weight_v);
-            free(layer->bias_v);
+            nimcp_free(layer->weights);
+            nimcp_free(layer->biases);
+            nimcp_free(layer->weight_grads);
+            nimcp_free(layer->bias_grads);
+            nimcp_free(layer->weight_m);
+            nimcp_free(layer->bias_m);
+            nimcp_free(layer->weight_v);
+            nimcp_free(layer->bias_v);
         }
-        free(nn->layers);
+        nimcp_free(nn->layers);
     }
 
     /* Free forward pass cache */
@@ -692,9 +706,9 @@ void physics_nn_destroy(physics_nn_t* nn) {
                                  (float)(i + 1) / (float)nn->num_layers);
             }
 
-            free(nn->layer_inputs[i]);
+            nimcp_free(nn->layer_inputs[i]);
         }
-        free(nn->layer_inputs);
+        nimcp_free(nn->layer_inputs);
     }
 
     if (nn->layer_outputs) {
@@ -705,9 +719,9 @@ void physics_nn_destroy(physics_nn_t* nn) {
                                  (float)(i + 1) / (float)nn->num_layers);
             }
 
-            free(nn->layer_outputs[i]);
+            nimcp_free(nn->layer_outputs[i]);
         }
-        free(nn->layer_outputs);
+        nimcp_free(nn->layer_outputs);
     }
 
     if (nn->pre_activations) {
@@ -718,17 +732,17 @@ void physics_nn_destroy(physics_nn_t* nn) {
                                  (float)(i + 1) / (float)nn->num_layers);
             }
 
-            free(nn->pre_activations[i]);
+            nimcp_free(nn->pre_activations[i]);
         }
-        free(nn->pre_activations);
+        nimcp_free(nn->pre_activations);
     }
 
     /* Free temporary buffers */
-    free(nn->temp_state);
-    free(nn->temp_deriv);
-    free(nn->delta);
+    nimcp_free(nn->temp_state);
+    nimcp_free(nn->temp_deriv);
+    nimcp_free(nn->delta);
 
-    free(nn);
+    nimcp_free(nn);
 }
 
 int physics_nn_reset(physics_nn_t* nn) {
@@ -1303,7 +1317,7 @@ int physics_nn_train_from_trajectory(
     uint32_t state_dim = nn->config.state_dim;
 
     /* Compute derivatives from trajectory using finite differences */
-    float* derivative = (float*)malloc(state_dim * sizeof(float));
+    float* derivative = (float*)nimcp_malloc(state_dim * sizeof(float));
     if (!derivative) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate derivative buffer");
         return -1;
@@ -1343,7 +1357,7 @@ int physics_nn_train_from_trajectory(
 
         physics_nn_train_result_t step_result;
         if (physics_nn_train_step(nn, trajectory[i], derivative, &step_result) != 0) {
-            free(derivative);
+            nimcp_free(derivative);
             return -1;
         }
 
@@ -1358,7 +1372,7 @@ int physics_nn_train_from_trajectory(
         }
     }
 
-    free(derivative);
+    nimcp_free(derivative);
 
     if (result) {
         result->loss = total_loss / (float)(num_points - 1);
@@ -1407,7 +1421,7 @@ int physics_nn_predict(
     uint32_t state_dim = nn->config.state_dim;
 
     /* Allocate trajectory */
-    prediction->trajectory = (float**)malloc(num_steps * sizeof(float*));
+    prediction->trajectory = (float**)nimcp_malloc(num_steps * sizeof(float*));
     if (!prediction->trajectory) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate trajectory");
         return -1;
@@ -1420,7 +1434,7 @@ int physics_nn_predict(
                              (float)(i + 1) / (float)num_steps);
         }
 
-        prediction->trajectory[i] = (float*)malloc(state_dim * sizeof(float));
+        prediction->trajectory[i] = (float*)nimcp_malloc(state_dim * sizeof(float));
         if (!prediction->trajectory[i]) {
             for (uint32_t j = 0; j < i; j++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -1429,9 +1443,9 @@ int physics_nn_predict(
                                      (float)(j + 1) / (float)i);
                 }
 
-                free(prediction->trajectory[j]);
+                nimcp_free(prediction->trajectory[j]);
             }
-            free(prediction->trajectory);
+            nimcp_free(prediction->trajectory);
             snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate trajectory step %u", i);
             return -1;
         }
@@ -1441,13 +1455,13 @@ int physics_nn_predict(
 
     /* Allocate Hamiltonians if using Hamiltonian constraint */
     if (nn->config.use_hamiltonian) {
-        prediction->hamiltonians = (float*)malloc(num_steps * sizeof(float));
+        prediction->hamiltonians = (float*)nimcp_malloc(num_steps * sizeof(float));
     } else {
         prediction->hamiltonians = NULL;
     }
 
     /* Copy initial state */
-    float* current_state = (float*)malloc(state_dim * sizeof(float));
+    float* current_state = (float*)nimcp_malloc(state_dim * sizeof(float));
     if (!current_state) {
         physics_nn_free_prediction(prediction);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate current state");
@@ -1538,7 +1552,7 @@ int physics_nn_predict(
         prediction->confidence = 1.0f;  /* No energy constraint, full confidence */
     }
 
-    free(current_state);
+    nimcp_free(current_state);
     return 0;
 }
 
@@ -1602,13 +1616,13 @@ void physics_nn_free_prediction(physics_nn_prediction_t* prediction) {
                                  (float)(i + 1) / (float)prediction->num_steps);
             }
 
-            free(prediction->trajectory[i]);
+            nimcp_free(prediction->trajectory[i]);
         }
-        free(prediction->trajectory);
+        nimcp_free(prediction->trajectory);
         prediction->trajectory = NULL;
     }
 
-    free(prediction->hamiltonians);
+    nimcp_free(prediction->hamiltonians);
     prediction->hamiltonians = NULL;
     prediction->num_steps = 0;
 }
@@ -1637,11 +1651,11 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
      */
 
     /* Combine into state for forward pass */
-    float* state = (float*)malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)malloc(nn->config.state_dim * sizeof(float));
+    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
     if (!state || !deriv) {
-        free(state);
-        free(deriv);
+        nimcp_free(state);
+        nimcp_free(deriv);
         return -1;
     }
 
@@ -1679,8 +1693,8 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
         q[i] += dt * deriv[i];  /* dq/dt = dH/dp (learned) */
     }
 
-    free(state);
-    free(deriv);
+    nimcp_free(state);
+    nimcp_free(deriv);
     return 0;
 }
 
@@ -1696,11 +1710,11 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
 
     uint32_t n = nn->config.state_dim / 2;
 
-    float* state = (float*)malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)malloc(nn->config.state_dim * sizeof(float));
+    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
     if (!state || !deriv) {
-        free(state);
-        free(deriv);
+        nimcp_free(state);
+        nimcp_free(deriv);
         return -1;
     }
 
@@ -1757,8 +1771,8 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
         p[i] += 0.5f * dt * deriv[n + i];
     }
 
-    free(state);
-    free(deriv);
+    nimcp_free(state);
+    nimcp_free(deriv);
     return 0;
 }
 
@@ -1774,13 +1788,13 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
 
     uint32_t n = nn->config.state_dim / 2;
 
-    float* state = (float*)malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)malloc(nn->config.state_dim * sizeof(float));
-    float* force_old = (float*)malloc(n * sizeof(float));
+    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* force_old = (float*)nimcp_malloc(n * sizeof(float));
     if (!state || !deriv || !force_old) {
-        free(state);
-        free(deriv);
-        free(force_old);
+        nimcp_free(state);
+        nimcp_free(deriv);
+        nimcp_free(force_old);
         return -1;
     }
 
@@ -1823,9 +1837,9 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
         p[i] += 0.5f * dt * (force_old[i] + deriv[n + i]);
     }
 
-    free(state);
-    free(deriv);
-    free(force_old);
+    nimcp_free(state);
+    nimcp_free(deriv);
+    nimcp_free(force_old);
     return 0;
 }
 

@@ -14,34 +14,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "portia_degradation"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for portia_degradation module */
-static nimcp_health_agent_t* g_portia_degradation_health_agent = NULL;
-
-/**
- * @brief Set health agent for portia_degradation heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void __attribute__((unused)) portia_degradation_set_health_agent(nimcp_health_agent_t* agent) {
-    g_portia_degradation_health_agent = agent;
-}
-
-/** @brief Send heartbeat from portia_degradation module */
-static inline void portia_degradation_heartbeat(const char* operation, float progress) {
-    if (g_portia_degradation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_portia_degradation_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_degradation)
 
 #include <string.h>
 #include <stdlib.h>
@@ -243,7 +218,7 @@ degradation_state_t* portia_degradation_init(
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&state->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&state->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in portia_degradation_init");
         nimcp_free(state);
@@ -258,7 +233,7 @@ degradation_state_t* portia_degradation_init(
     if (!state->features) {
         LOG_ERROR("Failed to allocate feature array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate feature array in portia_degradation_init");
-        pthread_mutex_destroy(&state->lock);
+        nimcp_mutex_destroy(&state->lock);
         nimcp_free(state);
         return NULL;
     }
@@ -314,7 +289,7 @@ void portia_degradation_cleanup(degradation_state_t* state) {
 
     LOG_INFO("Cleaning up degradation system");
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     if (state->features) {
         nimcp_free(state->features);
@@ -324,8 +299,8 @@ void portia_degradation_cleanup(degradation_state_t* state) {
     state->feature_count = 0;
     state->feature_capacity = 0;
 
-    pthread_mutex_unlock(&state->lock);
-    pthread_mutex_destroy(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
+    nimcp_mutex_destroy(&state->lock);
 
     nimcp_free(state);
 
@@ -361,7 +336,7 @@ nimcp_result_t portia_degradation_evaluate(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     state->resource_usage = resource_usage;
 
@@ -370,7 +345,7 @@ nimcp_result_t portia_degradation_evaluate(
     uint64_t time_since_change = now - state->last_change_time_ms;
 
     if (time_since_change < g_degradation_ctx.config.hysteresis_ms) {
-        pthread_mutex_unlock(&state->lock);
+        nimcp_mutex_unlock(&state->lock);
         LOG_DEBUG("Hysteresis active, skipping evaluation (time=%llu ms)",
                   (unsigned long long)time_since_change);
         return NIMCP_SUCCESS;
@@ -443,7 +418,7 @@ nimcp_result_t portia_degradation_evaluate(
         }
     }
 
-    pthread_mutex_unlock(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
 
     return result;
 }
@@ -470,13 +445,13 @@ nimcp_result_t portia_degradation_set_level(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     LOG_INFO("Forcing degradation level to %d (current=%d)", level, state->current_level);
 
     nimcp_result_t result = apply_degradation_level(state, level, bio_ctx);
 
-    pthread_mutex_unlock(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
 
     return result;
 }
@@ -497,7 +472,7 @@ nimcp_result_t portia_degradation_disable_feature(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
 
@@ -539,7 +514,7 @@ nimcp_result_t portia_degradation_disable_feature(
         }
     }
 
-    pthread_mutex_unlock(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
 
     return result;
 }
@@ -560,7 +535,7 @@ nimcp_result_t portia_degradation_enable_feature(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
 
@@ -595,7 +570,7 @@ nimcp_result_t portia_degradation_enable_feature(
         }
     }
 
-    pthread_mutex_unlock(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
 
     return result;
 }
@@ -618,7 +593,7 @@ nimcp_result_t portia_degradation_get_state(
 
     // Note: Using const_cast pattern for mutex - safe as we only read
     degradation_state_t* mutable_state = (degradation_state_t*)state;
-    pthread_mutex_lock(&mutable_state->lock);
+    nimcp_mutex_lock(&mutable_state->lock);
 
     if (level) {
         *level = state->current_level;
@@ -630,7 +605,7 @@ nimcp_result_t portia_degradation_get_state(
         *resource_usage = state->resource_usage;
     }
 
-    pthread_mutex_unlock(&mutable_state->lock);
+    nimcp_mutex_unlock(&mutable_state->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -656,13 +631,13 @@ nimcp_result_t portia_degradation_register_feature(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->lock);
+    nimcp_mutex_lock(&state->lock);
 
     // Check for duplicate
     for (uint32_t i = 0; i < state->feature_count; i++) {
         if (state->features[i].feature_id == feature->feature_id) {
             LOG_WARN("Feature 0x%04x already registered", feature->feature_id);
-            pthread_mutex_unlock(&state->lock);
+            nimcp_mutex_unlock(&state->lock);
             return NIMCP_ALREADY_EXISTS;
         }
     }
@@ -676,7 +651,7 @@ nimcp_result_t portia_degradation_register_feature(
         );
         if (!new_array) {
             LOG_ERROR("Failed to grow feature array");
-            pthread_mutex_unlock(&state->lock);
+            nimcp_mutex_unlock(&state->lock);
             return NIMCP_ERROR_MEMORY;
         }
 
@@ -708,7 +683,7 @@ nimcp_result_t portia_degradation_register_feature(
     bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_FEATURE_REGISTERED",
                   "Feature 0x%04x registered", feature->feature_id);
 
-    pthread_mutex_unlock(&state->lock);
+    nimcp_mutex_unlock(&state->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -736,7 +711,7 @@ nimcp_result_t portia_degradation_get_chain(
 
     // Note: Using const_cast pattern for mutex - safe as we only read
     degradation_state_t* mutable_state = (degradation_state_t*)state;
-    pthread_mutex_lock(&mutable_state->lock);
+    nimcp_mutex_lock(&mutable_state->lock);
 
     uint32_t count = (state->feature_count < chain_size) ?
                      state->feature_count : chain_size;
@@ -744,7 +719,7 @@ nimcp_result_t portia_degradation_get_chain(
     memcpy(chain, state->features, count * sizeof(degradation_feature_t));
     *actual_count = count;
 
-    pthread_mutex_unlock(&mutable_state->lock);
+    nimcp_mutex_unlock(&mutable_state->lock);
 
     LOG_DEBUG("Retrieved degradation chain: %u features", count);
 
@@ -768,7 +743,7 @@ nimcp_result_t portia_degradation_is_feature_enabled(
 
     // Note: Using const_cast pattern for mutex - safe as we only read
     degradation_state_t* mutable_state = (degradation_state_t*)state;
-    pthread_mutex_lock(&mutable_state->lock);
+    nimcp_mutex_lock(&mutable_state->lock);
 
     nimcp_result_t result = NIMCP_NOT_FOUND;  /* Return NOT_FOUND if feature not found */
 
@@ -780,7 +755,7 @@ nimcp_result_t portia_degradation_is_feature_enabled(
         }
     }
 
-    pthread_mutex_unlock(&mutable_state->lock);
+    nimcp_mutex_unlock(&mutable_state->lock);
 
     return result;
 }
@@ -815,7 +790,7 @@ nimcp_result_t portia_degradation_get_features_for_level(
 
     // Note: Using const_cast pattern for mutex - safe as we only read
     degradation_state_t* mutable_state = (degradation_state_t*)state;
-    pthread_mutex_lock(&mutable_state->lock);
+    nimcp_mutex_lock(&mutable_state->lock);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < state->feature_count && count < max_features; i++) {
@@ -829,7 +804,7 @@ nimcp_result_t portia_degradation_get_features_for_level(
 
     *actual_count = count;
 
-    pthread_mutex_unlock(&mutable_state->lock);
+    nimcp_mutex_unlock(&mutable_state->lock);
 
     LOG_DEBUG("Found %u features to disable at level %d", count, level);
 

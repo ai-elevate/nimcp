@@ -25,32 +25,41 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_audit"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_audit)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for security_audit module */
-static nimcp_health_agent_t* g_security_audit_health_agent = NULL;
+static mesh_participant_id_t g_security_audit_mesh_id = 0;
+static mesh_participant_registry_t* g_security_audit_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for security_audit heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_audit_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_audit_health_agent = agent;
+nimcp_error_t security_audit_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_audit_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_audit", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_audit";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_audit_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_audit_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_audit module */
-static inline void security_audit_heartbeat(const char* operation, float progress) {
-    if (g_security_audit_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_audit_health_agent, operation, progress);
+void security_audit_mesh_unregister(void) {
+    if (g_security_audit_mesh_registry && g_security_audit_mesh_id != 0) {
+        mesh_participant_unregister(g_security_audit_mesh_registry, g_security_audit_mesh_id);
+        g_security_audit_mesh_id = 0;
+        g_security_audit_mesh_registry = NULL;
     }
 }
 
@@ -61,6 +70,7 @@ static inline void security_audit_heartbeat(const char* operation, float progres
 #include <stdarg.h>
 #include <time.h>
 #include <pthread.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Internal Structures
@@ -101,7 +111,7 @@ static bool matches_query(const nimcp_audit_event_t* event, const nimcp_audit_qu
 //=============================================================================
 
 nimcp_audit_log_t* nimcp_audit_create(void) {
-    nimcp_audit_log_t* audit = calloc(1, sizeof(nimcp_audit_log_t));
+    nimcp_audit_log_t* audit = nimcp_calloc(1, sizeof(nimcp_audit_log_t));
     if (!audit) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_audit_create: failed to allocate audit log");
         return NULL;
@@ -109,7 +119,7 @@ nimcp_audit_log_t* nimcp_audit_create(void) {
 
     if (nimcp_mutex_init(&audit->lock, NULL) != NIMCP_SUCCESS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_audit_create: failed to init mutex");
-        free(audit);
+        nimcp_free(audit);
         return NULL;
     }
 
@@ -140,7 +150,7 @@ nimcp_result_t nimcp_audit_init(
 
     // Allocate event buffer
     audit->capacity = audit->config.max_memory_entries;
-    audit->events = calloc(audit->capacity, sizeof(nimcp_audit_event_t));
+    audit->events = nimcp_calloc(audit->capacity, sizeof(nimcp_audit_event_t));
     if (!audit->events) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_audit_init: failed to allocate events buffer");
         nimcp_mutex_unlock(&audit->lock);
@@ -153,7 +163,7 @@ nimcp_result_t nimcp_audit_init(
         audit->log_file = fopen(audit->config.log_file_path, "a");
         if (!audit->log_file) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_audit_init: failed to open log file");
-            free(audit->events);
+            nimcp_free(audit->events);
             audit->events = NULL;
             nimcp_mutex_unlock(&audit->lock);
             return NIMCP_IO_ERROR;
@@ -182,7 +192,7 @@ void nimcp_audit_destroy(nimcp_audit_log_t* audit) {
     if (audit->events) {
         // Clear sensitive data
         memset(audit->events, 0, audit->capacity * sizeof(nimcp_audit_event_t));
-        free(audit->events);
+        nimcp_free(audit->events);
         audit->events = NULL;
     }
 
@@ -190,7 +200,7 @@ void nimcp_audit_destroy(nimcp_audit_log_t* audit) {
     nimcp_mutex_unlock(&audit->lock);
     nimcp_mutex_destroy(&audit->lock);
 
-    free(audit);
+    nimcp_free(audit);
 }
 
 nimcp_audit_config_t nimcp_audit_default_config(void) {
@@ -435,7 +445,7 @@ nimcp_result_t nimcp_audit_query(
     }
 
     // Allocate result array
-    *results = calloc(matches, sizeof(nimcp_audit_event_t));
+    *results = nimcp_calloc(matches, sizeof(nimcp_audit_event_t));
     if (!*results) {
         nimcp_mutex_unlock(&audit->lock);
         return NIMCP_NO_MEMORY;
@@ -475,7 +485,7 @@ nimcp_result_t nimcp_audit_get_recent(
         return NIMCP_SUCCESS;
     }
 
-    *events = calloc(to_copy, sizeof(nimcp_audit_event_t));
+    *events = nimcp_calloc(to_copy, sizeof(nimcp_audit_event_t));
     if (!*events) {
         nimcp_mutex_unlock(&audit->lock);
         return NIMCP_NO_MEMORY;

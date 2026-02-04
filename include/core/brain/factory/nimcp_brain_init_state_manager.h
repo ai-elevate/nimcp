@@ -19,7 +19,7 @@
  * // Checkpoint brain state
  * size_t size;
  * brain_checkpoint_state(brain, NULL, &size);  // Query size
- * uint8_t* buffer = malloc(size);
+ * uint8_t* buffer = nimcp_malloc(size);
  * brain_checkpoint_state(brain, buffer, &size);
  *
  * // Restore from checkpoint
@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {

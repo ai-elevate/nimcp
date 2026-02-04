@@ -16,32 +16,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_cortical_bridge module */
-static nimcp_health_agent_t* g_dragonfly_cortical_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_cortical_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_cortical_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_cortical_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_cortical_bridge module */
-static inline void dragonfly_cortical_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_cortical_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_cortical_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_cortical_bridge)
 
 #define LOG_MODULE "DRAGONFLY_CORTICAL_BRIDGE"
 
@@ -223,7 +201,7 @@ dragonfly_cortical_bridge_t* dragonfly_cortical_bridge_create(
     tsdn_population_t* tsdn,
     const dragonfly_cortical_config_t* config
 ) {
-    dragonfly_cortical_bridge_t* bridge = calloc(1, sizeof(*bridge));
+    dragonfly_cortical_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cortical_bridge_create: failed to allocate bridge");
         return NULL;
@@ -232,7 +210,7 @@ dragonfly_cortical_bridge_t* dragonfly_cortical_bridge_create(
     /* Apply configuration */
     if (config) {
         if (dragonfly_cortical_bridge_validate_config(config) != 0) {
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -267,7 +245,7 @@ void dragonfly_cortical_bridge_destroy(dragonfly_cortical_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_cortical");
     bridge->initialized = false;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dragonfly_cortical_bridge_reset(dragonfly_cortical_bridge_t* bridge) {

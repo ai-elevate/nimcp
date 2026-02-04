@@ -299,6 +299,7 @@ float bcm_quantum_update(
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 /**
  * @brief Energy function user data
@@ -419,7 +420,7 @@ bcm_quantum_bridge_t* bcm_quantum_bridge_create(const bcm_quantum_config_t* conf
      * HOW:  Allocate memory, create annealer
      */
 
-    bcm_quantum_bridge_t* bridge = (bcm_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    bcm_quantum_bridge_t* bridge = (bcm_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     /* WHAT: Set configuration */
@@ -438,7 +439,7 @@ bcm_quantum_bridge_t* bcm_quantum_bridge_create(const bcm_quantum_config_t* conf
 
     bridge->annealer = quantum_annealer_create(&qa_config);
     if (!bridge->annealer) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -459,7 +460,7 @@ void bcm_quantum_bridge_destroy(bcm_quantum_bridge_t* bridge) {
         quantum_annealer_destroy(bridge->annealer);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool bcm_quantum_is_enabled(const bcm_quantum_bridge_t* bridge) {

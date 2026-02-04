@@ -205,7 +205,7 @@ static int find_region_by_id(uint32_t id)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_INVALID_STATE;
 }
 
 /**
@@ -227,7 +227,7 @@ static int find_available_slot(void)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_NULL_POINTER;
 }
 
 /**

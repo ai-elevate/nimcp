@@ -29,31 +29,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_memory_node)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_memory_node module */
-static nimcp_health_agent_t* g_pr_memory_node_health_agent = NULL;
+static mesh_participant_id_t g_pr_memory_node_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_memory_node_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_memory_node heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_memory_node_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_memory_node_health_agent = agent;
+nimcp_error_t pr_memory_node_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_memory_node_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_memory_node", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_memory_node";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_memory_node_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_memory_node_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_memory_node module */
-static inline void pr_memory_node_heartbeat(const char* operation, float progress) {
-    if (g_pr_memory_node_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_memory_node_health_agent, operation, progress);
+void pr_memory_node_mesh_unregister(void) {
+    if (g_pr_memory_node_mesh_registry && g_pr_memory_node_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_memory_node_mesh_registry, g_pr_memory_node_mesh_id);
+        g_pr_memory_node_mesh_id = 0;
+        g_pr_memory_node_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_memory_node module (instance-level) */
 static inline void pr_memory_node_heartbeat_instance(
@@ -239,7 +253,7 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
     pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_crea", 0.0f);
 
 
-    pr_node_manager_t manager = (pr_node_manager_t)malloc(
+    pr_node_manager_t manager = (pr_node_manager_t)nimcp_malloc(
         sizeof(struct pr_node_manager_struct));
     if (!manager) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manager");
@@ -266,10 +280,10 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
 
     // Allocate tracking array if requested
     if (cfg.track_nodes && cfg.max_tracked_nodes > 0) {
-        manager->tracked_nodes = (pr_memory_node_t**)calloc(
+        manager->tracked_nodes = (pr_memory_node_t**)nimcp_calloc(
             cfg.max_tracked_nodes, sizeof(pr_memory_node_t*));
         if (!manager->tracked_nodes) {
-            free(manager);
+            nimcp_free(manager);
             return NULL;
         }
         manager->max_tracked = cfg.max_tracked_nodes;
@@ -289,10 +303,10 @@ void pr_node_manager_destroy(pr_node_manager_t manager) {
 
 
     if (manager->tracked_nodes) {
-        free(manager->tracked_nodes);
+        nimcp_free(manager->tracked_nodes);
     }
 
-    free(manager);
+    nimcp_free(manager);
 }
 
 unified_mem_manager_t pr_node_manager_get_mem_manager(pr_node_manager_t manager) {
@@ -375,7 +389,7 @@ pr_memory_node_t* pr_memory_node_create(
     }
 
     // Allocate node structure
-    pr_memory_node_t* node = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
+    pr_memory_node_t* node = (pr_memory_node_t*)nimcp_malloc(sizeof(pr_memory_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate node");
 
@@ -401,7 +415,7 @@ pr_memory_node_t* pr_memory_node_create(
 
         node->data_handle = unified_mem_alloc(manager->mem_manager, &req);
         if (!node->data_handle) {
-            free(node);
+            nimcp_free(node);
             return NULL;
         }
     } else if (data_size > 0) {
@@ -496,7 +510,7 @@ void pr_memory_node_destroy(pr_memory_node_t* node) {
     }
 
     // Free node structure
-    free(node);
+    nimcp_free(node);
 }
 
 pr_memory_node_t* pr_memory_node_clone(
@@ -512,7 +526,7 @@ pr_memory_node_t* pr_memory_node_clone(
     pr_memory_node_heartbeat("pr_memory_no_clone", 0.0f);
 
 
-    pr_memory_node_t* clone = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
+    pr_memory_node_t* clone = (pr_memory_node_t*)nimcp_malloc(sizeof(pr_memory_node_t));
     if (!clone) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate clone");
 
@@ -529,7 +543,7 @@ pr_memory_node_t* pr_memory_node_clone(
     if (node->data_handle) {
         clone->data_handle = unified_mem_clone(node->data_handle);
         if (!clone->data_handle) {
-            free(clone);
+            nimcp_free(clone);
             return NULL;
         }
     }

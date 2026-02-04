@@ -24,31 +24,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(transactive)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for transactive module */
-static nimcp_health_agent_t* g_transactive_health_agent = NULL;
+static mesh_participant_id_t g_transactive_mesh_id = 0;
+static mesh_participant_registry_t* g_transactive_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for transactive heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void transactive_set_health_agent(nimcp_health_agent_t* agent) {
-    g_transactive_health_agent = agent;
+nimcp_error_t transactive_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_transactive_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "transactive", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "transactive";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_transactive_mesh_id);
+    if (err == NIMCP_SUCCESS) g_transactive_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from transactive module */
-static inline void transactive_heartbeat(const char* operation, float progress) {
-    if (g_transactive_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_transactive_health_agent, operation, progress);
+void transactive_mesh_unregister(void) {
+    if (g_transactive_mesh_registry && g_transactive_mesh_id != 0) {
+        mesh_participant_unregister(g_transactive_mesh_registry, g_transactive_mesh_id);
+        g_transactive_mesh_id = 0;
+        g_transactive_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from transactive module (instance-level) */
 static inline void transactive_heartbeat_instance(
@@ -325,7 +339,7 @@ static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
         new_capacity = TRANSACTIVE_MAX_DELEGATIONS;
     }
 
-    delegation_state_t* new_delegations = (delegation_state_t*)realloc(
+    delegation_state_t* new_delegations = (delegation_state_t*)nimcp_realloc(
         tm->delegations,
         new_capacity * sizeof(delegation_state_t)
     );
@@ -384,11 +398,11 @@ static void free_agent(transactive_agent_t* agent) {
     if (!agent) return;
 
     if (agent->agent_name) {
-        free(agent->agent_name);
+        nimcp_free(agent->agent_name);
         agent->agent_name = NULL;
     }
     if (agent->expertise) {
-        free(agent->expertise);
+        nimcp_free(agent->expertise);
         agent->expertise = NULL;
     }
 }
@@ -478,7 +492,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
         return NULL;
     }
 
-    transactive_memory_t tm = (transactive_memory_t)calloc(1, sizeof(*tm));
+    transactive_memory_t tm = (transactive_memory_t)nimcp_calloc(1, sizeof(*tm));
     if (!tm) {
         set_error("Failed to allocate transactive memory");
         return NULL;
@@ -488,40 +502,40 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
 
     // Allocate agent hash table
     tm->agent_table_size = cfg.initial_agent_capacity;
-    tm->agent_table = (agent_entry_t**)calloc(
+    tm->agent_table = (agent_entry_t**)nimcp_calloc(
         tm->agent_table_size,
         sizeof(agent_entry_t*)
     );
     if (!tm->agent_table) {
         set_error("Failed to allocate agent table");
-        free(tm);
+        nimcp_free(tm);
         return NULL;
     }
 
     // Allocate domain hash table
     tm->domain_table_size = cfg.initial_domain_capacity;
-    tm->domain_table = (domain_entry_t**)calloc(
+    tm->domain_table = (domain_entry_t**)nimcp_calloc(
         tm->domain_table_size,
         sizeof(domain_entry_t*)
     );
     if (!tm->domain_table) {
         set_error("Failed to allocate domain table");
-        free(tm->agent_table);
-        free(tm);
+        nimcp_free(tm->agent_table);
+        nimcp_free(tm);
         return NULL;
     }
 
     // Allocate delegation array
     tm->delegation_capacity = 16;
-    tm->delegations = (delegation_state_t*)calloc(
+    tm->delegations = (delegation_state_t*)nimcp_calloc(
         tm->delegation_capacity,
         sizeof(delegation_state_t)
     );
     if (!tm->delegations) {
         set_error("Failed to allocate delegation array");
-        free(tm->domain_table);
-        free(tm->agent_table);
-        free(tm);
+        nimcp_free(tm->domain_table);
+        nimcp_free(tm->agent_table);
+        nimcp_free(tm);
         return NULL;
     }
 
@@ -551,11 +565,11 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
         while (entry) {
             agent_entry_t* next = entry->next;
             free_agent(&entry->agent);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
-    free(tm->agent_table);
+    nimcp_free(tm->agent_table);
 
     // Free domains
     for (size_t i = 0; i < tm->domain_table_size; i++) {
@@ -569,18 +583,18 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
         while (entry) {
             domain_entry_t* next = entry->next;
             if (entry->name) {
-                free(entry->name);
+                nimcp_free(entry->name);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
-    free(tm->domain_table);
+    nimcp_free(tm->domain_table);
 
     // Free delegations
-    free(tm->delegations);
+    nimcp_free(tm->delegations);
 
-    free(tm);
+    nimcp_free(tm);
 }
 
 //=============================================================================
@@ -627,7 +641,7 @@ NIMCP_EXPORT transactive_error_t transactive_register_agent_with_expertise(
     }
 
     // Create entry
-    agent_entry_t* entry = (agent_entry_t*)calloc(1, sizeof(agent_entry_t));
+    agent_entry_t* entry = (agent_entry_t*)nimcp_calloc(1, sizeof(agent_entry_t));
     if (!entry) {
         set_error("Failed to allocate agent entry");
         return TRANSACTIVE_ERROR_NO_MEMORY;
@@ -640,7 +654,7 @@ NIMCP_EXPORT transactive_error_t transactive_register_agent_with_expertise(
     if (agent_name) {
         entry->agent.agent_name = strdup(agent_name);
         if (!entry->agent.agent_name) {
-            free(entry);
+            nimcp_free(entry);
             set_error("Failed to allocate agent name");
             return TRANSACTIVE_ERROR_NO_MEMORY;
         }
@@ -649,13 +663,13 @@ NIMCP_EXPORT transactive_error_t transactive_register_agent_with_expertise(
     // Allocate expertise array
     size_t expertise_capacity = num_expertise > 0 ?
         num_expertise : TRANSACTIVE_MAX_EXPERTISE_PER_AGENT / 4;
-    entry->agent.expertise = (expertise_entry_t*)calloc(
+    entry->agent.expertise = (expertise_entry_t*)nimcp_calloc(
         expertise_capacity,
         sizeof(expertise_entry_t)
     );
     if (!entry->agent.expertise) {
-        if (entry->agent.agent_name) free(entry->agent.agent_name);
-        free(entry);
+        if (entry->agent.agent_name) nimcp_free(entry->agent.agent_name);
+        nimcp_free(entry);
         set_error("Failed to allocate expertise array");
         return TRANSACTIVE_ERROR_NO_MEMORY;
     }
@@ -707,7 +721,7 @@ NIMCP_EXPORT transactive_error_t transactive_unregister_agent(
             *pp = entry->next;
 
             free_agent(&entry->agent);
-            free(entry);
+            nimcp_free(entry);
 
             tm->num_agents--;
             tm->stats.num_agents = tm->num_agents;
@@ -867,7 +881,7 @@ NIMCP_EXPORT transactive_error_t transactive_update_expertise(
                 new_capacity = TRANSACTIVE_MAX_EXPERTISE_PER_AGENT;
             }
 
-            expertise_entry_t* new_expertise = (expertise_entry_t*)realloc(
+            expertise_entry_t* new_expertise = (expertise_entry_t*)nimcp_realloc(
                 entry->agent.expertise,
                 new_capacity * sizeof(expertise_entry_t)
             );
@@ -1086,7 +1100,7 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
         float score;
     } score_pair_t;
 
-    score_pair_t* scores = (score_pair_t*)calloc(tm->num_agents, sizeof(score_pair_t));
+    score_pair_t* scores = (score_pair_t*)nimcp_calloc(tm->num_agents, sizeof(score_pair_t));
     if (!scores && tm->num_agents > 0) {
         set_error("Failed to allocate score array");
         return TRANSACTIVE_ERROR_NO_MEMORY;
@@ -1162,13 +1176,13 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
     }
 
     if (result_count > 0) {
-        result->recommended_agents = (uint64_t*)malloc(result_count * sizeof(uint64_t));
-        result->agent_scores = (float*)malloc(result_count * sizeof(float));
+        result->recommended_agents = (uint64_t*)nimcp_malloc(result_count * sizeof(uint64_t));
+        result->agent_scores = (float*)nimcp_malloc(result_count * sizeof(float));
 
         if (!result->recommended_agents || !result->agent_scores) {
-            free(result->recommended_agents);
-            free(result->agent_scores);
-            free(scores);
+            nimcp_free(result->recommended_agents);
+            nimcp_free(result->agent_scores);
+            nimcp_free(scores);
             result->recommended_agents = NULL;
             result->agent_scores = NULL;
             set_error("Failed to allocate result arrays");
@@ -1203,7 +1217,7 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
     }
     result->coverage = fminf(1.0f, total_coverage);
 
-    free(scores);
+    nimcp_free(scores);
     tm->stats.total_lookups++;
 
     set_error(NULL);
@@ -1256,8 +1270,8 @@ NIMCP_EXPORT transactive_error_t transactive_get_top_experts(
 NIMCP_EXPORT void transactive_free_directory_result(directory_result_t* result) {
     if (!result) return;
 
-    free(result->recommended_agents);
-    free(result->agent_scores);
+    nimcp_free(result->recommended_agents);
+    nimcp_free(result->agent_scores);
     result->recommended_agents = NULL;
     result->agent_scores = NULL;
     result->num_recommendations = 0;
@@ -1832,7 +1846,7 @@ NIMCP_EXPORT transactive_error_t transactive_register_domain(
     }
 
     // Create entry
-    domain_entry_t* entry = (domain_entry_t*)calloc(1, sizeof(domain_entry_t));
+    domain_entry_t* entry = (domain_entry_t*)nimcp_calloc(1, sizeof(domain_entry_t));
     if (!entry) {
         set_error("Failed to allocate domain entry");
         return TRANSACTIVE_ERROR_NO_MEMORY;

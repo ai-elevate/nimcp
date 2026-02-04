@@ -16,35 +16,9 @@
 #include <math.h>
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for recovery_evolution module */
-static nimcp_health_agent_t* g_recovery_evolution_health_agent = NULL;
-
-/**
- * @brief Set health agent for recovery_evolution heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void recovery_evolution_set_health_agent(nimcp_health_agent_t* agent) {
-    g_recovery_evolution_health_agent = agent;
-}
-
-/** @brief Send heartbeat from recovery_evolution module */
-static inline void recovery_evolution_heartbeat(const char* operation, float progress) {
-    if (g_recovery_evolution_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_recovery_evolution_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_evolution)
 
 //=============================================================================
 // Internal Structures
@@ -832,7 +806,7 @@ bool re_transfer_from(re_context_t* ctx, const re_context_t* source_ctx, float t
     if (!ctx || !source_ctx || transfer_rate <= 0.0f || transfer_rate > 1.0f) return false;
 
     nimcp_mutex_lock(&ctx->lock);
-    pthread_mutex_lock((pthread_mutex_t*)&source_ctx->lock);
+    nimcp_mutex_lock((nimcp_mutex_t*)&source_ctx->lock);
 
     // Transfer Q-values with blend
     for (uint32_t i = 0; i < source_ctx->q_table_size; i++) {
@@ -845,7 +819,7 @@ bool re_transfer_from(re_context_t* ctx, const re_context_t* source_ctx, float t
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)&source_ctx->lock);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&source_ctx->lock);
     nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("RE", "Transferred knowledge with rate %.2f", transfer_rate);

@@ -22,33 +22,10 @@
 #include <stdatomic.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for gpu_health module */
-static nimcp_health_agent_t* g_gpu_health_health_agent = NULL;
-
-/**
- * @brief Set health agent for gpu_health heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void gpu_health_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gpu_health_health_agent = agent;
-}
-
-/** @brief Send heartbeat from gpu_health module */
-static inline void gpu_health_heartbeat(const char* operation, float progress) {
-    if (g_gpu_health_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gpu_health_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_health)
 
 /*==============================================================================
  * CONSTANTS AND MACROS
@@ -242,7 +219,7 @@ void gpu_health_get_default_config(gpu_health_config_t* config) {
  *============================================================================*/
 
 gpu_health_monitor_t* gpu_health_monitor_create(const gpu_health_config_t* config) {
-    gpu_health_monitor_t* monitor = calloc(1, sizeof(gpu_health_monitor_t));
+    gpu_health_monitor_t* monitor = nimcp_calloc(1, sizeof(gpu_health_monitor_t));
     if (!monitor) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU health monitor");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
@@ -335,10 +312,10 @@ void gpu_health_monitor_destroy(gpu_health_monitor_t* monitor) {
         for (int i = 0; i < MAX_CHECKPOINTS; i++) {
             if (monitor->checkpoints[i].valid) {
                 for (size_t j = 0; j < monitor->checkpoints[i].num_tensors; j++) {
-                    free(monitor->checkpoints[i].host_copies[j]);
+                    nimcp_free(monitor->checkpoints[i].host_copies[j]);
                 }
-                free(monitor->checkpoints[i].host_copies);
-                free(monitor->checkpoints[i].sizes);
+                nimcp_free(monitor->checkpoints[i].host_copies);
+                nimcp_free(monitor->checkpoints[i].sizes);
             }
         }
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
@@ -350,7 +327,7 @@ void gpu_health_monitor_destroy(gpu_health_monitor_t* monitor) {
     if (monitor->state_mutex) nimcp_mutex_free(monitor->state_mutex);
 
     monitor->magic = 0;
-    free(monitor);
+    nimcp_free(monitor);
 
     nimcp_log(LOG_LEVEL_DEBUG, "GPU health monitor destroyed");
 }
@@ -940,7 +917,7 @@ int gpu_tensor_validate(
 
 #ifdef NIMCP_CUDA_ENABLED
     /* Allocate host buffer and copy from device */
-    void* host_buffer = malloc(num_elements * element_size);
+    void* host_buffer = nimcp_malloc(num_elements * element_size);
     if (!host_buffer) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
@@ -953,7 +930,7 @@ int gpu_tensor_validate(
                                   num_elements * element_size,
                                   cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
-        free(host_buffer);
+        nimcp_free(host_buffer);
         return -1;
     }
 
@@ -972,7 +949,7 @@ int gpu_tensor_validate(
         }
     }
 
-    free(host_buffer);
+    nimcp_free(host_buffer);
     return 0;
 #else
     /* No CUDA - can't validate GPU tensors */
@@ -995,7 +972,7 @@ int gpu_tensor_sanitize(
 
 #ifdef NIMCP_CUDA_ENABLED
     /* Allocate host buffer and copy from device */
-    void* host_buffer = malloc(num_elements * element_size);
+    void* host_buffer = nimcp_malloc(num_elements * element_size);
     if (!host_buffer) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
@@ -1008,7 +985,7 @@ int gpu_tensor_sanitize(
                                   num_elements * element_size,
                                   cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
-        free(host_buffer);
+        nimcp_free(host_buffer);
         return -1;
     }
 
@@ -1043,12 +1020,12 @@ int gpu_tensor_sanitize(
                         num_elements * element_size,
                         cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
-            free(host_buffer);
+            nimcp_free(host_buffer);
             return -1;
         }
     }
 
-    free(host_buffer);
+    nimcp_free(host_buffer);
     return replaced;
 #else
     return -1;
@@ -1309,7 +1286,7 @@ gpu_memory_pool_t* gpu_memory_pool_create(
     gpu_health_monitor_t* monitor,
     const gpu_memory_pool_config_t* config
 ) {
-    gpu_memory_pool_t* pool = calloc(1, sizeof(gpu_memory_pool_t));
+    gpu_memory_pool_t* pool = nimcp_calloc(1, sizeof(gpu_memory_pool_t));
     if (!pool) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU memory pool");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
@@ -1332,7 +1309,7 @@ gpu_memory_pool_t* gpu_memory_pool_create(
 
     if (!pool->pool_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create GPU memory pool mutex");
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -1356,7 +1333,7 @@ void gpu_memory_pool_destroy(gpu_memory_pool_t* pool) {
     }
 
     pool->magic = 0;
-    free(pool);
+    nimcp_free(pool);
 
     nimcp_log(LOG_LEVEL_DEBUG, "GPU memory pool destroyed");
 }
@@ -1377,7 +1354,7 @@ void* gpu_memory_pool_alloc(gpu_memory_pool_t* pool, size_t size) {
     }
 #else
     /* Stub: allocate host memory as placeholder */
-    ptr = malloc(size);
+    ptr = nimcp_malloc(size);
     if (!ptr) {
         pool->stats.alloc_failures++;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
@@ -1404,7 +1381,7 @@ void gpu_memory_pool_free(gpu_memory_pool_t* pool, void* ptr) {
 #ifdef NIMCP_CUDA_ENABLED
     cudaFree(ptr);
 #else
-    free(ptr);
+    nimcp_free(ptr);
 #endif
 
     nimcp_mutex_lock(pool->pool_mutex);
@@ -1494,12 +1471,12 @@ int gpu_checkpoint_create(
     cp->timestamp_us = get_timestamp_us();
 
     /* Allocate arrays */
-    cp->host_copies = calloc(num_tensors, sizeof(void*));
-    cp->sizes = calloc(num_tensors, sizeof(size_t));
+    cp->host_copies = nimcp_calloc(num_tensors, sizeof(void*));
+    cp->sizes = nimcp_calloc(num_tensors, sizeof(size_t));
 
     if (!cp->host_copies || !cp->sizes) {
-        free(cp->host_copies);
-        free(cp->sizes);
+        nimcp_free(cp->host_copies);
+        nimcp_free(cp->sizes);
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
         return -1;
     }
@@ -1509,7 +1486,7 @@ int gpu_checkpoint_create(
     /* Copy tensors to host */
     bool success = true;
     for (size_t i = 0; i < num_tensors && success; i++) {
-        cp->host_copies[i] = malloc(sizes[i]);
+        cp->host_copies[i] = nimcp_malloc(sizes[i]);
         if (!cp->host_copies[i]) {
             success = false;
             break;
@@ -1530,10 +1507,10 @@ int gpu_checkpoint_create(
     if (!success) {
         /* Cleanup on failure */
         for (size_t i = 0; i < num_tensors; i++) {
-            free(cp->host_copies[i]);
+            nimcp_free(cp->host_copies[i]);
         }
-        free(cp->host_copies);
-        free(cp->sizes);
+        nimcp_free(cp->host_copies);
+        nimcp_free(cp->sizes);
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
         return -1;
     }
@@ -1617,10 +1594,10 @@ int gpu_checkpoint_delete(
 
             /* Free host copies */
             for (size_t j = 0; j < cp->num_tensors; j++) {
-                free(cp->host_copies[j]);
+                nimcp_free(cp->host_copies[j]);
             }
-            free(cp->host_copies);
-            free(cp->sizes);
+            nimcp_free(cp->host_copies);
+            nimcp_free(cp->sizes);
 
             cp->valid = false;
 

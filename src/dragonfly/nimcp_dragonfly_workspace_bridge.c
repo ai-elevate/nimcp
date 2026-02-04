@@ -12,32 +12,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_workspace_bridge module */
-static nimcp_health_agent_t* g_dragonfly_workspace_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_workspace_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_workspace_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_workspace_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_workspace_bridge module */
-static inline void dragonfly_workspace_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_workspace_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_workspace_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_workspace_bridge)
 
 #define LOG_MODULE "DRAGONFLY_WORKSPACE_BRIDGE"
 
@@ -136,7 +114,7 @@ dragonfly_workspace_bridge_t* dragonfly_ws_bridge_create(
     void* global_workspace,
     const dragonfly_ws_config_t* config
 ) {
-    dragonfly_workspace_bridge_t* bridge = calloc(1, sizeof(dragonfly_workspace_bridge_t));
+    dragonfly_workspace_bridge_t* bridge = nimcp_calloc(1, sizeof(dragonfly_workspace_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_ws_bridge_create: failed to allocate bridge");
@@ -147,7 +125,7 @@ dragonfly_workspace_bridge_t* dragonfly_ws_bridge_create(
         if (dragonfly_ws_bridge_validate_config(config) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "dragonfly_ws_bridge_create: invalid configuration");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -170,7 +148,7 @@ dragonfly_workspace_bridge_t* dragonfly_ws_bridge_create(
 void dragonfly_ws_bridge_destroy(dragonfly_workspace_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_workspace");
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dragonfly_ws_bridge_reset(dragonfly_workspace_bridge_t* bridge) {

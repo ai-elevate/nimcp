@@ -19,33 +19,10 @@
 #include <ctype.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for graphql_utils module */
-static nimcp_health_agent_t* g_graphql_utils_health_agent = NULL;
-
-/**
- * @brief Set health agent for graphql_utils heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void graphql_utils_set_health_agent(nimcp_health_agent_t* agent) {
-    g_graphql_utils_health_agent = agent;
-}
-
-/** @brief Send heartbeat from graphql_utils module */
-static inline void graphql_utils_heartbeat(const char* operation, float progress) {
-    if (g_graphql_utils_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_graphql_utils_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graphql_utils)
 
 //=============================================================================
 // Internal Constants
@@ -120,7 +97,7 @@ nimcp_graphql_executor_t* nimcp_graphql_executor_create(
         return NULL;
     }
 
-    nimcp_graphql_executor_t* exec = (nimcp_graphql_executor_t*)calloc(
+    nimcp_graphql_executor_t* exec = (nimcp_graphql_executor_t*)nimcp_calloc(
         1, sizeof(nimcp_graphql_executor_t));
     if (!exec) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
@@ -150,7 +127,7 @@ void nimcp_graphql_executor_destroy(nimcp_graphql_executor_t* exec)
         nimcp_graphql_filter_destroy(exec->current_filter);
     }
 
-    free(exec);
+    nimcp_free(exec);
 }
 
 nimcp_error_t nimcp_graphql_executor_set_graph(
@@ -292,7 +269,7 @@ static void* executor_default_execute(nimcp_graphql_executor_t* self,
     }
 
     // Create result structure
-    nimcp_graphql_result_t* result = (nimcp_graphql_result_t*)calloc(
+    nimcp_graphql_result_t* result = (nimcp_graphql_result_t*)nimcp_calloc(
         1, sizeof(nimcp_graphql_result_t));
     if (!result) {
         if (filter) nimcp_graphql_filter_destroy(filter);
@@ -312,7 +289,7 @@ static void* executor_default_execute(nimcp_graphql_executor_t* self,
         case NIMCP_GRAPHQL_QUERY_NEIGHBORS: {
             // Return vertex IDs as placeholder
             if (query->num_vertices > 0) {
-                result->data = malloc(query->num_vertices * sizeof(int));
+                result->data = nimcp_malloc(query->num_vertices * sizeof(int));
                 if (result->data) {
                     memcpy(result->data, query->vertex_ids,
                            query->num_vertices * sizeof(int));
@@ -327,7 +304,7 @@ static void* executor_default_execute(nimcp_graphql_executor_t* self,
         case NIMCP_GRAPHQL_QUERY_CENTRALITY:
         case NIMCP_GRAPHQL_QUERY_CLUSTERING: {
             // Return float scores as placeholder
-            result->data = calloc(1, sizeof(float));
+            result->data = nimcp_calloc(1, sizeof(float));
             if (result->data) {
                 result->num_elements = 1;
                 result->element_size = sizeof(float);
@@ -381,7 +358,7 @@ static bool executor_default_evaluate_filter(nimcp_graphql_executor_t* self,
 
 nimcp_graph_query_t* nimcp_graph_query_create(void)
 {
-    nimcp_graph_query_t* query = (nimcp_graph_query_t*)calloc(
+    nimcp_graph_query_t* query = (nimcp_graph_query_t*)nimcp_calloc(
         1, sizeof(nimcp_graph_query_t));
     if (!query) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
@@ -400,14 +377,14 @@ void nimcp_graph_query_destroy(nimcp_graph_query_t* query)
     }
 
     if (query->vertex_ids) {
-        free(query->vertex_ids);
+        nimcp_free(query->vertex_ids);
     }
 
     if (query->result) {
         nimcp_graphql_result_destroy(query->result);
     }
 
-    free(query);
+    nimcp_free(query);
 }
 
 nimcp_error_t nimcp_graph_query_set_type(
@@ -459,12 +436,12 @@ nimcp_error_t nimcp_graph_query_set_vertices(
 
     // Free existing vertices
     if (query->vertex_ids) {
-        free(query->vertex_ids);
+        nimcp_free(query->vertex_ids);
         query->vertex_ids = NULL;
     }
 
     if (num_vertices > 0 && vertex_ids) {
-        query->vertex_ids = (int*)malloc(num_vertices * sizeof(int));
+        query->vertex_ids = (int*)nimcp_malloc(num_vertices * sizeof(int));
         if (!query->vertex_ids) {
             return NIMCP_ERROR_NO_MEMORY;
         }
@@ -571,7 +548,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_parse_filter(const char* filter_str)
         return NULL;
     }
 
-    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
+    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)nimcp_calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
@@ -581,7 +558,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_parse_filter(const char* filter_str)
 
     const char* ptr = filter_str;
     if (!parse_comparison(&ptr, node)) {
-        free(node);
+        nimcp_free(node);
         return NULL;
     }
 
@@ -623,7 +600,7 @@ void nimcp_graphql_filter_destroy(nimcp_graphql_filter_node_t* filter)
         nimcp_graphql_filter_destroy(filter->right);
     }
 
-    free(filter);
+    nimcp_free(filter);
 }
 
 bool nimcp_graphql_filter_evaluate(
@@ -717,7 +694,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_filter_create_comparison(
     nimcp_graphql_filter_op_t op,
     float value)
 {
-    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
+    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)nimcp_calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
@@ -745,7 +722,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_filter_create_logical(
         return NULL;
     }
 
-    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
+    nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)nimcp_calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
@@ -775,10 +752,10 @@ void nimcp_graphql_result_destroy(nimcp_graphql_result_t* result)
             // TODO: Use nimcp_gpu_free when integrated with GPU graph
             // For now, assume host memory
         }
-        free(result->data);
+        nimcp_free(result->data);
     }
 
-    free(result);
+    nimcp_free(result);
 }
 
 nimcp_error_t nimcp_graphql_result_to_host(

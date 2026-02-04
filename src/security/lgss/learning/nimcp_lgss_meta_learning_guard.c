@@ -21,30 +21,42 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_meta_learning_guard module */
-static nimcp_health_agent_t* g_lgss_meta_learning_guard_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_meta_learning_guard)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_meta_learning_guard heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_meta_learning_guard_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_meta_learning_guard_health_agent = agent;
+static mesh_participant_id_t g_lgss_meta_learning_guard_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_meta_learning_guard_mesh_registry = NULL;
+
+nimcp_error_t lgss_meta_learning_guard_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_meta_learning_guard_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_meta_learning_guard", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_meta_learning_guard";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_meta_learning_guard_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_meta_learning_guard_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_meta_learning_guard module */
-static inline void lgss_meta_learning_guard_heartbeat(const char* operation, float progress) {
-    if (g_lgss_meta_learning_guard_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_meta_learning_guard_health_agent, operation, progress);
+void lgss_meta_learning_guard_mesh_unregister(void) {
+    if (g_lgss_meta_learning_guard_mesh_registry && g_lgss_meta_learning_guard_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_meta_learning_guard_mesh_registry, g_lgss_meta_learning_guard_mesh_id);
+        g_lgss_meta_learning_guard_mesh_id = 0;
+        g_lgss_meta_learning_guard_mesh_registry = NULL;
     }
 }
 
@@ -149,7 +161,7 @@ static uint64_t get_time_us(void) {
  * Initialize sliding window
  */
 static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
-    window->timestamps = calloc(capacity, sizeof(uint64_t));
+    window->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!window->timestamps) {
         return false;
     }
@@ -164,7 +176,7 @@ static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
  */
 static void sliding_window_destroy(sliding_window_t* window) {
     if (window->timestamps) {
-        free(window->timestamps);
+        nimcp_free(window->timestamps);
         window->timestamps = NULL;
     }
 }
@@ -201,7 +213,7 @@ static uint32_t sliding_window_count_within(sliding_window_t* window,
  * Initialize stability tracker
  */
 static bool stability_tracker_init(stability_tracker_t* tracker, uint32_t capacity) {
-    tracker->eigenvalue_history = calloc(capacity, sizeof(float));
+    tracker->eigenvalue_history = nimcp_calloc(capacity, sizeof(float));
     if (!tracker->eigenvalue_history) {
         return false;
     }
@@ -219,7 +231,7 @@ static bool stability_tracker_init(stability_tracker_t* tracker, uint32_t capaci
  */
 static void stability_tracker_destroy(stability_tracker_t* tracker) {
     if (tracker->eigenvalue_history) {
-        free(tracker->eigenvalue_history);
+        nimcp_free(tracker->eigenvalue_history);
         tracker->eigenvalue_history = NULL;
     }
 }
@@ -396,7 +408,7 @@ meta_learning_guard_t meta_learning_guard_create(
     const meta_learning_guard_config_t* config,
     security_orchestrator_t orchestrator
 ) {
-    struct meta_learning_guard_internal* guard = calloc(1, sizeof(*guard));
+    struct meta_learning_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
@@ -414,34 +426,34 @@ meta_learning_guard_t meta_learning_guard_create(
 
     /* Initialize parameter registry */
     guard->param_capacity = META_MAX_PARAMETERS;
-    guard->params = calloc(guard->param_capacity, sizeof(param_registry_entry_t));
+    guard->params = nimcp_calloc(guard->param_capacity, sizeof(param_registry_entry_t));
     if (!guard->params) {
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
     /* Allocate update history for each potential parameter */
     for (uint32_t i = 0; i < guard->param_capacity; i++) {
-        guard->params[i].update_history = calloc(META_STABILITY_HISTORY_SIZE, sizeof(float));
+        guard->params[i].update_history = nimcp_calloc(META_STABILITY_HISTORY_SIZE, sizeof(float));
         if (!guard->params[i].update_history) {
             /* Cleanup already allocated histories */
             for (uint32_t j = 0; j < i; j++) {
-                free(guard->params[j].update_history);
+                nimcp_free(guard->params[j].update_history);
             }
-            free(guard->params);
-            free(guard);
+            nimcp_free(guard->params);
+            nimcp_free(guard);
             return NULL;
         }
     }
 
     /* Initialize frozen flags */
-    guard->frozen_flags = calloc(guard->param_capacity, sizeof(bool));
+    guard->frozen_flags = nimcp_calloc(guard->param_capacity, sizeof(bool));
     if (!guard->frozen_flags) {
         for (uint32_t i = 0; i < guard->param_capacity; i++) {
-            free(guard->params[i].update_history);
+            nimcp_free(guard->params[i].update_history);
         }
-        free(guard->params);
-        free(guard);
+        nimcp_free(guard->params);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -450,24 +462,24 @@ meta_learning_guard_t meta_learning_guard_create(
                                           guard->config.update_window_sec * 2);
     if (window_capacity < 100) window_capacity = 100;
     if (!sliding_window_init(&guard->rate_window, window_capacity)) {
-        free(guard->frozen_flags);
+        nimcp_free(guard->frozen_flags);
         for (uint32_t i = 0; i < guard->param_capacity; i++) {
-            free(guard->params[i].update_history);
+            nimcp_free(guard->params[i].update_history);
         }
-        free(guard->params);
-        free(guard);
+        nimcp_free(guard->params);
+        nimcp_free(guard);
         return NULL;
     }
 
     /* Initialize stability tracking */
     if (!stability_tracker_init(&guard->stability, META_EIGENVALUE_HISTORY_SIZE)) {
         sliding_window_destroy(&guard->rate_window);
-        free(guard->frozen_flags);
+        nimcp_free(guard->frozen_flags);
         for (uint32_t i = 0; i < guard->param_capacity; i++) {
-            free(guard->params[i].update_history);
+            nimcp_free(guard->params[i].update_history);
         }
-        free(guard->params);
-        free(guard);
+        nimcp_free(guard->params);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -491,17 +503,17 @@ void meta_learning_guard_destroy(meta_learning_guard_t guard) {
 
     stability_tracker_destroy(&g->stability);
     sliding_window_destroy(&g->rate_window);
-    free(g->frozen_flags);
+    nimcp_free(g->frozen_flags);
 
     for (uint32_t i = 0; i < g->param_capacity; i++) {
         if (g->params[i].update_history) {
-            free(g->params[i].update_history);
+            nimcp_free(g->params[i].update_history);
         }
     }
-    free(g->params);
+    nimcp_free(g->params);
 
     g->magic = 0;
-    free(g);
+    nimcp_free(g);
 }
 
 int meta_learning_guard_reset(meta_learning_guard_t guard) {

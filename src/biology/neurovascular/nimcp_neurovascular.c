@@ -16,33 +16,10 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for neurovascular module */
-static nimcp_health_agent_t* g_neurovascular_health_agent = NULL;
-
-/**
- * @brief Set health agent for neurovascular heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neurovascular_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neurovascular_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neurovascular module */
-static inline void neurovascular_heartbeat(const char* operation, float progress) {
-    if (g_neurovascular_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neurovascular_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neurovascular)
 
 //=============================================================================
 // Internal Constants
@@ -581,7 +558,7 @@ nimcp_nvc_error_t nimcp_nvc_generate_fmri(
     *num_samples = n_samples;
 
     /* Generate neural stimulus function */
-    float* neural_input = (float*)calloc(n_samples, sizeof(float));
+    float* neural_input = (float*)nimcp_calloc(n_samples, sizeof(float));
     if (!neural_input) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_samples * sizeof(float), "Neural input array allocation failed in fMRI generation");
         return NVC_ERR_NO_MEMORY;
@@ -611,7 +588,7 @@ nimcp_nvc_error_t nimcp_nvc_generate_fmri(
         timeseries[i] *= 2.0f;  /* ~2% peak BOLD */
     }
 
-    free(neural_input);
+    nimcp_free(neural_input);
 
     return NVC_OK;
 }

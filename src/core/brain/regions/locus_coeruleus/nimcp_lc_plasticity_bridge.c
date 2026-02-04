@@ -16,31 +16,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lc_plasticity_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for lc_plasticity_bridge module */
-static nimcp_health_agent_t* g_lc_plasticity_bridge_health_agent = NULL;
+static mesh_participant_id_t g_lc_plasticity_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_lc_plasticity_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for lc_plasticity_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lc_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lc_plasticity_bridge_health_agent = agent;
+nimcp_error_t lc_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lc_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lc_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lc_plasticity_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lc_plasticity_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lc_plasticity_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lc_plasticity_bridge module */
-static inline void lc_plasticity_bridge_heartbeat(const char* operation, float progress) {
-    if (g_lc_plasticity_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lc_plasticity_bridge_health_agent, operation, progress);
+void lc_plasticity_bridge_mesh_unregister(void) {
+    if (g_lc_plasticity_bridge_mesh_registry && g_lc_plasticity_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_lc_plasticity_bridge_mesh_registry, g_lc_plasticity_bridge_mesh_id);
+        g_lc_plasticity_bridge_mesh_id = 0;
+        g_lc_plasticity_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "LC_PLASTICITY_BRIDGE"
 
@@ -243,7 +257,7 @@ nimcp_lc_plasticity_config_t nimcp_lc_plasticity_config_default(void) {
 nimcp_lc_plasticity_bridge_t* nimcp_lc_plasticity_create(
     const nimcp_lc_plasticity_config_t* config
 ) {
-    nimcp_lc_plasticity_bridge_t* bridge = calloc(1, sizeof(*bridge));
+    nimcp_lc_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -260,9 +274,9 @@ nimcp_lc_plasticity_bridge_t* nimcp_lc_plasticity_create(
 
     /* Allocate synapse storage */
     bridge->synapse_capacity = LC_PLASTICITY_MAX_SYNAPSES;
-    bridge->synapses = calloc(bridge->synapse_capacity, sizeof(nimcp_lc_plasticity_synapse_t));
+    bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(nimcp_lc_plasticity_synapse_t));
     if (!bridge->synapses) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -282,8 +296,8 @@ nimcp_lc_plasticity_bridge_t* nimcp_lc_plasticity_create(
 void nimcp_lc_plasticity_destroy(nimcp_lc_plasticity_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "lc_plasticity");
-    free(bridge->synapses);
-    free(bridge);
+    nimcp_free(bridge->synapses);
+    nimcp_free(bridge);
 }
 
 int nimcp_lc_plasticity_reset(nimcp_lc_plasticity_bridge_t* bridge) {

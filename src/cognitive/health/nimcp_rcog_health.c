@@ -19,31 +19,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(rcog_health)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for rcog_health module */
-static nimcp_health_agent_t* g_rcog_health_health_agent = NULL;
+static mesh_participant_id_t g_rcog_health_mesh_id = 0;
+static mesh_participant_registry_t* g_rcog_health_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for rcog_health heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void rcog_health_set_health_agent(nimcp_health_agent_t* agent) {
-    g_rcog_health_health_agent = agent;
+nimcp_error_t rcog_health_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_rcog_health_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "rcog_health", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "rcog_health";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_rcog_health_mesh_id);
+    if (err == NIMCP_SUCCESS) g_rcog_health_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from rcog_health module */
-static inline void rcog_health_heartbeat(const char* operation, float progress) {
-    if (g_rcog_health_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_rcog_health_health_agent, operation, progress);
+void rcog_health_mesh_unregister(void) {
+    if (g_rcog_health_mesh_registry && g_rcog_health_mesh_id != 0) {
+        mesh_participant_unregister(g_rcog_health_mesh_registry, g_rcog_health_mesh_id);
+        g_rcog_health_mesh_id = 0;
+        g_rcog_health_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from rcog_health module (instance-level) */
 static inline void rcog_health_heartbeat_instance(
@@ -301,7 +315,7 @@ rcog_health_integration_t* rcog_health_create(
     rcog_health_heartbeat("rcog_health_create", 0.0f);
 
 
-    rcog_health_integration_t* integration = calloc(1, sizeof(rcog_health_integration_t));
+    rcog_health_integration_t* integration = nimcp_calloc(1, sizeof(rcog_health_integration_t));
     if (!integration) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate integration");
 
@@ -321,9 +335,9 @@ rcog_health_integration_t* rcog_health_create(
 
     /* Initialize pending goals */
     integration->max_pending = integration->config.max_concurrent_goals;
-    integration->pending_goals = calloc(integration->max_pending, sizeof(pending_health_goal_t));
+    integration->pending_goals = nimcp_calloc(integration->max_pending, sizeof(pending_health_goal_t));
     if (!integration->pending_goals) {
-        free(integration);
+        nimcp_free(integration);
         return NULL;
     }
     integration->num_pending = 0;
@@ -332,10 +346,10 @@ rcog_health_integration_t* rcog_health_create(
     /* Initialize cache */
     if (integration->config.enable_diagnosis_cache) {
         integration->cache_capacity = 32;
-        integration->cache = calloc(integration->cache_capacity, sizeof(cached_diagnosis_t));
+        integration->cache = nimcp_calloc(integration->cache_capacity, sizeof(cached_diagnosis_t));
         if (!integration->cache) {
-            free(integration->pending_goals);
-            free(integration);
+            nimcp_free(integration->pending_goals);
+            nimcp_free(integration);
             return NULL;
         }
         integration->cache_size = 0;
@@ -343,11 +357,11 @@ rcog_health_integration_t* rcog_health_create(
 
     /* Initialize custom tools */
     integration->max_custom_tools = 16;
-    integration->custom_tools = calloc(integration->max_custom_tools, sizeof(rcog_health_tool_t));
+    integration->custom_tools = nimcp_calloc(integration->max_custom_tools, sizeof(rcog_health_tool_t));
     if (!integration->custom_tools) {
-        free(integration->cache);
-        free(integration->pending_goals);
-        free(integration);
+        nimcp_free(integration->cache);
+        nimcp_free(integration->pending_goals);
+        nimcp_free(integration);
         return NULL;
     }
     integration->num_custom_tools = 0;
@@ -373,10 +387,10 @@ void rcog_health_destroy(rcog_health_integration_t* integration) {
     rcog_health_heartbeat("rcog_health_destroy", 0.0f);
 
 
-    free(integration->pending_goals);
-    free(integration->cache);
-    free(integration->custom_tools);
-    free(integration);
+    nimcp_free(integration->pending_goals);
+    nimcp_free(integration->cache);
+    nimcp_free(integration->custom_tools);
+    nimcp_free(integration);
 }
 
 /* ============================================================================

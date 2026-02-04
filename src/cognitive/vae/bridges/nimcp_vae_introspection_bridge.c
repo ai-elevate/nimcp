@@ -10,6 +10,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -406,6 +407,7 @@ int vae_intro_encode_state(vae_intro_bridge_t* bridge,
                             vae_intro_encode_result_t* result) {
     if (!bridge || !state || !result) return NIMCP_ERROR_VAE_INTRO_NULL;
     if (bridge->state != VAE_INTRO_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED;
     }
 
@@ -430,6 +432,7 @@ int vae_intro_encode_state(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_INTRO_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NO_MEMORY, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NO_MEMORY;
     }
 
@@ -442,6 +445,7 @@ int vae_intro_encode_state(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_INTRO_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_ENCODE_FAILED, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_ENCODE_FAILED;
     }
 
@@ -452,6 +456,7 @@ int vae_intro_encode_state(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_INTRO_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NO_MEMORY, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NO_MEMORY;
     }
     memcpy(result->latent, TENSOR_DATA_F32(mu_tensor), latent_dim * sizeof(float));
@@ -518,9 +523,11 @@ int vae_intro_encode_modules(vae_intro_bridge_t* bridge,
                               uint32_t num_modules,
                               float* latent, uint32_t* latent_dim) {
     if (!bridge || !modules || !latent || !latent_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NULL, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NULL;
     }
     if (bridge->state != VAE_INTRO_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED;
     }
 
@@ -554,6 +561,7 @@ int vae_intro_encode_modules(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NO_MEMORY, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NO_MEMORY;
     }
 
@@ -566,6 +574,7 @@ int vae_intro_encode_modules(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_ENCODE_FAILED, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_ENCODE_FAILED;
     }
 
@@ -622,6 +631,7 @@ int vae_intro_predict_next_state(vae_intro_bridge_t* bridge,
                                   vae_intro_predict_result_t* result) {
     if (!bridge || !result) return NIMCP_ERROR_VAE_INTRO_NULL;
     if (bridge->state != VAE_INTRO_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NOT_CONNECTED;
     }
 
@@ -641,6 +651,7 @@ int vae_intro_predict_next_state(vae_intro_bridge_t* bridge,
     if (!velocity) {
         nimcp_free(result->latent_trajectory);
         result->latent_trajectory = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NO_MEMORY, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NO_MEMORY;
     }
 
@@ -701,6 +712,7 @@ int vae_intro_extrapolate_trajectory(vae_intro_bridge_t* bridge,
                                       float* trajectory,
                                       uint32_t* trajectory_dim) {
     if (!bridge || !trajectory || !trajectory_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NULL, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NULL;
     }
 

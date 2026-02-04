@@ -31,51 +31,52 @@
 #include <stdarg.h>
 #include "cognitive/parietal/nimcp_financial_investor_archetype.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for financial_investor_archetype module */
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_arch_health_agent = NULL;
 
-/**
- * @brief Set health agent for financial_investor_archetype heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void financial_investor_archetype_module_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fin_arch_health_agent = agent;
-}
+
+/* Stub declarations for subsystem integration globals */
+static void* g_fin_arch_immune = NULL;
+static void* g_fin_arch_bbb = NULL;
 
 //=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune, int source,
-                                         const uint8_t* epitope, size_t epitope_len, uint32_t severity,
-                                         uint32_t source_node, uint32_t* antigen_id);
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, const char* context);
+static mesh_participant_id_t g_fin_arch_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_arch_mesh_registry = NULL;
 
-static brain_immune_system_t* g_fin_arch_immune = NULL;
-static bbb_system_t g_fin_arch_bbb = NULL;
-
-void financial_investor_archetype_set_immune_system(brain_immune_system_t* immune) {
-    g_fin_arch_immune = immune;
+nimcp_error_t fin_arch_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_arch_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_arch", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_arch";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_arch_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_arch_mesh_registry = registry;
+    return err;
 }
 
-void financial_investor_archetype_module_set_bbb(bbb_system_t bbb) {
-    g_fin_arch_bbb = bbb;
+void fin_arch_mesh_unregister(void) {
+    if (g_fin_arch_mesh_registry && g_fin_arch_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_arch_mesh_registry, g_fin_arch_mesh_id);
+        g_fin_arch_mesh_id = 0;
+        g_fin_arch_mesh_registry = NULL;
+    }
 }
+
 
 //=============================================================================
 // KG Wiring Integration (Change Set 1)
@@ -557,7 +558,7 @@ financial_investor_archetype_t* financial_investor_archetype_create(
     fin_arch_heartbeat("create", 0.0f);
 
     financial_investor_archetype_t* arch = (financial_investor_archetype_t*)
-        calloc(1, sizeof(financial_investor_archetype_t));
+        nimcp_calloc(1, sizeof(financial_investor_archetype_t));
     if (!arch) {
         set_error("Failed to allocate investor archetype engine");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investor_archetype_create: allocation failed");
@@ -599,7 +600,7 @@ financial_investor_archetype_t* financial_investor_archetype_create(
 void financial_investor_archetype_destroy(financial_investor_archetype_t* arch) {
     if (!arch) return;
     fin_arch_heartbeat("destroy", 0.5f);
-    free(arch);
+    nimcp_free(arch);
     fin_arch_heartbeat("destroy", 1.0f);
 }
 

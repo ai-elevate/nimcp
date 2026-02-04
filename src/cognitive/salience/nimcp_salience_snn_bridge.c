@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(salience_snn_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for salience_snn_bridge module */
-static nimcp_health_agent_t* g_salience_snn_bridge_health_agent = NULL;
+static mesh_participant_id_t g_salience_snn_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_salience_snn_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for salience_snn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void salience_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_salience_snn_bridge_health_agent = agent;
+nimcp_error_t salience_snn_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_salience_snn_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "salience_snn_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "salience_snn_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_salience_snn_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_salience_snn_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from salience_snn_bridge module */
-static inline void salience_snn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_salience_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_salience_snn_bridge_health_agent, operation, progress);
+void salience_snn_bridge_mesh_unregister(void) {
+    if (g_salience_snn_bridge_mesh_registry && g_salience_snn_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_salience_snn_bridge_mesh_registry, g_salience_snn_bridge_mesh_id);
+        g_salience_snn_bridge_mesh_id = 0;
+        g_salience_snn_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from salience_snn_bridge module (instance-level) */
 static inline void salience_snn_bridge_heartbeat_instance(
@@ -223,7 +237,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
     salience_snn_bridge_heartbeat("salience_snn_salience_snn_create", 0.0f);
 
 
-    salience_snn_bridge_t* bridge = calloc(1, sizeof(salience_snn_bridge_t));
+    salience_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(salience_snn_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -237,9 +251,9 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
     bridge->num_channels = SALIENCE_SNN_CHANNEL_COUNT;
 
     // Allocate neurons per channel
-    bridge->channel_neurons = calloc(bridge->num_channels, sizeof(salience_neuron_t*));
+    bridge->channel_neurons = nimcp_calloc(bridge->num_channels, sizeof(salience_neuron_t*));
     if (!bridge->channel_neurons) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -250,7 +264,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
                              (float)(c + 1) / (float)bridge->num_channels);
         }
 
-        bridge->channel_neurons[c] = calloc(config->neurons_per_dim, sizeof(salience_neuron_t));
+        bridge->channel_neurons[c] = nimcp_calloc(config->neurons_per_dim, sizeof(salience_neuron_t));
         if (!bridge->channel_neurons[c]) {
             salience_snn_destroy(bridge);
             return NULL;
@@ -268,7 +282,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
 
     // Allocate output neurons
     bridge->num_output_neurons = config->neurons_per_dim * 2;
-    bridge->output_neurons = calloc(bridge->num_output_neurons, sizeof(salience_neuron_t));
+    bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(salience_neuron_t));
     if (!bridge->output_neurons) {
         salience_snn_destroy(bridge);
         return NULL;
@@ -285,7 +299,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
 
     // Allocate history
     if (config->enable_history) {
-        bridge->history = calloc(config->history_depth, sizeof(history_entry_t));
+        bridge->history = nimcp_calloc(config->history_depth, sizeof(history_entry_t));
         if (!bridge->history) {
             salience_snn_destroy(bridge);
             return NULL;
@@ -297,7 +311,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
                                  (float)(i + 1) / (float)config->history_depth);
             }
 
-            bridge->history[i].features = calloc(config->max_features, sizeof(float));
+            bridge->history[i].features = nimcp_calloc(config->max_features, sizeof(float));
             if (!bridge->history[i].features) {
                 salience_snn_destroy(bridge);
                 return NULL;
@@ -307,7 +321,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
 
     // Allocate prediction buffer
     if (config->enable_prediction) {
-        bridge->prediction = calloc(config->max_features, sizeof(float));
+        bridge->prediction = nimcp_calloc(config->max_features, sizeof(float));
         if (!bridge->prediction) {
             salience_snn_destroy(bridge);
             return NULL;
@@ -334,11 +348,11 @@ void salience_snn_destroy(salience_snn_bridge_t* bridge) {
                                  (float)(c + 1) / (float)bridge->num_channels);
             }
 
-            free(bridge->channel_neurons[c]);
+            nimcp_free(bridge->channel_neurons[c]);
         }
-        free(bridge->channel_neurons);
+        nimcp_free(bridge->channel_neurons);
     }
-    free(bridge->output_neurons);
+    nimcp_free(bridge->output_neurons);
 
     if (bridge->history) {
         for (uint32_t i = 0; i < bridge->config.history_depth; i++) {
@@ -348,13 +362,13 @@ void salience_snn_destroy(salience_snn_bridge_t* bridge) {
                                  (float)(i + 1) / (float)bridge->config.history_depth);
             }
 
-            free(bridge->history[i].features);
+            nimcp_free(bridge->history[i].features);
         }
-        free(bridge->history);
+        nimcp_free(bridge->history);
     }
 
-    free(bridge->prediction);
-    free(bridge);
+    nimcp_free(bridge->prediction);
+    nimcp_free(bridge);
 }
 
 int salience_snn_reset(salience_snn_bridge_t* bridge) {

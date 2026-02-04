@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,7 +140,7 @@ extern "C" {
 #define NIMCP_SAFE_FREE(ptr)                                                   \
     do {                                                                       \
         if ((ptr) != NULL) {                                                   \
-            free(ptr);                                                         \
+            nimcp_free(ptr);                                                         \
             (ptr) = NULL;                                                      \
         }                                                                      \
     } while (0)

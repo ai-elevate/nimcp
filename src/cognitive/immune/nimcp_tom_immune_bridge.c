@@ -18,35 +18,47 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(tom_immune_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for tom_immune_bridge module */
-static nimcp_health_agent_t* g_tom_immune_bridge_health_agent = NULL;
+static mesh_participant_id_t g_tom_immune_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_tom_immune_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for tom_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void tom_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_tom_immune_bridge_health_agent = agent;
+nimcp_error_t tom_immune_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_tom_immune_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "tom_immune_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SECURITY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "tom_immune_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_tom_immune_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_tom_immune_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from tom_immune_bridge module */
-static inline void tom_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_tom_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_tom_immune_bridge_health_agent, operation, progress);
+void tom_immune_bridge_mesh_unregister(void) {
+    if (g_tom_immune_bridge_mesh_registry && g_tom_immune_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_tom_immune_bridge_mesh_registry, g_tom_immune_bridge_mesh_id);
+        g_tom_immune_bridge_mesh_id = 0;
+        g_tom_immune_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from tom_immune_bridge module (instance-level) */
 static inline void tom_immune_bridge_heartbeat_instance(
@@ -301,7 +313,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_cyt", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_tom_effects_t* effects = &bridge->cytokine_effects;
@@ -339,7 +351,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     effects->mentalizing_accuracy_loss = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
 
     bridge->cytokine_impairments++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -359,7 +371,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_inf", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     inflammation_tom_state_t* state = &bridge->inflammation_state;
 
@@ -394,7 +406,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     state->goal_inference_impairment = clamp_f(inflammation_intensity * 0.70f, 0.0f, 1.0f);
     state->intention_inference_impairment = clamp_f(inflammation_intensity * 0.60f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -492,7 +504,7 @@ int tom_immune_trigger_from_rejection(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.rejection_severity = rejection_severity;
@@ -518,7 +530,7 @@ int tom_immune_trigger_from_rejection(
     }
 
     bridge->social_stress_triggers++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -542,7 +554,7 @@ int tom_immune_trigger_from_prediction_error(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.prediction_error = prediction_error;
@@ -565,7 +577,7 @@ int tom_immune_trigger_from_prediction_error(
         bridge->social_stress_triggers++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -589,7 +601,7 @@ int tom_immune_trigger_from_isolation(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update isolation state */
     bridge->social_stress_trigger.isolation_duration_sec = isolation_duration_sec;
@@ -633,7 +645,7 @@ int tom_immune_trigger_from_isolation(
         bridge->isolation_inflammations++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -657,7 +669,7 @@ int tom_immune_boost_from_social_connection(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_boost_fro", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update social connection state */
     bridge->social_connection_boost.social_bond_strength = connection_strength;
@@ -686,7 +698,7 @@ int tom_immune_boost_from_social_connection(
         bridge->social_connection_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 

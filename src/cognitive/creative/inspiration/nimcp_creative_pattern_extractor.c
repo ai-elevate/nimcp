@@ -23,33 +23,45 @@
 #include <time.h>
 
 #define LOG_MODULE "CREATIVE_PATTERN"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_pattern_extractor)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for creative_pattern_extractor module */
-static nimcp_health_agent_t* g_creative_pattern_extractor_health_agent = NULL;
+static mesh_participant_id_t g_creative_pattern_extractor_mesh_id = 0;
+static mesh_participant_registry_t* g_creative_pattern_extractor_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for creative_pattern_extractor heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void creative_pattern_extractor_set_health_agent(nimcp_health_agent_t* agent) {
-    g_creative_pattern_extractor_health_agent = agent;
+nimcp_error_t creative_pattern_extractor_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_creative_pattern_extractor_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "creative_pattern_extractor", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "creative_pattern_extractor";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_creative_pattern_extractor_mesh_id);
+    if (err == NIMCP_SUCCESS) g_creative_pattern_extractor_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from creative_pattern_extractor module */
-static inline void creative_pattern_extractor_heartbeat(const char* operation, float progress) {
-    if (g_creative_pattern_extractor_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_creative_pattern_extractor_health_agent, operation, progress);
+void creative_pattern_extractor_mesh_unregister(void) {
+    if (g_creative_pattern_extractor_mesh_registry && g_creative_pattern_extractor_mesh_id != 0) {
+        mesh_participant_unregister(g_creative_pattern_extractor_mesh_registry, g_creative_pattern_extractor_mesh_id);
+        g_creative_pattern_extractor_mesh_id = 0;
+        g_creative_pattern_extractor_mesh_registry = NULL;
     }
 }
+
 
 #define DEFAULT_FEATURE_DIM 64
 #define DEFAULT_MAX_PATTERNS 100

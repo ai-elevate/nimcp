@@ -23,31 +23,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(source_memory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for source_memory module */
-static nimcp_health_agent_t* g_source_memory_health_agent = NULL;
+static mesh_participant_id_t g_source_memory_mesh_id = 0;
+static mesh_participant_registry_t* g_source_memory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for source_memory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void source_memory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_source_memory_health_agent = agent;
+nimcp_error_t source_memory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_source_memory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "source_memory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "source_memory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_source_memory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_source_memory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from source_memory module */
-static inline void source_memory_heartbeat(const char* operation, float progress) {
-    if (g_source_memory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_source_memory_health_agent, operation, progress);
+void source_memory_mesh_unregister(void) {
+    if (g_source_memory_mesh_registry && g_source_memory_mesh_id != 0) {
+        mesh_participant_unregister(g_source_memory_mesh_registry, g_source_memory_mesh_id);
+        g_source_memory_mesh_id = 0;
+        g_source_memory_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from source_memory module (instance-level) */
 static inline void source_memory_heartbeat_instance(
@@ -235,7 +249,7 @@ static source_error_t insert_entry(
 
     // Need new slot in chain
     if (!slot) {
-        slot = (source_hash_entry_t*)calloc(1, sizeof(source_hash_entry_t));
+        slot = (source_hash_entry_t*)nimcp_calloc(1, sizeof(source_hash_entry_t));
         if (!slot) return SOURCE_ERROR_NO_MEMORY;
         if (prev) prev->next = slot;
     }
@@ -282,7 +296,7 @@ static source_error_t insert_agent(
 
     // Need new slot in chain
     if (!slot) {
-        slot = (agent_hash_entry_t*)calloc(1, sizeof(agent_hash_entry_t));
+        slot = (agent_hash_entry_t*)nimcp_calloc(1, sizeof(agent_hash_entry_t));
         if (!slot) return SOURCE_ERROR_NO_MEMORY;
         if (prev) prev->next = slot;
     }
@@ -539,7 +553,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
     }
 
     // Allocate main structure
-    source_memory_t sm = (source_memory_t)calloc(1, sizeof(struct source_memory_struct));
+    source_memory_t sm = (source_memory_t)nimcp_calloc(1, sizeof(struct source_memory_struct));
     if (!sm) {
         set_error("memory allocation failed for source_memory");
         return NULL;
@@ -552,23 +566,23 @@ NIMCP_EXPORT source_memory_t source_memory_create(
 
     // Allocate entry hash table
     sm->entry_capacity = cfg.initial_capacity;
-    sm->entries = (source_hash_entry_t*)calloc(
+    sm->entries = (source_hash_entry_t*)nimcp_calloc(
         sm->entry_capacity, sizeof(source_hash_entry_t));
     if (!sm->entries) {
         set_error("memory allocation failed for entry hash table");
-        free(sm);
+        nimcp_free(sm);
         return NULL;
     }
 
     // Allocate agent hash table if tracking enabled
     if (cfg.track_agents) {
         sm->agent_capacity = SOURCE_MAX_AGENTS / 4;  // Start smaller
-        sm->agents = (agent_hash_entry_t*)calloc(
+        sm->agents = (agent_hash_entry_t*)nimcp_calloc(
             sm->agent_capacity, sizeof(agent_hash_entry_t));
         if (!sm->agents) {
             set_error("memory allocation failed for agent hash table");
-            free(sm->entries);
-            free(sm);
+            nimcp_free(sm->entries);
+            nimcp_free(sm);
             return NULL;
         }
     }
@@ -601,17 +615,17 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
         while (entry) {
             source_hash_entry_t* next = entry->next;
             if (entry->entry.source.source_agent_name) {
-                free(entry->entry.source.source_agent_name);
+                nimcp_free(entry->entry.source.source_agent_name);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         // Free agent name in base slot
         if (sm->entries[i].entry.source.source_agent_name) {
-            free(sm->entries[i].entry.source.source_agent_name);
+            nimcp_free(sm->entries[i].entry.source.source_agent_name);
         }
     }
-    free(sm->entries);
+    nimcp_free(sm->entries);
 
     // Free agent chain nodes
     if (sm->agents) {
@@ -625,14 +639,14 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
             agent_hash_entry_t* agent = sm->agents[i].next;
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
-                free(agent);
+                nimcp_free(agent);
                 agent = next;
             }
         }
-        free(sm->agents);
+        nimcp_free(sm->agents);
     }
 
-    free(sm);
+    nimcp_free(sm);
 }
 
 NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
@@ -650,13 +664,13 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
         while (entry) {
             source_hash_entry_t* next = entry->next;
             if (entry->entry.source.source_agent_name) {
-                free(entry->entry.source.source_agent_name);
+                nimcp_free(entry->entry.source.source_agent_name);
             }
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         if (sm->entries[i].entry.source.source_agent_name) {
-            free(sm->entries[i].entry.source.source_agent_name);
+            nimcp_free(sm->entries[i].entry.source.source_agent_name);
         }
         memset(&sm->entries[i], 0, sizeof(source_hash_entry_t));
     }
@@ -674,7 +688,7 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
             agent_hash_entry_t* agent = sm->agents[i].next;
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
-                free(agent);
+                nimcp_free(agent);
                 agent = next;
             }
             memset(&sm->agents[i], 0, sizeof(agent_hash_entry_t));
@@ -866,7 +880,7 @@ NIMCP_EXPORT source_error_t source_memory_update_source(
     if (entry->entry.source.source_agent_name &&
         (!source->source_agent_name ||
          strcmp(entry->entry.source.source_agent_name, source->source_agent_name) != 0)) {
-        free(entry->entry.source.source_agent_name);
+        nimcp_free(entry->entry.source.source_agent_name);
         entry->entry.source.source_agent_name = NULL;
     }
 
@@ -901,18 +915,18 @@ NIMCP_EXPORT source_error_t source_memory_unbind_source(
         if (entry->occupied && entry->memory_id == memory_id) {
             // Free agent name
             if (entry->entry.source.source_agent_name) {
-                free(entry->entry.source.source_agent_name);
+                nimcp_free(entry->entry.source.source_agent_name);
             }
 
             if (prev) {
                 // Remove from chain
                 prev->next = entry->next;
-                free(entry);
+                nimcp_free(entry);
             } else if (entry->next) {
                 // Move next to base slot
                 source_hash_entry_t* next = entry->next;
                 *entry = *next;
-                free(next);
+                nimcp_free(next);
             } else {
                 // Clear base slot
                 memset(entry, 0, sizeof(*entry));

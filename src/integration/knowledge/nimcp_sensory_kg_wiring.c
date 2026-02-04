@@ -23,33 +23,10 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for sensory_kg_wiring module */
-static nimcp_health_agent_t* g_sensory_kg_wiring_health_agent = NULL;
-
-/**
- * @brief Set health agent for sensory_kg_wiring heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void sensory_kg_wiring_set_health_agent(nimcp_health_agent_t* agent) {
-    g_sensory_kg_wiring_health_agent = agent;
-}
-
-/** @brief Send heartbeat from sensory_kg_wiring module */
-static inline void sensory_kg_wiring_heartbeat(const char* operation, float progress) {
-    if (g_sensory_kg_wiring_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_sensory_kg_wiring_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sensory_kg_wiring)
 
 /* ============================================================================
  * Internal Structure
@@ -203,7 +180,7 @@ int sensory_kg_default_config(sensory_kg_config_t* config) {
 }
 
 sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config) {
-    sensory_kg_wiring_t* wiring = (sensory_kg_wiring_t*)calloc(1, sizeof(sensory_kg_wiring_t));
+    sensory_kg_wiring_t* wiring = (sensory_kg_wiring_t*)nimcp_calloc(1, sizeof(sensory_kg_wiring_t));
     NIMCP_API_CHECK_ALLOC(wiring, "Failed to allocate sensory KG wiring");
 
     if (config) {
@@ -213,17 +190,17 @@ sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config)
     }
 
     /* Allocate nodes */
-    wiring->nodes = (sensory_kg_node_t*)calloc(wiring->config.max_nodes, sizeof(sensory_kg_node_t));
+    wiring->nodes = (sensory_kg_node_t*)nimcp_calloc(wiring->config.max_nodes, sizeof(sensory_kg_node_t));
     if (!wiring->nodes) {
-        free(wiring);
+        nimcp_free(wiring);
         return NULL;
     }
 
     /* Allocate edges */
-    wiring->edges = (sensory_kg_edge_t*)calloc(wiring->config.max_edges, sizeof(sensory_kg_edge_t));
+    wiring->edges = (sensory_kg_edge_t*)nimcp_calloc(wiring->config.max_edges, sizeof(sensory_kg_edge_t));
     if (!wiring->edges) {
-        free(wiring->nodes);
-        free(wiring);
+        nimcp_free(wiring->nodes);
+        nimcp_free(wiring);
         return NULL;
     }
 
@@ -271,9 +248,9 @@ sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config)
 void sensory_kg_wiring_destroy(sensory_kg_wiring_t* wiring) {
     if (!wiring) return;
 
-    if (wiring->nodes) free(wiring->nodes);
-    if (wiring->edges) free(wiring->edges);
-    free(wiring);
+    if (wiring->nodes) nimcp_free(wiring->nodes);
+    if (wiring->edges) nimcp_free(wiring->edges);
+    nimcp_free(wiring);
 }
 
 /* ============================================================================
@@ -674,7 +651,7 @@ int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t
     }
 
     /* Allocate result */
-    result->nodes = (sensory_kg_node_t**)calloc(count, sizeof(sensory_kg_node_t*));
+    result->nodes = (sensory_kg_node_t**)nimcp_calloc(count, sizeof(sensory_kg_node_t*));
     if (!result->nodes) return -1;
 
     /* Fill result */
@@ -719,11 +696,11 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
         return 0;
     }
 
-    result->nodes = (sensory_kg_node_t**)calloc(count, sizeof(sensory_kg_node_t*));
-    result->edges = (sensory_kg_edge_t**)calloc(count, sizeof(sensory_kg_edge_t*));
+    result->nodes = (sensory_kg_node_t**)nimcp_calloc(count, sizeof(sensory_kg_node_t*));
+    result->edges = (sensory_kg_edge_t**)nimcp_calloc(count, sizeof(sensory_kg_edge_t*));
     if (!result->nodes || !result->edges) {
-        free(result->nodes);
-        free(result->edges);
+        nimcp_free(result->nodes);
+        nimcp_free(result->edges);
         return -1;
     }
 
@@ -766,8 +743,8 @@ int sensory_kg_query_path(sensory_kg_wiring_t* wiring, uint32_t source_id,
 void sensory_kg_free_query_result(sensory_kg_query_result_t* result) {
     if (!result) return;
 
-    if (result->nodes) free(result->nodes);
-    if (result->edges) free(result->edges);
+    if (result->nodes) nimcp_free(result->nodes);
+    if (result->edges) nimcp_free(result->edges);
 
     result->nodes = NULL;
     result->num_nodes = 0;

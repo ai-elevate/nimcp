@@ -17,31 +17,45 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_parietal_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for fep_parietal_bridge module */
-static nimcp_health_agent_t* g_fep_parietal_bridge_health_agent = NULL;
+static mesh_participant_id_t g_fep_parietal_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_fep_parietal_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for fep_parietal_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void fep_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fep_parietal_bridge_health_agent = agent;
+nimcp_error_t fep_parietal_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fep_parietal_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fep_parietal_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fep_parietal_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fep_parietal_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fep_parietal_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from fep_parietal_bridge module */
-static inline void fep_parietal_bridge_heartbeat(const char* operation, float progress) {
-    if (g_fep_parietal_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_parietal_bridge_health_agent, operation, progress);
+void fep_parietal_bridge_mesh_unregister(void) {
+    if (g_fep_parietal_bridge_mesh_registry && g_fep_parietal_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_fep_parietal_bridge_mesh_registry, g_fep_parietal_bridge_mesh_id);
+        g_fep_parietal_bridge_mesh_id = 0;
+        g_fep_parietal_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from fep_parietal_bridge module (instance-level) */
 static inline void fep_parietal_bridge_heartbeat_instance(
@@ -132,7 +146,7 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
     fep_parietal_bridge_heartbeat("fep_parietal_create", 0.0f);
 
 
-    fep_parietal_bridge_t* bridge = calloc(1, sizeof(fep_parietal_bridge_t));
+    fep_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(fep_parietal_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fep_parietal_bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -151,7 +165,7 @@ void fep_parietal_bridge_destroy(fep_parietal_bridge_t* bridge) {
 
 
     if (bridge) {
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 
@@ -601,8 +615,8 @@ void fep_parietal_free_belief(fep_math_belief_t* belief) {
 
 
     if (belief) {
-        free(belief->mean);
-        free(belief->precision);
+        nimcp_free(belief->mean);
+        nimcp_free(belief->precision);
         memset(belief, 0, sizeof(*belief));
     }
 }
@@ -613,10 +627,10 @@ void fep_parietal_free_prediction(fep_math_prediction_t* prediction) {
 
 
     if (prediction) {
-        free(prediction->predicted);
-        free(prediction->actual);
-        free(prediction->error);
-        free(prediction->weighted_error);
+        nimcp_free(prediction->predicted);
+        nimcp_free(prediction->actual);
+        nimcp_free(prediction->error);
+        nimcp_free(prediction->weighted_error);
         memset(prediction, 0, sizeof(*prediction));
     }
 }
@@ -627,8 +641,8 @@ void fep_parietal_free_inference_result(fep_active_inference_result_t* result) {
 
 
     if (result) {
-        free(result->action);
-        free(result->evaluated_policies);
+        nimcp_free(result->action);
+        nimcp_free(result->evaluated_policies);
         memset(result, 0, sizeof(*result));
     }
 }

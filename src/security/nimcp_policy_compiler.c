@@ -24,30 +24,42 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for policy_compiler module */
-static nimcp_health_agent_t* g_policy_compiler_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(policy_compiler)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for policy_compiler heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void policy_compiler_set_health_agent(nimcp_health_agent_t* agent) {
-    g_policy_compiler_health_agent = agent;
+static mesh_participant_id_t g_policy_compiler_mesh_id = 0;
+static mesh_participant_registry_t* g_policy_compiler_mesh_registry = NULL;
+
+nimcp_error_t policy_compiler_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_policy_compiler_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "policy_compiler", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "policy_compiler";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_policy_compiler_mesh_id);
+    if (err == NIMCP_SUCCESS) g_policy_compiler_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from policy_compiler module */
-static inline void policy_compiler_heartbeat(const char* operation, float progress) {
-    if (g_policy_compiler_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_policy_compiler_health_agent, operation, progress);
+void policy_compiler_mesh_unregister(void) {
+    if (g_policy_compiler_mesh_registry && g_policy_compiler_mesh_id != 0) {
+        mesh_participant_unregister(g_policy_compiler_mesh_registry, g_policy_compiler_mesh_id);
+        g_policy_compiler_mesh_id = 0;
+        g_policy_compiler_mesh_registry = NULL;
     }
 }
 
@@ -109,7 +121,7 @@ typedef struct {
  * ======================================================================== */
 
 static bytecode_t* bytecode_create(void) {
-    bytecode_t* bc = calloc(1, sizeof(bytecode_t));
+    bytecode_t* bc = nimcp_calloc(1, sizeof(bytecode_t));
     if (!bc) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bc is NULL");
@@ -119,9 +131,9 @@ static bytecode_t* bytecode_create(void) {
     }
 
     bc->capacity = 64;
-    bc->instructions = calloc(bc->capacity, sizeof(instruction_t));
+    bc->instructions = nimcp_calloc(bc->capacity, sizeof(instruction_t));
     if (!bc->instructions) {
-        free(bc);
+        nimcp_free(bc);
         return NULL;
     }
 
@@ -132,11 +144,11 @@ static void bytecode_destroy(bytecode_t* bc) {
     if (!bc) return;
 
     for (size_t i = 0; i < bc->string_count; i++) {
-        free(bc->string_pool[i]);
+        nimcp_free(bc->string_pool[i]);
     }
-    free(bc->string_pool);
-    free(bc->instructions);
-    free(bc);
+    nimcp_free(bc->string_pool);
+    nimcp_free(bc->instructions);
+    nimcp_free(bc);
 }
 
 static void emit(bytecode_t* bc, instruction_t instr) {
@@ -146,7 +158,7 @@ static void emit(bytecode_t* bc, instruction_t instr) {
         if (new_capacity < bc->capacity || new_capacity > SIZE_MAX / sizeof(instruction_t)) {
             return;  // Overflow, cannot grow
         }
-        instruction_t* new_instructions = realloc(bc->instructions,
+        instruction_t* new_instructions = nimcp_realloc(bc->instructions,
                                                    new_capacity * sizeof(instruction_t));
         if (!new_instructions) {
             return;  // Keep original buffer intact
@@ -166,7 +178,7 @@ static size_t add_string(bytecode_t* bc, const char* str) {
     }
 
     // Add new string
-    char** new_pool = realloc(bc->string_pool,
+    char** new_pool = nimcp_realloc(bc->string_pool,
                               (bc->string_count + 1) * sizeof(char*));
     if (!new_pool) {
         return (size_t)-1;  // Error indicator

@@ -74,34 +74,9 @@
 #include <stdatomic.h>
 
 #define LOG_MODULE "plasticity_neuromodulators"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for neuromodulators module */
-static nimcp_health_agent_t* g_neuromodulators_health_agent = NULL;
-
-/**
- * @brief Set health agent for neuromodulators heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neuromodulators_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neuromodulators_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neuromodulators module */
-static inline void neuromodulators_heartbeat(const char* operation, float progress) {
-    if (g_neuromodulators_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neuromodulators_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromodulators)
 
 //=============================================================================
 // Bio-Async Integration State (Global for module registration)
@@ -119,7 +94,7 @@ typedef struct {
     neuromodulator_system_t current_system; /**< Currently active system (set by last create) */
     bool initialized;                       /**< Whether bio-async is initialized */
     atomic_uint_fast64_t messages_processed;/**< Message processing counter */
-    pthread_mutex_t init_mutex;             /**< Mutex protecting initialization */
+    nimcp_mutex_t init_mutex;             /**< Mutex protecting initialization */
     bool mutex_initialized;                 /**< Whether mutex is initialized */
 } neuromod_bio_state_t;
 
@@ -129,7 +104,7 @@ static neuromod_bio_state_t g_neuromod_bio_state = {
     .current_system = NULL,
     .initialized = false,
     .messages_processed = 0,
-    .init_mutex = PTHREAD_MUTEX_INITIALIZER,
+    .init_mutex = NIMCP_MUTEX_INITIALIZER,
     .mutex_initialized = true
 };
 
@@ -715,12 +690,12 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
     }
 
     // Thread-safe initialization check with mutex
-    pthread_mutex_lock(&g_neuromod_bio_state.init_mutex);
+    nimcp_mutex_lock(&g_neuromod_bio_state.init_mutex);
 
     // If already initialized, just update the current system
     if (g_neuromod_bio_state.initialized) {
         g_neuromod_bio_state.current_system = system;
-        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
         LOG_DEBUG("Updated neuromodulator bio-async with new system instance");
         return NIMCP_SUCCESS;
     }
@@ -737,7 +712,7 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
     g_neuromod_bio_state.module_ctx = bio_router_register_module(&module_info);
     if (!g_neuromod_bio_state.module_ctx) {
         // This is expected if spatial neuromodulator is already registered
-        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
         LOG_DEBUG("Could not register neuromodulator module - another handler may be active");
         return NIMCP_SUCCESS;  // Not an error - spatial system handles messages
     }
@@ -766,7 +741,7 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
             LOG_ERROR("Failed to register neuromodulator release handler: %d", err);
             bio_router_unregister_module(g_neuromod_bio_state.module_ctx);
             g_neuromod_bio_state.module_ctx = NULL;
-            pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+            nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
             return err;
         }
 
@@ -789,7 +764,7 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
     g_neuromod_bio_state.initialized = true;
     atomic_init(&g_neuromod_bio_state.messages_processed, 0);
 
-    pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+    nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
 
     LOG_INFO("Neuromodulator bio-async integration initialized");
 
@@ -803,10 +778,10 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
  * WHY:  Clean shutdown, prevent dangling references
  */
 static void neuromod_bio_async_shutdown(void) {
-    pthread_mutex_lock(&g_neuromod_bio_state.init_mutex);
+    nimcp_mutex_lock(&g_neuromod_bio_state.init_mutex);
 
     if (!g_neuromod_bio_state.initialized) {
-        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
         return;
     }
 
@@ -819,7 +794,7 @@ static void neuromod_bio_async_shutdown(void) {
     g_neuromod_bio_state.current_system = NULL;
     g_neuromod_bio_state.initialized = false;
 
-    pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+    nimcp_mutex_unlock(&g_neuromod_bio_state.init_mutex);
 
     LOG_INFO("Neuromodulator bio-async shutdown (processed %lu messages)", processed);
 }

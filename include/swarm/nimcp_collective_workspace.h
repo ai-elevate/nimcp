@@ -115,7 +115,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -382,7 +382,7 @@ typedef struct collective_workspace {
     uint64_t creation_time_ms;          /**< Workspace creation time */
 
     // Thread safety
-    pthread_mutex_t mutex;              /**< Protects all workspace state */
+    nimcp_mutex_t mutex;              /**< Protects all workspace state */
 
     // Statistics
     uint64_t merge_conflicts;           /**< Number of concurrent updates resolved */

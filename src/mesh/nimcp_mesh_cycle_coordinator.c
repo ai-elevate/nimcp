@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -106,6 +107,7 @@ nimcp_error_t mesh_cycle_coordinator_integration_default_config(
     mesh_cycle_coordinator_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -283,6 +285,7 @@ nimcp_error_t mesh_cycle_coordinator_connect_ordering(
     mesh_ordering_service_t* ordering_service
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -302,6 +305,7 @@ nimcp_error_t mesh_cycle_coordinator_connect_resilience(
     mesh_resilience_integration_t* resilience
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -321,6 +325,7 @@ nimcp_error_t mesh_cycle_coordinator_connect_health_bridge(
     mesh_health_bridge_t* health_bridge
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -340,6 +345,7 @@ nimcp_error_t mesh_cycle_coordinator_connect_exception_bridge(
     mesh_exception_bridge_t* exception_bridge
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -359,6 +365,7 @@ nimcp_error_t mesh_cycle_coordinator_connect_msp(
     mesh_msp_t* msp
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -383,12 +390,15 @@ nimcp_error_t mesh_cycle_coordinator_get_timing_constraint(
     mesh_cycle_timing_constraint_t* constraint_out
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!constraint_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (cycle_type < 0 || cycle_type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_cycle_coordinator: error condition");
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -450,9 +460,11 @@ nimcp_error_t mesh_cycle_coordinator_notify_transaction_timed(
     bool timing_met
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -525,9 +537,11 @@ nimcp_error_t mesh_cycle_coordinator_on_stall(
     uint64_t stall_duration_us
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (cycle_type < 0 || cycle_type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_cycle_coordinator: error condition");
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -604,9 +618,11 @@ nimcp_error_t mesh_cycle_coordinator_request_recovery(
     mesh_recovery_action_type_t action
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (cycle_type < 0 || cycle_type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_cycle_coordinator: error condition");
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -615,6 +631,7 @@ nimcp_error_t mesh_cycle_coordinator_request_recovery(
     if (!integration->resilience) {
         nimcp_mutex_unlock(integration->mutex);
         LOG_WARN("Cannot request recovery: resilience not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_cycle_coordinator: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -650,12 +667,15 @@ nimcp_error_t mesh_cycle_coordinator_get_recovery_status(
     mesh_cycle_recovery_status_t* status_out
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!status_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (cycle_type < 0 || cycle_type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_cycle_coordinator: error condition");
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -707,9 +727,11 @@ nimcp_error_t mesh_cycle_coordinator_get_health_endorsement(
     mesh_cycle_health_endorsement_t* endorsement_out
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!endorsement_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -756,6 +778,7 @@ nimcp_error_t mesh_cycle_coordinator_contribute_health(
     float health_score
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -798,6 +821,7 @@ nimcp_error_t mesh_cycle_coordinator_set_stall_callback(
     void* user_data
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -815,6 +839,7 @@ nimcp_error_t mesh_cycle_coordinator_set_recovery_callback(
     void* user_data
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -832,6 +857,7 @@ nimcp_error_t mesh_cycle_coordinator_set_timing_callback(
     void* user_data
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -852,9 +878,11 @@ nimcp_error_t mesh_cycle_coordinator_get_stats(
     mesh_cycle_coordinator_stats_t* stats_out
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cycle_coordinator: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -869,6 +897,7 @@ nimcp_error_t mesh_cycle_coordinator_reset_stats(
     mesh_cycle_coordinator_integration_t* integration
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -888,6 +917,7 @@ nimcp_error_t mesh_cycle_coordinator_update(
     uint64_t delta_ms
 ) {
     if (!integration || integration->magic != MESH_CYCLE_COORDINATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cycle_coordinator: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

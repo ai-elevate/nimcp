@@ -360,6 +360,7 @@ nimcp_error_t mesh_exception_bridge_create_antigen(
     mesh_exception_antigen_t* antigen_out
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!antigen_out) return NIMCP_ERROR_NULL_POINTER;
@@ -422,6 +423,7 @@ nimcp_error_t mesh_exception_bridge_set_bbb(
     blood_brain_barrier_t* bbb
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -438,6 +440,7 @@ nimcp_error_t mesh_exception_bridge_bbb_validate(
     float* threat_score_out
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!antigen || !threat_score_out) return NIMCP_ERROR_NULL_POINTER;
@@ -484,6 +487,7 @@ nimcp_error_t mesh_exception_bridge_route(
     mesh_exception_response_t* response_out
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!response_out) return NIMCP_ERROR_NULL_POINTER;
@@ -633,6 +637,7 @@ nimcp_error_t mesh_exception_bridge_route_error(
     mesh_exception_response_t* response_out
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!response_out) return NIMCP_ERROR_NULL_POINTER;
@@ -711,6 +716,7 @@ nimcp_error_t mesh_exception_bridge_get_stats(
     mesh_exception_bridge_stats_t* stats
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -726,6 +732,7 @@ nimcp_error_t mesh_exception_bridge_reset_stats(
     mesh_exception_bridge_t* bridge
 ) {
     if (!bridge || bridge->magic != EXCEPTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_exception_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

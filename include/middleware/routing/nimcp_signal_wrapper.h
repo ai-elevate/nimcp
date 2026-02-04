@@ -13,10 +13,10 @@
  * Traditional signal routing does deep copies:
  * ```
  * // Per signal routed:
- * uint32_t* dest_ids_copy = malloc(num_dests * sizeof(uint32_t));
+ * uint32_t* dest_ids_copy = nimcp_malloc(num_dests * sizeof(uint32_t));
  * memcpy(dest_ids_copy, dest_ids, num_dests * sizeof(uint32_t));
  *
- * float* signal_data_copy = malloc(signal_size * sizeof(float));
+ * float* signal_data_copy = nimcp_malloc(signal_size * sizeof(float));
  * memcpy(signal_data_copy, signal_data, signal_size * sizeof(float));
  *
  * // Total: ~1500ns per signal (malloc + memcpy overhead)
@@ -65,9 +65,9 @@
  * Before:
  * ```c
  * // Deep copy in queue_entry
- * entry->dest_ids = malloc(...);
+ * entry->dest_ids = nimcp_malloc(...);
  * memcpy(entry->dest_ids, dest_ids, ...);
- * entry->signal_data = malloc(...);
+ * entry->signal_data = nimcp_malloc(...);
  * memcpy(entry->signal_data, signal_data, ...);
  * ```
  *
@@ -90,6 +90,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "utils/memory/nimcp_cow_manager.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {

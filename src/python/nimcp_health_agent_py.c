@@ -30,6 +30,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * HealthAgentStats Type (read-only container)
@@ -753,7 +754,7 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
     msg.source = (health_agent_source_t)source;
     strncpy(msg.description, description, sizeof(msg.description) - 1);
 
-    uint64_t* recalled_ids = (uint64_t*)malloc(max_recalls * sizeof(uint64_t));
+    uint64_t* recalled_ids = (uint64_t*)nimcp_malloc(max_recalls * sizeof(uint64_t));
     if (!recalled_ids) {
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate recall buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recalled_ids is NULL");
@@ -769,7 +770,7 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
     Py_END_ALLOW_THREADS
 
     if (result != 0) {
-        free(recalled_ids);
+        nimcp_free(recalled_ids);
         PyErr_SetString(PyExc_RuntimeError, "Failed to recall engrams");
         return NULL;
     }
@@ -779,7 +780,7 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
         PyList_SetItem(list, i, PyLong_FromUnsignedLongLong(recalled_ids[i]));
     }
 
-    free(recalled_ids);
+    nimcp_free(recalled_ids);
     return list;
 }
 

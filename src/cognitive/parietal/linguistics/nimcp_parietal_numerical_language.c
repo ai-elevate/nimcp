@@ -15,6 +15,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * INTERNAL CONSTANTS
@@ -392,7 +393,7 @@ numerical_language_t* numerical_language_create(void) {
 }
 
 numerical_language_t* numerical_language_create_custom(const numerical_language_config_t* config) {
-    numerical_language_t* nl = (numerical_language_t*)calloc(1, sizeof(numerical_language_t));
+    numerical_language_t* nl = (numerical_language_t*)nimcp_calloc(1, sizeof(numerical_language_t));
     if (!nl) {
         set_last_error("Failed to allocate numerical language processor");
         NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "numerical_language_create: allocation failed");
@@ -422,7 +423,7 @@ numerical_language_t* numerical_language_create_custom(const numerical_language_
 
 void numerical_language_destroy(numerical_language_t* nl) {
     if (nl) {
-        free(nl);
+        nimcp_free(nl);
     }
 }
 

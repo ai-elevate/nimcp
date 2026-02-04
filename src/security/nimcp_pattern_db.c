@@ -38,30 +38,42 @@
 #include <limits.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for pattern_db module */
-static nimcp_health_agent_t* g_pattern_db_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pattern_db)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for pattern_db heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pattern_db_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pattern_db_health_agent = agent;
+static mesh_participant_id_t g_pattern_db_mesh_id = 0;
+static mesh_participant_registry_t* g_pattern_db_mesh_registry = NULL;
+
+nimcp_error_t pattern_db_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pattern_db_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pattern_db", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pattern_db";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pattern_db_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pattern_db_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pattern_db module */
-static inline void pattern_db_heartbeat(const char* operation, float progress) {
-    if (g_pattern_db_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pattern_db_health_agent, operation, progress);
+void pattern_db_mesh_unregister(void) {
+    if (g_pattern_db_mesh_registry && g_pattern_db_mesh_id != 0) {
+        mesh_participant_unregister(g_pattern_db_mesh_registry, g_pattern_db_mesh_id);
+        g_pattern_db_mesh_id = 0;
+        g_pattern_db_mesh_registry = NULL;
     }
 }
 
@@ -446,7 +458,7 @@ static nimcp_error_t grow_patterns(nimcp_pattern_db_t db) {
         return NIMCP_ERROR;  // At maximum capacity
     }
 
-    pattern_slot_t* new_patterns = calloc(new_capacity, sizeof(pattern_slot_t));
+    pattern_slot_t* new_patterns = nimcp_calloc(new_capacity, sizeof(pattern_slot_t));
     if (!new_patterns) {
         return NIMCP_NO_MEMORY;
     }
@@ -454,7 +466,7 @@ static nimcp_error_t grow_patterns(nimcp_pattern_db_t db) {
     // Copy existing patterns
     memcpy(new_patterns, db->patterns, db->capacity * sizeof(pattern_slot_t));
 
-    free(db->patterns);
+    nimcp_free(db->patterns);
     db->patterns = new_patterns;
     db->capacity = new_capacity;
 
@@ -478,14 +490,14 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
                 for (size_t i = 0; i < oldest->pattern_count; i++) {
                     free_pattern(&oldest->patterns[i]);
                 }
-                free(oldest->patterns);
-                free(oldest);
+                nimcp_free(oldest->patterns);
+                nimcp_free(oldest);
             }
             db->snapshot_count--;
         }
     }
 
-    pattern_snapshot_t* snapshot = calloc(1, sizeof(pattern_snapshot_t));
+    pattern_snapshot_t* snapshot = nimcp_calloc(1, sizeof(pattern_snapshot_t));
     if (!snapshot) {
         return NIMCP_NO_MEMORY;
     }
@@ -496,9 +508,9 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
     nimcp_atomic_store_u32(&snapshot->ref_count, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
 
     // Deep copy patterns
-    snapshot->patterns = calloc(db->capacity, sizeof(pattern_slot_t));
+    snapshot->patterns = nimcp_calloc(db->capacity, sizeof(pattern_slot_t));
     if (!snapshot->patterns) {
-        free(snapshot);
+        nimcp_free(snapshot);
         return NIMCP_NO_MEMORY;
     }
 
@@ -548,7 +560,7 @@ nimcp_pattern_db_config_t nimcp_pattern_db_default_config(void) {
 nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* config) {
     LOG_MODULE_DEBUG("pattern_db", "Creating pattern database");
 
-    nimcp_pattern_db_t db = calloc(1, sizeof(struct nimcp_pattern_db_impl));
+    nimcp_pattern_db_t db = nimcp_calloc(1, sizeof(struct nimcp_pattern_db_impl));
     if (!db) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pattern_db_create: failed to allocate database");
         return NULL;
@@ -567,10 +579,10 @@ nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* conf
         capacity = PATTERN_DB_INITIAL_CAPACITY;
     }
 
-    db->patterns = calloc(capacity, sizeof(pattern_slot_t));
+    db->patterns = nimcp_calloc(capacity, sizeof(pattern_slot_t));
     if (!db->patterns) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pattern_db_create: failed to allocate patterns array");
-        free(db);
+        nimcp_free(db);
         return NULL;
     }
 
@@ -584,8 +596,8 @@ nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* conf
     // Initialize synchronization
     if (pthread_rwlock_init(&db->write_lock, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_pattern_db_create: failed to init rwlock");
-        free(db->patterns);
-        free(db);
+        nimcp_free(db->patterns);
+        nimcp_free(db);
         return NULL;
     }
 
@@ -621,7 +633,7 @@ void nimcp_pattern_db_destroy(nimcp_pattern_db_t db) {
     for (size_t i = 0; i < db->capacity; i++) {
         free_pattern(&db->patterns[i]);
     }
-    free(db->patterns);
+    nimcp_free(db->patterns);
 
     // Free all snapshots
     pattern_snapshot_t* snapshot = db->snapshots;
@@ -633,15 +645,15 @@ void nimcp_pattern_db_destroy(nimcp_pattern_db_t db) {
             for (size_t i = 0; i < snapshot->capacity; i++) {
                 free_pattern(&snapshot->patterns[i]);
             }
-            free(snapshot->patterns);
-            free(snapshot);
+            nimcp_free(snapshot->patterns);
+            nimcp_free(snapshot);
         }
 
         snapshot = next;
     }
 
     pthread_rwlock_destroy(&db->write_lock);
-    free(db);
+    nimcp_free(db);
 }
 
 //=============================================================================
@@ -1229,7 +1241,7 @@ nimcp_error_t nimcp_pattern_db_load(
         return NIMCP_INVALID_PARAM;
     }
 
-    char* content = malloc((size_t)file_size + 1);
+    char* content = nimcp_malloc((size_t)file_size + 1);
     if (!content) {
         fclose(file);
         return NIMCP_NO_MEMORY;
@@ -1242,7 +1254,7 @@ nimcp_error_t nimcp_pattern_db_load(
     /* SECURITY: Validate basic JSON structure before parsing */
     if (!json_validate_basic_structure(content, read_size)) {
         LOG_MODULE_ERROR("pattern_db", "Invalid JSON structure in pattern file");
-        free(content);
+        nimcp_free(content);
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1258,14 +1270,14 @@ nimcp_error_t nimcp_pattern_db_load(
     if (!json_find_key_value(content, content_end, "patterns",
                              &patterns_val_start, &patterns_val_end)) {
         LOG_MODULE_ERROR("pattern_db", "No 'patterns' array found in JSON");
-        free(content);
+        nimcp_free(content);
         return NIMCP_INVALID_PARAM;
     }
 
     /* Validate it's an array */
     if (*patterns_val_start != '[') {
         LOG_MODULE_ERROR("pattern_db", "'patterns' value is not an array");
-        free(content);
+        nimcp_free(content);
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1378,7 +1390,7 @@ nimcp_error_t nimcp_pattern_db_load(
         }
     }
 
-    free(content);
+    nimcp_free(content);
 
     if (patterns_loaded == 0) {
         LOG_MODULE_WARN("pattern_db", "No valid patterns loaded from file");
@@ -1563,7 +1575,7 @@ nimcp_error_t nimcp_pattern_db_rollback(
 
     // Allocate new patterns array BEFORE freeing old one (atomicity)
     // MEMORY SAFETY: If allocation fails, db state remains consistent
-    pattern_slot_t* new_patterns = calloc(snapshot->capacity, sizeof(pattern_slot_t));
+    pattern_slot_t* new_patterns = nimcp_calloc(snapshot->capacity, sizeof(pattern_slot_t));
     if (!new_patterns) {
         pthread_rwlock_unlock(&db->write_lock);
         return NIMCP_NO_MEMORY;
@@ -1573,7 +1585,7 @@ nimcp_error_t nimcp_pattern_db_rollback(
     for (size_t i = 0; i < db->capacity; i++) {
         free_pattern(&db->patterns[i]);
     }
-    free(db->patterns);
+    nimcp_free(db->patterns);
 
     // Restore from snapshot (atomically - new_patterns already allocated)
     db->patterns = new_patterns;
@@ -1631,7 +1643,7 @@ nimcp_error_t nimcp_pattern_db_match(
         uint32_t priority;
     } pattern_pri_t;
 
-    pattern_pri_t* sorted_patterns = calloc(db->pattern_count, sizeof(pattern_pri_t));
+    pattern_pri_t* sorted_patterns = nimcp_calloc(db->pattern_count, sizeof(pattern_pri_t));
     if (!sorted_patterns) {
         pthread_rwlock_unlock(&db->write_lock);
         return NIMCP_NO_MEMORY;
@@ -1692,7 +1704,7 @@ nimcp_error_t nimcp_pattern_db_match(
         }
     }
 
-    free(sorted_patterns);
+    nimcp_free(sorted_patterns);
 
     result->match_count = match_count;
     result->threat_score = (total_threat > 1.0F) ? 1.0F : total_threat;

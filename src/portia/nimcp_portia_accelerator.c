@@ -35,36 +35,11 @@
 #include <dlfcn.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for portia_accelerator module */
-static nimcp_health_agent_t* g_portia_accelerator_health_agent = NULL;
-
-/**
- * @brief Set health agent for portia_accelerator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void __attribute__((unused)) portia_accelerator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_portia_accelerator_health_agent = agent;
-}
-
-/** @brief Send heartbeat from portia_accelerator module */
-static inline void portia_accelerator_heartbeat(const char* operation, float progress) {
-    if (g_portia_accelerator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_portia_accelerator_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_accelerator)
 
 //=============================================================================
 // Constants
@@ -88,7 +63,7 @@ static const char* accelerator_type_to_string(accelerator_type_t type);
 struct portia_accelerator_system_struct {
     portia_accelerator_config_t config;
     accelerator_registry_t registry;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bool initialized;
     bool bio_async_enabled;
 };
@@ -587,7 +562,7 @@ portia_accelerator_system_t portia_accelerator_init(
     system->registry.preferred = ACCELERATOR_TYPE_NONE;
 
     // Initialize mutex
-    if (pthread_mutex_init(&system->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&system->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize accelerator system mutex");
         nimcp_free(system);
@@ -616,7 +591,7 @@ void portia_accelerator_shutdown(portia_accelerator_system_t system) {
 
     LOG_INFO("Shutting down accelerator system");
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     if (system->registry.accelerators) {
         nimcp_free(system->registry.accelerators);
@@ -625,8 +600,8 @@ void portia_accelerator_shutdown(portia_accelerator_system_t system) {
 
     system->initialized = false;
 
-    pthread_mutex_unlock(&system->lock);
-    pthread_mutex_destroy(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
+    nimcp_mutex_destroy(&system->lock);
 
     nimcp_free(system);
 
@@ -641,7 +616,7 @@ uint32_t portia_accelerator_detect_all(portia_accelerator_system_t system) {
 
     LOG_INFO("Starting full accelerator detection");
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     uint32_t total = 0;
 
@@ -665,7 +640,7 @@ uint32_t portia_accelerator_detect_all(portia_accelerator_system_t system) {
         total += portia_accelerator_detect_tpu(system);
     }
 
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     LOG_INFO("Detected %u total accelerators", total);
     bbb_audit_log(BBB_AUDIT_INFO, MODULE_NAME, "detection_complete",
@@ -816,17 +791,17 @@ bool portia_accelerator_get_info(portia_accelerator_system_t system,
         return false;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     if (index >= system->registry.count) {
-        pthread_mutex_unlock(&system->lock);
+        nimcp_mutex_unlock(&system->lock);
         LOG_WARN("Invalid accelerator index: %u", index);
         return false;
     }
 
     memcpy(info, &system->registry.accelerators[index], sizeof(accelerator_info_t));
 
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
     return true;
 }
 
@@ -840,10 +815,10 @@ bool portia_accelerator_get_best(portia_accelerator_system_t system,
         return false;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     if (system->registry.count == 0) {
-        pthread_mutex_unlock(&system->lock);
+        nimcp_mutex_unlock(&system->lock);
         LOG_WARN("No accelerators available");
         return false;
     }
@@ -864,7 +839,7 @@ bool portia_accelerator_get_best(portia_accelerator_system_t system,
 
     memcpy(info, &system->registry.accelerators[best_idx], sizeof(accelerator_info_t));
 
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     LOG_INFO("Best accelerator: %s (score: %.2f)", info->name, best_score);
     return true;
@@ -881,17 +856,17 @@ bool portia_accelerator_get_by_type(portia_accelerator_system_t system,
         return false;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     for (uint32_t i = 0; i < system->registry.count; i++) {
         if (system->registry.accelerators[i].type == type) {
             memcpy(info, &system->registry.accelerators[i], sizeof(accelerator_info_t));
-            pthread_mutex_unlock(&system->lock);
+            nimcp_mutex_unlock(&system->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
     return false;
 }
 
@@ -900,9 +875,9 @@ uint32_t portia_accelerator_get_count(portia_accelerator_system_t system) {
         return 0;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
     uint32_t count = system->registry.count;
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     return count;
 }
@@ -912,9 +887,9 @@ uint32_t portia_accelerator_get_type_mask(portia_accelerator_system_t system) {
         return 0;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
     uint32_t mask = system->registry.type_mask;
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     return mask;
 }
@@ -925,17 +900,17 @@ bool portia_accelerator_set_preferred(portia_accelerator_system_t system,
         return false;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     // Check if type is available
     if ((system->registry.type_mask & type) == 0) {
-        pthread_mutex_unlock(&system->lock);
+        nimcp_mutex_unlock(&system->lock);
         LOG_WARN("Cannot set preferred type %u - not available", type);
         return false;
     }
 
     system->registry.preferred = type;
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     LOG_INFO("Preferred accelerator type set to %s",
              accelerator_type_to_string(type));
@@ -952,9 +927,9 @@ accelerator_type_t portia_accelerator_get_preferred(
         return ACCELERATOR_TYPE_NONE;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
     accelerator_type_t type = system->registry.preferred;
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     return type;
 }
@@ -965,9 +940,9 @@ bool portia_accelerator_is_available(portia_accelerator_system_t system,
         return false;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
     bool available = (system->registry.type_mask & type) != 0;
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 
     return available;
 }
@@ -1007,7 +982,7 @@ void portia_accelerator_print_all(portia_accelerator_system_t system) {
         return;
     }
 
-    pthread_mutex_lock(&system->lock);
+    nimcp_mutex_lock(&system->lock);
 
     printf("\n=== Detected Accelerators (%u) ===\n", system->registry.count);
 
@@ -1016,7 +991,7 @@ void portia_accelerator_print_all(portia_accelerator_system_t system) {
         portia_accelerator_print_info(&system->registry.accelerators[i]);
     }
 
-    pthread_mutex_unlock(&system->lock);
+    nimcp_mutex_unlock(&system->lock);
 }
 
 float portia_accelerator_estimate_power(const accelerator_info_t* info,

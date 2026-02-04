@@ -42,6 +42,7 @@
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread.h"
 NIMCP_DECLARE_HEALTH_AGENT_STATIC(cortical_column)
 
 
@@ -58,7 +59,7 @@ NIMCP_DECLARE_HEALTH_AGENT_STATIC(cortical_column)
 static bio_module_context_t bio_ctx = NULL;
 static bool bio_async_enabled = false;
 static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t bio_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t bio_cleanup_mutex = NIMCP_MUTEX_INITIALIZER;
 
 static void cortical_column_bio_init_impl(void) {
     if (!bio_router_is_initialized()) {
@@ -86,14 +87,14 @@ static void cortical_column_bio_init(void) {
 
 __attribute__((destructor))
 static void cortical_column_bio_cleanup(void) {
-    pthread_mutex_lock(&bio_cleanup_mutex);
+    nimcp_mutex_lock(&bio_cleanup_mutex);
     if (bio_async_enabled && bio_ctx) {
         bio_router_unregister_module(bio_ctx);
         bio_ctx = NULL;
         bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for cortical_column module");
     }
-    pthread_mutex_unlock(&bio_cleanup_mutex);
+    nimcp_mutex_unlock(&bio_cleanup_mutex);
 }
 
 // Constants
@@ -1469,7 +1470,7 @@ struct cortical_plasticity_bridge;
 typedef struct cortical_plasticity_bridge cortical_plasticity_bridge_t;
 
 /* Global plasticity bridge for cortical columns */
-static cortical_plasticity_bridge_t* g_cortical_plasticity_bridge = NULL;
+static _Atomic(cortical_plasticity_bridge_t*) g_cortical_plasticity_bridge = NULL;
 
 /**
  * @brief Set plasticity bridge for cortical column STDP integration
@@ -1753,7 +1754,7 @@ int cortical_column_query_self_knowledge(kg_reader_t* kg) {
 //=============================================================================
 
 /** Global SNN network for cortical columns */
-static cortical_snn_network_t* g_cortical_snn_network = NULL;
+static _Atomic(cortical_snn_network_t*) g_cortical_snn_network = NULL;
 
 void cortical_column_set_snn_network(cortical_snn_network_t* network) {
     g_cortical_snn_network = network;

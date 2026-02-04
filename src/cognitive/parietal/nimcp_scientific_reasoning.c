@@ -18,31 +18,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(scientific_reasoning)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for scientific_reasoning module */
-static nimcp_health_agent_t* g_scientific_reasoning_health_agent = NULL;
+static mesh_participant_id_t g_scientific_reasoning_mesh_id = 0;
+static mesh_participant_registry_t* g_scientific_reasoning_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for scientific_reasoning heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void scientific_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
-    g_scientific_reasoning_health_agent = agent;
+nimcp_error_t scientific_reasoning_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_scientific_reasoning_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "scientific_reasoning", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "scientific_reasoning";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_scientific_reasoning_mesh_id);
+    if (err == NIMCP_SUCCESS) g_scientific_reasoning_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from scientific_reasoning module */
-static inline void scientific_reasoning_heartbeat(const char* operation, float progress) {
-    if (g_scientific_reasoning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_scientific_reasoning_health_agent, operation, progress);
+void scientific_reasoning_mesh_unregister(void) {
+    if (g_scientific_reasoning_mesh_registry && g_scientific_reasoning_mesh_id != 0) {
+        mesh_participant_unregister(g_scientific_reasoning_mesh_registry, g_scientific_reasoning_mesh_id);
+        g_scientific_reasoning_mesh_id = 0;
+        g_scientific_reasoning_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from scientific_reasoning module (instance-level) */
 static inline void scientific_reasoning_heartbeat_instance(
@@ -220,7 +234,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
         cfg = scientific_default_config();
     }
 
-    scientific_reasoning_t* sr = calloc(1, sizeof(scientific_reasoning_t));
+    scientific_reasoning_t* sr = nimcp_calloc(1, sizeof(scientific_reasoning_t));
     if (!sr) {
         set_scientific_error("Failed to allocate scientific reasoning");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sr");
@@ -232,10 +246,10 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
     sr->next_hypothesis_id = 1;
 
     /* Allocate hypothesis array */
-    sr->hypotheses = calloc(cfg.max_hypotheses, sizeof(hypothesis_t));
+    sr->hypotheses = nimcp_calloc(cfg.max_hypotheses, sizeof(hypothesis_t));
     if (!sr->hypotheses) {
         set_scientific_error("Failed to allocate hypothesis array");
-        free(sr);
+        nimcp_free(sr);
         return NULL;
     }
 
@@ -244,8 +258,8 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
     sr->lock = nimcp_mutex_create(&attr);
     if (!sr->lock) {
         set_scientific_error("Failed to create mutex");
-        free(sr->hypotheses);
-        free(sr);
+        nimcp_free(sr->hypotheses);
+        nimcp_free(sr);
         return NULL;
     }
 
@@ -268,17 +282,17 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
         }
 
         if (sr->hypotheses[i].parameters) {
-            free(sr->hypotheses[i].parameters);
+            nimcp_free(sr->hypotheses[i].parameters);
         }
     }
 
-    free(sr->hypotheses);
+    nimcp_free(sr->hypotheses);
 
     if (sr->lock) {
         nimcp_mutex_free(sr->lock);
     }
 
-    free(sr);
+    nimcp_free(sr);
 }
 
 /* ============================================================================
@@ -533,7 +547,7 @@ uint32_t scientific_buckingham_pi(
                              (float)(g + 1) / (float)num_groups);
         }
 
-        pi_groups[g] = calloc(num_quantities, sizeof(float));
+        pi_groups[g] = nimcp_calloc(num_quantities, sizeof(float));
         if (!pi_groups[g]) {
             /* Clean up on failure */
             for (uint32_t k = 0; k < g; k++) {
@@ -543,7 +557,7 @@ uint32_t scientific_buckingham_pi(
                                      (float)(k + 1) / (float)g);
                 }
 
-                free(pi_groups[k]);
+                nimcp_free(pi_groups[k]);
             }
             nimcp_mutex_unlock(sr->lock);
             return 0;
@@ -801,7 +815,7 @@ causal_graph_t* scientific_create_causal_graph(
     /* Phase 8: Heartbeat at operation start */
     scientific_reasoning_heartbeat("scientific_r_scientific_create_ca", 0.0f);
 
-    causal_graph_t* graph = calloc(1, sizeof(causal_graph_t));
+    causal_graph_t* graph = nimcp_calloc(1, sizeof(causal_graph_t));
     if (!graph) {
         set_scientific_error("Failed to allocate causal graph");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate graph");
@@ -825,7 +839,7 @@ causal_graph_t* scientific_create_causal_graph(
     }
 
     /* Allocate adjacency matrix */
-    graph->adjacency = malloc(num_variables * sizeof(float*));
+    graph->adjacency = nimcp_malloc(num_variables * sizeof(float*));
     if (!graph->adjacency) {
         scientific_destroy_causal_graph(graph);
         return NULL;
@@ -838,7 +852,7 @@ causal_graph_t* scientific_create_causal_graph(
                              (float)(i + 1) / (float)num_variables);
         }
 
-        graph->adjacency[i] = calloc(num_variables, sizeof(float));
+        graph->adjacency[i] = nimcp_calloc(num_variables, sizeof(float));
         if (!graph->adjacency[i]) {
             scientific_destroy_causal_graph(graph);
             return NULL;
@@ -846,7 +860,7 @@ causal_graph_t* scientific_create_causal_graph(
     }
 
     /* Allocate relations array */
-    graph->relations = calloc(num_variables * num_variables, sizeof(causal_relation_t));
+    graph->relations = nimcp_calloc(num_variables * num_variables, sizeof(causal_relation_t));
 
     return graph;
 }
@@ -865,15 +879,15 @@ void scientific_destroy_causal_graph(causal_graph_t* graph) {
                              (float)(i + 1) / (float)graph->num_variables);
         }
 
-        free(graph->variable_names[i]);
+        nimcp_free(graph->variable_names[i]);
         if (graph->adjacency) {
-            free(graph->adjacency[i]);
+            nimcp_free(graph->adjacency[i]);
         }
     }
 
-    free(graph->adjacency);
-    free(graph->relations);
-    free(graph);
+    nimcp_free(graph->adjacency);
+    nimcp_free(graph->relations);
+    nimcp_free(graph);
 }
 
 int scientific_learn_causal_structure(
@@ -895,7 +909,7 @@ int scientific_learn_causal_structure(
     uint32_t n = graph->num_variables;
 
     /* Phase 1: Compute correlation matrix and create skeleton */
-    float** corr = malloc(n * sizeof(float*));
+    float** corr = nimcp_malloc(n * sizeof(float*));
     for (uint32_t i = 0; i < n; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && n > 256) {
@@ -903,7 +917,7 @@ int scientific_learn_causal_structure(
                              (float)(i + 1) / (float)n);
         }
 
-        corr[i] = calloc(n, sizeof(float));
+        corr[i] = nimcp_calloc(n, sizeof(float));
     }
 
     /* Extract column data for correlation computation */
@@ -914,7 +928,7 @@ int scientific_learn_causal_structure(
                              (float)(i + 1) / (float)n);
         }
 
-        float* col_i = malloc(num_samples * sizeof(float));
+        float* col_i = nimcp_malloc(num_samples * sizeof(float));
         for (uint32_t s = 0; s < num_samples; s++) {
             /* Phase 8: Loop progress heartbeat */
             if ((s & 0xFF) == 0 && num_samples > 256) {
@@ -926,7 +940,7 @@ int scientific_learn_causal_structure(
         }
 
         for (uint32_t j = i + 1; j < n; j++) {
-            float* col_j = malloc(num_samples * sizeof(float));
+            float* col_j = nimcp_malloc(num_samples * sizeof(float));
             for (uint32_t s = 0; s < num_samples; s++) {
                 /* Phase 8: Loop progress heartbeat */
                 if ((s & 0xFF) == 0 && num_samples > 256) {
@@ -947,9 +961,9 @@ int scientific_learn_causal_structure(
                 graph->adjacency[j][i] = r;
             }
 
-            free(col_j);
+            nimcp_free(col_j);
         }
-        free(col_i);
+        nimcp_free(col_i);
     }
 
     /* Phase 2: Orient edges (simplified - use temporal ordering or domain knowledge) */
@@ -977,9 +991,9 @@ int scientific_learn_causal_structure(
                              (float)(i + 1) / (float)n);
         }
 
-        free(corr[i]);
+        nimcp_free(corr[i]);
     }
-    free(corr);
+    nimcp_free(corr);
 
     sr->causal_inferences++;
 
@@ -1105,9 +1119,9 @@ int scientific_suggest_experiment(
     design->name[sizeof(design->name) - 1] = '\0';
 
     /* Find causes of target */
-    design->treatment_vars = malloc(graph->num_variables * sizeof(uint32_t));
-    design->control_vars = malloc(graph->num_variables * sizeof(uint32_t));
-    design->outcome_vars = malloc(sizeof(uint32_t));
+    design->treatment_vars = nimcp_malloc(graph->num_variables * sizeof(uint32_t));
+    design->control_vars = nimcp_malloc(graph->num_variables * sizeof(uint32_t));
+    design->outcome_vars = nimcp_malloc(sizeof(uint32_t));
 
     design->outcome_vars[0] = target_effect_id;
     design->num_outcomes = 1;

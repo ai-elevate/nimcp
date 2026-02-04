@@ -15,31 +15,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_memory_quantum_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_memory_quantum_bridge module */
-static nimcp_health_agent_t* g_pr_memory_quantum_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_memory_quantum_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_memory_quantum_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_memory_quantum_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pr_memory_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_memory_quantum_bridge_health_agent = agent;
+nimcp_error_t pr_memory_quantum_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_memory_quantum_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_memory_quantum_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_memory_quantum_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_memory_quantum_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_memory_quantum_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_memory_quantum_bridge module */
-static inline void pr_memory_quantum_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_memory_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_memory_quantum_bridge_health_agent, operation, progress);
+void pr_memory_quantum_bridge_mesh_unregister(void) {
+    if (g_pr_memory_quantum_bridge_mesh_registry && g_pr_memory_quantum_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_memory_quantum_bridge_mesh_registry, g_pr_memory_quantum_bridge_mesh_id);
+        g_pr_memory_quantum_bridge_mesh_id = 0;
+        g_pr_memory_quantum_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "PR_MEMORY_QUANTUM_BRIDGE"
 
@@ -130,7 +144,7 @@ pr_quantum_config_t pr_quantum_default_config(void) {
 
 pr_memory_quantum_ctx_t pr_quantum_create(const pr_quantum_config_t* config) {
     struct pr_memory_quantum_ctx_internal* ctx =
-        calloc(1, sizeof(struct pr_memory_quantum_ctx_internal));
+        nimcp_calloc(1, sizeof(struct pr_memory_quantum_ctx_internal));
     if (!ctx) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -155,7 +169,7 @@ pr_memory_quantum_ctx_t pr_quantum_create(const pr_quantum_config_t* config) {
 
 void pr_quantum_destroy(pr_memory_quantum_ctx_t ctx) {
     if (ctx) {
-        free(ctx);
+        nimcp_free(ctx);
     }
 }
 
@@ -456,8 +470,8 @@ bool pr_quantum_detect_communities(
 
 void pr_quantum_free_community_result(pr_quantum_community_t* result) {
     if (result) {
-        free(result->community_assignments);
-        free(result->community_sizes);
+        nimcp_free(result->community_assignments);
+        nimcp_free(result->community_sizes);
         result->community_assignments = NULL;
         result->community_sizes = NULL;
     }
@@ -483,8 +497,8 @@ bool pr_quantum_find_memory_hubs(
 
 void pr_quantum_free_hubs_result(pr_quantum_hubs_t* result) {
     if (result) {
-        free(result->hub_signatures);
-        free(result->centrality_scores);
+        nimcp_free(result->hub_signatures);
+        nimcp_free(result->centrality_scores);
         result->hub_signatures = NULL;
         result->centrality_scores = NULL;
     }
@@ -565,7 +579,7 @@ bool pr_quantum_diffuse_resonance_multi(
 
     /* Sum diffusion from each source */
     for (uint32_t s = 0; s < num_sources; s++) {
-        float* single = malloc(max_memories * sizeof(float));
+        float* single = nimcp_malloc(max_memories * sizeof(float));
         if (single) {
             uint32_t single_affected = 0;
             pr_quantum_diffuse_resonance(ctx, brain, source_signatures[s],
@@ -577,7 +591,7 @@ bool pr_quantum_diffuse_resonance_multi(
             if (single_affected > *num_affected) {
                 *num_affected = single_affected;
             }
-            free(single);
+            nimcp_free(single);
         }
     }
 

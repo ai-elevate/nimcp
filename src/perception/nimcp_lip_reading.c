@@ -21,35 +21,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for lip_reading module */
-static nimcp_health_agent_t* g_lip_reading_health_agent = NULL;
-
-/**
- * @brief Set health agent for lip_reading heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lip_reading_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lip_reading_health_agent = agent;
-}
-
-/** @brief Send heartbeat from lip_reading module */
-static inline void lip_reading_heartbeat(const char* operation, float progress) {
-    if (g_lip_reading_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lip_reading_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lip_reading)
 
 /*=============================================================================
  * INTERNAL STRUCTURES

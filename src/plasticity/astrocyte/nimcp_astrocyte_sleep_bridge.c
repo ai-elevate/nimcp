@@ -16,36 +16,13 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
-#include <pthread.h>
 #include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for astrocyte_sleep_bridge module */
-static nimcp_health_agent_t* g_astrocyte_sleep_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for astrocyte_sleep_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void astrocyte_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_astrocyte_sleep_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from astrocyte_sleep_bridge module */
-static inline void astrocyte_sleep_bridge_heartbeat(const char* operation, float progress) {
-    if (g_astrocyte_sleep_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_astrocyte_sleep_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_sleep_bridge)
 
 /* Security integration */
 /* ============================================================================
@@ -70,7 +47,7 @@ struct astrocyte_sleep_bridge_struct {
     uint32_t modulation_applications;
 
     /* Thread safety */
-    pthread_mutex_t* mutex;
+    nimcp_mutex_t* mutex;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(astrocyte_sleep_bridge, struct astrocyte_sleep_bridge_struct)
@@ -190,14 +167,14 @@ astrocyte_sleep_bridge_t astrocyte_sleep_bridge_create(
     bridge->effects.glymphatic_active = false;
 
     /* Create mutex */
-    bridge->base.mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("Astrocyte-sleep bridge mutex allocation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Astrocyte-sleep bridge mutex allocation failed");
         return NULL;
     }
-    pthread_mutex_init(bridge->base.mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Sleep-astrocyte bridge created successfully");
     return bridge;
@@ -208,7 +185,7 @@ void astrocyte_sleep_bridge_destroy(astrocyte_sleep_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -227,7 +204,7 @@ int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
     NIMCP_API_CHECK_NULL(bridge->sleep_system, -1, "Sleep system is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "astrocyte_sleep_update: sleep_system is NULL");
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query sleep system state */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -282,7 +259,7 @@ int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
         (state == SLEEP_STATE_LIGHT_NREM || state == SLEEP_STATE_DEEP_NREM);
 
     bridge->total_updates++;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
@@ -296,7 +273,7 @@ int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
     NIMCP_API_CHECK_NULL(bridge->astrocyte_system, -1, "Astrocyte system is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "astrocyte_sleep_apply_modulation: astrocyte_system is NULL");
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get number of astrocytes */
     uint32_t num_astrocytes =
@@ -347,7 +324,7 @@ int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
     }
 
     bridge->modulation_applications++;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -359,9 +336,9 @@ int astrocyte_sleep_get_effects(const astrocyte_sleep_bridge_t bridge,
     NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_sleep_get_effects: effects is NULL");
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(astrocyte_sleep_effects_t));
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -373,9 +350,9 @@ float astrocyte_sleep_get_d_serine_level(const astrocyte_sleep_bridge_t bridge,
         return base_d_serine;
     }
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.d_serine_factor;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base_d_serine * factor;
 }
@@ -387,9 +364,9 @@ float astrocyte_sleep_get_glutamate_uptake(const astrocyte_sleep_bridge_t bridge
         return base_uptake;
     }
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.glutamate_uptake_factor;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base_uptake * factor;
 }
@@ -400,9 +377,9 @@ bool astrocyte_sleep_is_glymphatic_active(const astrocyte_sleep_bridge_t bridge)
         return false;
     }
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool active = bridge->effects.glymphatic_active;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return active;
 }

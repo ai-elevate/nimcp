@@ -27,31 +27,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_reader)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for kg_reader module */
-static nimcp_health_agent_t* g_kg_reader_health_agent = NULL;
+static mesh_participant_id_t g_kg_reader_mesh_id = 0;
+static mesh_participant_registry_t* g_kg_reader_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for kg_reader heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void kg_reader_set_health_agent(nimcp_health_agent_t* agent) {
-    g_kg_reader_health_agent = agent;
+nimcp_error_t kg_reader_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_kg_reader_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "kg_reader", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "kg_reader";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_kg_reader_mesh_id);
+    if (err == NIMCP_SUCCESS) g_kg_reader_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from kg_reader module */
-static inline void kg_reader_heartbeat(const char* operation, float progress) {
-    if (g_kg_reader_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_kg_reader_health_agent, operation, progress);
+void kg_reader_mesh_unregister(void) {
+    if (g_kg_reader_mesh_registry && g_kg_reader_mesh_id != 0) {
+        mesh_participant_unregister(g_kg_reader_mesh_registry, g_kg_reader_mesh_id);
+        g_kg_reader_mesh_id = 0;
+        g_kg_reader_mesh_registry = NULL;
     }
 }
+
 
 static inline void kg_reader_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -135,7 +149,7 @@ static char* parse_json_string(const char** pos) {
     if (*s != '"') return NULL;
 
     /* Allocate and copy with escape handling */
-    char* result = malloc(len + 1);
+    char* result = nimcp_malloc(len + 1);
     if (!result) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
@@ -219,7 +233,7 @@ static int parse_json_string_array(const char* json, char** out_strings, uint32_
  * @brief Parse entity from JSON line
  */
 static kg_entity_t* parse_entity(const char* json) {
-    kg_entity_t* entity = calloc(1, sizeof(kg_entity_t));
+    kg_entity_t* entity = nimcp_calloc(1, sizeof(kg_entity_t));
     if (!entity) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate entity");
@@ -234,7 +248,7 @@ static kg_entity_t* parse_entity(const char* json) {
         char* name = parse_json_string(&name_pos);
         if (name) {
             strncpy(entity->name, name, KG_MAX_NAME_LENGTH - 1);
-            free(name);
+            nimcp_free(name);
         }
     }
 
@@ -244,7 +258,7 @@ static kg_entity_t* parse_entity(const char* json) {
         char* type = parse_json_string(&type_pos);
         if (type) {
             strncpy(entity->entity_type, type, KG_MAX_TYPE_LENGTH - 1);
-            free(type);
+            nimcp_free(type);
         }
     }
 
@@ -263,9 +277,9 @@ static kg_entity_t* parse_entity(const char* json) {
                                  (float)(i + 1) / (float)entity->num_observations);
             }
 
-            free(entity->observations[i]);
+            nimcp_free(entity->observations[i]);
         }
-        free(entity);
+        nimcp_free(entity);
         return NULL;
     }
 
@@ -276,7 +290,7 @@ static kg_entity_t* parse_entity(const char* json) {
  * @brief Parse relation from JSON line
  */
 static kg_relation_t* parse_relation(const char* json) {
-    kg_relation_t* relation = calloc(1, sizeof(kg_relation_t));
+    kg_relation_t* relation = nimcp_calloc(1, sizeof(kg_relation_t));
     if (!relation) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate relation");
@@ -291,7 +305,7 @@ static kg_relation_t* parse_relation(const char* json) {
         char* from = parse_json_string(&from_pos);
         if (from) {
             strncpy(relation->from, from, KG_MAX_NAME_LENGTH - 1);
-            free(from);
+            nimcp_free(from);
         }
     }
 
@@ -301,7 +315,7 @@ static kg_relation_t* parse_relation(const char* json) {
         char* to = parse_json_string(&to_pos);
         if (to) {
             strncpy(relation->to, to, KG_MAX_NAME_LENGTH - 1);
-            free(to);
+            nimcp_free(to);
         }
     }
 
@@ -311,12 +325,12 @@ static kg_relation_t* parse_relation(const char* json) {
         char* type = parse_json_string(&type_pos);
         if (type) {
             strncpy(relation->relation_type, type, KG_MAX_TYPE_LENGTH - 1);
-            free(type);
+            nimcp_free(type);
         }
     }
 
     if (relation->from[0] == '\0' || relation->to[0] == '\0') {
-        free(relation);
+        nimcp_free(relation);
         return NULL;
     }
 
@@ -368,7 +382,7 @@ kg_reader_t* kg_reader_create(void) {
     kg_reader_heartbeat("kg_reader_create", 0.0f);
 
 
-    kg_reader_t* reader = calloc(1, sizeof(kg_reader_t));
+    kg_reader_t* reader = nimcp_calloc(1, sizeof(kg_reader_t));
     NIMCP_API_CHECK_ALLOC(reader, "Failed to allocate KG reader");
     return reader;
 }
@@ -390,9 +404,9 @@ void kg_reader_destroy(kg_reader_t* reader) {
 
         if (reader->entities[i]) {
             for (uint32_t j = 0; j < reader->entities[i]->num_observations; j++) {
-                free(reader->entities[i]->observations[j]);
+                nimcp_free(reader->entities[i]->observations[j]);
             }
-            free(reader->entities[i]);
+            nimcp_free(reader->entities[i]);
         }
     }
 
@@ -404,10 +418,10 @@ void kg_reader_destroy(kg_reader_t* reader) {
                              (float)(i + 1) / (float)reader->num_relations);
         }
 
-        free(reader->relations[i]);
+        nimcp_free(reader->relations[i]);
     }
 
-    free(reader);
+    nimcp_free(reader);
 }
 
 int kg_reader_load(kg_reader_t* reader, const char* file_path) {
@@ -443,9 +457,9 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
 
         if (reader->entities[i]) {
             for (uint32_t j = 0; j < reader->entities[i]->num_observations; j++) {
-                free(reader->entities[i]->observations[j]);
+                nimcp_free(reader->entities[i]->observations[j]);
             }
-            free(reader->entities[i]);
+            nimcp_free(reader->entities[i]);
             reader->entities[i] = NULL;
         }
     }
@@ -456,7 +470,7 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
                              (float)(i + 1) / (float)reader->num_relations);
         }
 
-        free(reader->relations[i]);
+        nimcp_free(reader->relations[i]);
         reader->relations[i] = NULL;
     }
     reader->num_entities = 0;
@@ -552,7 +566,7 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     kg_reader_heartbeat("kg_reader_get_entities_by_type", 0.0f);
 
 
-    kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
+    kg_entity_list_t* list = nimcp_calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -562,9 +576,9 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     }
 
     list->capacity = 64;
-    list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
+    list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -578,7 +592,7 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
         if (reader->entities[i] && strcmp(reader->entities[i]->entity_type, entity_type) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
-                kg_entity_t** new_entities = realloc(list->entities, list->capacity * sizeof(kg_entity_t*));
+                kg_entity_t** new_entities = nimcp_realloc(list->entities, list->capacity * sizeof(kg_entity_t*));
                 if (!new_entities) break;
                 list->entities = new_entities;
             }
@@ -602,7 +616,7 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
     kg_reader_heartbeat("kg_reader_get_all_entities", 0.0f);
 
 
-    kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
+    kg_entity_list_t* list = nimcp_calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -612,9 +626,9 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
     }
 
     list->capacity = reader->num_entities;
-    list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
+    list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -640,7 +654,7 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     kg_reader_heartbeat("kg_reader_search_entities", 0.0f);
 
 
-    kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
+    kg_entity_list_t* list = nimcp_calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -650,9 +664,9 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     }
 
     list->capacity = 64;
-    list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
+    list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -693,7 +707,7 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
         if (found) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
-                kg_entity_t** new_entities = realloc(list->entities, list->capacity * sizeof(kg_entity_t*));
+                kg_entity_t** new_entities = nimcp_realloc(list->entities, list->capacity * sizeof(kg_entity_t*));
                 if (!new_entities) break;
                 list->entities = new_entities;
             }
@@ -710,8 +724,8 @@ void kg_entity_list_destroy(kg_entity_list_t* list) {
     kg_reader_heartbeat("kg_reader_kg_entity_list_destr", 0.0f);
 
 
-    free(list->entities);
-    free(list);
+    nimcp_free(list->entities);
+    nimcp_free(list);
 }
 
 /* ============================================================================
@@ -725,7 +739,7 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     kg_reader_heartbeat("kg_reader_get_relations_from", 0.0f);
 
 
-    kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
+    kg_relation_list_t* list = nimcp_calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -735,9 +749,9 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     }
 
     list->capacity = 32;
-    list->relations = calloc(list->capacity, sizeof(kg_relation_t*));
+    list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -751,7 +765,7 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
         if (reader->relations[i] && strcmp(reader->relations[i]->from, from_entity) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
-                kg_relation_t** new_rels = realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
+                kg_relation_t** new_rels = nimcp_realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
                 if (!new_rels) break;
                 list->relations = new_rels;
             }
@@ -769,7 +783,7 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     kg_reader_heartbeat("kg_reader_get_relations_to", 0.0f);
 
 
-    kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
+    kg_relation_list_t* list = nimcp_calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -779,9 +793,9 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     }
 
     list->capacity = 32;
-    list->relations = calloc(list->capacity, sizeof(kg_relation_t*));
+    list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -795,7 +809,7 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
         if (reader->relations[i] && strcmp(reader->relations[i]->to, to_entity) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
-                kg_relation_t** new_rels = realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
+                kg_relation_t** new_rels = nimcp_realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
                 if (!new_rels) break;
                 list->relations = new_rels;
             }
@@ -813,7 +827,7 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     kg_reader_heartbeat("kg_reader_get_relations_by_typ", 0.0f);
 
 
-    kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
+    kg_relation_list_t* list = nimcp_calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate list");
@@ -823,9 +837,9 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     }
 
     list->capacity = 32;
-    list->relations = calloc(list->capacity, sizeof(kg_relation_t*));
+    list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
 
@@ -839,7 +853,7 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
         if (reader->relations[i] && strcmp(reader->relations[i]->relation_type, relation_type) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
-                kg_relation_t** new_rels = realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
+                kg_relation_t** new_rels = nimcp_realloc(list->relations, list->capacity * sizeof(kg_relation_t*));
                 if (!new_rels) break;
                 list->relations = new_rels;
             }
@@ -874,8 +888,8 @@ void kg_relation_list_destroy(kg_relation_list_t* list) {
     kg_reader_heartbeat("kg_reader_kg_relation_list_des", 0.0f);
 
 
-    free(list->relations);
-    free(list);
+    nimcp_free(list->relations);
+    nimcp_free(list);
 }
 
 /* ============================================================================
@@ -922,7 +936,7 @@ const char** kg_reader_get_module_names(const kg_reader_t* reader, uint32_t* out
         return NULL;
     }
 
-    const char** names = calloc(modules->count, sizeof(char*));
+    const char** names = nimcp_calloc(modules->count, sizeof(char*));
     if (!names) {
         kg_entity_list_destroy(modules);
         if (out_count) *out_count = 0;
@@ -1004,7 +1018,7 @@ int kg_reader_generate_self_description(const kg_reader_t* reader, char* buffer,
             if (n > 0) written += n;
         }
 
-        free((void*)modules);
+        nimcp_free((void*)modules);
     }
 
     /* Count integrations */

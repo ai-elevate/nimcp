@@ -28,37 +28,51 @@
 #include <stdarg.h>
 #include <math.h>
 #include <time.h>
-#include <pthread.h>
 #include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_pink_noise_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_pink_noise_bridge module */
-static nimcp_health_agent_t* g_pr_pink_noise_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_pink_noise_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_pink_noise_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_pink_noise_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_pink_noise_bridge_health_agent = agent;
+nimcp_error_t pr_pink_noise_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_pink_noise_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_pink_noise_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_pink_noise_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_pink_noise_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_pink_noise_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_pink_noise_bridge module */
-static inline void pr_pink_noise_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_pink_noise_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_pink_noise_bridge_health_agent, operation, progress);
+void pr_pink_noise_bridge_mesh_unregister(void) {
+    if (g_pr_pink_noise_bridge_mesh_registry && g_pr_pink_noise_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_pink_noise_bridge_mesh_registry, g_pr_pink_noise_bridge_mesh_id);
+        g_pr_pink_noise_bridge_mesh_id = 0;
+        g_pr_pink_noise_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_pink_bridge module (instance-level) */
 static inline void pr_pink_bridge_heartbeat_instance(
@@ -190,7 +204,7 @@ struct pr_pink_bridge_struct {
     float spectral_fit_r2[PR_PINK_NUM_TARGETS];
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
     bool mutex_initialized;
 
     /* Global amplitude multiplier */
@@ -237,11 +251,11 @@ static inline bool is_valid_target(pr_pink_target_t target) {
  */
 static inline bool bridge_lock(pr_pink_bridge_t bridge) {
     if (!bridge->mutex_initialized) return true;
-    int result = pthread_mutex_trylock(&bridge->base.mutex);
+    int result = nimcp_mutex_trylock(&bridge->base.mutex);
     if (result == 0) return true;
     /* Contention detected */
     atomic_fetch_add(&bridge->mutex_contentions, 1);
-    return pthread_mutex_lock(&bridge->base.mutex) == 0;
+    return nimcp_mutex_lock(&bridge->base.mutex) == 0;
 }
 
 /**
@@ -249,7 +263,7 @@ static inline bool bridge_lock(pr_pink_bridge_t bridge) {
  */
 static inline void bridge_unlock(pr_pink_bridge_t bridge) {
     if (bridge->mutex_initialized) {
-        pthread_mutex_unlock(&bridge->base.mutex);
+        nimcp_mutex_unlock(&bridge->base.mutex);
     }
 }
 
@@ -649,7 +663,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     }
 
     /* Allocate bridge structure */
-    pr_pink_bridge_t bridge = calloc(1, sizeof(struct pr_pink_bridge_struct));
+    pr_pink_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_pink_bridge_struct));
     if (bridge == NULL) {
         pr_pink_bridge_set_error("Failed to allocate bridge");
         return NULL;
@@ -670,9 +684,9 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-    if (pthread_mutex_init(&bridge->base.mutex, &attr) != 0) {
+    if (nimcp_mutex_init(&bridge->base.mutex, &attr) != 0) {
         pthread_mutexattr_destroy(&attr);
-        free(bridge);
+        nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to initialize mutex");
         return NULL;
     }
@@ -709,8 +723,8 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
                 destroy_target_generator(&bridge->targets[j]);
             }
-            pthread_mutex_destroy(&bridge->base.mutex);
-            free(bridge);
+            nimcp_mutex_destroy(&bridge->base.mutex);
+            nimcp_free(bridge);
             pr_pink_bridge_set_error("Failed to initialize target %d generator", i);
             return NULL;
         }
@@ -737,8 +751,8 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->base.mutex);
-        free(bridge);
+        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create quaternion generator");
         return NULL;
     }
@@ -759,8 +773,8 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->base.mutex);
-        free(bridge);
+        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create consolidation timer");
         return NULL;
     }
@@ -786,8 +800,8 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->base.mutex);
-        free(bridge);
+        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create promotion timer");
         return NULL;
     }
@@ -854,12 +868,12 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex_initialized) {
-        pthread_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_destroy(&bridge->base.mutex);
     }
 
     /* Clear magic and free */
     bridge->magic = 0;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 NIMCP_EXPORT bool pr_pink_bridge_reset(pr_pink_bridge_t bridge, uint32_t new_seed) {
@@ -1099,13 +1113,13 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     }
 
     /* Generate batch of noise samples */
-    float* noise_batch = malloc(count * sizeof(float));
+    float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
-        free(noise_batch);
+        nimcp_free(noise_batch);
         return false;
     }
 
@@ -1125,7 +1139,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     atomic_fetch_add(&bridge->total_noise_samples, count);
     atomic_fetch_add(&bridge->total_modulations, count);
 
-    free(noise_batch);
+    nimcp_free(noise_batch);
     return true;
 }
 
@@ -1197,13 +1211,13 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     float amplitude = target->params.amplitude * bridge->global_amplitude;
 
     /* Generate batch of noise samples */
-    float* noise_batch = malloc(count * sizeof(float));
+    float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
-        free(noise_batch);
+        nimcp_free(noise_batch);
         return false;
     }
 
@@ -1232,7 +1246,7 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     atomic_fetch_add(&bridge->total_noise_samples, count);
     atomic_fetch_add(&bridge->total_modulations, count);
 
-    free(noise_batch);
+    nimcp_free(noise_batch);
     return true;
 }
 
@@ -1521,13 +1535,13 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     float amplitude = target->params.amplitude * bridge->global_amplitude * 0.3f;
 
     /* Generate batch of noise samples */
-    float* noise_batch = malloc(count * sizeof(float));
+    float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
-        free(noise_batch);
+        nimcp_free(noise_batch);
         return false;
     }
 
@@ -1547,7 +1561,7 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     atomic_fetch_add(&bridge->total_noise_samples, count);
     atomic_fetch_add(&bridge->total_modulations, count);
 
-    free(noise_batch);
+    nimcp_free(noise_batch);
     return true;
 }
 
@@ -2063,25 +2077,25 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
         return NULL;
     }
 
-    pr_pink_history_t* history = calloc(1, sizeof(pr_pink_history_t));
+    pr_pink_history_t* history = nimcp_calloc(1, sizeof(pr_pink_history_t));
     if (history == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate history");
 
         return NULL;
     }
 
-    history->intervals = calloc(max_samples, sizeof(float));
-    history->resonance_samples = calloc(max_samples, sizeof(float));
-    history->decay_samples = calloc(max_samples, sizeof(float));
+    history->intervals = nimcp_calloc(max_samples, sizeof(float));
+    history->resonance_samples = nimcp_calloc(max_samples, sizeof(float));
+    history->decay_samples = nimcp_calloc(max_samples, sizeof(float));
 
     if (history->intervals == NULL ||
         history->resonance_samples == NULL ||
         history->decay_samples == NULL) {
 
-        free(history->intervals);
-        free(history->resonance_samples);
-        free(history->decay_samples);
-        free(history);
+        nimcp_free(history->intervals);
+        nimcp_free(history->resonance_samples);
+        nimcp_free(history->decay_samples);
+        nimcp_free(history);
         return NULL;
     }
 
@@ -2097,10 +2111,10 @@ NIMCP_EXPORT void pr_pink_history_destroy(pr_pink_history_t* history) {
         return;
     }
 
-    free(history->intervals);
-    free(history->resonance_samples);
-    free(history->decay_samples);
-    free(history);
+    nimcp_free(history->intervals);
+    nimcp_free(history->resonance_samples);
+    nimcp_free(history->decay_samples);
+    nimcp_free(history);
 }
 
 NIMCP_EXPORT const pr_pink_history_t* pr_pink_bridge_get_history(

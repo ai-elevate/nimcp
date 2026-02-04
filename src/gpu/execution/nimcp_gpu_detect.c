@@ -28,35 +28,9 @@
 
 #define LOG_MODULE "GPU_DETECT"
 #define LOG_MODULE_ID 0x0903
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for gpu_detect module */
-static nimcp_health_agent_t* g_gpu_detect_health_agent = NULL;
-
-/**
- * @brief Set health agent for gpu_detect heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void gpu_detect_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gpu_detect_health_agent = agent;
-}
-
-/** @brief Send heartbeat from gpu_detect module */
-static inline void gpu_detect_heartbeat(const char* operation, float progress) {
-    if (g_gpu_detect_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gpu_detect_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_detect)
 
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "utils/logging/nimcp_logging.h"
@@ -83,6 +57,7 @@ static inline void gpu_detect_heartbeat(const char* operation, float progress) {
 
 // Thread-safe initialization
 #include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // CUDA Types (for runtime loading without CUDA headers)
@@ -181,7 +156,7 @@ typedef hipError_t (*hipDriverGetVersion_t)(int*);
 
 static gpu_detect_result_t s_cached_caps = {0};
 static pthread_once_t s_cache_init_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t s_refresh_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t s_refresh_mutex = NIMCP_MUTEX_INITIALIZER;
 
 // Library handles (kept open for potential future use)
 static lib_handle_t s_cuda_lib = NULL;
@@ -972,7 +947,7 @@ size_t gpu_capabilities_string(char* buffer, size_t size)
 
 bool gpu_refresh_capabilities(void)
 {
-    pthread_mutex_lock(&s_refresh_mutex);
+    nimcp_mutex_lock(&s_refresh_mutex);
 
     // Close existing library handles
     if (s_cuda_lib) {
@@ -997,7 +972,7 @@ bool gpu_refresh_capabilities(void)
     detect_opencl_devices(&s_cached_caps);
     determine_best_device(&s_cached_caps);
 
-    pthread_mutex_unlock(&s_refresh_mutex);
+    nimcp_mutex_unlock(&s_refresh_mutex);
 
     LOG_INFO("GPU capabilities refreshed: devices=%u", s_cached_caps.device_count);
     return true;

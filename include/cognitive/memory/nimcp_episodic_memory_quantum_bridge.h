@@ -269,6 +269,7 @@ uint32_t episodic_quantum_get_episode_count(const episodic_quantum_bridge_t* bri
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 /**
  * WHAT: Internal bridge structure
@@ -305,7 +306,7 @@ episodic_quantum_bridge_t* episodic_quantum_bridge_create(
     const episodic_quantum_config_t* config
 ) {
     episodic_quantum_bridge_t* bridge =
-        (episodic_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+        (episodic_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : episodic_quantum_default_config();
@@ -321,22 +322,22 @@ episodic_quantum_bridge_t* episodic_quantum_bridge_create(
 
     bridge->matcher = qseq_matcher_create(&qconfig);
     if (!bridge->matcher) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Allocate pattern mapping tables */
     bridge->mapping_capacity = bridge->config.max_episodes;
     bridge->pattern_to_episode =
-        (uint64_t*)calloc(bridge->mapping_capacity, sizeof(uint64_t));
+        (uint64_t*)nimcp_calloc(bridge->mapping_capacity, sizeof(uint64_t));
     bridge->episode_to_pattern =
-        (uint32_t*)calloc(bridge->mapping_capacity, sizeof(uint32_t));
+        (uint32_t*)nimcp_calloc(bridge->mapping_capacity, sizeof(uint32_t));
 
     if (!bridge->pattern_to_episode || !bridge->episode_to_pattern) {
         qseq_matcher_destroy(bridge->matcher);
-        free(bridge->pattern_to_episode);
-        free(bridge->episode_to_pattern);
-        free(bridge);
+        nimcp_free(bridge->pattern_to_episode);
+        nimcp_free(bridge->episode_to_pattern);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -346,9 +347,9 @@ episodic_quantum_bridge_t* episodic_quantum_bridge_create(
 void episodic_quantum_bridge_destroy(episodic_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->matcher) qseq_matcher_destroy(bridge->matcher);
-    free(bridge->pattern_to_episode);
-    free(bridge->episode_to_pattern);
-    free(bridge);
+    nimcp_free(bridge->pattern_to_episode);
+    nimcp_free(bridge->episode_to_pattern);
+    nimcp_free(bridge);
 }
 
 int episodic_quantum_bridge_connect(

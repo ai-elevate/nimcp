@@ -78,6 +78,7 @@
 
 #include "nimcp_quaternion.h"
 #include "nimcp_prime_signature.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -488,7 +489,7 @@ NIMCP_EXPORT int resonance_compute_top_k(
  * Performance: O(N) where N = count
  *
  * Example:
- *   resonance_batch_result_t* results = malloc(count * sizeof(*results));
+ *   resonance_batch_result_t* results = nimcp_malloc(count * sizeof(*results));
  *   size_t found;
  *   resonance_compute_above_threshold(&query, targets, count, &config, NULL, results, &found);
  *   printf("Found %zu memories above threshold %.2f\n", found, config.threshold);

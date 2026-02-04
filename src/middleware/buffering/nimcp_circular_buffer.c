@@ -16,34 +16,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "middleware_circular_buffer"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for circular_buffer module */
-static nimcp_health_agent_t* g_circular_buffer_health_agent = NULL;
-
-/**
- * @brief Set health agent for circular_buffer heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void circular_buffer_set_health_agent(nimcp_health_agent_t* agent) {
-    g_circular_buffer_health_agent = agent;
-}
-
-/** @brief Send heartbeat from circular_buffer module */
-static inline void circular_buffer_heartbeat(const char* operation, float progress) {
-    if (g_circular_buffer_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_circular_buffer_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(circular_buffer)
 
 #include <string.h>
 #include <stdint.h>

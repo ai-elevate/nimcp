@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for hippocampus_adapter module */
-static nimcp_health_agent_t* g_hippocampus_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for hippocampus_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void hippocampus_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_hippocampus_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from hippocampus_adapter module */
-static inline void hippocampus_adapter_heartbeat(const char* operation, float progress) {
-    if (g_hippocampus_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hippocampus_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(hippocampus_adapter)
 
 #define HIPP_MAX_PATTERNS 1000
 #define HIPP_PATTERN_SIZE 256
@@ -75,7 +52,7 @@ static nimcp_layer_error_t hipp_init(void* module, void* config) {
     nimcp_hippocampus_adapter_t adapter = (nimcp_hippocampus_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
     if (config) adapter->config = *(nimcp_hippocampus_config_t*)config;
-    adapter->patterns = (hipp_pattern_t*)calloc(HIPP_MAX_PATTERNS, sizeof(hipp_pattern_t));
+    adapter->patterns = (hipp_pattern_t*)nimcp_calloc(HIPP_MAX_PATTERNS, sizeof(hipp_pattern_t));
     if (!adapter->patterns) return NIMCP_LAYER_ERR_NO_MEMORY;
     adapter->is_initialized = true;
     adapter->state.is_active = true;
@@ -85,7 +62,7 @@ static nimcp_layer_error_t hipp_init(void* module, void* config) {
 static nimcp_layer_error_t hipp_shutdown(void* module) {
     nimcp_hippocampus_adapter_t adapter = (nimcp_hippocampus_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
-    free(adapter->patterns);
+    nimcp_free(adapter->patterns);
     adapter->patterns = NULL;
     adapter->is_initialized = false;
     adapter->state.is_active = false;
@@ -146,7 +123,7 @@ nimcp_hippocampus_config_t nimcp_hippocampus_adapter_default_config(void) {
 }
 
 nimcp_hippocampus_adapter_t nimcp_hippocampus_adapter_create(const nimcp_hippocampus_config_t* config) {
-    nimcp_hippocampus_adapter_t adapter = (nimcp_hippocampus_adapter_t)calloc(1, sizeof(struct nimcp_hippocampus_adapter_struct));
+    nimcp_hippocampus_adapter_t adapter = (nimcp_hippocampus_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_hippocampus_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate hippocampus adapter");
     adapter->config = config ? *config : nimcp_hippocampus_adapter_default_config();
     adapter->interface.init = hipp_init;
@@ -162,7 +139,7 @@ nimcp_hippocampus_adapter_t nimcp_hippocampus_adapter_create(const nimcp_hippoca
 void nimcp_hippocampus_adapter_destroy(nimcp_hippocampus_adapter_t adapter) {
     if (!adapter) return;
     if (adapter->is_initialized) hipp_shutdown(adapter);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_hippocampus_adapter_get_interface(nimcp_hippocampus_adapter_t adapter) {

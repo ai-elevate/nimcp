@@ -19,31 +19,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(number_sense)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for number_sense module */
-static nimcp_health_agent_t* g_number_sense_health_agent = NULL;
+static mesh_participant_id_t g_number_sense_mesh_id = 0;
+static mesh_participant_registry_t* g_number_sense_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for number_sense heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void number_sense_set_health_agent(nimcp_health_agent_t* agent) {
-    g_number_sense_health_agent = agent;
+nimcp_error_t number_sense_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_number_sense_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "number_sense", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "number_sense";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_number_sense_mesh_id);
+    if (err == NIMCP_SUCCESS) g_number_sense_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from number_sense module */
-static inline void number_sense_heartbeat(const char* operation, float progress) {
-    if (g_number_sense_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_number_sense_health_agent, operation, progress);
+void number_sense_mesh_unregister(void) {
+    if (g_number_sense_mesh_registry && g_number_sense_mesh_id != 0) {
+        mesh_participant_unregister(g_number_sense_mesh_registry, g_number_sense_mesh_id);
+        g_number_sense_mesh_id = 0;
+        g_number_sense_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from number_sense module (instance-level) */
 static inline void number_sense_heartbeat_instance(
@@ -241,7 +255,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
         cfg = number_sense_default_config();
     }
 
-    number_sense_t* ns = calloc(1, sizeof(number_sense_t));
+    number_sense_t* ns = nimcp_calloc(1, sizeof(number_sense_t));
     if (!ns) {
         set_error("Failed to allocate number sense");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ns");
@@ -263,7 +277,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
     ns->lock = nimcp_mutex_create(&attr);
     if (!ns->lock) {
         set_error("Failed to create mutex");
-        free(ns);
+        nimcp_free(ns);
         return NULL;
     }
 
@@ -281,7 +295,7 @@ void number_sense_destroy(number_sense_t* ns) {
         nimcp_mutex_free(ns->lock);
     }
 
-    free(ns);
+    nimcp_free(ns);
 }
 
 /* ============================================================================

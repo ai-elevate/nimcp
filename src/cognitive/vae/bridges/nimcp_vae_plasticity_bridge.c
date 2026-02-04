@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -365,6 +366,7 @@ int vae_plasticity_update_modulation(vae_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_VAE_PLAST_NULL;
     if (bridge->state != VAE_PLAST_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_PLAST_NOT_CONNECTED, "vae_plasticity_bridge: error condition");
         return NIMCP_ERROR_VAE_PLAST_NOT_CONNECTED;
     }
 
@@ -479,6 +481,7 @@ int vae_plasticity_compute_signals(vae_plasticity_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_PLAST_NO_MEMORY, "vae_plasticity_bridge: error condition");
         return NIMCP_ERROR_VAE_PLAST_NO_MEMORY;
     }
 
@@ -489,6 +492,7 @@ int vae_plasticity_compute_signals(vae_plasticity_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_PLAST_UPDATE_FAILED, "vae_plasticity_bridge: error condition");
         return NIMCP_ERROR_VAE_PLAST_UPDATE_FAILED;
     }
 

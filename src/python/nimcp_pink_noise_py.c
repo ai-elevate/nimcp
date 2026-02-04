@@ -25,34 +25,10 @@
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for pink_noise_py module */
-static nimcp_health_agent_t* g_pink_noise_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for pink_noise_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pink_noise_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pink_noise_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from pink_noise_py module */
-static inline void pink_noise_py_heartbeat(const char* operation, float progress) {
-    if (g_pink_noise_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pink_noise_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_py)
 
 //=============================================================================
 // PinkNoiseGenerator Type
@@ -148,7 +124,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     }
 
     // Allocate buffer
-    float* samples = (float*)malloc(sizeof(float) * (size_t)num_samples);
+    float* samples = (float*)nimcp_malloc(sizeof(float) * (size_t)num_samples);
     if (!samples) {
         return PyErr_NoMemory();
     }
@@ -160,7 +136,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     Py_END_ALLOW_THREADS
 
     if (!success) {
-        free(samples);
+        nimcp_free(samples);
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Generation failed");
         return NULL;
@@ -169,7 +145,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     // Convert to Python list
     PyObject* result = PyList_New(num_samples);
     if (!result) {
-        free(samples);
+        nimcp_free(samples);
         return NULL;
     }
 
@@ -177,7 +153,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
         PyObject* item = PyFloat_FromDouble(samples[i]);
         if (!item) {
             Py_DECREF(result);
-            free(samples);
+            nimcp_free(samples);
             return NULL;
         }
         // PyList_SetItem steals reference on success
@@ -185,12 +161,12 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
             // On failure, item is NOT stolen
             Py_DECREF(item);
             Py_DECREF(result);
-            free(samples);
+            nimcp_free(samples);
             return NULL;
         }
     }
 
-    free(samples);
+    nimcp_free(samples);
     return result;
 }
 
@@ -345,7 +321,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    float* samples = (float*)malloc(sizeof(float) * (size_t)num_samples);
+    float* samples = (float*)nimcp_malloc(sizeof(float) * (size_t)num_samples);
     if (!samples) {
         return PyErr_NoMemory();
     }
@@ -354,7 +330,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         PyObject* item = PyList_GetItem(sample_list, i);
         samples[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
-            free(samples);
+            nimcp_free(samples);
             return NULL;
         }
     }
@@ -366,7 +342,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
     success = pink_noise_compute_stats(samples, (uint32_t)num_samples, sample_rate, &stats);
     Py_END_ALLOW_THREADS
 
-    free(samples);
+    nimcp_free(samples);
 
     if (!success) {
         const char* error = pink_noise_get_last_error();

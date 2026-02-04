@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for information_geometry module */
-static nimcp_health_agent_t* g_information_geometry_health_agent = NULL;
-
-/**
- * @brief Set health agent for information_geometry heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void information_geometry_set_health_agent(nimcp_health_agent_t* agent) {
-    g_information_geometry_health_agent = agent;
-}
-
-/** @brief Send heartbeat from information_geometry module */
-static inline void information_geometry_heartbeat(const char* operation, float progress) {
-    if (g_information_geometry_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_information_geometry_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(information_geometry)
 
 //=============================================================================
 // Internal Structures
@@ -128,12 +105,12 @@ static void matrix_vector_multiply(const float* A, const float* x, float* y,
 
 static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, float reg) {
     /* Cholesky decomposition with regularization: A = L * L^T */
-    float* L = (float*)calloc(n * n, sizeof(float));
+    float* L = (float*)nimcp_calloc(n * n, sizeof(float));
     if (!L) return false;
 
     /* Add regularization to diagonal */
-    float* A_reg = (float*)malloc(n * n * sizeof(float));
-    if (!A_reg) { free(L); return false; }
+    float* A_reg = (float*)nimcp_malloc(n * n * sizeof(float));
+    if (!A_reg) { nimcp_free(L); return false; }
 
     memcpy(A_reg, A, n * n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
@@ -149,8 +126,8 @@ static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, flo
             }
             if (i == j) {
                 if (sum <= 0.0f) {
-                    free(L);
-                    free(A_reg);
+                    nimcp_free(L);
+                    nimcp_free(A_reg);
                     return false;  /* Not positive definite */
                 }
                 L[i * n + j] = sqrtf(sum);
@@ -161,8 +138,8 @@ static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, flo
     }
 
     /* Compute L^{-1} */
-    float* L_inv = (float*)calloc(n * n, sizeof(float));
-    if (!L_inv) { free(L); free(A_reg); return false; }
+    float* L_inv = (float*)nimcp_calloc(n * n, sizeof(float));
+    if (!L_inv) { nimcp_free(L); nimcp_free(A_reg); return false; }
 
     for (uint32_t i = 0; i < n; i++) {
         L_inv[i * n + i] = 1.0f / L[i * n + i];
@@ -186,9 +163,9 @@ static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, flo
         }
     }
 
-    free(L);
-    free(L_inv);
-    free(A_reg);
+    nimcp_free(L);
+    nimcp_free(L_inv);
+    nimcp_free(A_reg);
     return true;
 }
 
@@ -230,7 +207,7 @@ nimcp_info_geom_config_t nimcp_info_geom_default_config(void) {
 }
 
 nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* config) {
-    nimcp_info_geometry_t geom = (nimcp_info_geometry_t)calloc(1, sizeof(struct nimcp_info_geometry_struct));
+    nimcp_info_geometry_t geom = (nimcp_info_geometry_t)nimcp_calloc(1, sizeof(struct nimcp_info_geometry_struct));
     if (!geom) {
         LOG_ERROR("Failed to allocate information geometry structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate info geometry");
@@ -251,8 +228,8 @@ nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* con
     geom->fisher_dim = dim;
 
     /* Allocate Fisher matrices */
-    geom->fisher_matrix = (float*)calloc(dim * dim, sizeof(float));
-    geom->fisher_inverse = (float*)calloc(dim * dim, sizeof(float));
+    geom->fisher_matrix = (float*)nimcp_calloc(dim * dim, sizeof(float));
+    geom->fisher_inverse = (float*)nimcp_calloc(dim * dim, sizeof(float));
 
     if (!geom->fisher_matrix || !geom->fisher_inverse) {
         LOG_ERROR("Failed to allocate Fisher matrices");
@@ -268,7 +245,7 @@ nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* con
     }
 
     if (geom->config.enable_ema) {
-        geom->fisher_ema = (float*)calloc(dim * dim, sizeof(float));
+        geom->fisher_ema = (float*)nimcp_calloc(dim * dim, sizeof(float));
         if (!geom->fisher_ema) {
             LOG_ERROR("Failed to allocate Fisher EMA buffer");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher EMA");
@@ -283,10 +260,10 @@ nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* con
 
 void nimcp_info_geom_destroy(nimcp_info_geometry_t geom) {
     if (!geom) return;
-    free(geom->fisher_matrix);
-    free(geom->fisher_inverse);
-    free(geom->fisher_ema);
-    free(geom);
+    nimcp_free(geom->fisher_matrix);
+    nimcp_free(geom->fisher_inverse);
+    nimcp_free(geom->fisher_ema);
+    nimcp_free(geom);
 }
 
 nimcp_info_geom_error_t nimcp_info_geom_init(nimcp_info_geometry_t geom, nimcp_brain_t brain) {
@@ -396,7 +373,7 @@ nimcp_info_geom_error_t nimcp_info_geom_update(
 ) {
     if (!geom || !parameters || !gradient) return INFO_GEOM_ERR_NULL_PTR;
 
-    float* natural_grad = (float*)malloc(param_size * sizeof(float));
+    float* natural_grad = (float*)nimcp_malloc(param_size * sizeof(float));
     if (!natural_grad) return INFO_GEOM_ERR_NO_MEMORY;
 
     nimcp_info_geom_error_t err = nimcp_info_geom_natural_gradient(
@@ -411,7 +388,7 @@ nimcp_info_geom_error_t nimcp_info_geom_update(
         geom->state.update_count++;
     }
 
-    free(natural_grad);
+    nimcp_free(natural_grad);
     return err;
 }
 
@@ -428,11 +405,11 @@ nimcp_info_geom_error_t nimcp_info_geom_geodesic_distance(
      * d(p,q) = sqrt(delta^T * F * delta) where delta = q - p
      * For simplicity, using Fisher-Rao metric */
 
-    float* delta = (float*)malloc(dim * sizeof(float));
-    float* F_delta = (float*)malloc(dim * sizeof(float));
+    float* delta = (float*)nimcp_malloc(dim * sizeof(float));
+    float* F_delta = (float*)nimcp_malloc(dim * sizeof(float));
     if (!delta || !F_delta) {
-        free(delta);
-        free(F_delta);
+        nimcp_free(delta);
+        nimcp_free(F_delta);
         return INFO_GEOM_ERR_NO_MEMORY;
     }
 
@@ -452,8 +429,8 @@ nimcp_info_geom_error_t nimcp_info_geom_geodesic_distance(
     *distance = sqrtf(fmaxf(0.0f, sum));
     geom->state.geodesic_distance = *distance;
 
-    free(delta);
-    free(F_delta);
+    nimcp_free(delta);
+    nimcp_free(F_delta);
 
     return INFO_GEOM_OK;
 }
@@ -522,7 +499,7 @@ nimcp_fisher_config_t nimcp_fisher_default_config(void) {
 }
 
 nimcp_fisher_info_t nimcp_fisher_create(const nimcp_fisher_config_t* config) {
-    nimcp_fisher_info_t fisher = (nimcp_fisher_info_t)calloc(1, sizeof(struct nimcp_fisher_info_struct));
+    nimcp_fisher_info_t fisher = (nimcp_fisher_info_t)nimcp_calloc(1, sizeof(struct nimcp_fisher_info_struct));
     if (!fisher) {
         LOG_ERROR("Failed to allocate Fisher info structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher info");
@@ -533,9 +510,9 @@ nimcp_fisher_info_t nimcp_fisher_create(const nimcp_fisher_config_t* config) {
     fisher->dim = fisher->config.param_dim;
     fisher->damping = fisher->config.initial_damping;
 
-    fisher->matrix = (float*)calloc(fisher->dim * fisher->dim, sizeof(float));
-    fisher->inverse = (float*)calloc(fisher->dim * fisher->dim, sizeof(float));
-    fisher->gradient_accum = (float*)calloc(fisher->dim * fisher->dim, sizeof(float));
+    fisher->matrix = (float*)nimcp_calloc(fisher->dim * fisher->dim, sizeof(float));
+    fisher->inverse = (float*)nimcp_calloc(fisher->dim * fisher->dim, sizeof(float));
+    fisher->gradient_accum = (float*)nimcp_calloc(fisher->dim * fisher->dim, sizeof(float));
 
     if (!fisher->matrix || !fisher->inverse || !fisher->gradient_accum) {
         LOG_ERROR("Failed to allocate Fisher matrices or gradient buffer");
@@ -555,10 +532,10 @@ nimcp_fisher_info_t nimcp_fisher_create(const nimcp_fisher_config_t* config) {
 
 void nimcp_fisher_destroy(nimcp_fisher_info_t fisher) {
     if (!fisher) return;
-    free(fisher->matrix);
-    free(fisher->inverse);
-    free(fisher->gradient_accum);
-    free(fisher);
+    nimcp_free(fisher->matrix);
+    nimcp_free(fisher->inverse);
+    nimcp_free(fisher->gradient_accum);
+    nimcp_free(fisher);
 }
 
 nimcp_info_geom_error_t nimcp_fisher_compute(
@@ -673,7 +650,7 @@ nimcp_natural_gradient_t nimcp_natural_grad_create(
     const nimcp_natural_grad_config_t* config,
     uint32_t param_dim
 ) {
-    nimcp_natural_gradient_t ng = (nimcp_natural_gradient_t)calloc(1, sizeof(struct nimcp_natural_gradient_struct));
+    nimcp_natural_gradient_t ng = (nimcp_natural_gradient_t)nimcp_calloc(1, sizeof(struct nimcp_natural_gradient_struct));
     if (!ng) {
         LOG_ERROR("Failed to allocate natural gradient structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate natural gradient");
@@ -684,11 +661,11 @@ nimcp_natural_gradient_t nimcp_natural_grad_create(
     ng->param_dim = param_dim;
     ng->current_lr = ng->config.enable_warmup ? 0.0f : ng->config.learning_rate;
 
-    ng->momentum_buffer = (float*)calloc(param_dim, sizeof(float));
+    ng->momentum_buffer = (float*)nimcp_calloc(param_dim, sizeof(float));
     if (!ng->momentum_buffer) {
         LOG_ERROR("Failed to allocate momentum buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate momentum buffer");
-        free(ng);
+        nimcp_free(ng);
         return NULL;
     }
 
@@ -697,8 +674,8 @@ nimcp_natural_gradient_t nimcp_natural_grad_create(
 
 void nimcp_natural_grad_destroy(nimcp_natural_gradient_t ng) {
     if (!ng) return;
-    free(ng->momentum_buffer);
-    free(ng);
+    nimcp_free(ng->momentum_buffer);
+    nimcp_free(ng);
 }
 
 nimcp_info_geom_error_t nimcp_natural_grad_update_fisher(
@@ -727,7 +704,7 @@ nimcp_info_geom_error_t nimcp_natural_grad_step(
         ng->current_lr = ng->config.learning_rate;
     }
 
-    float* update = (float*)malloc(size * sizeof(float));
+    float* update = (float*)nimcp_malloc(size * sizeof(float));
     if (!update) return INFO_GEOM_ERR_NO_MEMORY;
 
     /* Compute natural gradient if Fisher available */
@@ -752,7 +729,7 @@ nimcp_info_geom_error_t nimcp_natural_grad_step(
 
     ng->step_count++;
 
-    free(update);
+    nimcp_free(update);
     return INFO_GEOM_OK;
 }
 
@@ -779,7 +756,7 @@ nimcp_neural_manifold_t nimcp_manifold_create(
     const nimcp_manifold_config_t* config,
     uint32_t ambient_dim
 ) {
-    nimcp_neural_manifold_t manifold = (nimcp_neural_manifold_t)calloc(1, sizeof(struct nimcp_neural_manifold_struct));
+    nimcp_neural_manifold_t manifold = (nimcp_neural_manifold_t)nimcp_calloc(1, sizeof(struct nimcp_neural_manifold_struct));
     if (!manifold) {
         LOG_ERROR("Failed to allocate neural manifold structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manifold");
@@ -790,11 +767,11 @@ nimcp_neural_manifold_t nimcp_manifold_create(
     manifold->ambient_dim = ambient_dim;
     manifold->max_samples = manifold->config.num_samples;
 
-    manifold->samples = (float*)calloc(manifold->max_samples * ambient_dim, sizeof(float));
+    manifold->samples = (float*)nimcp_calloc(manifold->max_samples * ambient_dim, sizeof(float));
     if (!manifold->samples) {
         LOG_ERROR("Failed to allocate manifold samples buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manifold samples");
-        free(manifold);
+        nimcp_free(manifold);
         return NULL;
     }
 
@@ -803,9 +780,9 @@ nimcp_neural_manifold_t nimcp_manifold_create(
 
 void nimcp_manifold_destroy(nimcp_neural_manifold_t manifold) {
     if (!manifold) return;
-    free(manifold->samples);
-    free(manifold->local_pca);
-    free(manifold);
+    nimcp_free(manifold->samples);
+    nimcp_free(manifold->local_pca);
+    nimcp_free(manifold);
 }
 
 nimcp_info_geom_error_t nimcp_manifold_add_samples(
@@ -961,11 +938,11 @@ nimcp_info_geom_error_t nimcp_manifold_geodesic(
         }
 
         /* Project to manifold */
-        float* projected = (float*)malloc(dim * sizeof(float));
+        float* projected = (float*)nimcp_malloc(dim * sizeof(float));
         if (projected) {
             nimcp_manifold_project(manifold, path_point, projected, dim);
             memcpy(path_point, projected, dim * sizeof(float));
-            free(projected);
+            nimcp_free(projected);
         }
     }
 

@@ -13,29 +13,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(somatosensory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for somatosensory module */
-static nimcp_health_agent_t* g_somatosensory_health_agent = NULL;
+static mesh_participant_id_t g_somatosensory_mesh_id = 0;
+static mesh_participant_registry_t* g_somatosensory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for somatosensory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void somatosensory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_somatosensory_health_agent = agent;
+nimcp_error_t somatosensory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_somatosensory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "somatosensory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "somatosensory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_somatosensory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_somatosensory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from somatosensory module */
-static inline void somatosensory_heartbeat(const char* operation, float progress) {
-    if (g_somatosensory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_somatosensory_health_agent, operation, progress);
+void somatosensory_mesh_unregister(void) {
+    if (g_somatosensory_mesh_registry && g_somatosensory_mesh_id != 0) {
+        mesh_participant_unregister(g_somatosensory_mesh_registry, g_somatosensory_mesh_id);
+        g_somatosensory_mesh_id = 0;
+        g_somatosensory_mesh_registry = NULL;
     }
 }
 
@@ -208,7 +221,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
         config = &default_config;
     }
 
-    nimcp_somatosensory_t* soma = (nimcp_somatosensory_t*)calloc(1, sizeof(nimcp_somatosensory_t));
+    nimcp_somatosensory_t* soma = (nimcp_somatosensory_t*)nimcp_calloc(1, sizeof(nimcp_somatosensory_t));
     if (!soma) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma is NULL");
@@ -222,30 +235,30 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     soma->last_error = SOMA_ERROR_NONE;
 
     /* Allocate receptors */
-    soma->receptors = (soma_receptor_t*)calloc(config->max_receptors, sizeof(soma_receptor_t));
+    soma->receptors = (soma_receptor_t*)nimcp_calloc(config->max_receptors, sizeof(soma_receptor_t));
     if (!soma->receptors) {
-        free(soma);
+        nimcp_free(soma);
         return NULL;
     }
     soma->num_receptors = 0;
 
     /* Allocate touch events buffer */
     soma->max_touch_events = SOMA_TOUCH_BUFFER_SIZE;
-    soma->active_touch_events = (soma_touch_event_t*)calloc(soma->max_touch_events, sizeof(soma_touch_event_t));
+    soma->active_touch_events = (soma_touch_event_t*)nimcp_calloc(soma->max_touch_events, sizeof(soma_touch_event_t));
     if (!soma->active_touch_events) {
-        free(soma->receptors);
-        free(soma);
+        nimcp_free(soma->receptors);
+        nimcp_free(soma);
         return NULL;
     }
     soma->num_active_touch = 0;
 
     /* Allocate pain events buffer */
     soma->max_pain_events = SOMA_PAIN_BUFFER_SIZE;
-    soma->active_pain_events = (soma_pain_event_t*)calloc(soma->max_pain_events, sizeof(soma_pain_event_t));
+    soma->active_pain_events = (soma_pain_event_t*)nimcp_calloc(soma->max_pain_events, sizeof(soma_pain_event_t));
     if (!soma->active_pain_events) {
-        free(soma->active_touch_events);
-        free(soma->receptors);
-        free(soma);
+        nimcp_free(soma->active_touch_events);
+        nimcp_free(soma->receptors);
+        nimcp_free(soma);
         return NULL;
     }
     soma->num_active_pain = 0;
@@ -255,11 +268,11 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
                              config->num_area_1_neurons + config->num_area_2_neurons +
                              config->num_s2_neurons;
 
-    soma->area_3a_activation = (float*)calloc(config->num_area_3a_neurons, sizeof(float));
-    soma->area_3b_activation = (float*)calloc(config->num_area_3b_neurons, sizeof(float));
-    soma->area_1_activation = (float*)calloc(config->num_area_1_neurons, sizeof(float));
-    soma->area_2_activation = (float*)calloc(config->num_area_2_neurons, sizeof(float));
-    soma->s2_activation = (float*)calloc(config->num_s2_neurons, sizeof(float));
+    soma->area_3a_activation = (float*)nimcp_calloc(config->num_area_3a_neurons, sizeof(float));
+    soma->area_3b_activation = (float*)nimcp_calloc(config->num_area_3b_neurons, sizeof(float));
+    soma->area_1_activation = (float*)nimcp_calloc(config->num_area_1_neurons, sizeof(float));
+    soma->area_2_activation = (float*)nimcp_calloc(config->num_area_2_neurons, sizeof(float));
+    soma->s2_activation = (float*)nimcp_calloc(config->num_s2_neurons, sizeof(float));
 
     if (!soma->area_3a_activation || !soma->area_3b_activation ||
         !soma->area_1_activation || !soma->area_2_activation || !soma->s2_activation) {
@@ -308,33 +321,33 @@ void soma_destroy(nimcp_somatosensory_t* soma) {
     if (!soma) return;
 
     /* Free activation buffers */
-    if (soma->area_3a_activation) free(soma->area_3a_activation);
-    if (soma->area_3b_activation) free(soma->area_3b_activation);
-    if (soma->area_1_activation) free(soma->area_1_activation);
-    if (soma->area_2_activation) free(soma->area_2_activation);
-    if (soma->s2_activation) free(soma->s2_activation);
+    if (soma->area_3a_activation) nimcp_free(soma->area_3a_activation);
+    if (soma->area_3b_activation) nimcp_free(soma->area_3b_activation);
+    if (soma->area_1_activation) nimcp_free(soma->area_1_activation);
+    if (soma->area_2_activation) nimcp_free(soma->area_2_activation);
+    if (soma->s2_activation) nimcp_free(soma->s2_activation);
 
     /* Free event buffers */
-    if (soma->active_touch_events) free(soma->active_touch_events);
-    if (soma->active_pain_events) free(soma->active_pain_events);
+    if (soma->active_touch_events) nimcp_free(soma->active_touch_events);
+    if (soma->active_pain_events) nimcp_free(soma->active_pain_events);
 
     /* Free receptors */
-    if (soma->receptors) free(soma->receptors);
+    if (soma->receptors) nimcp_free(soma->receptors);
 
     /* Free body map neuron IDs and neighbors */
     for (int i = 0; i < BODY_SEG_COUNT; i++) {
-        if (soma->body_map[i].neuron_ids) free(soma->body_map[i].neuron_ids);
-        if (soma->body_map[i].neighbors) free(soma->body_map[i].neighbors);
+        if (soma->body_map[i].neuron_ids) nimcp_free(soma->body_map[i].neuron_ids);
+        if (soma->body_map[i].neighbors) nimcp_free(soma->body_map[i].neighbors);
     }
 
     /* Free cortical columns if allocated */
-    if (soma->area_3a_columns) free(soma->area_3a_columns);
-    if (soma->area_3b_columns) free(soma->area_3b_columns);
-    if (soma->area_1_columns) free(soma->area_1_columns);
-    if (soma->area_2_columns) free(soma->area_2_columns);
-    if (soma->s2_columns) free(soma->s2_columns);
+    if (soma->area_3a_columns) nimcp_free(soma->area_3a_columns);
+    if (soma->area_3b_columns) nimcp_free(soma->area_3b_columns);
+    if (soma->area_1_columns) nimcp_free(soma->area_1_columns);
+    if (soma->area_2_columns) nimcp_free(soma->area_2_columns);
+    if (soma->s2_columns) nimcp_free(soma->s2_columns);
 
-    free(soma);
+    nimcp_free(soma);
 }
 
 int soma_reset(nimcp_somatosensory_t* soma) {

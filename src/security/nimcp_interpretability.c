@@ -33,24 +33,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_interpretability_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(interpretability)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void interpretability_set_health_agent(nimcp_health_agent_t* agent) {
-    g_interpretability_health_agent = agent;
+static mesh_participant_id_t g_interpretability_mesh_id = 0;
+static mesh_participant_registry_t* g_interpretability_mesh_registry = NULL;
+
+nimcp_error_t interpretability_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_interpretability_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "interpretability", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "interpretability";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_interpretability_mesh_id);
+    if (err == NIMCP_SUCCESS) g_interpretability_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void interpretability_heartbeat(const char* operation, float progress) {
-    if (g_interpretability_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_interpretability_health_agent, operation, progress);
+void interpretability_mesh_unregister(void) {
+    if (g_interpretability_mesh_registry && g_interpretability_mesh_id != 0) {
+        mesh_participant_unregister(g_interpretability_mesh_registry, g_interpretability_mesh_id);
+        g_interpretability_mesh_id = 0;
+        g_interpretability_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Internal Types
@@ -396,6 +417,7 @@ nimcp_error_t interpretability_explain_decision(
     interp_decision_explanation_t* explanation)
 {
     if (!is_valid_handle(system) || action == NULL || explanation == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -489,6 +511,7 @@ nimcp_error_t interpretability_explain_summary(
     size_t summary_size)
 {
     if (!is_valid_handle(system) || action == NULL || summary == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -511,6 +534,7 @@ nimcp_error_t interpretability_extract_factors(
 {
     if (!is_valid_handle(system) || action == NULL ||
         factors == NULL || factor_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -541,6 +565,7 @@ nimcp_error_t interpretability_counterfactual(
 {
     if (!is_valid_handle(system) || action == NULL ||
         query == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -593,6 +618,7 @@ nimcp_error_t interpretability_find_minimal_change(
     size_t change_size)
 {
     if (!is_valid_handle(system) || action == NULL || minimal_change == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -620,6 +646,7 @@ nimcp_error_t interpretability_verify_fidelity(
 {
     if (!is_valid_handle(system) || explanation == NULL ||
         action == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -681,6 +708,7 @@ nimcp_error_t interpretability_decompose_uncertainty(
     uncertainty_breakdown_t* uncertainty)
 {
     if (!is_valid_handle(system) || action == NULL || uncertainty == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -702,6 +730,7 @@ nimcp_error_t interpretability_trace_causality(
 {
     if (!is_valid_handle(system) || action == NULL ||
         chain == NULL || node_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -725,6 +754,7 @@ nimcp_error_t interpretability_get_stats(
     interpretability_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -743,6 +773,7 @@ nimcp_error_t interpretability_get_stats(
 nimcp_error_t interpretability_connect_bio_async(interpretability_t* system)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -779,6 +810,7 @@ nimcp_error_t interpretability_connect_alignment_monitor(
     void* monitor)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "interpretability: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

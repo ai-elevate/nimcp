@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for auditory_adapter module */
-static nimcp_health_agent_t* g_auditory_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for auditory_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void auditory_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_auditory_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from auditory_adapter module */
-static inline void auditory_adapter_heartbeat(const char* operation, float progress) {
-    if (g_auditory_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_auditory_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(auditory_adapter)
 
 struct nimcp_auditory_adapter_struct {
     nimcp_auditory_adapter_config_t config;
@@ -54,7 +31,7 @@ static nimcp_layer_error_t auditory_init(void* module, void* config) {
     nimcp_auditory_adapter_t adapter = (nimcp_auditory_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
     if (config) adapter->config = *(nimcp_auditory_adapter_config_t*)config;
-    adapter->spectrum_buffer = (float*)calloc(adapter->config.num_frequency_bands, sizeof(float));
+    adapter->spectrum_buffer = (float*)nimcp_calloc(adapter->config.num_frequency_bands, sizeof(float));
     if (!adapter->spectrum_buffer) return NIMCP_LAYER_ERR_NO_MEMORY;
     adapter->is_initialized = true;
     adapter->state.is_active = true;
@@ -64,7 +41,7 @@ static nimcp_layer_error_t auditory_init(void* module, void* config) {
 static nimcp_layer_error_t auditory_shutdown(void* module) {
     nimcp_auditory_adapter_t adapter = (nimcp_auditory_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
-    free(adapter->spectrum_buffer);
+    nimcp_free(adapter->spectrum_buffer);
     adapter->spectrum_buffer = NULL;
     adapter->is_initialized = false;
     adapter->state.is_active = false;
@@ -121,7 +98,7 @@ nimcp_auditory_adapter_config_t nimcp_auditory_adapter_default_config(void) {
 }
 
 nimcp_auditory_adapter_t nimcp_auditory_adapter_create(const nimcp_auditory_adapter_config_t* config) {
-    nimcp_auditory_adapter_t adapter = (nimcp_auditory_adapter_t)calloc(1, sizeof(struct nimcp_auditory_adapter_struct));
+    nimcp_auditory_adapter_t adapter = (nimcp_auditory_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_auditory_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate auditory adapter");
     adapter->config = config ? *config : nimcp_auditory_adapter_default_config();
     adapter->interface.init = auditory_init;
@@ -137,7 +114,7 @@ nimcp_auditory_adapter_t nimcp_auditory_adapter_create(const nimcp_auditory_adap
 void nimcp_auditory_adapter_destroy(nimcp_auditory_adapter_t adapter) {
     if (!adapter) return;
     if (adapter->is_initialized) auditory_shutdown(adapter);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_auditory_adapter_get_interface(nimcp_auditory_adapter_t adapter) {

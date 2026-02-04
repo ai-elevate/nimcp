@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bias_snn_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for bias_snn_bridge module */
-static nimcp_health_agent_t* g_bias_snn_bridge_health_agent = NULL;
+static mesh_participant_id_t g_bias_snn_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_bias_snn_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for bias_snn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void bias_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_bias_snn_bridge_health_agent = agent;
+nimcp_error_t bias_snn_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_bias_snn_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "bias_snn_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "bias_snn_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_bias_snn_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_bias_snn_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from bias_snn_bridge module */
-static inline void bias_snn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_bias_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bias_snn_bridge_health_agent, operation, progress);
+void bias_snn_bridge_mesh_unregister(void) {
+    if (g_bias_snn_bridge_mesh_registry && g_bias_snn_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_bias_snn_bridge_mesh_registry, g_bias_snn_bridge_mesh_id);
+        g_bias_snn_bridge_mesh_id = 0;
+        g_bias_snn_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from bias_snn_bridge module (instance-level) */
 static inline void bias_snn_bridge_heartbeat_instance(
@@ -225,7 +239,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_create", 0.0f);
 
 
-    bias_snn_bridge_t* bridge = calloc(1, sizeof(bias_snn_bridge_t));
+    bias_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(bias_snn_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -239,9 +253,9 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->num_types = BIAS_SNN_TYPE_COUNT;
 
     // Allocate neurons per bias type
-    bridge->bias_neurons = calloc(bridge->num_types, sizeof(bias_neuron_t*));
+    bridge->bias_neurons = nimcp_calloc(bridge->num_types, sizeof(bias_neuron_t*));
     if (!bridge->bias_neurons) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -252,7 +266,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
                              (float)(t + 1) / (float)bridge->num_types);
         }
 
-        bridge->bias_neurons[t] = calloc(config->neurons_per_type, sizeof(bias_neuron_t));
+        bridge->bias_neurons[t] = nimcp_calloc(config->neurons_per_type, sizeof(bias_neuron_t));
         if (!bridge->bias_neurons[t]) {
             for (uint32_t i = 0; i < t; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -261,10 +275,10 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
                                      (float)(i + 1) / (float)t);
                 }
 
-                free(bridge->bias_neurons[i]);
+                nimcp_free(bridge->bias_neurons[i]);
             }
-            free(bridge->bias_neurons);
-            free(bridge);
+            nimcp_free(bridge->bias_neurons);
+            nimcp_free(bridge);
             return NULL;
         }
         for (uint32_t n = 0; n < config->neurons_per_type; n++) {
@@ -280,7 +294,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
 
     // Allocate conflict detection neurons
     bridge->num_conflict_neurons = config->neurons_per_type;
-    bridge->conflict_neurons = calloc(bridge->num_conflict_neurons, sizeof(bias_neuron_t));
+    bridge->conflict_neurons = nimcp_calloc(bridge->num_conflict_neurons, sizeof(bias_neuron_t));
     if (!bridge->conflict_neurons) {
         bias_snn_destroy(bridge);
         return NULL;
@@ -297,7 +311,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
 
     // Allocate output neurons
     bridge->num_output_neurons = config->neurons_per_type * 2;
-    bridge->output_neurons = calloc(bridge->num_output_neurons, sizeof(bias_neuron_t));
+    bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(bias_neuron_t));
     if (!bridge->output_neurons) {
         bias_snn_destroy(bridge);
         return NULL;
@@ -313,8 +327,8 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     }
 
     // Allocate activation arrays
-    bridge->type_activations = calloc(bridge->num_types, sizeof(float));
-    bridge->type_confidences = calloc(bridge->num_types, sizeof(float));
+    bridge->type_activations = nimcp_calloc(bridge->num_types, sizeof(float));
+    bridge->type_confidences = nimcp_calloc(bridge->num_types, sizeof(float));
     if (!bridge->type_activations || !bridge->type_confidences) {
         bias_snn_destroy(bridge);
         return NULL;
@@ -340,15 +354,15 @@ void bias_snn_destroy(bias_snn_bridge_t* bridge) {
                                  (float)(t + 1) / (float)bridge->num_types);
             }
 
-            free(bridge->bias_neurons[t]);
+            nimcp_free(bridge->bias_neurons[t]);
         }
-        free(bridge->bias_neurons);
+        nimcp_free(bridge->bias_neurons);
     }
-    free(bridge->conflict_neurons);
-    free(bridge->output_neurons);
-    free(bridge->type_activations);
-    free(bridge->type_confidences);
-    free(bridge);
+    nimcp_free(bridge->conflict_neurons);
+    nimcp_free(bridge->output_neurons);
+    nimcp_free(bridge->type_activations);
+    nimcp_free(bridge->type_confidences);
+    nimcp_free(bridge);
 }
 
 int bias_snn_reset(bias_snn_bridge_t* bridge) {

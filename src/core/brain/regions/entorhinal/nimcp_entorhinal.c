@@ -15,29 +15,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(entorhinal)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for entorhinal module */
-static nimcp_health_agent_t* g_entorhinal_health_agent = NULL;
+static mesh_participant_id_t g_entorhinal_mesh_id = 0;
+static mesh_participant_registry_t* g_entorhinal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for entorhinal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void entorhinal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_entorhinal_health_agent = agent;
+nimcp_error_t entorhinal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_entorhinal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "entorhinal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "entorhinal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_entorhinal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_entorhinal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from entorhinal module */
-static inline void entorhinal_heartbeat(const char* operation, float progress) {
-    if (g_entorhinal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_entorhinal_health_agent, operation, progress);
+void entorhinal_mesh_unregister(void) {
+    if (g_entorhinal_mesh_registry && g_entorhinal_mesh_id != 0) {
+        mesh_participant_unregister(g_entorhinal_mesh_registry, g_entorhinal_mesh_id);
+        g_entorhinal_mesh_id = 0;
+        g_entorhinal_mesh_registry = NULL;
     }
 }
 
@@ -219,7 +232,7 @@ static float compute_hd_activation(const nimcp_hd_cell_t* cell,
  */
 static int init_grid_modules(nimcp_entorhinal_t* ec) {
     ec->num_grid_modules = ec->config.num_grid_modules;
-    ec->grid_modules = calloc(ec->num_grid_modules, sizeof(nimcp_grid_module_t));
+    ec->grid_modules = nimcp_calloc(ec->num_grid_modules, sizeof(nimcp_grid_module_t));
     if (!ec->grid_modules) return -1;
 
     uint32_t cells_per_module = ec->config.num_grid_cells / ec->num_grid_modules;
@@ -232,7 +245,7 @@ static int init_grid_modules(nimcp_entorhinal_t* ec) {
         module->orientation_offset = (float)m * (PI / 6.0f);  /* 30 degree offsets */
 
         module->num_cells = cells_per_module;
-        module->cells = calloc(cells_per_module, sizeof(nimcp_grid_cell_t));
+        module->cells = nimcp_calloc(cells_per_module, sizeof(nimcp_grid_cell_t));
         if (!module->cells) return -1;
 
         /* Initialize individual cells */
@@ -265,7 +278,7 @@ static int init_grid_modules(nimcp_entorhinal_t* ec) {
  */
 static int init_border_cells(nimcp_entorhinal_t* ec) {
     ec->num_border_cells = ec->config.num_border_cells;
-    ec->border_cells = calloc(ec->num_border_cells, sizeof(nimcp_border_cell_t));
+    ec->border_cells = nimcp_calloc(ec->num_border_cells, sizeof(nimcp_border_cell_t));
     if (!ec->border_cells) return -1;
 
     for (uint32_t i = 0; i < ec->num_border_cells; i++) {
@@ -286,7 +299,7 @@ static int init_border_cells(nimcp_entorhinal_t* ec) {
  */
 static int init_hd_cells(nimcp_entorhinal_t* ec) {
     ec->num_hd_cells = ec->config.num_hd_cells;
-    ec->hd_cells = calloc(ec->num_hd_cells, sizeof(nimcp_hd_cell_t));
+    ec->hd_cells = nimcp_calloc(ec->num_hd_cells, sizeof(nimcp_hd_cell_t));
     if (!ec->hd_cells) return -1;
 
     for (uint32_t i = 0; i < ec->num_hd_cells; i++) {
@@ -316,11 +329,11 @@ static int init_memory_gateway(nimcp_entorhinal_t* ec) {
     gw->temporal_binding_strength = 1.0f;
 
     gw->encoding_buffer_size = ec->config.encoding_buffer_size;
-    gw->encoding_buffer = calloc(gw->encoding_buffer_size, sizeof(float));
+    gw->encoding_buffer = nimcp_calloc(gw->encoding_buffer_size, sizeof(float));
     if (!gw->encoding_buffer) return -1;
 
     gw->retrieval_buffer_size = ec->config.retrieval_buffer_size;
-    gw->retrieval_buffer = calloc(gw->retrieval_buffer_size, sizeof(float));
+    gw->retrieval_buffer = nimcp_calloc(gw->retrieval_buffer_size, sizeof(float));
     if (!gw->retrieval_buffer) return -1;
 
     gw->items_encoded = 0;
@@ -357,7 +370,7 @@ static void init_path_integration(nimcp_entorhinal_t* ec) {
  *===========================================================================*/
 
 nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
-    nimcp_entorhinal_t* ec = calloc(1, sizeof(nimcp_entorhinal_t));
+    nimcp_entorhinal_t* ec = nimcp_calloc(1, sizeof(nimcp_entorhinal_t));
     if (!ec) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ec is NULL");
@@ -398,7 +411,7 @@ nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     /* Initialize object cells */
     if (ec->config.enable_object_tracking) {
         ec->num_object_cells = ec->config.num_object_cells;
-        ec->object_cells = calloc(ec->num_object_cells, sizeof(nimcp_object_cell_t));
+        ec->object_cells = nimcp_calloc(ec->num_object_cells, sizeof(nimcp_object_cell_t));
         if (!ec->object_cells) {
             entorhinal_destroy(ec);
             return NULL;
@@ -408,7 +421,7 @@ nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     /* Initialize speed cells */
     if (ec->config.enable_speed_encoding) {
         ec->num_speed_cells = ec->config.num_speed_cells;
-        ec->speed_cells = calloc(ec->num_speed_cells, sizeof(nimcp_speed_cell_t));
+        ec->speed_cells = nimcp_calloc(ec->num_speed_cells, sizeof(nimcp_speed_cell_t));
         if (!ec->speed_cells) {
             entorhinal_destroy(ec);
             return NULL;
@@ -418,7 +431,7 @@ nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     /* Initialize time cells */
     if (ec->config.enable_time_encoding) {
         ec->num_time_cells = ec->config.num_time_cells;
-        ec->time_cells = calloc(ec->num_time_cells, sizeof(nimcp_time_cell_t));
+        ec->time_cells = nimcp_calloc(ec->num_time_cells, sizeof(nimcp_time_cell_t));
         if (!ec->time_cells) {
             entorhinal_destroy(ec);
             return NULL;
@@ -481,35 +494,35 @@ void entorhinal_destroy(nimcp_entorhinal_t* ec) {
     /* Free grid modules */
     if (ec->grid_modules) {
         for (uint32_t m = 0; m < ec->num_grid_modules; m++) {
-            free(ec->grid_modules[m].cells);
+            nimcp_free(ec->grid_modules[m].cells);
         }
-        free(ec->grid_modules);
+        nimcp_free(ec->grid_modules);
     }
 
     /* Free border cells */
-    free(ec->border_cells);
+    nimcp_free(ec->border_cells);
 
     /* Free head direction cells */
-    free(ec->hd_cells);
+    nimcp_free(ec->hd_cells);
 
     /* Free object cells */
-    free(ec->object_cells);
+    nimcp_free(ec->object_cells);
 
     /* Free speed cells */
-    free(ec->speed_cells);
+    nimcp_free(ec->speed_cells);
 
     /* Free time cells */
-    free(ec->time_cells);
+    nimcp_free(ec->time_cells);
 
     /* Free memory gateway buffers */
-    free(ec->memory_gateway.encoding_buffer);
-    free(ec->memory_gateway.retrieval_buffer);
+    nimcp_free(ec->memory_gateway.encoding_buffer);
+    nimcp_free(ec->memory_gateway.retrieval_buffer);
 
     /* Free perception bridge buffers */
-    free(ec->perception_bridge.visual_input);
-    free(ec->perception_bridge.auditory_input);
+    nimcp_free(ec->perception_bridge.visual_input);
+    nimcp_free(ec->perception_bridge.auditory_input);
 
-    free(ec);
+    nimcp_free(ec);
 }
 
 bool entorhinal_reset(nimcp_entorhinal_t* ec) {
@@ -705,9 +718,9 @@ int entorhinal_init_perception_bridge(nimcp_entorhinal_t* ec,
 
     ec->perception_bridge.perception = perception;
     ec->perception_bridge.visual_dim = 256;
-    ec->perception_bridge.visual_input = calloc(ec->perception_bridge.visual_dim, sizeof(float));
+    ec->perception_bridge.visual_input = nimcp_calloc(ec->perception_bridge.visual_dim, sizeof(float));
     ec->perception_bridge.auditory_dim = 128;
-    ec->perception_bridge.auditory_input = calloc(ec->perception_bridge.auditory_dim, sizeof(float));
+    ec->perception_bridge.auditory_input = nimcp_calloc(ec->perception_bridge.auditory_dim, sizeof(float));
     ec->perception_bridge.salience_signal = 0.0f;
 
     return 0;

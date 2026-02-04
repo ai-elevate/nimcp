@@ -11,35 +11,47 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_immune_integration)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for memory_immune_integration module */
-static nimcp_health_agent_t* g_memory_immune_integration_health_agent = NULL;
+static mesh_participant_id_t g_memory_immune_integration_mesh_id = 0;
+static mesh_participant_registry_t* g_memory_immune_integration_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for memory_immune_integration heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void memory_immune_integration_set_health_agent(nimcp_health_agent_t* agent) {
-    g_memory_immune_integration_health_agent = agent;
+nimcp_error_t memory_immune_integration_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_memory_immune_integration_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "memory_immune_integration", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SECURITY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "memory_immune_integration";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_memory_immune_integration_mesh_id);
+    if (err == NIMCP_SUCCESS) g_memory_immune_integration_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from memory_immune_integration module */
-static inline void memory_immune_integration_heartbeat(const char* operation, float progress) {
-    if (g_memory_immune_integration_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_memory_immune_integration_health_agent, operation, progress);
+void memory_immune_integration_mesh_unregister(void) {
+    if (g_memory_immune_integration_mesh_registry && g_memory_immune_integration_mesh_id != 0) {
+        mesh_participant_unregister(g_memory_immune_integration_mesh_registry, g_memory_immune_integration_mesh_id);
+        g_memory_immune_integration_mesh_id = 0;
+        g_memory_immune_integration_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from memory_immune_integration module (instance-level) */
 static inline void memory_immune_integration_heartbeat_instance(
@@ -469,7 +481,7 @@ uint32_t memory_immune_update_wm_capacity(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_update", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Determine inflammation level - use pre-set value if available (for testing),
      * otherwise query the underlying immune system */
@@ -542,7 +554,7 @@ uint32_t memory_immune_update_wm_capacity(
     }
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return new_capacity;
 }
@@ -563,7 +575,7 @@ float memory_immune_update_wm_decay_rate(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_update", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Compute decay multiplier from cytokine balance */
     float decay_multiplier = compute_decay_multiplier(
@@ -576,7 +588,7 @@ float memory_immune_update_wm_decay_rate(
     integration->metrics.wm_decay_multiplier = decay_multiplier;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return decay_multiplier;
 }
@@ -601,7 +613,7 @@ float memory_immune_compute_encoding_strength(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_comput", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Compute encoding strength from cytokine profile */
     float old_multiplier = integration->metrics.encoding_strength_multiplier;
@@ -657,7 +669,7 @@ float memory_immune_compute_encoding_strength(
     }
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return new_multiplier;
 }
@@ -703,7 +715,7 @@ int memory_immune_consolidate_with_immune_memory(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_consol", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Mark immune memory formation as active */
     integration->metrics.immune_memory_formation_active = true;
@@ -722,7 +734,7 @@ int memory_immune_consolidate_with_immune_memory(
     integration->metrics.immune_memory_formation_active = false;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     if (integration->config.enable_logging) {
         NIMCP_LOGGING_INFO(MEMORY_IMMUNE_MODULE_NAME,
@@ -777,7 +789,7 @@ int memory_immune_create_memory_link(
     }
 
     /* Lock mutex */
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Create link */
     immune_cognitive_memory_link_t* link =
@@ -807,7 +819,7 @@ int memory_immune_create_memory_link(
     }
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     if (integration->config.enable_logging) {
         NIMCP_LOGGING_INFO(MEMORY_IMMUNE_MODULE_NAME,
@@ -836,7 +848,7 @@ int memory_immune_reactivate_linked_pattern(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_reacti", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Find link for this immune cell */
     immune_cognitive_memory_link_t* link = NULL;
@@ -855,7 +867,7 @@ int memory_immune_reactivate_linked_pattern(
 
     /* Guard: link not found */
     if (!link) {
-        pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
         return -1;
     }
 
@@ -864,7 +876,7 @@ int memory_immune_reactivate_linked_pattern(
     link->memory_strength = fminf(1.0f, link->memory_strength + 0.1f);
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     if (integration->config.enable_logging) {
         NIMCP_LOGGING_DEBUG(MEMORY_IMMUNE_MODULE_NAME,
@@ -915,7 +927,7 @@ int memory_immune_update_state(
     }
 
     /* Lock mutex */
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Get immune system stats */
     brain_immune_stats_t immune_stats;
@@ -983,7 +995,7 @@ int memory_immune_update_state(
     integration->stats.total_updates++;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return 0;
 }
@@ -1013,9 +1025,9 @@ int memory_immune_get_metrics(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_get_me", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
     memcpy(metrics, &integration->metrics, sizeof(memory_immune_metrics_t));
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return 0;
 }
@@ -1032,9 +1044,9 @@ int memory_immune_get_stats(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_get_st", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
     memcpy(stats, &integration->stats, sizeof(memory_immune_stats_t));
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     return 0;
 }
@@ -1048,9 +1060,9 @@ void memory_immune_reset_stats(memory_immune_integration_t* integration) {
     memory_immune_integration_heartbeat("memory_immun_memory_immune_reset_", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
     memset(&integration->stats, 0, sizeof(memory_immune_stats_t));
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 }
 
 /* ============================================================================
@@ -1190,13 +1202,13 @@ int memory_immune_connect_engram_system(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Store engram system handle */
     integration->engram_system = engram_system;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME, "Connected to engram system");
     return 0;
@@ -1403,13 +1415,13 @@ int memory_immune_connect_semantic_memory(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Store semantic memory handle */
     integration->semantic_memory = semantic_memory;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME, "Connected to semantic memory system");
     return 0;
@@ -1548,13 +1560,13 @@ int memory_immune_connect_systems_consolidation(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Store systems consolidation handle */
     integration->systems_consolidation = systems_consolidation;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME, "Connected to systems consolidation");
     return 0;
@@ -1668,13 +1680,13 @@ int memory_immune_connect_wm_transfer(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
 
 
-    pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)integration->mutex);
 
     /* Store WM transfer handle */
     integration->wm_transfer = wm_transfer;
 
     /* Unlock mutex */
-    pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
 
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME, "Connected to WM transfer system");
     return 0;

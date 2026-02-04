@@ -83,6 +83,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -402,8 +403,8 @@ int financial_jepa_bridge_set_logger(financial_jepa_bridge_t* bridge,
  *     .num_factors = 10
  * };
  * fin_jepa_output_t output = {
- *     .predicted_factors = malloc(10 * sizeof(float)),
- *     .confidence = malloc(10 * sizeof(float)),
+ *     .predicted_factors = nimcp_malloc(10 * sizeof(float)),
+ *     .confidence = nimcp_malloc(10 * sizeof(float)),
  *     .num_predicted = 0
  * };
  * int rc = financial_jepa_bridge_predict_missing(bridge, &input, &output);
@@ -434,8 +435,8 @@ int financial_jepa_bridge_predict_missing(
  *     .target_modality = FIN_MODALITY_PRICE
  * };
  * fin_cross_modal_output_t output = {
- *     .predicted_factors = malloc(10 * sizeof(float)),
- *     .confidence = malloc(10 * sizeof(float)),
+ *     .predicted_factors = nimcp_malloc(10 * sizeof(float)),
+ *     .confidence = nimcp_malloc(10 * sizeof(float)),
  *     .num_predicted = 0
  * };
  * int rc = financial_jepa_bridge_cross_modal_predict(bridge, &input, &output);

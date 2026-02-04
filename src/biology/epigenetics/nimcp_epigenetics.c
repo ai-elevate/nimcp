@@ -20,33 +20,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for epigenetics module */
-static nimcp_health_agent_t* g_epigenetics_health_agent = NULL;
-
-/**
- * @brief Set health agent for epigenetics heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void epigenetics_set_health_agent(nimcp_health_agent_t* agent) {
-    g_epigenetics_health_agent = agent;
-}
-
-/** @brief Send heartbeat from epigenetics module */
-static inline void epigenetics_heartbeat(const char* operation, float progress) {
-    if (g_epigenetics_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_epigenetics_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(epigenetics)
 
 //=============================================================================
 // Internal Structures
@@ -227,7 +204,7 @@ nimcp_epigenetics_config_t nimcp_epigenetics_default_config(void) {
 //=============================================================================
 
 nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* config) {
-    nimcp_epigenetics_t epi = (nimcp_epigenetics_t)calloc(1, sizeof(struct nimcp_epigenetics_struct));
+    nimcp_epigenetics_t epi = (nimcp_epigenetics_t)nimcp_calloc(1, sizeof(struct nimcp_epigenetics_struct));
     if (!epi) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_epigenetics_struct), "Epigenetics allocation failed");
         return NULL;
@@ -237,43 +214,43 @@ nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* c
 
     /* Allocate methylation storage */
     epi->max_methylations = epi->config.max_neurons * 4;  /* Avg 4 per neuron */
-    epi->methylations = (methylation_entry_t*)calloc(epi->max_methylations, sizeof(methylation_entry_t));
+    epi->methylations = (methylation_entry_t*)nimcp_calloc(epi->max_methylations, sizeof(methylation_entry_t));
     if (!epi->methylations) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_methylations * sizeof(methylation_entry_t), "Methylation array allocation failed");
-        free(epi);
+        nimcp_free(epi);
         return NULL;
     }
 
     /* Allocate histone storage */
     epi->max_histones = EPIGENETICS_MAX_HISTONES * 16;
-    epi->histones = (histone_entry_t*)calloc(epi->max_histones, sizeof(histone_entry_t));
+    epi->histones = (histone_entry_t*)nimcp_calloc(epi->max_histones, sizeof(histone_entry_t));
     if (!epi->histones) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_histones * sizeof(histone_entry_t), "Histone array allocation failed");
-        free(epi->methylations);
-        free(epi);
+        nimcp_free(epi->methylations);
+        nimcp_free(epi);
         return NULL;
     }
 
     /* Allocate chromatin regions */
     epi->max_regions = EPIGENETICS_MAX_REGIONS;
-    epi->regions = (chromatin_entry_t*)calloc(epi->max_regions, sizeof(chromatin_entry_t));
+    epi->regions = (chromatin_entry_t*)nimcp_calloc(epi->max_regions, sizeof(chromatin_entry_t));
     if (!epi->regions) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_regions * sizeof(chromatin_entry_t), "Chromatin regions array allocation failed");
-        free(epi->histones);
-        free(epi->methylations);
-        free(epi);
+        nimcp_free(epi->histones);
+        nimcp_free(epi->methylations);
+        nimcp_free(epi);
         return NULL;
     }
 
     /* Allocate imprints */
     epi->max_imprints = EPIGENETICS_MAX_IMPRINTS;
-    epi->imprints = (imprint_entry_t*)calloc(epi->max_imprints, sizeof(imprint_entry_t));
+    epi->imprints = (imprint_entry_t*)nimcp_calloc(epi->max_imprints, sizeof(imprint_entry_t));
     if (!epi->imprints) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_imprints * sizeof(imprint_entry_t), "Imprints array allocation failed");
-        free(epi->regions);
-        free(epi->histones);
-        free(epi->methylations);
-        free(epi);
+        nimcp_free(epi->regions);
+        nimcp_free(epi->histones);
+        nimcp_free(epi->methylations);
+        nimcp_free(epi);
         return NULL;
     }
 
@@ -291,11 +268,11 @@ void nimcp_epigenetics_destroy(nimcp_epigenetics_t epi) {
         nimcp_epigenetics_shutdown(epi);
     }
 
-    free(epi->imprints);
-    free(epi->regions);
-    free(epi->histones);
-    free(epi->methylations);
-    free(epi);
+    nimcp_free(epi->imprints);
+    nimcp_free(epi->regions);
+    nimcp_free(epi->histones);
+    nimcp_free(epi->methylations);
+    nimcp_free(epi);
 }
 
 nimcp_epigenetics_error_t nimcp_epigenetics_init(

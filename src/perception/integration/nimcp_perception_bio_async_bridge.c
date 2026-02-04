@@ -16,32 +16,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for perception_bio_async_bridge module */
-static nimcp_health_agent_t* g_perception_bio_async_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for perception_bio_async_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void perception_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_perception_bio_async_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from perception_bio_async_bridge module */
-static inline void perception_bio_async_bridge_heartbeat(const char* operation, float progress) {
-    if (g_perception_bio_async_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_perception_bio_async_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perception_bio_async_bridge)
 
 #define LOG_MODULE "PERCEPTION_BIO_ASYNC_BRIDGE"
 
@@ -199,7 +177,7 @@ int perception_bio_async_default_config(perception_bio_bridge_config_t* config) 
 perception_bio_bridge_t* perception_bio_async_bridge_create(
     const perception_bio_bridge_config_t* config
 ) {
-    perception_bio_bridge_t* bridge = calloc(1, sizeof(perception_bio_bridge_t));
+    perception_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(perception_bio_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -218,16 +196,16 @@ perception_bio_bridge_t* perception_bio_async_bridge_create(
     /* Allocate per-modality subscription arrays */
     for (int m = 0; m < PERCEPT_MODALITY_COUNT; m++) {
         bridge->subscription_capacity[m] = bridge->config.max_subscriptions_per_modality;
-        bridge->subscriptions[m] = calloc(
+        bridge->subscriptions[m] = nimcp_calloc(
             bridge->subscription_capacity[m],
             sizeof(percept_bio_subscription_t)
         );
         if (!bridge->subscriptions[m]) {
             /* Cleanup on failure */
             for (int j = 0; j < m; j++) {
-                free(bridge->subscriptions[j]);
+                nimcp_free(bridge->subscriptions[j]);
             }
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->subscription_count[m] = 0;
@@ -253,10 +231,10 @@ void perception_bio_async_bridge_destroy(perception_bio_bridge_t* bridge) {
 
     /* Free subscription arrays */
     for (int m = 0; m < PERCEPT_MODALITY_COUNT; m++) {
-        free(bridge->subscriptions[m]);
+        nimcp_free(bridge->subscriptions[m]);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================

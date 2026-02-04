@@ -23,34 +23,10 @@
 #include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for swarm_emergence module */
-static nimcp_health_agent_t* g_swarm_emergence_health_agent = NULL;
-
-/**
- * @brief Set health agent for swarm_emergence heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void swarm_emergence_set_health_agent(nimcp_health_agent_t* agent) {
-    g_swarm_emergence_health_agent = agent;
-}
-
-/** @brief Send heartbeat from swarm_emergence module */
-static inline void swarm_emergence_heartbeat(const char* operation, float progress) {
-    if (g_swarm_emergence_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_swarm_emergence_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_emergence)
 
 static bool g_bbb_registered = false;
 
@@ -303,7 +279,7 @@ swarm_emergence_ctx_t* swarm_emergence_create(void)
 {
     emergence_init_bbb();
 
-    swarm_emergence_ctx_t* ctx = (swarm_emergence_ctx_t*)malloc(
+    swarm_emergence_ctx_t* ctx = (swarm_emergence_ctx_t*)nimcp_malloc(
         sizeof(swarm_emergence_ctx_t)
     );
 
@@ -334,7 +310,7 @@ swarm_emergence_ctx_t* swarm_emergence_create(void)
     if (nimcp_mutex_init(&ctx->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize swarm emergence mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize swarm emergence mutex");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -360,7 +336,7 @@ void swarm_emergence_destroy(swarm_emergence_ctx_t* ctx)
     ctx->magic = 0;
 
     // Free context
-    free(ctx);
+    nimcp_free(ctx);
 
     LOG_INFO("Destroyed swarm emergence context");
 }

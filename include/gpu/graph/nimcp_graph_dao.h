@@ -51,7 +51,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // Forward Declarations
@@ -204,7 +204,7 @@ typedef struct nimcp_gpu_graph_dao_s {
     size_t gpu_capacity;             /**< GPU storage capacity */
     size_t gpu_count;                /**< Current GPU-resident count */
     int next_id;                     /**< Next available graph ID */
-    pthread_mutex_t lock;            /**< Thread safety mutex */
+    nimcp_mutex_t lock;            /**< Thread safety mutex */
     bool initialized;                /**< Initialization flag */
 } nimcp_gpu_graph_dao_t;
 

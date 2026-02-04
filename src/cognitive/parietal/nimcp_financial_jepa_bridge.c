@@ -17,51 +17,53 @@
 #include <string.h>
 #include <math.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_jepa_health_agent = NULL;
 
-void financial_jepa_bridge_set_global_health_agent(void* agent) {
-    g_fin_jepa_health_agent = (nimcp_health_agent_t*)agent;
-}
+
+/* Stub declarations for subsystem integration globals */
+static void* g_fin_jepa_bridge_immune = NULL;
+static void* g_fin_jepa_bridge_bbb = NULL;
 
 //=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune,
-                                            const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune,
-                                         int source, const uint8_t* epitope,
-                                         size_t epitope_len, uint32_t severity,
-                                         uint32_t source_node, uint32_t* antigen_id);
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size,
-                              const char* context);
+static mesh_participant_id_t g_fin_jepa_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_jepa_mesh_registry = NULL;
 
-static brain_immune_system_t* g_fin_jepa_bridge_immune = NULL;
-static bbb_system_t g_fin_jepa_bridge_bbb = NULL;
-
-void financial_jepa_bridge_set_global_immune(void* immune) {
-    g_fin_jepa_bridge_immune = (brain_immune_system_t*)immune;
+nimcp_error_t fin_jepa_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_jepa_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_jepa", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_jepa";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_jepa_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_jepa_mesh_registry = registry;
+    return err;
 }
 
-void financial_jepa_bridge_set_global_bbb(void* bbb) {
-    g_fin_jepa_bridge_bbb = (bbb_system_t)bbb;
+void fin_jepa_mesh_unregister(void) {
+    if (g_fin_jepa_mesh_registry && g_fin_jepa_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_jepa_mesh_registry, g_fin_jepa_mesh_id);
+        g_fin_jepa_mesh_id = 0;
+        g_fin_jepa_mesh_registry = NULL;
+    }
 }
 
-//=============================================================================
+
 // KG Wiring Integration (Change Set 1)
 //=============================================================================
 struct kg_wiring;
@@ -399,7 +401,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     fin_jepa_heartbeat("create", 0.0f);
 
     financial_jepa_bridge_t* bridge =
-        (financial_jepa_bridge_t*)malloc(sizeof(financial_jepa_bridge_t));
+        (financial_jepa_bridge_t*)nimcp_malloc(sizeof(financial_jepa_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_jepa_bridge_t");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -442,8 +444,8 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     bridge->rng_state = 42;
 
     /* Allocate encoder weights */
-    bridge->encoder_weights = (float*)calloc(num_factors * embed_dim, sizeof(float));
-    bridge->encoder_bias = (float*)calloc(embed_dim, sizeof(float));
+    bridge->encoder_weights = (float*)nimcp_calloc(num_factors * embed_dim, sizeof(float));
+    bridge->encoder_bias = (float*)nimcp_calloc(embed_dim, sizeof(float));
     if (!bridge->encoder_weights || !bridge->encoder_bias) {
         set_error("Failed to allocate encoder weights");
         financial_jepa_bridge_destroy(bridge);
@@ -453,8 +455,8 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     init_zero_bias(bridge->encoder_bias, embed_dim);
 
     /* Allocate target encoder weights (copy of encoder initially) */
-    bridge->target_encoder_weights = (float*)malloc(num_factors * embed_dim * sizeof(float));
-    bridge->target_encoder_bias = (float*)malloc(embed_dim * sizeof(float));
+    bridge->target_encoder_weights = (float*)nimcp_malloc(num_factors * embed_dim * sizeof(float));
+    bridge->target_encoder_bias = (float*)nimcp_malloc(embed_dim * sizeof(float));
     if (!bridge->target_encoder_weights || !bridge->target_encoder_bias) {
         set_error("Failed to allocate target encoder weights");
         financial_jepa_bridge_destroy(bridge);
@@ -466,10 +468,10 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
            embed_dim * sizeof(float));
 
     /* Allocate predictor network weights */
-    bridge->predictor_w1 = (float*)calloc(embed_dim * hidden_dim, sizeof(float));
-    bridge->predictor_b1 = (float*)calloc(hidden_dim, sizeof(float));
-    bridge->predictor_w2 = (float*)calloc(hidden_dim * embed_dim, sizeof(float));
-    bridge->predictor_b2 = (float*)calloc(embed_dim, sizeof(float));
+    bridge->predictor_w1 = (float*)nimcp_calloc(embed_dim * hidden_dim, sizeof(float));
+    bridge->predictor_b1 = (float*)nimcp_calloc(hidden_dim, sizeof(float));
+    bridge->predictor_w2 = (float*)nimcp_calloc(hidden_dim * embed_dim, sizeof(float));
+    bridge->predictor_b2 = (float*)nimcp_calloc(embed_dim, sizeof(float));
     if (!bridge->predictor_w1 || !bridge->predictor_b1 ||
         !bridge->predictor_w2 || !bridge->predictor_b2) {
         set_error("Failed to allocate predictor weights");
@@ -482,8 +484,8 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     init_zero_bias(bridge->predictor_b2, embed_dim);
 
     /* Allocate decoder weights */
-    bridge->decoder_weights = (float*)calloc(embed_dim * num_factors, sizeof(float));
-    bridge->decoder_bias = (float*)calloc(num_factors, sizeof(float));
+    bridge->decoder_weights = (float*)nimcp_calloc(embed_dim * num_factors, sizeof(float));
+    bridge->decoder_bias = (float*)nimcp_calloc(num_factors, sizeof(float));
     if (!bridge->decoder_weights || !bridge->decoder_bias) {
         set_error("Failed to allocate decoder weights");
         financial_jepa_bridge_destroy(bridge);
@@ -496,7 +498,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     for (int m = 0; m < FIN_MODALITY_COUNT; m++) {
         /* Each modality gets a projection to shared embed space */
         bridge->modality_dims[m] = embed_dim / 2; /* Default modality embedding dim */
-        bridge->cross_modal_proj[m] = (float*)calloc(
+        bridge->cross_modal_proj[m] = (float*)nimcp_calloc(
             bridge->modality_dims[m] * embed_dim, sizeof(float));
         if (!bridge->cross_modal_proj[m]) {
             set_error("Failed to allocate cross-modal projection %d", m);
@@ -508,7 +510,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     }
 
     /* Allocate factor-to-modality mapping */
-    bridge->factor_modalities = (fin_factor_modality_t*)calloc(
+    bridge->factor_modalities = (fin_factor_modality_t*)nimcp_calloc(
         num_factors, sizeof(fin_factor_modality_t));
     if (!bridge->factor_modalities) {
         set_error("Failed to allocate factor modalities");
@@ -521,9 +523,9 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     }
 
     /* Allocate working buffers */
-    bridge->visible_embedding = (float*)calloc(embed_dim, sizeof(float));
-    bridge->predicted_embedding = (float*)calloc(embed_dim, sizeof(float));
-    bridge->hidden_buffer = (float*)calloc(hidden_dim, sizeof(float));
+    bridge->visible_embedding = (float*)nimcp_calloc(embed_dim, sizeof(float));
+    bridge->predicted_embedding = (float*)nimcp_calloc(embed_dim, sizeof(float));
+    bridge->hidden_buffer = (float*)nimcp_calloc(hidden_dim, sizeof(float));
     if (!bridge->visible_embedding || !bridge->predicted_embedding ||
         !bridge->hidden_buffer) {
         set_error("Failed to allocate working buffers");
@@ -548,30 +550,30 @@ void financial_jepa_bridge_destroy(financial_jepa_bridge_t* bridge) {
     if (!bridge) return;
     fin_jepa_heartbeat("destroy", 0.0f);
 
-    if (bridge->encoder_weights) free(bridge->encoder_weights);
-    if (bridge->encoder_bias) free(bridge->encoder_bias);
-    if (bridge->target_encoder_weights) free(bridge->target_encoder_weights);
-    if (bridge->target_encoder_bias) free(bridge->target_encoder_bias);
+    if (bridge->encoder_weights) nimcp_free(bridge->encoder_weights);
+    if (bridge->encoder_bias) nimcp_free(bridge->encoder_bias);
+    if (bridge->target_encoder_weights) nimcp_free(bridge->target_encoder_weights);
+    if (bridge->target_encoder_bias) nimcp_free(bridge->target_encoder_bias);
 
-    if (bridge->predictor_w1) free(bridge->predictor_w1);
-    if (bridge->predictor_b1) free(bridge->predictor_b1);
-    if (bridge->predictor_w2) free(bridge->predictor_w2);
-    if (bridge->predictor_b2) free(bridge->predictor_b2);
+    if (bridge->predictor_w1) nimcp_free(bridge->predictor_w1);
+    if (bridge->predictor_b1) nimcp_free(bridge->predictor_b1);
+    if (bridge->predictor_w2) nimcp_free(bridge->predictor_w2);
+    if (bridge->predictor_b2) nimcp_free(bridge->predictor_b2);
 
-    if (bridge->decoder_weights) free(bridge->decoder_weights);
-    if (bridge->decoder_bias) free(bridge->decoder_bias);
+    if (bridge->decoder_weights) nimcp_free(bridge->decoder_weights);
+    if (bridge->decoder_bias) nimcp_free(bridge->decoder_bias);
 
     for (int m = 0; m < FIN_MODALITY_COUNT; m++) {
-        if (bridge->cross_modal_proj[m]) free(bridge->cross_modal_proj[m]);
+        if (bridge->cross_modal_proj[m]) nimcp_free(bridge->cross_modal_proj[m]);
     }
 
-    if (bridge->factor_modalities) free(bridge->factor_modalities);
+    if (bridge->factor_modalities) nimcp_free(bridge->factor_modalities);
 
-    if (bridge->visible_embedding) free(bridge->visible_embedding);
-    if (bridge->predicted_embedding) free(bridge->predicted_embedding);
-    if (bridge->hidden_buffer) free(bridge->hidden_buffer);
+    if (bridge->visible_embedding) nimcp_free(bridge->visible_embedding);
+    if (bridge->predicted_embedding) nimcp_free(bridge->predicted_embedding);
+    if (bridge->hidden_buffer) nimcp_free(bridge->hidden_buffer);
 
-    free(bridge);
+    nimcp_free(bridge);
     fin_jepa_heartbeat("destroy", 1.0f);
 }
 
@@ -898,7 +900,7 @@ int financial_jepa_bridge_predict_missing(
 
     /* Step 3: Decode predicted embedding to factor values */
     bridge->operational_state = FIN_JEPA_STATE_DECODING;
-    float* all_decoded = (float*)calloc(num_factors, sizeof(float));
+    float* all_decoded = (float*)nimcp_calloc(num_factors, sizeof(float));
     if (!all_decoded) {
         set_error("Failed to allocate decode buffer");
         bridge->operational_state = FIN_JEPA_STATE_ERROR;
@@ -927,7 +929,7 @@ int financial_jepa_bridge_predict_missing(
         }
     }
 
-    free(all_decoded);
+    nimcp_free(all_decoded);
 
     output->num_predicted = pred_idx;
     bridge->stats.predictions++;
@@ -1008,7 +1010,7 @@ int financial_jepa_bridge_cross_modal_predict(
     if (health_mod < 0.1f) health_mod = 0.1f;
 
     /* Step 1: Project source factors into shared embedding space */
-    float* source_embedding = (float*)calloc(embed_dim, sizeof(float));
+    float* source_embedding = (float*)nimcp_calloc(embed_dim, sizeof(float));
     if (!source_embedding) {
         set_error("Failed to allocate source embedding");
         bridge->operational_state = FIN_JEPA_STATE_ERROR;
@@ -1044,9 +1046,9 @@ int financial_jepa_bridge_cross_modal_predict(
     }
 
     /* Decode all factors, then extract target modality */
-    float* all_decoded = (float*)calloc(num_factors, sizeof(float));
+    float* all_decoded = (float*)nimcp_calloc(num_factors, sizeof(float));
     if (!all_decoded) {
-        free(source_embedding);
+        nimcp_free(source_embedding);
         set_error("Failed to allocate decode buffer");
         bridge->operational_state = FIN_JEPA_STATE_ERROR;
         return FIN_JEPA_ERR_NO_MEMORY;
@@ -1077,8 +1079,8 @@ int financial_jepa_bridge_cross_modal_predict(
     coherence = (coherence + 1.0f) * 0.5f; /* Map [-1, 1] to [0, 1] */
     output->cross_modal_coherence = clampf(coherence * health_mod, 0.0f, 1.0f);
 
-    free(source_embedding);
-    free(all_decoded);
+    nimcp_free(source_embedding);
+    nimcp_free(all_decoded);
 
     bridge->stats.cross_modal_predictions++;
     bridge->operational_state = FIN_JEPA_STATE_IDLE;
@@ -1287,14 +1289,14 @@ fin_jepa_input_t* financial_jepa_input_create(uint32_t num_factors) {
         return NULL;
     }
 
-    fin_jepa_input_t* input = (fin_jepa_input_t*)malloc(sizeof(fin_jepa_input_t));
+    fin_jepa_input_t* input = (fin_jepa_input_t*)nimcp_malloc(sizeof(fin_jepa_input_t));
     if (!input) return NULL;
 
     memset(input, 0, sizeof(*input));
     input->num_factors = num_factors;
 
-    input->visible_factors = (float*)calloc(num_factors, sizeof(float));
-    input->mask = (bool*)calloc(num_factors, sizeof(bool));
+    input->visible_factors = (float*)nimcp_calloc(num_factors, sizeof(float));
+    input->mask = (bool*)nimcp_calloc(num_factors, sizeof(bool));
 
     if (!input->visible_factors || !input->mask) {
         financial_jepa_input_destroy(input);
@@ -1306,9 +1308,9 @@ fin_jepa_input_t* financial_jepa_input_create(uint32_t num_factors) {
 
 void financial_jepa_input_destroy(fin_jepa_input_t* input) {
     if (!input) return;
-    if (input->visible_factors) free(input->visible_factors);
-    if (input->mask) free(input->mask);
-    free(input);
+    if (input->visible_factors) nimcp_free(input->visible_factors);
+    if (input->mask) nimcp_free(input->mask);
+    nimcp_free(input);
 }
 
 fin_jepa_output_t* financial_jepa_output_create(uint32_t num_factors) {
@@ -1316,13 +1318,13 @@ fin_jepa_output_t* financial_jepa_output_create(uint32_t num_factors) {
         return NULL;
     }
 
-    fin_jepa_output_t* output = (fin_jepa_output_t*)malloc(sizeof(fin_jepa_output_t));
+    fin_jepa_output_t* output = (fin_jepa_output_t*)nimcp_malloc(sizeof(fin_jepa_output_t));
     if (!output) return NULL;
 
     memset(output, 0, sizeof(*output));
 
-    output->predicted_factors = (float*)calloc(num_factors, sizeof(float));
-    output->confidence = (float*)calloc(num_factors, sizeof(float));
+    output->predicted_factors = (float*)nimcp_calloc(num_factors, sizeof(float));
+    output->confidence = (float*)nimcp_calloc(num_factors, sizeof(float));
 
     if (!output->predicted_factors || !output->confidence) {
         financial_jepa_output_destroy(output);
@@ -1334,9 +1336,9 @@ fin_jepa_output_t* financial_jepa_output_create(uint32_t num_factors) {
 
 void financial_jepa_output_destroy(fin_jepa_output_t* output) {
     if (!output) return;
-    if (output->predicted_factors) free(output->predicted_factors);
-    if (output->confidence) free(output->confidence);
-    free(output);
+    if (output->predicted_factors) nimcp_free(output->predicted_factors);
+    if (output->confidence) nimcp_free(output->confidence);
+    nimcp_free(output);
 }
 
 fin_cross_modal_output_t* financial_jepa_cross_modal_output_create(uint32_t num_factors) {
@@ -1345,13 +1347,13 @@ fin_cross_modal_output_t* financial_jepa_cross_modal_output_create(uint32_t num_
     }
 
     fin_cross_modal_output_t* output =
-        (fin_cross_modal_output_t*)malloc(sizeof(fin_cross_modal_output_t));
+        (fin_cross_modal_output_t*)nimcp_malloc(sizeof(fin_cross_modal_output_t));
     if (!output) return NULL;
 
     memset(output, 0, sizeof(*output));
 
-    output->predicted_factors = (float*)calloc(num_factors, sizeof(float));
-    output->confidence = (float*)calloc(num_factors, sizeof(float));
+    output->predicted_factors = (float*)nimcp_calloc(num_factors, sizeof(float));
+    output->confidence = (float*)nimcp_calloc(num_factors, sizeof(float));
 
     if (!output->predicted_factors || !output->confidence) {
         financial_jepa_cross_modal_output_destroy(output);
@@ -1363,9 +1365,9 @@ fin_cross_modal_output_t* financial_jepa_cross_modal_output_create(uint32_t num_
 
 void financial_jepa_cross_modal_output_destroy(fin_cross_modal_output_t* output) {
     if (!output) return;
-    if (output->predicted_factors) free(output->predicted_factors);
-    if (output->confidence) free(output->confidence);
-    free(output);
+    if (output->predicted_factors) nimcp_free(output->predicted_factors);
+    if (output->confidence) nimcp_free(output->confidence);
+    nimcp_free(output);
 }
 
 //=============================================================================

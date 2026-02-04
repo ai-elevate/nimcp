@@ -18,6 +18,7 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Module Constants
@@ -109,7 +110,7 @@ nimcp_gmm_t* nimcp_gmm_create(const nimcp_gmm_config_t* config) {
         return NULL;
     }
 
-    nimcp_gmm_t* gmm = (nimcp_gmm_t*)calloc(1, sizeof(nimcp_gmm_t));
+    nimcp_gmm_t* gmm = (nimcp_gmm_t*)nimcp_calloc(1, sizeof(nimcp_gmm_t));
     if (!gmm) {
         LOG_ERROR("Failed to allocate GMM");
         return NULL;
@@ -122,8 +123,8 @@ nimcp_gmm_t* nimcp_gmm_create(const nimcp_gmm_config_t* config) {
     gmm->gpu_ctx = g_ml_state.gpu_ctx;
     gmm->is_fitted = false;
 
-    gmm->weights = (float*)calloc(cfg.n_components, sizeof(float));
-    gmm->log_det = (float*)calloc(cfg.n_components, sizeof(float));
+    gmm->weights = (float*)nimcp_calloc(cfg.n_components, sizeof(float));
+    gmm->log_det = (float*)nimcp_calloc(cfg.n_components, sizeof(float));
 
     if (!gmm->weights || !gmm->log_det) {
         nimcp_gmm_destroy(gmm);
@@ -142,15 +143,15 @@ void nimcp_gmm_destroy(nimcp_gmm_t* gmm) {
     if (!gmm) return;
     if (gmm->magic != GMM_MAGIC) return;
 
-    free(gmm->weights);
-    free(gmm->means);
-    free(gmm->covariances);
-    free(gmm->precisions);
-    free(gmm->precisions_chol);
-    free(gmm->log_det);
+    nimcp_free(gmm->weights);
+    nimcp_free(gmm->means);
+    nimcp_free(gmm->covariances);
+    nimcp_free(gmm->precisions);
+    nimcp_free(gmm->precisions_chol);
+    nimcp_free(gmm->log_det);
 
     gmm->magic = 0;
-    free(gmm);
+    nimcp_free(gmm);
 }
 
 static float gmm_log_gaussian(const float* x, const float* mean,
@@ -176,9 +177,9 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
     gmm->n_features = d;
 
     /* Allocate parameter storage */
-    gmm->means = (float*)realloc(gmm->means, k * d * sizeof(float));
-    gmm->covariances = (float*)realloc(gmm->covariances, k * d * sizeof(float));
-    gmm->precisions = (float*)realloc(gmm->precisions, k * d * sizeof(float));
+    gmm->means = (float*)nimcp_realloc(gmm->means, k * d * sizeof(float));
+    gmm->covariances = (float*)nimcp_realloc(gmm->covariances, k * d * sizeof(float));
+    gmm->precisions = (float*)nimcp_realloc(gmm->precisions, k * d * sizeof(float));
 
     if (!gmm->means || !gmm->covariances || !gmm->precisions) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -192,7 +193,7 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
     memcpy(gmm->means, &X[idx * d], d * sizeof(float));
 
     /* Remaining centroids: proportional to D^2 */
-    float* dists = (float*)malloc(n * sizeof(float));
+    float* dists = (float*)nimcp_malloc(n * sizeof(float));
     if (!dists) return NIMCP_ML_ERROR_MEMORY;
 
     for (uint32_t c = 1; c < k; c++) {
@@ -217,7 +218,7 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
             }
         }
     }
-    free(dists);
+    nimcp_free(dists);
 
     /* Initialize covariances */
     for (uint32_t c = 0; c < k; c++) {
@@ -229,12 +230,12 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
     }
 
     /* Allocate working memory */
-    float* resp = (float*)malloc(n * k * sizeof(float));
-    float* nk = (float*)malloc(k * sizeof(float));
-    float* log_prob = (float*)malloc(k * sizeof(float));
+    float* resp = (float*)nimcp_malloc(n * k * sizeof(float));
+    float* nk = (float*)nimcp_malloc(k * sizeof(float));
+    float* log_prob = (float*)nimcp_malloc(k * sizeof(float));
 
     if (!resp || !nk || !log_prob) {
-        free(resp); free(nk); free(log_prob);
+        nimcp_free(resp); nimcp_free(nk); nimcp_free(log_prob);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -335,9 +336,9 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
         result->aic = -2.0f * gmm->lower_bound + 2.0f * n_params;
     }
 
-    free(resp);
-    free(nk);
-    free(log_prob);
+    nimcp_free(resp);
+    nimcp_free(nk);
+    nimcp_free(log_prob);
 
     return NIMCP_ML_OK;
 }
@@ -378,7 +379,7 @@ nimcp_ml_error_t nimcp_gmm_predict_proba(const nimcp_gmm_t* gmm, const float* X,
 
     uint32_t k = gmm->n_components;
     uint32_t d = gmm->n_features;
-    float* log_prob = (float*)malloc(k * sizeof(float));
+    float* log_prob = (float*)nimcp_malloc(k * sizeof(float));
     if (!log_prob) return NIMCP_ML_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -397,7 +398,7 @@ nimcp_ml_error_t nimcp_gmm_predict_proba(const nimcp_gmm_t* gmm, const float* X,
         }
     }
 
-    free(log_prob);
+    nimcp_free(log_prob);
     return NIMCP_ML_OK;
 }
 
@@ -408,7 +409,7 @@ nimcp_ml_error_t nimcp_gmm_score(const nimcp_gmm_t* gmm, const float* X,
 
     uint32_t k = gmm->n_components;
     uint32_t d = gmm->n_features;
-    float* log_prob = (float*)malloc(k * sizeof(float));
+    float* log_prob = (float*)nimcp_malloc(k * sizeof(float));
     if (!log_prob) return NIMCP_ML_ERROR_MEMORY;
 
     float total_ll = 0.0f;
@@ -424,7 +425,7 @@ nimcp_ml_error_t nimcp_gmm_score(const nimcp_gmm_t* gmm, const float* X,
     }
 
     *score = total_ll / (float)n_samples;
-    free(log_prob);
+    nimcp_free(log_prob);
     return NIMCP_ML_OK;
 }
 
@@ -435,7 +436,7 @@ nimcp_ml_error_t nimcp_gmm_score_samples(const nimcp_gmm_t* gmm, const float* X,
 
     uint32_t k = gmm->n_components;
     uint32_t d = gmm->n_features;
-    float* log_prob = (float*)malloc(k * sizeof(float));
+    float* log_prob = (float*)nimcp_malloc(k * sizeof(float));
     if (!log_prob) return NIMCP_ML_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -449,7 +450,7 @@ nimcp_ml_error_t nimcp_gmm_score_samples(const nimcp_gmm_t* gmm, const float* X,
         scores[i] = log_sum_exp(log_prob, k);
     }
 
-    free(log_prob);
+    nimcp_free(log_prob);
     return NIMCP_ML_OK;
 }
 
@@ -553,7 +554,7 @@ nimcp_gp_kernel_params_t nimcp_gp_kernel_default(nimcp_gp_kernel_t type) {
 nimcp_gp_t* nimcp_gp_create(const nimcp_gp_config_t* config) {
     nimcp_gp_config_t cfg = config ? *config : nimcp_gp_default_config();
 
-    nimcp_gp_t* gp = (nimcp_gp_t*)calloc(1, sizeof(nimcp_gp_t));
+    nimcp_gp_t* gp = (nimcp_gp_t*)nimcp_calloc(1, sizeof(nimcp_gp_t));
     if (!gp) return NULL;
 
     gp->magic = GP_MAGIC;
@@ -571,14 +572,14 @@ void nimcp_gp_destroy(nimcp_gp_t* gp) {
     if (!gp) return;
     if (gp->magic != GP_MAGIC) return;
 
-    free(gp->X_train);
-    free(gp->y_train);
-    free(gp->L);
-    free(gp->alpha);
-    free(gp->kernel.length_scales);
+    nimcp_free(gp->X_train);
+    nimcp_free(gp->y_train);
+    nimcp_free(gp->L);
+    nimcp_free(gp->alpha);
+    nimcp_free(gp->kernel.length_scales);
 
     gp->magic = 0;
-    free(gp);
+    nimcp_free(gp);
 }
 
 static float gp_kernel_rbf(const float* x1, const float* x2, uint32_t d,
@@ -695,10 +696,10 @@ nimcp_ml_error_t nimcp_gp_fit(nimcp_gp_t* gp, const float* X, const float* y,
     gp->n_features = d;
 
     /* Store training data */
-    gp->X_train = (float*)realloc(gp->X_train, n * d * sizeof(float));
-    gp->y_train = (float*)realloc(gp->y_train, n * sizeof(float));
-    gp->L = (float*)realloc(gp->L, n * n * sizeof(float));
-    gp->alpha = (float*)realloc(gp->alpha, n * sizeof(float));
+    gp->X_train = (float*)nimcp_realloc(gp->X_train, n * d * sizeof(float));
+    gp->y_train = (float*)nimcp_realloc(gp->y_train, n * sizeof(float));
+    gp->L = (float*)nimcp_realloc(gp->L, n * n * sizeof(float));
+    gp->alpha = (float*)nimcp_realloc(gp->alpha, n * sizeof(float));
 
     if (!gp->X_train || !gp->y_train || !gp->L || !gp->alpha) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -745,7 +746,7 @@ nimcp_ml_error_t nimcp_gp_fit(nimcp_gp_t* gp, const float* X, const float* y,
     }
 
     /* Compute alpha = L^T \ (L \ y) */
-    float* tmp = (float*)malloc(n * sizeof(float));
+    float* tmp = (float*)nimcp_malloc(n * sizeof(float));
     if (!tmp) return NIMCP_ML_ERROR_MEMORY;
 
     solve_lower(gp->L, gp->y_train, tmp, n);
@@ -766,7 +767,7 @@ nimcp_ml_error_t nimcp_gp_fit(nimcp_gp_t* gp, const float* X, const float* y,
     gp->log_marginal_likelihood = -0.5f * data_fit - 0.5f * log_det -
                                   0.5f * n * logf(2.0f * PI_F);
 
-    free(tmp);
+    nimcp_free(tmp);
     gp->is_fitted = true;
 
     return NIMCP_ML_OK;
@@ -807,10 +808,10 @@ nimcp_ml_error_t nimcp_gp_predict_with_std(const nimcp_gp_t* gp, const float* X_
     uint32_t n = gp->n_train;
     uint32_t d = gp->n_features;
 
-    float* k_star = (float*)malloc(n * sizeof(float));
-    float* v = (float*)malloc(n * sizeof(float));
+    float* k_star = (float*)nimcp_malloc(n * sizeof(float));
+    float* v = (float*)nimcp_malloc(n * sizeof(float));
     if (!k_star || !v) {
-        free(k_star); free(v);
+        nimcp_free(k_star); nimcp_free(v);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -847,8 +848,8 @@ nimcp_ml_error_t nimcp_gp_predict_with_std(const nimcp_gp_t* gp, const float* X_
         }
     }
 
-    free(k_star);
-    free(v);
+    nimcp_free(k_star);
+    nimcp_free(v);
     return NIMCP_ML_OK;
 }
 
@@ -884,16 +885,16 @@ nimcp_ml_error_t nimcp_gp_sample(const nimcp_gp_t* gp, const float* X_test,
     if (!X_test || !samples) return NIMCP_ML_ERROR_NULL;
 
     /* Get mean and std */
-    float* mean = (float*)malloc(n_test * sizeof(float));
-    float* std = (float*)malloc(n_test * sizeof(float));
+    float* mean = (float*)nimcp_malloc(n_test * sizeof(float));
+    float* std = (float*)nimcp_malloc(n_test * sizeof(float));
     if (!mean || !std) {
-        free(mean); free(std);
+        nimcp_free(mean); nimcp_free(std);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
     nimcp_ml_error_t err = nimcp_gp_predict_with_std(gp, X_test, n_test, mean, std);
     if (err != NIMCP_ML_OK) {
-        free(mean); free(std);
+        nimcp_free(mean); nimcp_free(std);
         return err;
     }
 
@@ -904,8 +905,8 @@ nimcp_ml_error_t nimcp_gp_sample(const nimcp_gp_t* gp, const float* X_test,
         }
     }
 
-    free(mean);
-    free(std);
+    nimcp_free(mean);
+    nimcp_free(std);
     return NIMCP_ML_OK;
 }
 
@@ -935,7 +936,7 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
         return NULL;
     }
 
-    nimcp_hmm_t* hmm = (nimcp_hmm_t*)calloc(1, sizeof(nimcp_hmm_t));
+    nimcp_hmm_t* hmm = (nimcp_hmm_t*)nimcp_calloc(1, sizeof(nimcp_hmm_t));
     if (!hmm) return NULL;
 
     hmm->magic = HMM_MAGIC;
@@ -948,10 +949,10 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
     uint32_t s = cfg.n_states;
     uint32_t d = cfg.n_features;
 
-    hmm->initial_prob = (float*)calloc(s, sizeof(float));
-    hmm->transition_prob = (float*)calloc(s * s, sizeof(float));
-    hmm->log_initial = (float*)calloc(s, sizeof(float));
-    hmm->log_transition = (float*)calloc(s * s, sizeof(float));
+    hmm->initial_prob = (float*)nimcp_calloc(s, sizeof(float));
+    hmm->transition_prob = (float*)nimcp_calloc(s * s, sizeof(float));
+    hmm->log_initial = (float*)nimcp_calloc(s, sizeof(float));
+    hmm->log_transition = (float*)nimcp_calloc(s * s, sizeof(float));
 
     if (!hmm->initial_prob || !hmm->transition_prob ||
         !hmm->log_initial || !hmm->log_transition) {
@@ -971,8 +972,8 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
     }
 
     if (cfg.emission_type == NIMCP_HMM_EMISSION_GAUSSIAN) {
-        hmm->emission_means = (float*)calloc(s * d, sizeof(float));
-        hmm->emission_covars = (float*)calloc(s * d, sizeof(float));
+        hmm->emission_means = (float*)nimcp_calloc(s * d, sizeof(float));
+        hmm->emission_covars = (float*)nimcp_calloc(s * d, sizeof(float));
         if (!hmm->emission_means || !hmm->emission_covars) {
             nimcp_hmm_destroy(hmm);
             return NULL;
@@ -989,24 +990,24 @@ void nimcp_hmm_destroy(nimcp_hmm_t* hmm) {
     if (!hmm) return;
     if (hmm->magic != HMM_MAGIC) return;
 
-    free(hmm->initial_prob);
-    free(hmm->transition_prob);
-    free(hmm->log_initial);
-    free(hmm->log_transition);
-    free(hmm->emission_means);
-    free(hmm->emission_covars);
-    free(hmm->emission_probs);
-    free(hmm->emission_rates);
+    nimcp_free(hmm->initial_prob);
+    nimcp_free(hmm->transition_prob);
+    nimcp_free(hmm->log_initial);
+    nimcp_free(hmm->log_transition);
+    nimcp_free(hmm->emission_means);
+    nimcp_free(hmm->emission_covars);
+    nimcp_free(hmm->emission_probs);
+    nimcp_free(hmm->emission_rates);
 
     if (hmm->state_gmms) {
         for (uint32_t i = 0; i < hmm->n_states; i++) {
             nimcp_gmm_destroy(hmm->state_gmms[i]);
         }
-        free(hmm->state_gmms);
+        nimcp_free(hmm->state_gmms);
     }
 
     hmm->magic = 0;
-    free(hmm);
+    nimcp_free(hmm);
 }
 
 static float hmm_log_emission(const nimcp_hmm_t* hmm, uint32_t state,
@@ -1045,10 +1046,10 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
     }
 
     /* Compute data variance for initialization */
-    float* data_mean = (float*)calloc(d, sizeof(float));
-    float* data_var = (float*)calloc(d, sizeof(float));
+    float* data_mean = (float*)nimcp_calloc(d, sizeof(float));
+    float* data_var = (float*)nimcp_calloc(d, sizeof(float));
     if (!data_mean || !data_var) {
-        free(data_mean); free(data_var);
+        nimcp_free(data_mean); nimcp_free(data_var);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -1078,8 +1079,8 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
         }
     }
 
-    free(data_mean);
-    free(data_var);
+    nimcp_free(data_mean);
+    nimcp_free(data_var);
 
     /* Allocate working memory */
     uint32_t max_len = 0;
@@ -1087,17 +1088,17 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
         if (seq_lengths[seq] > max_len) max_len = seq_lengths[seq];
     }
 
-    float* alpha = (float*)malloc(max_len * s * sizeof(float));
-    float* beta = (float*)malloc(max_len * s * sizeof(float));
-    float* gamma = (float*)malloc(max_len * s * sizeof(float));
-    float* xi_sum = (float*)calloc(s * s, sizeof(float));
-    float* gamma_sum = (float*)calloc(s, sizeof(float));
-    float* gamma_init_sum = (float*)calloc(s, sizeof(float));
-    float* scale = (float*)malloc(max_len * sizeof(float));
+    float* alpha = (float*)nimcp_malloc(max_len * s * sizeof(float));
+    float* beta = (float*)nimcp_malloc(max_len * s * sizeof(float));
+    float* gamma = (float*)nimcp_malloc(max_len * s * sizeof(float));
+    float* xi_sum = (float*)nimcp_calloc(s * s, sizeof(float));
+    float* gamma_sum = (float*)nimcp_calloc(s, sizeof(float));
+    float* gamma_init_sum = (float*)nimcp_calloc(s, sizeof(float));
+    float* scale = (float*)nimcp_malloc(max_len * sizeof(float));
 
     if (!alpha || !beta || !gamma || !xi_sum || !gamma_sum || !gamma_init_sum || !scale) {
-        free(alpha); free(beta); free(gamma);
-        free(xi_sum); free(gamma_sum); free(gamma_init_sum); free(scale);
+        nimcp_free(alpha); nimcp_free(beta); nimcp_free(gamma);
+        nimcp_free(xi_sum); nimcp_free(gamma_sum); nimcp_free(gamma_init_sum); nimcp_free(scale);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -1112,8 +1113,8 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
         memset(gamma_sum, 0, s * sizeof(float));
         memset(gamma_init_sum, 0, s * sizeof(float));
 
-        float* mean_num = (float*)calloc(s * d, sizeof(float));
-        float* var_num = (float*)calloc(s * d, sizeof(float));
+        float* mean_num = (float*)nimcp_calloc(s * d, sizeof(float));
+        float* var_num = (float*)nimcp_calloc(s * d, sizeof(float));
 
         uint32_t obs_offset = 0;
         for (uint32_t seq = 0; seq < n_sequences; seq++) {
@@ -1221,7 +1222,7 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
         if (fabsf(total_ll - prev_ll) < 1e-4f * fabsf(total_ll)) {
             converged = true;
             hmm->log_likelihood = total_ll;
-            free(mean_num); free(var_num);
+            nimcp_free(mean_num); nimcp_free(var_num);
             break;
         }
         prev_ll = total_ll;
@@ -1282,16 +1283,16 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
             }
         }
 
-        free(mean_num);
-        free(var_num);
+        nimcp_free(mean_num);
+        nimcp_free(var_num);
     }
 
     hmm->n_iter = iter;
     hmm->converged = converged;
     hmm->is_fitted = true;
 
-    free(alpha); free(beta); free(gamma);
-    free(xi_sum); free(gamma_sum); free(gamma_init_sum); free(scale);
+    nimcp_free(alpha); nimcp_free(beta); nimcp_free(gamma);
+    nimcp_free(xi_sum); nimcp_free(gamma_sum); nimcp_free(gamma_init_sum); nimcp_free(scale);
 
     return NIMCP_ML_OK;
 }
@@ -1305,12 +1306,12 @@ nimcp_ml_error_t nimcp_hmm_decode(const nimcp_hmm_t* hmm, const float* observati
     uint32_t d = hmm->n_features;
     uint32_t T = length;
 
-    float* viterbi = (float*)malloc(T * s * sizeof(float));
-    uint32_t* backptr = (uint32_t*)malloc(T * s * sizeof(uint32_t));
-    result->states = (uint32_t*)malloc(T * sizeof(uint32_t));
+    float* viterbi = (float*)nimcp_malloc(T * s * sizeof(float));
+    uint32_t* backptr = (uint32_t*)nimcp_malloc(T * s * sizeof(uint32_t));
+    result->states = (uint32_t*)nimcp_malloc(T * sizeof(uint32_t));
 
     if (!viterbi || !backptr || !result->states) {
-        free(viterbi); free(backptr); free(result->states);
+        nimcp_free(viterbi); nimcp_free(backptr); nimcp_free(result->states);
         result->states = NULL;
         return NIMCP_ML_ERROR_MEMORY;
     }
@@ -1359,8 +1360,8 @@ nimcp_ml_error_t nimcp_hmm_decode(const nimcp_hmm_t* hmm, const float* observati
         result->states[t] = backptr[(t+1) * s + result->states[t+1]];
     }
 
-    free(viterbi);
-    free(backptr);
+    nimcp_free(viterbi);
+    nimcp_free(backptr);
 
     return NIMCP_ML_OK;
 }
@@ -1374,10 +1375,10 @@ nimcp_ml_error_t nimcp_hmm_predict(const nimcp_hmm_t* hmm, const float* observat
     uint32_t d = hmm->n_features;
     uint32_t T = length;
 
-    float* alpha = (float*)malloc(T * s * sizeof(float));
-    float* scale = (float*)malloc(T * sizeof(float));
+    float* alpha = (float*)nimcp_malloc(T * s * sizeof(float));
+    float* scale = (float*)nimcp_malloc(T * sizeof(float));
     if (!alpha || !scale) {
-        free(alpha); free(scale);
+        nimcp_free(alpha); nimcp_free(scale);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -1419,8 +1420,8 @@ nimcp_ml_error_t nimcp_hmm_predict(const nimcp_hmm_t* hmm, const float* observat
         }
     }
 
-    free(alpha);
-    free(scale);
+    nimcp_free(alpha);
+    nimcp_free(scale);
     return NIMCP_ML_OK;
 }
 
@@ -1475,18 +1476,18 @@ nimcp_ml_error_t nimcp_hmm_score(const nimcp_hmm_t* hmm, const float* observatio
     if (!hmm || hmm->magic != HMM_MAGIC || !hmm->is_fitted) return NIMCP_ML_ERROR_NOT_FITTED;
     if (!observations || !log_likelihood) return NIMCP_ML_ERROR_NULL;
 
-    float* dummy = (float*)malloc(length * hmm->n_states * sizeof(float));
+    float* dummy = (float*)nimcp_malloc(length * hmm->n_states * sizeof(float));
     if (!dummy) return NIMCP_ML_ERROR_MEMORY;
 
     nimcp_ml_error_t err = nimcp_hmm_predict(hmm, observations, length, dummy, log_likelihood);
-    free(dummy);
+    nimcp_free(dummy);
     return err;
 }
 
 void nimcp_hmm_decode_result_free(nimcp_hmm_decode_result_t* result) {
     if (!result) return;
-    free(result->states);
-    free(result->state_probs);
+    nimcp_free(result->states);
+    nimcp_free(result->state_probs);
     result->states = NULL;
     result->state_probs = NULL;
 }
@@ -1511,7 +1512,7 @@ nimcp_kde_config_t nimcp_kde_default_config(void) {
 nimcp_kde_t* nimcp_kde_create(const nimcp_kde_config_t* config) {
     nimcp_kde_config_t cfg = config ? *config : nimcp_kde_default_config();
 
-    nimcp_kde_t* kde = (nimcp_kde_t*)calloc(1, sizeof(nimcp_kde_t));
+    nimcp_kde_t* kde = (nimcp_kde_t*)nimcp_calloc(1, sizeof(nimcp_kde_t));
     if (!kde) return NULL;
 
     kde->magic = KDE_MAGIC;
@@ -1527,12 +1528,12 @@ void nimcp_kde_destroy(nimcp_kde_t* kde) {
     if (!kde) return;
     if (kde->magic != KDE_MAGIC) return;
 
-    free(kde->data);
-    free(kde->bandwidth);
-    free(kde->adaptive_bw);
+    nimcp_free(kde->data);
+    nimcp_free(kde->bandwidth);
+    nimcp_free(kde->adaptive_bw);
 
     kde->magic = 0;
-    free(kde);
+    nimcp_free(kde);
 }
 
 nimcp_ml_error_t nimcp_kde_bandwidth_silverman(const float* X, uint32_t n_samples,
@@ -1606,8 +1607,8 @@ nimcp_ml_error_t nimcp_kde_fit(nimcp_kde_t* kde, const float* X,
     kde->n_samples = n_samples;
     kde->n_features = n_features;
 
-    kde->data = (float*)realloc(kde->data, n_samples * n_features * sizeof(float));
-    kde->bandwidth = (float*)realloc(kde->bandwidth, n_features * sizeof(float));
+    kde->data = (float*)nimcp_realloc(kde->data, n_samples * n_features * sizeof(float));
+    kde->bandwidth = (float*)nimcp_realloc(kde->bandwidth, n_features * sizeof(float));
 
     if (!kde->data || !kde->bandwidth) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -1694,7 +1695,7 @@ nimcp_nb_config_t nimcp_nb_default_config(nimcp_nb_type_t type) {
 nimcp_nb_t* nimcp_nb_create(const nimcp_nb_config_t* config) {
     if (!config) return NULL;
 
-    nimcp_nb_t* nb = (nimcp_nb_t*)calloc(1, sizeof(nimcp_nb_t));
+    nimcp_nb_t* nb = (nimcp_nb_t*)nimcp_calloc(1, sizeof(nimcp_nb_t));
     if (!nb) return NULL;
 
     nb->magic = NB_MAGIC;
@@ -1709,15 +1710,15 @@ void nimcp_nb_destroy(nimcp_nb_t* nb) {
     if (!nb) return;
     if (nb->magic != NB_MAGIC) return;
 
-    free(nb->class_prior);
-    free(nb->class_count);
-    free(nb->theta);
-    free(nb->var);
-    free(nb->feature_log_prob);
-    free(nb->feature_count);
+    nimcp_free(nb->class_prior);
+    nimcp_free(nb->class_count);
+    nimcp_free(nb->theta);
+    nimcp_free(nb->var);
+    nimcp_free(nb->feature_log_prob);
+    nimcp_free(nb->feature_count);
 
     nb->magic = 0;
-    free(nb);
+    nimcp_free(nb);
 }
 
 nimcp_ml_error_t nimcp_nb_gaussian_fit(nimcp_nb_t* nb, const float* X,
@@ -1738,10 +1739,10 @@ nimcp_ml_error_t nimcp_nb_gaussian_fit(nimcp_nb_t* nb, const float* X,
     uint32_t c = nb->n_classes;
     uint32_t d = n_features;
 
-    nb->class_prior = (float*)realloc(nb->class_prior, c * sizeof(float));
-    nb->class_count = (float*)realloc(nb->class_count, c * sizeof(float));
-    nb->theta = (float*)realloc(nb->theta, c * d * sizeof(float));
-    nb->var = (float*)realloc(nb->var, c * d * sizeof(float));
+    nb->class_prior = (float*)nimcp_realloc(nb->class_prior, c * sizeof(float));
+    nb->class_count = (float*)nimcp_realloc(nb->class_count, c * sizeof(float));
+    nb->theta = (float*)nimcp_realloc(nb->theta, c * d * sizeof(float));
+    nb->var = (float*)nimcp_realloc(nb->var, c * d * sizeof(float));
 
     if (!nb->class_prior || !nb->class_count || !nb->theta || !nb->var) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -1843,10 +1844,10 @@ nimcp_ml_error_t nimcp_nb_multinomial_fit(nimcp_nb_t* nb, const float* X,
     uint32_t c = nb->n_classes;
     uint32_t d = n_features;
 
-    nb->class_prior = (float*)realloc(nb->class_prior, c * sizeof(float));
-    nb->class_count = (float*)realloc(nb->class_count, c * sizeof(float));
-    nb->feature_count = (float*)realloc(nb->feature_count, c * d * sizeof(float));
-    nb->feature_log_prob = (float*)realloc(nb->feature_log_prob, c * d * sizeof(float));
+    nb->class_prior = (float*)nimcp_realloc(nb->class_prior, c * sizeof(float));
+    nb->class_count = (float*)nimcp_realloc(nb->class_count, c * sizeof(float));
+    nb->feature_count = (float*)nimcp_realloc(nb->feature_count, c * d * sizeof(float));
+    nb->feature_log_prob = (float*)nimcp_realloc(nb->feature_log_prob, c * d * sizeof(float));
 
     if (!nb->class_prior || !nb->class_count || !nb->feature_count || !nb->feature_log_prob) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -1927,10 +1928,10 @@ nimcp_ml_error_t nimcp_nb_bernoulli_fit(nimcp_nb_t* nb, const float* X,
     uint32_t c = nb->n_classes;
     uint32_t d = n_features;
 
-    nb->class_prior = (float*)realloc(nb->class_prior, c * sizeof(float));
-    nb->class_count = (float*)realloc(nb->class_count, c * sizeof(float));
-    nb->feature_count = (float*)realloc(nb->feature_count, c * d * sizeof(float));
-    nb->feature_log_prob = (float*)realloc(nb->feature_log_prob, c * d * sizeof(float));
+    nb->class_prior = (float*)nimcp_realloc(nb->class_prior, c * sizeof(float));
+    nb->class_count = (float*)nimcp_realloc(nb->class_count, c * sizeof(float));
+    nb->feature_count = (float*)nimcp_realloc(nb->feature_count, c * d * sizeof(float));
+    nb->feature_log_prob = (float*)nimcp_realloc(nb->feature_log_prob, c * d * sizeof(float));
 
     if (!nb->class_prior || !nb->class_count || !nb->feature_count || !nb->feature_log_prob) {
         return NIMCP_ML_ERROR_MEMORY;
@@ -2060,10 +2061,10 @@ nimcp_ml_error_t nimcp_ml_confusion_matrix(const uint32_t* y_true, const uint32_
     cm->n_classes = n_classes;
     cm->total = n_samples;
 
-    cm->matrix = (uint32_t*)calloc(n_classes * n_classes, sizeof(uint32_t));
-    cm->precision = (float*)calloc(n_classes, sizeof(float));
-    cm->recall = (float*)calloc(n_classes, sizeof(float));
-    cm->f1 = (float*)calloc(n_classes, sizeof(float));
+    cm->matrix = (uint32_t*)nimcp_calloc(n_classes * n_classes, sizeof(uint32_t));
+    cm->precision = (float*)nimcp_calloc(n_classes, sizeof(float));
+    cm->recall = (float*)nimcp_calloc(n_classes, sizeof(float));
+    cm->f1 = (float*)nimcp_calloc(n_classes, sizeof(float));
 
     if (!cm->matrix || !cm->precision || !cm->recall || !cm->f1) {
         nimcp_ml_confusion_matrix_free(cm);
@@ -2130,7 +2131,7 @@ nimcp_ml_error_t nimcp_ml_roc_curve(const uint32_t* y_true, const float* y_score
     }
 
     /* Sort indices by score descending */
-    uint32_t* indices = (uint32_t*)malloc(n_samples * sizeof(uint32_t));
+    uint32_t* indices = (uint32_t*)nimcp_malloc(n_samples * sizeof(uint32_t));
     if (!indices) return NIMCP_ML_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) indices[i] = i;
@@ -2148,12 +2149,12 @@ nimcp_ml_error_t nimcp_ml_roc_curve(const uint32_t* y_true, const float* y_score
 
     /* Compute ROC curve */
     roc->n_points = n_samples + 1;
-    roc->fpr = (float*)malloc(roc->n_points * sizeof(float));
-    roc->tpr = (float*)malloc(roc->n_points * sizeof(float));
-    roc->thresholds = (float*)malloc(roc->n_points * sizeof(float));
+    roc->fpr = (float*)nimcp_malloc(roc->n_points * sizeof(float));
+    roc->tpr = (float*)nimcp_malloc(roc->n_points * sizeof(float));
+    roc->thresholds = (float*)nimcp_malloc(roc->n_points * sizeof(float));
 
     if (!roc->fpr || !roc->tpr || !roc->thresholds) {
-        free(indices);
+        nimcp_free(indices);
         nimcp_ml_roc_curve_free(roc);
         return NIMCP_ML_ERROR_MEMORY;
     }
@@ -2178,7 +2179,7 @@ nimcp_ml_error_t nimcp_ml_roc_curve(const uint32_t* y_true, const float* y_score
         roc->auc += 0.5f * (roc->fpr[i] - roc->fpr[i-1]) * (roc->tpr[i] + roc->tpr[i-1]);
     }
 
-    free(indices);
+    nimcp_free(indices);
     return NIMCP_ML_OK;
 }
 
@@ -2256,8 +2257,8 @@ nimcp_ml_error_t nimcp_ml_cross_validate(const float* X, const uint32_t* y,
     if (n_folds < 2 || n_folds > n_samples) return NIMCP_ML_ERROR_PARAMS;
 
     result->n_folds = n_folds;
-    result->scores = (float*)calloc(n_folds, sizeof(float));
-    result->train_scores = (float*)calloc(n_folds, sizeof(float));
+    result->scores = (float*)nimcp_calloc(n_folds, sizeof(float));
+    result->train_scores = (float*)nimcp_calloc(n_folds, sizeof(float));
 
     if (!result->scores || !result->train_scores) {
         nimcp_ml_cv_result_free(result);
@@ -2273,14 +2274,14 @@ nimcp_ml_error_t nimcp_ml_cross_validate(const float* X, const uint32_t* y,
         uint32_t n_train = n_samples - n_test;
 
         /* Create train/test split */
-        float* X_train = (float*)malloc(n_train * n_features * sizeof(float));
-        uint32_t* y_train = (uint32_t*)malloc(n_train * sizeof(uint32_t));
-        float* X_test = (float*)malloc(n_test * n_features * sizeof(float));
-        uint32_t* y_test = (uint32_t*)malloc(n_test * sizeof(uint32_t));
-        uint32_t* y_pred = (uint32_t*)malloc(n_test * sizeof(uint32_t));
+        float* X_train = (float*)nimcp_malloc(n_train * n_features * sizeof(float));
+        uint32_t* y_train = (uint32_t*)nimcp_malloc(n_train * sizeof(uint32_t));
+        float* X_test = (float*)nimcp_malloc(n_test * n_features * sizeof(float));
+        uint32_t* y_test = (uint32_t*)nimcp_malloc(n_test * sizeof(uint32_t));
+        uint32_t* y_pred = (uint32_t*)nimcp_malloc(n_test * sizeof(uint32_t));
 
         if (!X_train || !y_train || !X_test || !y_test || !y_pred) {
-            free(X_train); free(y_train); free(X_test); free(y_test); free(y_pred);
+            nimcp_free(X_train); nimcp_free(y_train); nimcp_free(X_test); nimcp_free(y_test); nimcp_free(y_pred);
             nimcp_ml_cv_result_free(result);
             return NIMCP_ML_ERROR_MEMORY;
         }
@@ -2315,7 +2316,7 @@ nimcp_ml_error_t nimcp_ml_cross_validate(const float* X, const uint32_t* y,
             nimcp_nb_destroy(nb);
         }
 
-        free(X_train); free(y_train); free(X_test); free(y_test); free(y_pred);
+        nimcp_free(X_train); nimcp_free(y_train); nimcp_free(X_test); nimcp_free(y_test); nimcp_free(y_pred);
     }
 
     /* Compute mean and std */
@@ -2337,25 +2338,25 @@ nimcp_ml_error_t nimcp_ml_cross_validate(const float* X, const uint32_t* y,
 
 void nimcp_ml_confusion_matrix_free(nimcp_confusion_matrix_t* cm) {
     if (!cm) return;
-    free(cm->matrix);
-    free(cm->precision);
-    free(cm->recall);
-    free(cm->f1);
+    nimcp_free(cm->matrix);
+    nimcp_free(cm->precision);
+    nimcp_free(cm->recall);
+    nimcp_free(cm->f1);
     memset(cm, 0, sizeof(*cm));
 }
 
 void nimcp_ml_roc_curve_free(nimcp_roc_curve_t* roc) {
     if (!roc) return;
-    free(roc->fpr);
-    free(roc->tpr);
-    free(roc->thresholds);
+    nimcp_free(roc->fpr);
+    nimcp_free(roc->tpr);
+    nimcp_free(roc->thresholds);
     memset(roc, 0, sizeof(*roc));
 }
 
 void nimcp_ml_cv_result_free(nimcp_cv_result_t* result) {
     if (!result) return;
-    free(result->scores);
-    free(result->train_scores);
+    nimcp_free(result->scores);
+    nimcp_free(result->train_scores);
     memset(result, 0, sizeof(*result));
 }
 

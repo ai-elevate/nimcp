@@ -19,32 +19,45 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_motor_gate module */
-static nimcp_health_agent_t* g_lgss_motor_gate_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_motor_gate)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_motor_gate heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_motor_gate_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_motor_gate_health_agent = agent;
+static mesh_participant_id_t g_lgss_motor_gate_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_motor_gate_mesh_registry = NULL;
+
+nimcp_error_t lgss_motor_gate_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_motor_gate_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_motor_gate", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_motor_gate";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_motor_gate_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_motor_gate_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_motor_gate module */
-static inline void lgss_motor_gate_heartbeat(const char* operation, float progress) {
-    if (g_lgss_motor_gate_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_motor_gate_health_agent, operation, progress);
+void lgss_motor_gate_mesh_unregister(void) {
+    if (g_lgss_motor_gate_mesh_registry && g_lgss_motor_gate_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_motor_gate_mesh_registry, g_lgss_motor_gate_mesh_id);
+        g_lgss_motor_gate_mesh_id = 0;
+        g_lgss_motor_gate_mesh_registry = NULL;
     }
 }
+
 
 #endif
 
@@ -149,7 +162,7 @@ static void fill_violation(
  * ============================================================================= */
 
 motor_gate_t* motor_gate_create(const motor_gate_config_t* config) {
-    motor_gate_t* gate = (motor_gate_t*)calloc(1, sizeof(motor_gate_t));
+    motor_gate_t* gate = (motor_gate_t*)nimcp_calloc(1, sizeof(motor_gate_t));
     NIMCP_API_CHECK_ALLOC(gate, "Failed to allocate motor gate");
 
     gate->magic = NIMCP_MOTOR_GATE_MAGIC;
@@ -206,7 +219,7 @@ void motor_gate_destroy(motor_gate_t* gate) {
     }
 
     gate->magic = 0;  /* Invalidate before free */
-    free(gate);
+    nimcp_free(gate);
 }
 
 nimcp_result_t motor_gate_set_constraints(
@@ -223,6 +236,7 @@ nimcp_result_t motor_gate_set_constraints(
     if (constraints->force_limit < 0.0f ||
         constraints->velocity_limit < 0.0f ||
         constraints->acceleration_limit < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -236,12 +250,15 @@ nimcp_result_t motor_gate_get_constraints(
     motor_safety_constraints_t* constraints
 ) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!validate_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (constraints == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_motor_gate: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -464,10 +481,12 @@ bool motor_gate_would_violate(
 
 nimcp_result_t motor_gate_emergency_stop(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!gate->config.emergency_stop_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_SUPPORTED, "lgss_motor_gate: error condition");
         return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
@@ -483,6 +502,7 @@ nimcp_result_t motor_gate_emergency_stop(motor_gate_t* gate) {
 
 nimcp_result_t motor_gate_release_emergency_stop(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -498,9 +518,11 @@ nimcp_result_t motor_gate_release_emergency_stop(motor_gate_t* gate) {
 
 nimcp_result_t motor_gate_lock_region(motor_gate_t* gate, motor_region_t region) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!validate_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -510,9 +532,11 @@ nimcp_result_t motor_gate_lock_region(motor_gate_t* gate, motor_region_t region)
 
 nimcp_result_t motor_gate_unlock_region(motor_gate_t* gate, motor_region_t region) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!validate_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -525,9 +549,11 @@ nimcp_result_t motor_gate_get_stats(
     motor_gate_stats_t* stats
 ) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_motor_gate: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -537,6 +563,7 @@ nimcp_result_t motor_gate_get_stats(
 
 nimcp_result_t motor_gate_reset_stats(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

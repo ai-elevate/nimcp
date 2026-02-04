@@ -16,31 +16,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(compositional_systematic)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for compositional_systematic module */
-static nimcp_health_agent_t* g_compositional_systematic_health_agent = NULL;
+static mesh_participant_id_t g_compositional_systematic_mesh_id = 0;
+static mesh_participant_registry_t* g_compositional_systematic_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for compositional_systematic heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void compositional_systematic_set_health_agent(nimcp_health_agent_t* agent) {
-    g_compositional_systematic_health_agent = agent;
+nimcp_error_t compositional_systematic_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_compositional_systematic_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "compositional_systematic", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "compositional_systematic";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_compositional_systematic_mesh_id);
+    if (err == NIMCP_SUCCESS) g_compositional_systematic_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from compositional_systematic module */
-static inline void compositional_systematic_heartbeat(const char* operation, float progress) {
-    if (g_compositional_systematic_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_compositional_systematic_health_agent, operation, progress);
+void compositional_systematic_mesh_unregister(void) {
+    if (g_compositional_systematic_mesh_registry && g_compositional_systematic_mesh_id != 0) {
+        mesh_participant_unregister(g_compositional_systematic_mesh_registry, g_compositional_systematic_mesh_id);
+        g_compositional_systematic_mesh_id = 0;
+        g_compositional_systematic_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from compositional_systematic module (instance-level) */
 static inline void compositional_systematic_heartbeat_instance(
@@ -61,7 +75,7 @@ static inline void compositional_systematic_heartbeat_instance(
  *===========================================================================*/
 
 static cs_comp_node_t* alloc_comp_node(void) {
-    cs_comp_node_t* node = calloc(1, sizeof(cs_comp_node_t));
+    cs_comp_node_t* node = nimcp_calloc(1, sizeof(cs_comp_node_t));
     return node;
 }
 
@@ -79,7 +93,7 @@ static void free_comp_node(cs_comp_node_t* node) {
         free_comp_node(node->children[i]);
     }
 
-    free(node);
+    nimcp_free(node);
 }
 
 static cs_comp_node_t* copy_comp_node(const cs_comp_node_t* src) {
@@ -538,7 +552,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     compositional_systematic_heartbeat("compositiona_cs_create", 0.0f);
 
 
-    nimcp_compositional_t* cs = calloc(1, sizeof(nimcp_compositional_t));
+    nimcp_compositional_t* cs = nimcp_calloc(1, sizeof(nimcp_compositional_t));
     if (!cs) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cs");
@@ -556,9 +570,9 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
 
     /* Allocate primitive storage */
     cs->primitive_capacity = cs->config.max_primitives;
-    cs->primitives = calloc(cs->primitive_capacity, sizeof(cs_primitive_t));
+    cs->primitives = nimcp_calloc(cs->primitive_capacity, sizeof(cs_primitive_t));
     if (!cs->primitives) {
-        free(cs);
+        nimcp_free(cs);
         return NULL;
     }
     cs->num_primitives = 0;
@@ -566,10 +580,10 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
 
     /* Allocate composition storage */
     cs->composition_capacity = cs->config.max_compositions;
-    cs->compositions = calloc(cs->composition_capacity, sizeof(cs_composition_t));
+    cs->compositions = nimcp_calloc(cs->composition_capacity, sizeof(cs_composition_t));
     if (!cs->compositions) {
-        free(cs->primitives);
-        free(cs);
+        nimcp_free(cs->primitives);
+        nimcp_free(cs);
         return NULL;
     }
     cs->num_compositions = 0;
@@ -577,11 +591,11 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
 
     /* Allocate rule storage */
     cs->rule_capacity = cs->config.max_rules;
-    cs->rules = calloc(cs->rule_capacity, sizeof(cs_rule_t));
+    cs->rules = nimcp_calloc(cs->rule_capacity, sizeof(cs_rule_t));
     if (!cs->rules) {
-        free(cs->compositions);
-        free(cs->primitives);
-        free(cs);
+        nimcp_free(cs->compositions);
+        nimcp_free(cs->primitives);
+        nimcp_free(cs);
         return NULL;
     }
     cs->num_rules = 0;
@@ -673,11 +687,11 @@ void cs_destroy(nimcp_compositional_t* cs) {
     free_comp_node(cs->workspace);
 
     /* Free arrays */
-    free(cs->primitives);
-    free(cs->compositions);
-    free(cs->rules);
+    nimcp_free(cs->primitives);
+    nimcp_free(cs->compositions);
+    nimcp_free(cs->rules);
 
-    free(cs);
+    nimcp_free(cs);
 }
 
 /*=============================================================================

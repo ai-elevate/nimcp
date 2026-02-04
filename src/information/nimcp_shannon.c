@@ -21,34 +21,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "INFORMATION"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for shannon module */
-static nimcp_health_agent_t* g_shannon_health_agent = NULL;
-
-/**
- * @brief Set health agent for shannon heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void shannon_set_health_agent(nimcp_health_agent_t* agent) {
-    g_shannon_health_agent = agent;
-}
-
-/** @brief Send heartbeat from shannon module */
-static inline void shannon_heartbeat(const char* operation, float progress) {
-    if (g_shannon_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_shannon_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(shannon)
 
 #include "information/nimcp_shannon.h"
 #include "utils/memory/nimcp_memory.h"
@@ -360,7 +335,7 @@ float shannon_js_divergence(
     // Create mixture distribution M = 0.5(P + Q)
     shannon_distribution_t m;
     m.num_states = n;
-    m.probabilities = (float*)malloc(n * sizeof(float));
+    m.probabilities = (float*)nimcp_malloc(n * sizeof(float));
     if (!m.probabilities) {
         return 0.0F;
     }
@@ -374,7 +349,7 @@ float shannon_js_divergence(
     float jsd = 0.5F * shannon_kl_divergence(p, &m) +
                 0.5F * shannon_kl_divergence(q, &m);
 
-    free(m.probabilities);
+    nimcp_free(m.probabilities);
     return jsd;
 }
 

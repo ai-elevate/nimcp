@@ -19,35 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for graph_dao module */
-static nimcp_health_agent_t* g_graph_dao_health_agent = NULL;
-
-/**
- * @brief Set health agent for graph_dao heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void graph_dao_set_health_agent(nimcp_health_agent_t* agent) {
-    g_graph_dao_health_agent = agent;
-}
-
-/** @brief Send heartbeat from graph_dao module */
-static inline void graph_dao_heartbeat(const char* operation, float progress) {
-    if (g_graph_dao_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_graph_dao_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graph_dao)
 
 //=============================================================================
 // Internal Constants
@@ -194,6 +168,12 @@ void nimcp_graph_dao_destroy(nimcp_gpu_graph_dao_t* dao)
         return;
     }
 
+    /* Mark as not initialized BEFORE locking to prevent new operations from
+     * entering. All CRUD operations check dao->initialized before acquiring
+     * the lock, so this drains concurrent callers safely. */
+    dao->initialized = false;
+
+    /* Acquire lock to wait for any in-flight operations to complete */
     nimcp_mutex_lock(&dao->lock);
 
     // Free GPU-resident graphs
@@ -204,10 +184,13 @@ void nimcp_graph_dao_destroy(nimcp_gpu_graph_dao_t* dao)
     }
 
     nimcp_free(dao->gpu_storage);
+    dao->gpu_storage = NULL;
     nimcp_free(dao->gpu_ids);
+    dao->gpu_ids = NULL;
 
     if (dao->host_cache) {
         lru_cache_destroy(dao->host_cache);
+        dao->host_cache = NULL;
     }
 
     nimcp_mutex_unlock(&dao->lock);

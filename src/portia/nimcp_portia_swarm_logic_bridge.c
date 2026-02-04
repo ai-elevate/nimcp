@@ -16,34 +16,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for portia_swarm_logic_bridge module */
-static nimcp_health_agent_t* g_portia_swarm_logic_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for portia_swarm_logic_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void __attribute__((unused)) portia_swarm_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_portia_swarm_logic_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from portia_swarm_logic_bridge module */
-static inline void portia_swarm_logic_bridge_heartbeat(const char* operation, float progress) {
-    if (g_portia_swarm_logic_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_portia_swarm_logic_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_swarm_logic_bridge)
 
 //=============================================================================
 // Internal Structures
@@ -84,7 +60,7 @@ struct portia_swarm_logic_bridge {
 
     // Bio-async
     // Thread safety
-    pthread_mutex_t* mutex;                    /**< Mutex for thread safety */
+    nimcp_mutex_t* mutex;                    /**< Mutex for thread safety */
 
     // Statistics
     portia_swarm_logic_stats_t stats;          /**< Operational statistics */
@@ -152,9 +128,9 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     bridge->portia_swarm = portia_swarm;
 
     // Create mutex for thread safety
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (mutex) {
-        pthread_mutex_init(mutex, NULL);
+        nimcp_mutex_init(mutex, NULL);
         bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");

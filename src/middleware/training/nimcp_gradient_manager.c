@@ -37,35 +37,9 @@
 
 #define GRADMGR_MODULE_NAME "GradientManager"
 #define LOG_MODULE "gradient_manager"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for gradient_manager module */
-static nimcp_health_agent_t* g_gradient_manager_health_agent = NULL;
-
-/**
- * @brief Set health agent for gradient_manager heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void gradient_manager_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gradient_manager_health_agent = agent;
-}
-
-/** @brief Send heartbeat from gradient_manager module */
-static inline void gradient_manager_heartbeat(const char* operation, float progress) {
-    if (g_gradient_manager_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gradient_manager_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gradient_manager)
 
 /* ============================================================================
  * Internal Context Structure

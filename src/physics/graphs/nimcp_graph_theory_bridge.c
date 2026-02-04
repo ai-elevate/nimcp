@@ -21,33 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for graph_theory_bridge module */
-static nimcp_health_agent_t* g_graph_theory_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for graph_theory_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void graph_theory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_graph_theory_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from graph_theory_bridge module */
-static inline void graph_theory_bridge_heartbeat(const char* operation, float progress) {
-    if (g_graph_theory_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_graph_theory_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graph_theory_bridge)
 
 #define LOG_MODULE "GRAPH_THEORY_BRIDGE"
 
@@ -150,7 +127,7 @@ graph_theory_error_t graph_theory_bridge_default_config(
 graph_theory_bridge_t graph_theory_bridge_create(
     const graph_theory_bridge_config_t* config)
 {
-    struct graph_theory_bridge* bridge = calloc(1, sizeof(struct graph_theory_bridge));
+    struct graph_theory_bridge* bridge = nimcp_calloc(1, sizeof(struct graph_theory_bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate graph theory bridge");
 
     /* Apply configuration */
@@ -187,7 +164,7 @@ void graph_theory_bridge_destroy(graph_theory_bridge_t bridge)
         NIMCP_LOG_INFO(LOG_TAG, "Destroying graph theory bridge");
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 graph_theory_error_t graph_theory_bridge_register_kg(
@@ -362,7 +339,7 @@ graph_theory_error_t graph_theory_compute_centrality(
     }
 
     /* Allocate result */
-    graph_centrality_result_t* res = calloc(1, sizeof(graph_centrality_result_t));
+    graph_centrality_result_t* res = nimcp_calloc(1, sizeof(graph_centrality_result_t));
     if (!res) {
         return GRAPH_THEORY_ERROR_ALLOC;
     }
@@ -392,7 +369,7 @@ graph_theory_error_t graph_theory_compute_centrality(
     }
 
     if (!values || num_nodes == 0) {
-        free(res);
+        nimcp_free(res);
         report_exception(bridge, "compute_centrality", GRAPH_THEORY_ERROR_COMPUTATION,
                         "Centrality computation failed");
         return GRAPH_THEORY_ERROR_COMPUTATION;
@@ -404,7 +381,7 @@ graph_theory_error_t graph_theory_compute_centrality(
     res->type = type;
 
     /* Allocate node IDs */
-    res->node_ids = calloc(num_nodes, sizeof(uint32_t));
+    res->node_ids = nimcp_calloc(num_nodes, sizeof(uint32_t));
     if (res->node_ids) {
         for (uint32_t i = 0; i < num_nodes; i++) {
             res->node_ids[i] = i;
@@ -462,7 +439,7 @@ int32_t graph_theory_find_hubs(
     uint32_t found = (top_k < n) ? top_k : n;
 
     /* Simple selection of top k */
-    uint32_t* indices = calloc(n, sizeof(uint32_t));
+    uint32_t* indices = nimcp_calloc(n, sizeof(uint32_t));
     if (!indices) {
         graph_centrality_result_destroy(result);
         return -1;
@@ -484,7 +461,7 @@ int32_t graph_theory_find_hubs(
         hub_scores[i] = result->values[indices[i]];
     }
 
-    free(indices);
+    nimcp_free(indices);
     graph_centrality_result_destroy(result);
     return (int32_t)found;
 }
@@ -492,9 +469,9 @@ int32_t graph_theory_find_hubs(
 void graph_centrality_result_destroy(graph_centrality_result_t* result)
 {
     if (!result) return;
-    free(result->node_ids);
-    free(result->values);
-    free(result);
+    nimcp_free(result->node_ids);
+    nimcp_free(result->values);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -515,7 +492,7 @@ graph_theory_error_t graph_theory_detect_communities(
     (void)algo;
     (void)num_communities;
 
-    graph_community_result_t* res = calloc(1, sizeof(graph_community_result_t));
+    graph_community_result_t* res = nimcp_calloc(1, sizeof(graph_community_result_t));
     if (!res) {
         return GRAPH_THEORY_ERROR_ALLOC;
     }
@@ -525,7 +502,7 @@ graph_theory_error_t graph_theory_detect_communities(
     uint32_t* assignments = louvain_communities(graph, &num_found, &modularity);
 
     if (!assignments) {
-        free(res);
+        nimcp_free(res);
         return GRAPH_THEORY_ERROR_COMPUTATION;
     }
 
@@ -537,7 +514,7 @@ graph_theory_error_t graph_theory_detect_communities(
     res->algorithm = COMMUNITY_LOUVAIN;
     res->hierarchy_levels = 1;
 
-    res->community_sizes = calloc(num_found, sizeof(uint32_t));
+    res->community_sizes = nimcp_calloc(num_found, sizeof(uint32_t));
     if (res->community_sizes) {
         for (uint32_t i = 0; i < num_nodes; i++) {
             if (assignments[i] < num_found) {
@@ -567,9 +544,9 @@ float graph_theory_compute_modularity(
 void graph_community_result_destroy(graph_community_result_t* result)
 {
     if (!result) return;
-    free(result->assignments);
-    free(result->community_sizes);
-    free(result);
+    nimcp_free(result->assignments);
+    nimcp_free(result->community_sizes);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -654,7 +631,7 @@ graph_theory_error_t graph_theory_validate_brain_topology(
     *is_valid = valid;
 
     if (report) {
-        char* buf = calloc(1024, sizeof(char));
+        char* buf = nimcp_calloc(1024, sizeof(char));
         if (buf) {
             snprintf(buf, 1024,
                      "Brain Topology Validation: %s\n"
@@ -689,17 +666,17 @@ graph_theory_error_t graph_theory_spectral_analysis(
         num_eigenvalues = n;
     }
 
-    graph_spectral_result_t* res = calloc(1, sizeof(graph_spectral_result_t));
+    graph_spectral_result_t* res = nimcp_calloc(1, sizeof(graph_spectral_result_t));
     if (!res) {
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
-    res->eigenvalues = calloc(num_eigenvalues, sizeof(float));
-    res->fiedler_vector = calloc(n, sizeof(float));
+    res->eigenvalues = nimcp_calloc(num_eigenvalues, sizeof(float));
+    res->fiedler_vector = nimcp_calloc(n, sizeof(float));
     if (!res->eigenvalues || !res->fiedler_vector) {
-        free(res->eigenvalues);
-        free(res->fiedler_vector);
-        free(res);
+        nimcp_free(res->eigenvalues);
+        nimcp_free(res->fiedler_vector);
+        nimcp_free(res);
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
@@ -750,9 +727,9 @@ graph_theory_error_t graph_theory_compute_fiedler(
 void graph_spectral_result_destroy(graph_spectral_result_t* result)
 {
     if (!result) return;
-    free(result->eigenvalues);
-    free(result->fiedler_vector);
-    free(result);
+    nimcp_free(result->eigenvalues);
+    nimcp_free(result->fiedler_vector);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -776,14 +753,14 @@ graph_theory_error_t graph_theory_quantum_walk(
         return GRAPH_THEORY_ERROR_INVALID_PARAM;
     }
 
-    graph_qwalk_result_t* res = calloc(1, sizeof(graph_qwalk_result_t));
+    graph_qwalk_result_t* res = nimcp_calloc(1, sizeof(graph_qwalk_result_t));
     if (!res) {
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
-    res->probabilities = calloc(n, sizeof(float));
+    res->probabilities = nimcp_calloc(n, sizeof(float));
     if (!res->probabilities) {
-        free(res);
+        nimcp_free(res);
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
@@ -839,8 +816,8 @@ graph_theory_error_t graph_theory_quantum_search(
 void graph_qwalk_result_destroy(graph_qwalk_result_t* result)
 {
     if (!result) return;
-    free(result->probabilities);
-    free(result);
+    nimcp_free(result->probabilities);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -859,14 +836,14 @@ graph_theory_error_t graph_theory_hyperbolic_embed(
 
     uint32_t n = nimcp_graph_vertex_count(graph);
 
-    graph_hyperbolic_result_t* res = calloc(1, sizeof(graph_hyperbolic_result_t));
+    graph_hyperbolic_result_t* res = nimcp_calloc(1, sizeof(graph_hyperbolic_result_t));
     if (!res) {
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
-    res->coordinates = calloc(n * dimension, sizeof(float));
+    res->coordinates = nimcp_calloc(n * dimension, sizeof(float));
     if (!res->coordinates) {
-        free(res);
+        nimcp_free(res);
         return GRAPH_THEORY_ERROR_ALLOC;
     }
 
@@ -922,8 +899,8 @@ graph_theory_error_t graph_theory_compute_curvature(
 void graph_hyperbolic_result_destroy(graph_hyperbolic_result_t* result)
 {
     if (!result) return;
-    free(result->coordinates);
-    free(result);
+    nimcp_free(result->coordinates);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -1135,7 +1112,7 @@ static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
 
-    float* values = calloc(n, sizeof(float));
+    float* values = nimcp_calloc(n, sizeof(float));
     if (!values) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
@@ -1158,7 +1135,7 @@ static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_no
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
 
-    float* values = calloc(n, sizeof(float));
+    float* values = nimcp_calloc(n, sizeof(float));
     if (!values) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
@@ -1189,11 +1166,11 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
 
-    float* rank = calloc(n, sizeof(float));
-    float* new_rank = calloc(n, sizeof(float));
+    float* rank = nimcp_calloc(n, sizeof(float));
+    float* new_rank = nimcp_calloc(n, sizeof(float));
     if (!rank || !new_rank) {
-        free(rank);
-        free(new_rank);
+        nimcp_free(rank);
+        nimcp_free(new_rank);
         return NULL;
     }
 
@@ -1230,7 +1207,7 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
         }
     }
 
-    free(new_rank);
+    nimcp_free(new_rank);
     return rank;
 }
 
@@ -1241,7 +1218,7 @@ static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communitie
 
     uint32_t n = nimcp_graph_vertex_count(graph);
 
-    uint32_t* assignments = calloc(n, sizeof(uint32_t));
+    uint32_t* assignments = nimcp_calloc(n, sizeof(uint32_t));
     if (!assignments) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "assignments is NULL");

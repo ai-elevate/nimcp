@@ -25,33 +25,44 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for policy_engine module */
-static nimcp_health_agent_t* g_policy_engine_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(policy_engine)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for policy_engine heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void policy_engine_set_health_agent(nimcp_health_agent_t* agent) {
-    g_policy_engine_health_agent = agent;
+static mesh_participant_id_t g_policy_engine_mesh_id = 0;
+static mesh_participant_registry_t* g_policy_engine_mesh_registry = NULL;
+
+nimcp_error_t policy_engine_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_policy_engine_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "policy_engine", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "policy_engine";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_policy_engine_mesh_id);
+    if (err == NIMCP_SUCCESS) g_policy_engine_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from policy_engine module */
-static inline void policy_engine_heartbeat(const char* operation, float progress) {
-    if (g_policy_engine_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_policy_engine_health_agent, operation, progress);
+void policy_engine_mesh_unregister(void) {
+    if (g_policy_engine_mesh_registry && g_policy_engine_mesh_id != 0) {
+        mesh_participant_unregister(g_policy_engine_mesh_registry, g_policy_engine_mesh_id);
+        g_policy_engine_mesh_id = 0;
+        g_policy_engine_mesh_registry = NULL;
     }
 }
 
@@ -134,7 +145,7 @@ struct nimcp_policy_engine {
     event_callback_entry_t* callbacks;
     size_t num_callbacks;
     nimcp_policy_stats_t stats;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bool bio_async_registered;
     bio_module_context_t bio_ctx;
 };
@@ -240,17 +251,17 @@ nimcp_policy_engine_t nimcp_policy_engine_create(
         return NULL;
     }
 
-    struct nimcp_policy_engine* engine = calloc(1, sizeof(struct nimcp_policy_engine));
+    struct nimcp_policy_engine* engine = nimcp_calloc(1, sizeof(struct nimcp_policy_engine));
     NIMCP_API_CHECK_ALLOC(engine, "Failed to allocate policy engine");
 
     engine->magic = ENGINE_MAGIC;
     engine->config = *config;
     engine->function_registry = registry_create();
-    pthread_mutex_init(&engine->lock, NULL);
+    nimcp_mutex_init(&engine->lock, NULL);
 
     if (!engine->function_registry) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create function registry for policy engine");
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -303,14 +314,14 @@ void nimcp_policy_engine_destroy(nimcp_policy_engine_t engine) {
 
     LOG_INFO("Destroying policy engine");
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
     // Unload all policies
     policy_internal_t* policy = engine->policies;
     while (policy) {
         policy_internal_t* next = policy->next;
-        free(policy->name);
-        free(policy->source_file);
+        nimcp_free(policy->name);
+        nimcp_free(policy->source_file);
         if (policy->ast) {
             
             ast_destroy(policy->ast);
@@ -318,7 +329,7 @@ void nimcp_policy_engine_destroy(nimcp_policy_engine_t engine) {
         if (policy->bytecode) {
             nimcp_policy_bytecode_destroy(policy->bytecode);
         }
-        free(policy);
+        nimcp_free(policy);
         policy = next;
     }
 
@@ -328,7 +339,7 @@ void nimcp_policy_engine_destroy(nimcp_policy_engine_t engine) {
     }
 
     // Free callbacks
-    free(engine->callbacks);
+    nimcp_free(engine->callbacks);
 
     // Unregister from bio-async
     if (engine->bio_async_registered && engine->bio_ctx) {
@@ -337,11 +348,11 @@ void nimcp_policy_engine_destroy(nimcp_policy_engine_t engine) {
         engine->bio_async_registered = false;
     }
 
-    pthread_mutex_unlock(&engine->lock);
-    pthread_mutex_destroy(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
+    nimcp_mutex_destroy(&engine->lock);
 
     engine->magic = 0;
-    free(engine);
+    nimcp_free(engine);
 
     LOG_INFO("Policy engine destroyed");
 }
@@ -365,16 +376,16 @@ nimcp_error_t nimcp_policy_engine_load(
 
     LOG_INFO("Loading policy from text");
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
     // Parse
     char* error_msg = NULL;
     void* ast = nimcp_policy_parse(policy_text, "(string)", &error_msg);
     if (!ast) {
         LOG_ERROR("Failed to parse policy: %s", error_msg ? error_msg : "unknown error");
-        free(error_msg);
+        nimcp_free(error_msg);
         engine->stats.parse_errors++;
-        pthread_mutex_unlock(&engine->lock);
+        nimcp_mutex_unlock(&engine->lock);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -384,18 +395,18 @@ nimcp_error_t nimcp_policy_engine_load(
         LOG_ERROR("Failed to compile policy");
         
         ast_destroy(ast);
-        pthread_mutex_unlock(&engine->lock);
+        nimcp_mutex_unlock(&engine->lock);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Create policy object
-    policy_internal_t* new_policy = calloc(1, sizeof(policy_internal_t));
+    policy_internal_t* new_policy = nimcp_calloc(1, sizeof(policy_internal_t));
     if (!new_policy) {
         LOG_ERROR("Failed to allocate policy");
         
         ast_destroy(ast);
         nimcp_policy_bytecode_destroy(bytecode);
-        pthread_mutex_unlock(&engine->lock);
+        nimcp_mutex_unlock(&engine->lock);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -420,7 +431,7 @@ nimcp_error_t nimcp_policy_engine_load(
         LOG_DEBUG("Policy loaded (bio-async notification skipped)");
     }
 
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
     return NIMCP_OK;
 }
 
@@ -450,7 +461,7 @@ nimcp_error_t nimcp_policy_engine_load_file(
     long size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char* content = malloc(size + 1);
+    char* content = nimcp_malloc(size + 1);
     if (!content) {
         fclose(file);
         return NIMCP_ERROR_NO_MEMORY;
@@ -467,7 +478,7 @@ nimcp_error_t nimcp_policy_engine_load_file(
         p->source_file = strdup(filepath);
     }
 
-    free(content);
+    nimcp_free(content);
     return result;
 }
 
@@ -479,7 +490,7 @@ nimcp_error_t nimcp_policy_engine_unload(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
     policy_internal_t* target = (policy_internal_t*)policy;
     policy_internal_t** current = &engine->policies;
@@ -488,8 +499,8 @@ nimcp_error_t nimcp_policy_engine_unload(
         if (*current == target) {
             *current = target->next;
 
-            free(target->name);
-            free(target->source_file);
+            nimcp_free(target->name);
+            nimcp_free(target->source_file);
             if (target->ast) {
                 
                 ast_destroy(target->ast);
@@ -497,18 +508,18 @@ nimcp_error_t nimcp_policy_engine_unload(
             if (target->bytecode) {
                 nimcp_policy_bytecode_destroy(target->bytecode);
             }
-            free(target);
+            nimcp_free(target);
 
             engine->num_policies--;
             LOG_INFO("Policy unloaded");
 
-            pthread_mutex_unlock(&engine->lock);
+            nimcp_mutex_unlock(&engine->lock);
             return NIMCP_OK;
         }
         current = &(*current)->next;
     }
 
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -519,7 +530,7 @@ nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
 
     LOG_INFO("Reloading all policies");
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
     policy_internal_t* policy = engine->policies;
     size_t reloaded = 0;
@@ -540,7 +551,7 @@ nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
             long size = ftell(file);
             fseek(file, 0, SEEK_SET);
 
-            char* content = malloc(size + 1);
+            char* content = nimcp_malloc(size + 1);
             if (!content) {
                 fclose(file);
                 errors++;
@@ -555,12 +566,12 @@ nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
             // Parse and compile
             char* error_msg = NULL;
             void* ast = nimcp_policy_parse(content, policy->source_file, &error_msg);
-            free(content);
+            nimcp_free(content);
 
             if (!ast) {
                 LOG_ERROR("Failed to parse policy during reload: %s",
                               error_msg ? error_msg : "unknown");
-                free(error_msg);
+                nimcp_free(error_msg);
                 errors++;
                 policy = policy->next;
                 continue;
@@ -599,7 +610,7 @@ nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
 
     LOG_INFO("Reload complete: %zu policies reloaded, %zu errors", reloaded, errors);
 
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
     return errors == 0 ? NIMCP_OK : NIMCP_ERROR_PARTIAL;
 }
 
@@ -618,7 +629,7 @@ nimcp_error_t nimcp_policy_evaluate(
 
     LOG_DEBUG("Evaluating policies");
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
     memset(result, 0, sizeof(nimcp_policy_result_t));
     result->action = NIMCP_POLICY_ACTION_DENY;  // Default deny
@@ -669,7 +680,7 @@ nimcp_error_t nimcp_policy_evaluate(
         );
     }
 
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
     return error;
 }
 
@@ -689,9 +700,9 @@ nimcp_error_t nimcp_policy_register_function(
 
     LOG_INFO("Registering policy function: %s", name);
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
     nimcp_error_t result = registry_add(engine->function_registry, name, func, user_data);
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
 
     return result;
 }
@@ -709,15 +720,15 @@ nimcp_error_t nimcp_policy_register_callback(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
 
-    engine->callbacks = realloc(
+    engine->callbacks = nimcp_realloc(
         engine->callbacks,
         (engine->num_callbacks + 1) * sizeof(event_callback_entry_t)
     );
 
     if (!engine->callbacks) {
-        pthread_mutex_unlock(&engine->lock);
+        nimcp_mutex_unlock(&engine->lock);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -725,7 +736,7 @@ nimcp_error_t nimcp_policy_register_callback(
     engine->callbacks[engine->num_callbacks].user_data = user_data;
     engine->num_callbacks++;
 
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
     return NIMCP_OK;
 }
 
@@ -741,10 +752,10 @@ nimcp_error_t nimcp_policy_engine_get_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
     *stats = engine->stats;
     stats->num_policies = engine->num_policies;
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
 
     return NIMCP_OK;
 }
@@ -756,9 +767,9 @@ nimcp_error_t nimcp_policy_engine_reset_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&engine->lock);
+    nimcp_mutex_lock(&engine->lock);
     memset(&engine->stats, 0, sizeof(nimcp_policy_stats_t));
-    pthread_mutex_unlock(&engine->lock);
+    nimcp_mutex_unlock(&engine->lock);
 
     LOG_INFO("Policy engine statistics reset");
     return NIMCP_OK;
@@ -795,7 +806,7 @@ nimcp_error_t registry_add(
 
     if (registry->count >= registry->capacity) {
         registry->capacity = registry->capacity == 0 ? 16 : registry->capacity * 2;
-        registry->functions = realloc(
+        registry->functions = nimcp_realloc(
             registry->functions,
             registry->capacity * sizeof(function_entry_t)
         );

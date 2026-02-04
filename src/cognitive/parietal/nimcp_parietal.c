@@ -22,31 +22,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parietal)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for parietal module */
-static nimcp_health_agent_t* g_parietal_health_agent = NULL;
+static mesh_participant_id_t g_parietal_mesh_id = 0;
+static mesh_participant_registry_t* g_parietal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for parietal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void parietal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_parietal_health_agent = agent;
+nimcp_error_t parietal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_parietal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "parietal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "parietal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_parietal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_parietal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from parietal module */
-static inline void parietal_heartbeat(const char* operation, float progress) {
-    if (g_parietal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parietal_health_agent, operation, progress);
+void parietal_mesh_unregister(void) {
+    if (g_parietal_mesh_registry && g_parietal_mesh_id != 0) {
+        mesh_participant_unregister(g_parietal_mesh_registry, g_parietal_mesh_id);
+        g_parietal_mesh_id = 0;
+        g_parietal_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from parietal module (instance-level) */
 static inline void parietal_heartbeat_instance(
@@ -233,7 +247,7 @@ static uint64_t get_time_us(void) {
 static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
                                         float learning_rate, bool use_hamiltonian,
                                         bool use_lagrangian) {
-    physics_nn_t* nn = calloc(1, sizeof(physics_nn_t));
+    physics_nn_t* nn = nimcp_calloc(1, sizeof(physics_nn_t));
     if (!nn) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate nn");
@@ -249,9 +263,9 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
 
     /* Create 3-layer network: input -> hidden -> hidden -> output */
     nn->num_layers = 3;
-    nn->layers = calloc(nn->num_layers, sizeof(physics_nn_layer_t));
+    nn->layers = nimcp_calloc(nn->num_layers, sizeof(physics_nn_layer_t));
     if (!nn->layers) {
-        free(nn);
+        nimcp_free(nn);
         return NULL;
     }
 
@@ -268,17 +282,17 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
         layer->input_size = sizes[i];
         layer->output_size = sizes[i + 1];
 
-        layer->weights = calloc(layer->input_size * layer->output_size, sizeof(float));
-        layer->biases = calloc(layer->output_size, sizeof(float));
+        layer->weights = nimcp_calloc(layer->input_size * layer->output_size, sizeof(float));
+        layer->biases = nimcp_calloc(layer->output_size, sizeof(float));
 
         if (!layer->weights || !layer->biases) {
             /* Cleanup on failure */
             for (uint32_t j = 0; j <= i; j++) {
-                free(nn->layers[j].weights);
-                free(nn->layers[j].biases);
+                nimcp_free(nn->layers[j].weights);
+                nimcp_free(nn->layers[j].biases);
             }
-            free(nn->layers);
-            free(nn);
+            nimcp_free(nn->layers);
+            nimcp_free(nn);
             return NULL;
         }
 
@@ -289,7 +303,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
         }
     }
 
-    nn->gradients = calloc(state_dim, sizeof(float));
+    nn->gradients = nimcp_calloc(state_dim, sizeof(float));
 
     return nn;
 }
@@ -304,12 +318,12 @@ static void physics_nn_destroy(physics_nn_t* nn) {
                              (float)(i + 1) / (float)nn->num_layers);
         }
 
-        free(nn->layers[i].weights);
-        free(nn->layers[i].biases);
+        nimcp_free(nn->layers[i].weights);
+        nimcp_free(nn->layers[i].biases);
     }
-    free(nn->layers);
-    free(nn->gradients);
-    free(nn);
+    nimcp_free(nn->layers);
+    nimcp_free(nn->gradients);
+    nimcp_free(nn);
 }
 
 static float physics_nn_activation(float x) {
@@ -334,12 +348,12 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
     }
 
     /* Allocate activation buffers to max layer size */
-    float* current = malloc(max_size * sizeof(float));
-    float* next = malloc(max_size * sizeof(float));
+    float* current = nimcp_malloc(max_size * sizeof(float));
+    float* next = nimcp_malloc(max_size * sizeof(float));
 
     if (!current || !next) {
-        free(current);
-        free(next);
+        nimcp_free(current);
+        nimcp_free(next);
         return 0.0f;
     }
 
@@ -409,8 +423,8 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
         nn->last_hamiltonian = hamiltonian;
     }
 
-    free(current);
-    free(next);
+    nimcp_free(current);
+    nimcp_free(next);
 
     return hamiltonian;
 }
@@ -419,7 +433,7 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
                                     const float* target_derivative) {
     if (!nn || !state || !target_derivative) return 0.0f;
 
-    float* predicted = malloc(nn->state_dim * sizeof(float));
+    float* predicted = nimcp_malloc(nn->state_dim * sizeof(float));
     if (!predicted) return 0.0f;
 
     /* Forward pass */
@@ -462,7 +476,7 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
         last->biases[j] -= nn->learning_rate * nn->gradients[j];
     }
 
-    free(predicted);
+    nimcp_free(predicted);
 
     nn->training_steps++;
     nn->total_loss += loss;
@@ -580,7 +594,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
         cfg = parietal_default_config();
     }
 
-    parietal_lobe_t* parietal = calloc(1, sizeof(parietal_lobe_t));
+    parietal_lobe_t* parietal = nimcp_calloc(1, sizeof(parietal_lobe_t));
     if (!parietal) {
         set_parietal_error("Failed to allocate parietal lobe");
         return NULL;
@@ -661,7 +675,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
                                  (parietal->plasticity_bridge != NULL);
 
     /* Allocate pending requests array */
-    parietal->pending_requests = calloc(PARIETAL_MAX_PENDING_REQUESTS,
+    parietal->pending_requests = nimcp_calloc(PARIETAL_MAX_PENDING_REQUESTS,
                                          sizeof(pending_request_t));
     if (!parietal->pending_requests) {
         set_parietal_error("Failed to allocate request queue");
@@ -723,13 +737,13 @@ void parietal_destroy(parietal_lobe_t* parietal) {
     physics_nn_destroy(parietal->physics_nn);
 
     /* Free pending requests */
-    free(parietal->pending_requests);
+    nimcp_free(parietal->pending_requests);
 
     if (parietal->lock) {
         nimcp_mutex_free(parietal->lock);
     }
 
-    free(parietal);
+    nimcp_free(parietal);
 }
 
 /* ============================================================================
@@ -1172,7 +1186,7 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
 
         case PARIETAL_PHYSICS_PREDICT: {
             if (parietal->physics_nn && request->input.physics_input.state) {
-                float* output = calloc(request->input.physics_input.state_dim, sizeof(float));
+                float* output = nimcp_calloc(request->input.physics_input.state_dim, sizeof(float));
                 if (output) {
                     result.output.physics_output.energy = physics_nn_forward(
                         parietal->physics_nn,
@@ -1629,12 +1643,12 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
 
     nimcp_mutex_lock(parietal->lock);
 
-    float* current = malloc(state_dim * sizeof(float));
-    float* derivative = malloc(state_dim * sizeof(float));
+    float* current = nimcp_malloc(state_dim * sizeof(float));
+    float* derivative = nimcp_malloc(state_dim * sizeof(float));
 
     if (!current || !derivative) {
-        free(current);
-        free(derivative);
+        nimcp_free(current);
+        nimcp_free(derivative);
         nimcp_mutex_unlock(parietal->lock);
         return -1;
     }
@@ -1668,8 +1682,8 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
         parietal->neural_network_activations++;
     }
 
-    free(current);
-    free(derivative);
+    nimcp_free(current);
+    nimcp_free(derivative);
 
     nimcp_mutex_unlock(parietal->lock);
 
@@ -1689,9 +1703,9 @@ float parietal_compute_hamiltonian(parietal_lobe_t* parietal,
 
     nimcp_mutex_lock(parietal->lock);
 
-    float* output = malloc(state_dim * sizeof(float));
+    float* output = nimcp_malloc(state_dim * sizeof(float));
     float hamiltonian = physics_nn_forward(parietal->physics_nn, state, output);
-    free(output);
+    nimcp_free(output);
 
     nimcp_mutex_unlock(parietal->lock);
 

@@ -291,7 +291,7 @@ static int find_subject_by_id(uint32_t id)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_INVALID_STATE;
 }
 
 /**
@@ -318,7 +318,7 @@ static int find_object_by_id(uint32_t id)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_INVALID_STATE;
 }
 
 /**
@@ -337,7 +337,7 @@ static int find_available_subject_slot(void)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_NULL_POINTER;
 }
 
 /**
@@ -356,7 +356,7 @@ static int find_available_object_slot(void)
         }
     }
 
-    return -1;
+    return NIMCP_ERROR_NULL_POINTER;
 }
 
 /**

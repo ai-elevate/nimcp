@@ -19,29 +19,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lexical_access)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for lexical_access module */
-static nimcp_health_agent_t* g_lexical_access_health_agent = NULL;
+static mesh_participant_id_t g_lexical_access_mesh_id = 0;
+static mesh_participant_registry_t* g_lexical_access_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for lexical_access heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lexical_access_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lexical_access_health_agent = agent;
+nimcp_error_t lexical_access_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lexical_access_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lexical_access", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lexical_access";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lexical_access_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lexical_access_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lexical_access module */
-static inline void lexical_access_heartbeat(const char* operation, float progress) {
-    if (g_lexical_access_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lexical_access_health_agent, operation, progress);
+void lexical_access_mesh_unregister(void) {
+    if (g_lexical_access_mesh_registry && g_lexical_access_mesh_id != 0) {
+        mesh_participant_unregister(g_lexical_access_mesh_registry, g_lexical_access_mesh_id);
+        g_lexical_access_mesh_id = 0;
+        g_lexical_access_mesh_registry = NULL;
     }
 }
 
@@ -126,7 +139,7 @@ static uint32_t hash_word_id(uint32_t id, uint32_t buckets)
 
 static trie_node_t* trie_create_node(void)
 {
-    trie_node_t* node = (trie_node_t*)calloc(1, sizeof(trie_node_t));
+    trie_node_t* node = (trie_node_t*)nimcp_calloc(1, sizeof(trie_node_t));
     return node;
 }
 
@@ -140,8 +153,8 @@ static void trie_destroy_node(trie_node_t* node)
         }
     }
 
-    if (node->word_ids) free(node->word_ids);
-    free(node);
+    if (node->word_ids) nimcp_free(node->word_ids);
+    nimcp_free(node);
 }
 
 static bool trie_insert(trie_node_t* root, const uint8_t* phonemes,
@@ -163,7 +176,7 @@ static bool trie_insert(trie_node_t* root, const uint8_t* phonemes,
     /* Add word_id to terminal node */
     if (current->num_words >= current->words_capacity) {
         uint32_t new_cap = current->words_capacity == 0 ? 4 : current->words_capacity * 2;
-        uint32_t* new_ids = (uint32_t*)realloc(current->word_ids, new_cap * sizeof(uint32_t));
+        uint32_t* new_ids = (uint32_t*)nimcp_realloc(current->word_ids, new_cap * sizeof(uint32_t));
         if (!new_ids) return false;
         current->word_ids = new_ids;
         current->words_capacity = new_cap;
@@ -242,7 +255,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
 {
     lexical_config_t cfg = config ? *config : lexical_default_config();
 
-    lexical_access_t* lex = (lexical_access_t*)calloc(1, sizeof(lexical_access_t));
+    lexical_access_t* lex = (lexical_access_t*)nimcp_calloc(1, sizeof(lexical_access_t));
     if (!lex) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
@@ -256,58 +269,58 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
     lex->next_word_id = 1;
 
     /* Allocate hash table */
-    lex->hash_table = (lexicon_node_t**)calloc(cfg.hash_buckets, sizeof(lexicon_node_t*));
+    lex->hash_table = (lexicon_node_t**)nimcp_calloc(cfg.hash_buckets, sizeof(lexicon_node_t*));
     if (!lex->hash_table) {
-        free(lex);
+        nimcp_free(lex);
         return NULL;
     }
 
     /* Allocate entries array */
     lex->entries_capacity = cfg.lexicon_size;
-    lex->entries = (lexical_entry_t**)calloc(cfg.lexicon_size, sizeof(lexical_entry_t*));
+    lex->entries = (lexical_entry_t**)nimcp_calloc(cfg.lexicon_size, sizeof(lexical_entry_t*));
     if (!lex->entries) {
-        free(lex->hash_table);
-        free(lex);
+        nimcp_free(lex->hash_table);
+        nimcp_free(lex);
         return NULL;
     }
 
     /* Create phoneme trie */
     lex->trie_root = trie_create_node();
     if (!lex->trie_root) {
-        free(lex->entries);
-        free(lex->hash_table);
-        free(lex);
+        nimcp_free(lex->entries);
+        nimcp_free(lex->hash_table);
+        nimcp_free(lex);
         return NULL;
     }
 
     /* Allocate cohort */
     lex->cohort.max_members = cfg.max_cohort_size;
-    lex->cohort.members = (cohort_member_t*)calloc(cfg.max_cohort_size, sizeof(cohort_member_t));
+    lex->cohort.members = (cohort_member_t*)nimcp_calloc(cfg.max_cohort_size, sizeof(cohort_member_t));
     if (!lex->cohort.members) {
         trie_destroy_node(lex->trie_root);
-        free(lex->entries);
-        free(lex->hash_table);
-        free(lex);
+        nimcp_free(lex->entries);
+        nimcp_free(lex->hash_table);
+        nimcp_free(lex);
         return NULL;
     }
 
     /* Allocate current phoneme buffer */
     lex->current_phoneme_capacity = cfg.max_phoneme_length * 2;
-    lex->current_phonemes = (phoneme_t*)calloc(lex->current_phoneme_capacity, sizeof(phoneme_t));
+    lex->current_phonemes = (phoneme_t*)nimcp_calloc(lex->current_phoneme_capacity, sizeof(phoneme_t));
     if (!lex->current_phonemes) {
-        free(lex->cohort.members);
+        nimcp_free(lex->cohort.members);
         trie_destroy_node(lex->trie_root);
-        free(lex->entries);
-        free(lex->hash_table);
-        free(lex);
+        nimcp_free(lex->entries);
+        nimcp_free(lex->hash_table);
+        nimcp_free(lex);
         return NULL;
     }
 
     /* Allocate priming context */
     if (cfg.enable_priming) {
         lex->priming.max_primed = 64;
-        lex->priming.primed_concepts = (uint32_t*)calloc(64, sizeof(uint32_t));
-        lex->priming.priming_levels = (float*)calloc(64, sizeof(float));
+        lex->priming.primed_concepts = (uint32_t*)nimcp_calloc(64, sizeof(uint32_t));
+        lex->priming.priming_levels = (float*)nimcp_calloc(64, sizeof(float));
     }
 
     NIMCP_LOG_INFO("lexical", "Created lexical access (buckets=%u, max_cohort=%u)",
@@ -327,33 +340,33 @@ void lexical_destroy(lexical_access_t* lex)
             while (node) {
                 lexicon_node_t* next = node->next;
                 /* Free internal allocations */
-                if (node->entry.sense_ids) free(node->entry.sense_ids);
-                if (node->entry.neighbors) free(node->entry.neighbors);
-                if (node->entry.embedding) free(node->entry.embedding);
-                free(node);
+                if (node->entry.sense_ids) nimcp_free(node->entry.sense_ids);
+                if (node->entry.neighbors) nimcp_free(node->entry.neighbors);
+                if (node->entry.embedding) nimcp_free(node->entry.embedding);
+                nimcp_free(node);
                 node = next;
             }
         }
-        free(lex->hash_table);
+        nimcp_free(lex->hash_table);
     }
 
     /* Free entries array (pointers only, actual entries in hash table) */
-    if (lex->entries) free(lex->entries);
+    if (lex->entries) nimcp_free(lex->entries);
 
     /* Free trie */
     if (lex->trie_root) trie_destroy_node(lex->trie_root);
 
     /* Free cohort */
-    if (lex->cohort.members) free(lex->cohort.members);
+    if (lex->cohort.members) nimcp_free(lex->cohort.members);
 
     /* Free phoneme buffer */
-    if (lex->current_phonemes) free(lex->current_phonemes);
+    if (lex->current_phonemes) nimcp_free(lex->current_phonemes);
 
     /* Free priming */
-    if (lex->priming.primed_concepts) free(lex->priming.primed_concepts);
-    if (lex->priming.priming_levels) free(lex->priming.priming_levels);
+    if (lex->priming.primed_concepts) nimcp_free(lex->priming.primed_concepts);
+    if (lex->priming.priming_levels) nimcp_free(lex->priming.priming_levels);
 
-    free(lex);
+    nimcp_free(lex);
 }
 
 bool lexical_reset(lexical_access_t* lex)
@@ -397,7 +410,7 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
     }
 
     /* Allocate new node */
-    lexicon_node_t* node = (lexicon_node_t*)calloc(1, sizeof(lexicon_node_t));
+    lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
     if (!node) return false;
 
     /* Copy entry */
@@ -410,7 +423,7 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
 
     /* Deep copy arrays */
     if (entry->sense_ids && entry->num_senses > 0) {
-        node->entry.sense_ids = (uint32_t*)malloc(entry->num_senses * sizeof(uint32_t));
+        node->entry.sense_ids = (uint32_t*)nimcp_malloc(entry->num_senses * sizeof(uint32_t));
         if (node->entry.sense_ids) {
             memcpy(node->entry.sense_ids, entry->sense_ids,
                    entry->num_senses * sizeof(uint32_t));
@@ -418,7 +431,7 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
     }
 
     if (entry->neighbors && entry->num_neighbors > 0) {
-        node->entry.neighbors = (uint32_t*)malloc(entry->num_neighbors * sizeof(uint32_t));
+        node->entry.neighbors = (uint32_t*)nimcp_malloc(entry->num_neighbors * sizeof(uint32_t));
         if (node->entry.neighbors) {
             memcpy(node->entry.neighbors, entry->neighbors,
                    entry->num_neighbors * sizeof(uint32_t));
@@ -426,7 +439,7 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
     }
 
     if (entry->embedding && lex->config.enable_embeddings) {
-        node->entry.embedding = (float*)malloc(lex->config.embedding_dim * sizeof(float));
+        node->entry.embedding = (float*)nimcp_malloc(lex->config.embedding_dim * sizeof(float));
         if (node->entry.embedding) {
             memcpy(node->entry.embedding, entry->embedding,
                    lex->config.embedding_dim * sizeof(float));
@@ -580,7 +593,7 @@ bool lexical_set_embedding(
     if (!entry) return false;
 
     if (!entry->embedding) {
-        entry->embedding = (float*)malloc(dim * sizeof(float));
+        entry->embedding = (float*)nimcp_malloc(dim * sizeof(float));
         if (!entry->embedding) return false;
     }
 

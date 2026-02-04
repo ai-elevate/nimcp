@@ -73,7 +73,7 @@ extern "C" {
  * - If no sharing: mutex overhead is minimal (no lock/unlock needed)
  *
  * MEMORY: 56 bytes per synapse (4 floats + platform mutex)
- * NOTE: Platform mutex size varies by OS (40 bytes on Linux with pthread_mutex_t)
+ * NOTE: Platform mutex size varies by OS (40 bytes on Linux with nimcp_mutex_t)
  *       This is acceptable tradeoff for thread safety in concurrent scenarios
  */
 typedef struct {

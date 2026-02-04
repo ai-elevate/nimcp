@@ -29,33 +29,10 @@
 #define LOG_MODULE "LNN_GRAD_DAO"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for lnn_gradient_dao module */
-static nimcp_health_agent_t* g_lnn_gradient_dao_health_agent = NULL;
-
-/**
- * @brief Set health agent for lnn_gradient_dao heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lnn_gradient_dao_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lnn_gradient_dao_health_agent = agent;
-}
-
-/** @brief Send heartbeat from lnn_gradient_dao module */
-static inline void lnn_gradient_dao_heartbeat(const char* operation, float progress) {
-    if (g_lnn_gradient_dao_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lnn_gradient_dao_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_gradient_dao)
 
 //=============================================================================
 // Internal DAO Operations - Forward Declarations
@@ -145,7 +122,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
         return NULL;
     }
 
-    nimcp_lnn_gradient_dao_t* dao = (nimcp_lnn_gradient_dao_t*)calloc(
+    nimcp_lnn_gradient_dao_t* dao = (nimcp_lnn_gradient_dao_t*)nimcp_calloc(
         1, sizeof(nimcp_lnn_gradient_dao_t));
     if (!dao) {
         LOG_ERROR("Failed to allocate gradient DAO");
@@ -175,7 +152,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
         nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
         if (!tensor) {
             LOG_ERROR("Failed to allocate GPU gradient buffer");
-            free(dao);
+            nimcp_free(dao);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
 
             return NULL;
@@ -189,7 +166,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
 #endif
 
     // Allocate host cache
-    dao->h_gradient_cache = (float*)calloc(grad_size, sizeof(float));
+    dao->h_gradient_cache = (float*)nimcp_calloc(grad_size, sizeof(float));
     if (!dao->h_gradient_cache) {
         LOG_ERROR("Failed to allocate host gradient cache");
 #ifdef NIMCP_ENABLE_CUDA
@@ -197,7 +174,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
             nimcp_gpu_tensor_destroy((nimcp_gpu_tensor_t*)dao->_internal_tensor);
         }
 #endif
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
 
@@ -217,10 +194,10 @@ void nimcp_lnn_gradient_dao_destroy(nimcp_lnn_gradient_dao_t* dao)
 #endif
 
     if (dao->h_gradient_cache) {
-        free(dao->h_gradient_cache);
+        nimcp_free(dao->h_gradient_cache);
     }
 
-    free(dao);
+    nimcp_free(dao);
     LOG_DEBUG("Destroyed gradient DAO");
 }
 

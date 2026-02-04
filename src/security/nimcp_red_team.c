@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_CATEGORY "red_team"
 
@@ -25,24 +26,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_red_team_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(red_team)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void red_team_set_health_agent(nimcp_health_agent_t* agent) {
-    g_red_team_health_agent = agent;
+static mesh_participant_id_t g_red_team_mesh_id = 0;
+static mesh_participant_registry_t* g_red_team_mesh_registry = NULL;
+
+nimcp_error_t red_team_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_red_team_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "red_team", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "red_team";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_red_team_mesh_id);
+    if (err == NIMCP_SUCCESS) g_red_team_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void red_team_heartbeat(const char* operation, float progress) {
-    if (g_red_team_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_red_team_health_agent, operation, progress);
+void red_team_mesh_unregister(void) {
+    if (g_red_team_mesh_registry && g_red_team_mesh_id != 0) {
+        mesh_participant_unregister(g_red_team_mesh_registry, g_red_team_mesh_id);
+        g_red_team_mesh_id = 0;
+        g_red_team_mesh_registry = NULL;
     }
 }
+
 
 struct red_team {
     uint32_t magic;
@@ -82,11 +104,11 @@ red_team_config_t red_team_default_config(void) {
 }
 
 red_team_t* red_team_create(const red_team_config_t* config) {
-    red_team_t* system = calloc(1, sizeof(red_team_t));
+    red_team_t* system = nimcp_calloc(1, sizeof(red_team_t));
     if (system == NULL) return NULL;
 
     system->mutex = nimcp_mutex_create(NULL);
-    if (system->mutex == NULL) { free(system); return NULL; }
+    if (system->mutex == NULL) { nimcp_free(system); return NULL; }
 
     if (config) memcpy(&system->config, config, sizeof(*config));
     else system->config = red_team_default_config();
@@ -108,7 +130,7 @@ void red_team_destroy(red_team_t* system) {
 
     system->magic = 0;
     if (system->mutex) nimcp_mutex_destroy(system->mutex);
-    free(system);
+    nimcp_free(system);
     NIMCP_LOG_INFO(LOG_CATEGORY, "Red team system destroyed");
 }
 
@@ -119,10 +141,12 @@ nimcp_error_t red_team_run_suite(
     red_team_results_t* results)
 {
     if (!is_valid_handle(system) || results == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
     /* Allow NULL tests only if test_count is 0 */
     if (tests == NULL && test_count > 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -176,6 +200,7 @@ nimcp_error_t red_team_generate_attacks(
     uint32_t* attack_count)
 {
     if (!is_valid_handle(system) || attacks == NULL || attack_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -224,6 +249,7 @@ nimcp_error_t red_team_get_stats(
     red_team_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -275,6 +301,7 @@ nimcp_error_t red_team_connect_brain_immune(
     struct brain_immune* brain_immune)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -291,6 +318,7 @@ nimcp_error_t red_team_present_vulnerability_to_immune(
     const red_team_test_t* attack)
 {
     if (!is_valid_handle(system) || !attack) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -563,9 +591,11 @@ nimcp_error_t red_team_generate_attacks_mc(
     uint32_t* attack_count)
 {
     if (!is_valid_handle(system) || attacks == NULL || attack_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
     if (type >= ATTACK_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -653,9 +683,11 @@ nimcp_error_t red_team_generate_adversarial_mc(
 {
     if (!is_valid_handle(system) || base_payload == NULL ||
         adversarial == NULL || adversarial_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
     if (perturbation_budget < 0.0f || perturbation_budget > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -740,9 +772,11 @@ nimcp_error_t red_team_estimate_coverage_mc(
     float* confidence_interval)
 {
     if (!is_valid_handle(system) || coverage == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
     if (tests == NULL && test_count > 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "red_team: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -773,9 +807,10 @@ nimcp_error_t red_team_estimate_coverage_mc(
     float type_coverage = (float)types_covered / (float)ATTACK_COUNT;
 
     /* MC sampling to estimate template coverage within each type */
-    float* sample_hits = calloc(num_samples, sizeof(float));
+    float* sample_hits = nimcp_calloc(num_samples, sizeof(float));
     if (!sample_hits) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY, "red_team: error condition");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
 
@@ -822,7 +857,7 @@ nimcp_error_t red_team_estimate_coverage_mc(
         *confidence_interval = 1.96f * std_err;
     }
 
-    free(sample_hits);
+    nimcp_free(sample_hits);
     nimcp_mutex_unlock(system->mutex);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Coverage estimate: %.2f%% (+/- %.2f%%)",

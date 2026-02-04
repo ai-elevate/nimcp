@@ -19,33 +19,10 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for hh_dynamics_adapter module */
-static nimcp_health_agent_t* g_hh_dynamics_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for hh_dynamics_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void hh_dynamics_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_hh_dynamics_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from hh_dynamics_adapter module */
-static inline void hh_dynamics_adapter_heartbeat(const char* operation, float progress) {
-    if (g_hh_dynamics_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hh_dynamics_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hh_dynamics_adapter)
 
 //=============================================================================
 // Internal Structure
@@ -80,9 +57,9 @@ static nimcp_layer_error_t hh_init(void* module, void* config) {
 
     /* Allocate neuron arrays */
     uint32_t n = adapter->config.num_neurons;
-    adapter->membrane_potentials = (float*)calloc(n, sizeof(float));
-    adapter->injected_currents = (float*)calloc(n, sizeof(float));
-    adapter->spike_flags = (bool*)calloc(n, sizeof(bool));
+    adapter->membrane_potentials = (float*)nimcp_calloc(n, sizeof(float));
+    adapter->injected_currents = (float*)nimcp_calloc(n, sizeof(float));
+    adapter->spike_flags = (bool*)nimcp_calloc(n, sizeof(bool));
 
     if (!adapter->membrane_potentials || !adapter->injected_currents || !adapter->spike_flags) {
         return NIMCP_LAYER_ERR_NO_MEMORY;
@@ -104,9 +81,9 @@ static nimcp_layer_error_t hh_shutdown(void* module) {
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
 
     /* Free neuron arrays */
-    free(adapter->membrane_potentials);
-    free(adapter->injected_currents);
-    free(adapter->spike_flags);
+    nimcp_free(adapter->membrane_potentials);
+    nimcp_free(adapter->injected_currents);
+    nimcp_free(adapter->spike_flags);
 
     adapter->membrane_potentials = NULL;
     adapter->injected_currents = NULL;
@@ -258,7 +235,7 @@ nimcp_hh_adapter_config_t nimcp_hh_adapter_default_config(void) {
 }
 
 nimcp_hh_adapter_t nimcp_hh_adapter_create(const nimcp_hh_adapter_config_t* config) {
-    nimcp_hh_adapter_t adapter = (nimcp_hh_adapter_t)calloc(1, sizeof(struct nimcp_hh_adapter_struct));
+    nimcp_hh_adapter_t adapter = (nimcp_hh_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_hh_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate HH dynamics adapter");
 
     adapter->config = config ? *config : nimcp_hh_adapter_default_config();
@@ -282,7 +259,7 @@ void nimcp_hh_adapter_destroy(nimcp_hh_adapter_t adapter) {
         hh_shutdown(adapter);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_hh_adapter_get_interface(nimcp_hh_adapter_t adapter) {

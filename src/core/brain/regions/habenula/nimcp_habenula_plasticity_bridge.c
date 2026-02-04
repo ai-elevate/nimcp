@@ -16,31 +16,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(habenula_plasticity_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for habenula_plasticity_bridge module */
-static nimcp_health_agent_t* g_habenula_plasticity_bridge_health_agent = NULL;
+static mesh_participant_id_t g_habenula_plasticity_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_habenula_plasticity_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for habenula_plasticity_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void habenula_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_habenula_plasticity_bridge_health_agent = agent;
+nimcp_error_t habenula_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_habenula_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "habenula_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "habenula_plasticity_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_habenula_plasticity_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_habenula_plasticity_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from habenula_plasticity_bridge module */
-static inline void habenula_plasticity_bridge_heartbeat(const char* operation, float progress) {
-    if (g_habenula_plasticity_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_habenula_plasticity_bridge_health_agent, operation, progress);
+void habenula_plasticity_bridge_mesh_unregister(void) {
+    if (g_habenula_plasticity_bridge_mesh_registry && g_habenula_plasticity_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_habenula_plasticity_bridge_mesh_registry, g_habenula_plasticity_bridge_mesh_id);
+        g_habenula_plasticity_bridge_mesh_id = 0;
+        g_habenula_plasticity_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "HABENULA_PLASTICITY_BRIDGE"
 
@@ -80,7 +94,7 @@ nimcp_habenula_plasticity_config_t nimcp_habenula_plasticity_config_default(void
 }
 
 nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp_habenula_plasticity_config_t* config) {
-    nimcp_habenula_plasticity_bridge_t* b = calloc(1, sizeof(*b));
+    nimcp_habenula_plasticity_bridge_t* b = nimcp_calloc(1, sizeof(*b));
     if (!b) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
@@ -90,8 +104,8 @@ nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp
     }
     b->config = config ? *config : nimcp_habenula_plasticity_config_default();
     b->synapse_capacity = HABENULA_PLASTICITY_MAX_SYNAPSES;
-    b->synapses = calloc(b->synapse_capacity, sizeof(nimcp_habenula_plasticity_synapse_t));
-    if (!b->synapses) { free(b); return NULL; }
+    b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_habenula_plasticity_synapse_t));
+    if (!b->synapses) { nimcp_free(b); return NULL; }
     b->state.state = HABENULA_PLASTICITY_STATE_IDLE;
     b->current_modulation.lr_multiplier = 1.0f;
     return b;
@@ -100,8 +114,8 @@ nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp
 void nimcp_habenula_plasticity_destroy(nimcp_habenula_plasticity_bridge_t* b) {
     if (!b) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "habenula_plasticity");
-    free(b->synapses);
-    free(b);
+    nimcp_free(b->synapses);
+    nimcp_free(b);
 }
 
 int nimcp_habenula_plasticity_reset(nimcp_habenula_plasticity_bridge_t* b) {

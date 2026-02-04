@@ -12,6 +12,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -20,31 +21,44 @@
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *============================================================================*/
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/* Global health agent for hippocampus operations */
-static nimcp_health_agent_t* g_hippo_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hippo)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for hippocampus heartbeat monitoring
- * @param agent Health agent instance (NULL to disable)
- */
-static void hippo_set_health_agent(nimcp_health_agent_t* agent) {
-    g_hippo_health_agent = agent;
+static mesh_participant_id_t g_hippo_mesh_id = 0;
+static mesh_participant_registry_t* g_hippo_mesh_registry = NULL;
+
+nimcp_error_t hippo_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_hippo_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "hippo", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "hippo";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_hippo_mesh_id);
+    if (err == NIMCP_SUCCESS) g_hippo_mesh_registry = registry;
+    return err;
 }
 
-/**
- * @brief Internal helper to send heartbeat if agent is connected
- */
-static inline void hippo_heartbeat(const char* operation, float progress) {
-    if (g_hippo_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hippo_health_agent, operation, progress);
+void hippo_mesh_unregister(void) {
+    if (g_hippo_mesh_registry && g_hippo_mesh_id != 0) {
+        mesh_participant_unregister(g_hippo_mesh_registry, g_hippo_mesh_id);
+        g_hippo_mesh_id = 0;
+        g_hippo_mesh_registry = NULL;
     }
 }
+
 
 /*=============================================================================
  * INTERNAL HELPERS
@@ -136,7 +150,7 @@ hippo_config_t hippo_default_config(void) {
 nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
     hippo_config_t cfg = config ? *config : hippo_default_config();
 
-    nimcp_hippocampus_t* hippo = (nimcp_hippocampus_t*)calloc(1, sizeof(nimcp_hippocampus_t));
+    nimcp_hippocampus_t* hippo = (nimcp_hippocampus_t*)nimcp_calloc(1, sizeof(nimcp_hippocampus_t));
     if (!hippo) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo is NULL");
@@ -151,7 +165,7 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate DG cells */
     hippo->num_dg_cells = cfg.num_dg_cells;
-    hippo->dg_cells = (nimcp_dg_cell_t*)calloc(cfg.num_dg_cells, sizeof(nimcp_dg_cell_t));
+    hippo->dg_cells = (nimcp_dg_cell_t*)nimcp_calloc(cfg.num_dg_cells, sizeof(nimcp_dg_cell_t));
     if (!hippo->dg_cells) goto cleanup;
 
     for (uint32_t i = 0; i < cfg.num_dg_cells; i++) {
@@ -166,7 +180,7 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate CA3 cells */
     hippo->num_ca3_cells = cfg.num_ca3_cells;
-    hippo->ca3_cells = (nimcp_ca3_cell_t*)calloc(cfg.num_ca3_cells, sizeof(nimcp_ca3_cell_t));
+    hippo->ca3_cells = (nimcp_ca3_cell_t*)nimcp_calloc(cfg.num_ca3_cells, sizeof(nimcp_ca3_cell_t));
     if (!hippo->ca3_cells) goto cleanup;
 
     for (uint32_t i = 0; i < cfg.num_ca3_cells; i++) {
@@ -178,7 +192,7 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate CA1 cells */
     hippo->num_ca1_cells = cfg.num_ca1_cells;
-    hippo->ca1_cells = (nimcp_ca1_cell_t*)calloc(cfg.num_ca1_cells, sizeof(nimcp_ca1_cell_t));
+    hippo->ca1_cells = (nimcp_ca1_cell_t*)nimcp_calloc(cfg.num_ca1_cells, sizeof(nimcp_ca1_cell_t));
     if (!hippo->ca1_cells) goto cleanup;
 
     for (uint32_t i = 0; i < cfg.num_ca1_cells; i++) {
@@ -191,7 +205,7 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate subiculum cells */
     hippo->num_subiculum_cells = cfg.num_subiculum_cells;
-    hippo->subiculum_cells = (nimcp_subiculum_cell_t*)calloc(cfg.num_subiculum_cells, sizeof(nimcp_subiculum_cell_t));
+    hippo->subiculum_cells = (nimcp_subiculum_cell_t*)nimcp_calloc(cfg.num_subiculum_cells, sizeof(nimcp_subiculum_cell_t));
     if (!hippo->subiculum_cells) goto cleanup;
 
     for (uint32_t i = 0; i < cfg.num_subiculum_cells; i++) {
@@ -201,7 +215,7 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate place cells */
     hippo->num_place_cells = cfg.num_place_cells;
-    hippo->place_cells = (nimcp_place_cell_t*)calloc(cfg.num_place_cells, sizeof(nimcp_place_cell_t));
+    hippo->place_cells = (nimcp_place_cell_t*)nimcp_calloc(cfg.num_place_cells, sizeof(nimcp_place_cell_t));
     if (!hippo->place_cells) goto cleanup;
 
     for (uint32_t i = 0; i < cfg.num_place_cells; i++) {
@@ -218,19 +232,19 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
 
     /* Allocate episodes */
     hippo->max_episodes = cfg.max_episodes;
-    hippo->episodes = (nimcp_episode_t*)calloc(cfg.max_episodes, sizeof(nimcp_episode_t));
+    hippo->episodes = (nimcp_episode_t*)nimcp_calloc(cfg.max_episodes, sizeof(nimcp_episode_t));
     if (!hippo->episodes) goto cleanup;
 
     /* Allocate replay buffer */
-    hippo->replay_buffer = (nimcp_ripple_event_t*)calloc(HIPPO_MAX_REPLAY_BUFFER, sizeof(nimcp_ripple_event_t));
+    hippo->replay_buffer = (nimcp_ripple_event_t*)nimcp_calloc(HIPPO_MAX_REPLAY_BUFFER, sizeof(nimcp_ripple_event_t));
     if (!hippo->replay_buffer) goto cleanup;
     hippo->replay_buffer_size = HIPPO_MAX_REPLAY_BUFFER;
 
     /* Allocate activation patterns */
-    hippo->dg_activation_pattern = (float*)calloc(cfg.num_dg_cells, sizeof(float));
-    hippo->ca3_activation_pattern = (float*)calloc(cfg.num_ca3_cells, sizeof(float));
-    hippo->ca1_activation_pattern = (float*)calloc(cfg.num_ca1_cells, sizeof(float));
-    hippo->subiculum_pattern = (float*)calloc(cfg.num_subiculum_cells, sizeof(float));
+    hippo->dg_activation_pattern = (float*)nimcp_calloc(cfg.num_dg_cells, sizeof(float));
+    hippo->ca3_activation_pattern = (float*)nimcp_calloc(cfg.num_ca3_cells, sizeof(float));
+    hippo->ca1_activation_pattern = (float*)nimcp_calloc(cfg.num_ca1_cells, sizeof(float));
+    hippo->subiculum_pattern = (float*)nimcp_calloc(cfg.num_subiculum_cells, sizeof(float));
 
     if (!hippo->dg_activation_pattern || !hippo->ca3_activation_pattern ||
         !hippo->ca1_activation_pattern || !hippo->subiculum_pattern) goto cleanup;
@@ -272,76 +286,76 @@ void hippo_destroy(nimcp_hippocampus_t* hippo) {
     /* Free episode contents */
     for (uint32_t i = 0; i < hippo->num_episodes; i++) {
         nimcp_episode_t* ep = &hippo->episodes[i];
-        if (ep->what_content) free(ep->what_content);
-        if (ep->where_content) free(ep->where_content);
-        if (ep->when_content) free(ep->when_content);
-        if (ep->bound_representation) free(ep->bound_representation);
-        if (ep->dg_pattern) free(ep->dg_pattern);
-        if (ep->ca3_pattern) free(ep->ca3_pattern);
-        if (ep->ca1_pattern) free(ep->ca1_pattern);
+        if (ep->what_content) nimcp_free(ep->what_content);
+        if (ep->where_content) nimcp_free(ep->where_content);
+        if (ep->when_content) nimcp_free(ep->when_content);
+        if (ep->bound_representation) nimcp_free(ep->bound_representation);
+        if (ep->dg_pattern) nimcp_free(ep->dg_pattern);
+        if (ep->ca3_pattern) nimcp_free(ep->ca3_pattern);
+        if (ep->ca1_pattern) nimcp_free(ep->ca1_pattern);
     }
 
     /* Free DG cell weights */
     for (uint32_t i = 0; i < hippo->num_dg_cells; i++) {
-        if (hippo->dg_cells[i].input_weights) free(hippo->dg_cells[i].input_weights);
-        if (hippo->dg_cells[i].eligibility_traces) free(hippo->dg_cells[i].eligibility_traces);
+        if (hippo->dg_cells[i].input_weights) nimcp_free(hippo->dg_cells[i].input_weights);
+        if (hippo->dg_cells[i].eligibility_traces) nimcp_free(hippo->dg_cells[i].eligibility_traces);
     }
 
     /* Free CA3 cell weights */
     for (uint32_t i = 0; i < hippo->num_ca3_cells; i++) {
-        if (hippo->ca3_cells[i].mossy_fiber_weights) free(hippo->ca3_cells[i].mossy_fiber_weights);
-        if (hippo->ca3_cells[i].perforant_weights) free(hippo->ca3_cells[i].perforant_weights);
-        if (hippo->ca3_cells[i].recurrent_weights) free(hippo->ca3_cells[i].recurrent_weights);
+        if (hippo->ca3_cells[i].mossy_fiber_weights) nimcp_free(hippo->ca3_cells[i].mossy_fiber_weights);
+        if (hippo->ca3_cells[i].perforant_weights) nimcp_free(hippo->ca3_cells[i].perforant_weights);
+        if (hippo->ca3_cells[i].recurrent_weights) nimcp_free(hippo->ca3_cells[i].recurrent_weights);
     }
 
     /* Free CA1 cell weights */
     for (uint32_t i = 0; i < hippo->num_ca1_cells; i++) {
-        if (hippo->ca1_cells[i].schaffer_weights) free(hippo->ca1_cells[i].schaffer_weights);
-        if (hippo->ca1_cells[i].perforant_weights) free(hippo->ca1_cells[i].perforant_weights);
+        if (hippo->ca1_cells[i].schaffer_weights) nimcp_free(hippo->ca1_cells[i].schaffer_weights);
+        if (hippo->ca1_cells[i].perforant_weights) nimcp_free(hippo->ca1_cells[i].perforant_weights);
     }
 
     /* Free subiculum cell weights */
     for (uint32_t i = 0; i < hippo->num_subiculum_cells; i++) {
-        if (hippo->subiculum_cells[i].ca1_weights) free(hippo->subiculum_cells[i].ca1_weights);
+        if (hippo->subiculum_cells[i].ca1_weights) nimcp_free(hippo->subiculum_cells[i].ca1_weights);
     }
 
     /* Free place cell associated episodes */
     for (uint32_t i = 0; i < hippo->num_place_cells; i++) {
-        if (hippo->place_cells[i].associated_episodes) free(hippo->place_cells[i].associated_episodes);
+        if (hippo->place_cells[i].associated_episodes) nimcp_free(hippo->place_cells[i].associated_episodes);
     }
 
     /* Free replay buffer episode sequences */
     for (uint32_t i = 0; i < hippo->replay_buffer_size; i++) {
-        if (hippo->replay_buffer[i].episode_sequence) free(hippo->replay_buffer[i].episode_sequence);
+        if (hippo->replay_buffer[i].episode_sequence) nimcp_free(hippo->replay_buffer[i].episode_sequence);
     }
 
     /* Free bridge perception buffer */
-    if (hippo->perception_bridge.current_percept) free(hippo->perception_bridge.current_percept);
+    if (hippo->perception_bridge.current_percept) nimcp_free(hippo->perception_bridge.current_percept);
 
     /* Free entorhinal grid input */
-    if (hippo->entorhinal_bridge.grid_cell_input) free(hippo->entorhinal_bridge.grid_cell_input);
+    if (hippo->entorhinal_bridge.grid_cell_input) nimcp_free(hippo->entorhinal_bridge.grid_cell_input);
 
     /* Free perirhinal object representation */
-    if (hippo->perirhinal_bridge.object_representation) free(hippo->perirhinal_bridge.object_representation);
+    if (hippo->perirhinal_bridge.object_representation) nimcp_free(hippo->perirhinal_bridge.object_representation);
 
     /* Free parahippocampal representations */
-    if (hippo->parahippocampal_bridge.scene_representation) free(hippo->parahippocampal_bridge.scene_representation);
-    if (hippo->parahippocampal_bridge.spatial_context) free(hippo->parahippocampal_bridge.spatial_context);
+    if (hippo->parahippocampal_bridge.scene_representation) nimcp_free(hippo->parahippocampal_bridge.scene_representation);
+    if (hippo->parahippocampal_bridge.spatial_context) nimcp_free(hippo->parahippocampal_bridge.spatial_context);
 
     /* Free main arrays */
-    if (hippo->dg_cells) free(hippo->dg_cells);
-    if (hippo->ca3_cells) free(hippo->ca3_cells);
-    if (hippo->ca1_cells) free(hippo->ca1_cells);
-    if (hippo->subiculum_cells) free(hippo->subiculum_cells);
-    if (hippo->place_cells) free(hippo->place_cells);
-    if (hippo->episodes) free(hippo->episodes);
-    if (hippo->replay_buffer) free(hippo->replay_buffer);
-    if (hippo->dg_activation_pattern) free(hippo->dg_activation_pattern);
-    if (hippo->ca3_activation_pattern) free(hippo->ca3_activation_pattern);
-    if (hippo->ca1_activation_pattern) free(hippo->ca1_activation_pattern);
-    if (hippo->subiculum_pattern) free(hippo->subiculum_pattern);
+    if (hippo->dg_cells) nimcp_free(hippo->dg_cells);
+    if (hippo->ca3_cells) nimcp_free(hippo->ca3_cells);
+    if (hippo->ca1_cells) nimcp_free(hippo->ca1_cells);
+    if (hippo->subiculum_cells) nimcp_free(hippo->subiculum_cells);
+    if (hippo->place_cells) nimcp_free(hippo->place_cells);
+    if (hippo->episodes) nimcp_free(hippo->episodes);
+    if (hippo->replay_buffer) nimcp_free(hippo->replay_buffer);
+    if (hippo->dg_activation_pattern) nimcp_free(hippo->dg_activation_pattern);
+    if (hippo->ca3_activation_pattern) nimcp_free(hippo->ca3_activation_pattern);
+    if (hippo->ca1_activation_pattern) nimcp_free(hippo->ca1_activation_pattern);
+    if (hippo->subiculum_pattern) nimcp_free(hippo->subiculum_pattern);
 
-    free(hippo);
+    nimcp_free(hippo);
 }
 
 int hippo_reset(nimcp_hippocampus_t* hippo) {
@@ -377,13 +391,13 @@ int hippo_reset(nimcp_hippocampus_t* hippo) {
     /* Clear episodes */
     for (uint32_t i = 0; i < hippo->num_episodes; i++) {
         nimcp_episode_t* ep = &hippo->episodes[i];
-        if (ep->what_content) { free(ep->what_content); ep->what_content = NULL; }
-        if (ep->where_content) { free(ep->where_content); ep->where_content = NULL; }
-        if (ep->when_content) { free(ep->when_content); ep->when_content = NULL; }
-        if (ep->bound_representation) { free(ep->bound_representation); ep->bound_representation = NULL; }
-        if (ep->dg_pattern) { free(ep->dg_pattern); ep->dg_pattern = NULL; }
-        if (ep->ca3_pattern) { free(ep->ca3_pattern); ep->ca3_pattern = NULL; }
-        if (ep->ca1_pattern) { free(ep->ca1_pattern); ep->ca1_pattern = NULL; }
+        if (ep->what_content) { nimcp_free(ep->what_content); ep->what_content = NULL; }
+        if (ep->where_content) { nimcp_free(ep->where_content); ep->where_content = NULL; }
+        if (ep->when_content) { nimcp_free(ep->when_content); ep->when_content = NULL; }
+        if (ep->bound_representation) { nimcp_free(ep->bound_representation); ep->bound_representation = NULL; }
+        if (ep->dg_pattern) { nimcp_free(ep->dg_pattern); ep->dg_pattern = NULL; }
+        if (ep->ca3_pattern) { nimcp_free(ep->ca3_pattern); ep->ca3_pattern = NULL; }
+        if (ep->ca1_pattern) { nimcp_free(ep->ca1_pattern); ep->ca1_pattern = NULL; }
     }
     hippo->num_episodes = 0;
 
@@ -504,7 +518,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
 
     /* Store what content */
     if (what && what_dim > 0) {
-        ep->what_content = (float*)malloc(what_dim * sizeof(float));
+        ep->what_content = (float*)nimcp_malloc(what_dim * sizeof(float));
         if (!ep->what_content) {
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
             return -1;
@@ -515,7 +529,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
 
     /* Store where content */
     if (where && where_dim > 0) {
-        ep->where_content = (float*)malloc(where_dim * sizeof(float));
+        ep->where_content = (float*)nimcp_malloc(where_dim * sizeof(float));
         if (!ep->where_content) {
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
             return -1;
@@ -532,7 +546,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
 
     /* Store when content */
     if (when && when_dim > 0) {
-        ep->when_content = (float*)malloc(when_dim * sizeof(float));
+        ep->when_content = (float*)nimcp_malloc(when_dim * sizeof(float));
         if (!ep->when_content) {
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
             return -1;
@@ -546,7 +560,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
                          (where_dim > 0 ? where_dim : 0) +
                          (when_dim > 0 ? when_dim : 0);
     if (bound_dim > 0) {
-        ep->bound_representation = (float*)calloc(bound_dim, sizeof(float));
+        ep->bound_representation = (float*)nimcp_calloc(bound_dim, sizeof(float));
         if (ep->bound_representation) {
             uint32_t offset = 0;
             if (what && what_dim > 0) {
@@ -603,7 +617,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
         }
 
         if (active_count > 0) {
-            ep->dg_pattern = (uint32_t*)malloc(active_count * sizeof(uint32_t));
+            ep->dg_pattern = (uint32_t*)nimcp_malloc(active_count * sizeof(uint32_t));
             if (ep->dg_pattern) {
                 uint32_t idx = 0;
                 for (uint32_t i = 0; i < hippo->num_dg_cells && idx < active_count; i++) {
@@ -736,13 +750,13 @@ int hippo_forget_episode(nimcp_hippocampus_t* hippo, uint32_t episode_id) {
 
     nimcp_episode_t* ep = &hippo->episodes[episode_id];
 
-    if (ep->what_content) { free(ep->what_content); ep->what_content = NULL; }
-    if (ep->where_content) { free(ep->where_content); ep->where_content = NULL; }
-    if (ep->when_content) { free(ep->when_content); ep->when_content = NULL; }
-    if (ep->bound_representation) { free(ep->bound_representation); ep->bound_representation = NULL; }
-    if (ep->dg_pattern) { free(ep->dg_pattern); ep->dg_pattern = NULL; }
-    if (ep->ca3_pattern) { free(ep->ca3_pattern); ep->ca3_pattern = NULL; }
-    if (ep->ca1_pattern) { free(ep->ca1_pattern); ep->ca1_pattern = NULL; }
+    if (ep->what_content) { nimcp_free(ep->what_content); ep->what_content = NULL; }
+    if (ep->where_content) { nimcp_free(ep->where_content); ep->where_content = NULL; }
+    if (ep->when_content) { nimcp_free(ep->when_content); ep->when_content = NULL; }
+    if (ep->bound_representation) { nimcp_free(ep->bound_representation); ep->bound_representation = NULL; }
+    if (ep->dg_pattern) { nimcp_free(ep->dg_pattern); ep->dg_pattern = NULL; }
+    if (ep->ca3_pattern) { nimcp_free(ep->ca3_pattern); ep->ca3_pattern = NULL; }
+    if (ep->ca1_pattern) { nimcp_free(ep->ca1_pattern); ep->ca1_pattern = NULL; }
 
     memset(ep, 0, sizeof(nimcp_episode_t));
     return 0;
@@ -1120,7 +1134,7 @@ int hippo_trigger_replay(nimcp_hippocampus_t* hippo, replay_state_t direction) {
 
     /* Free old sequence if exists */
     if (ripple->episode_sequence) {
-        free(ripple->episode_sequence);
+        nimcp_free(ripple->episode_sequence);
         ripple->episode_sequence = NULL;
     }
 
@@ -1134,7 +1148,7 @@ int hippo_trigger_replay(nimcp_hippocampus_t* hippo, replay_state_t direction) {
 
     /* Select episodes to replay - recent and strong ones */
     uint32_t max_replay = 10;
-    ripple->episode_sequence = (uint32_t*)malloc(max_replay * sizeof(uint32_t));
+    ripple->episode_sequence = (uint32_t*)nimcp_malloc(max_replay * sizeof(uint32_t));
     if (ripple->episode_sequence) {
         uint32_t count = 0;
         for (uint32_t i = 0; i < hippo->num_episodes && count < max_replay; i++) {
@@ -2286,7 +2300,7 @@ nimcp_hippocampus_t* hippo_deserialize(const uint8_t* buffer, size_t size, size_
         offset += sizeof(uint32_t);
         if (ep->what_dim > 0 && ep->what_dim < 10000) {  /* Sanity check */
             if (offset + ep->what_dim * sizeof(float) > size) goto deserialize_error;
-            ep->what_content = (float*)malloc(ep->what_dim * sizeof(float));
+            ep->what_content = (float*)nimcp_malloc(ep->what_dim * sizeof(float));
             if (ep->what_content) {
                 memcpy(ep->what_content, buffer + offset, ep->what_dim * sizeof(float));
                 offset += ep->what_dim * sizeof(float);
@@ -2298,7 +2312,7 @@ nimcp_hippocampus_t* hippo_deserialize(const uint8_t* buffer, size_t size, size_
         offset += sizeof(uint32_t);
         if (ep->where_dim > 0 && ep->where_dim < 10000) {
             if (offset + ep->where_dim * sizeof(float) > size) goto deserialize_error;
-            ep->where_content = (float*)malloc(ep->where_dim * sizeof(float));
+            ep->where_content = (float*)nimcp_malloc(ep->where_dim * sizeof(float));
             if (ep->where_content) {
                 memcpy(ep->where_content, buffer + offset, ep->where_dim * sizeof(float));
                 offset += ep->where_dim * sizeof(float);
@@ -2310,7 +2324,7 @@ nimcp_hippocampus_t* hippo_deserialize(const uint8_t* buffer, size_t size, size_
         offset += sizeof(uint32_t);
         if (ep->when_dim > 0 && ep->when_dim < 10000) {
             if (offset + ep->when_dim * sizeof(float) > size) goto deserialize_error;
-            ep->when_content = (float*)malloc(ep->when_dim * sizeof(float));
+            ep->when_content = (float*)nimcp_malloc(ep->when_dim * sizeof(float));
             if (ep->when_content) {
                 memcpy(ep->when_content, buffer + offset, ep->when_dim * sizeof(float));
                 offset += ep->when_dim * sizeof(float);
@@ -2322,7 +2336,7 @@ nimcp_hippocampus_t* hippo_deserialize(const uint8_t* buffer, size_t size, size_
         offset += sizeof(uint32_t);
         if (ep->bound_dim > 0 && ep->bound_dim < 100000) {
             if (offset + ep->bound_dim * sizeof(float) > size) goto deserialize_error;
-            ep->bound_representation = (float*)malloc(ep->bound_dim * sizeof(float));
+            ep->bound_representation = (float*)nimcp_malloc(ep->bound_dim * sizeof(float));
             if (ep->bound_representation) {
                 memcpy(ep->bound_representation, buffer + offset, ep->bound_dim * sizeof(float));
                 offset += ep->bound_dim * sizeof(float);

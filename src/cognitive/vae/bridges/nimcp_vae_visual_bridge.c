@@ -11,6 +11,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/spectral/nimcp_fft.h"
 #include "utils/gabor/nimcp_gabor.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -98,6 +99,7 @@ int vae_visual_bridge_connect_vae(vae_visual_bridge_t* bridge, vae_system_t* vae
     bridge->decode_buffer = (float*)nimcp_calloc(input_size, sizeof(float));
 
     if (!bridge->encode_buffer || !bridge->decode_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_VISUAL_NO_MEMORY, "vae_visual_bridge: error condition");
         return NIMCP_ERROR_VAE_VISUAL_NO_MEMORY;
     }
 
@@ -148,6 +150,7 @@ int vae_visual_encode(vae_visual_bridge_t* bridge,
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_VISUAL_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_VISUAL_NO_MEMORY, "vae_visual_bridge: error condition");
         return NIMCP_ERROR_VAE_VISUAL_NO_MEMORY;
     }
 
@@ -160,6 +163,7 @@ int vae_visual_encode(vae_visual_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_VISUAL_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_VISUAL_ENCODE_FAILED, "vae_visual_bridge: error condition");
         return NIMCP_ERROR_VAE_VISUAL_ENCODE_FAILED;
     }
 
@@ -263,6 +267,7 @@ int vae_visual_decode(vae_visual_bridge_t* bridge,
         if (latent_tensor) nimcp_tensor_destroy(latent_tensor);
         if (output_tensor) nimcp_tensor_destroy(output_tensor);
         bridge->state = VAE_VISUAL_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_VISUAL_NO_MEMORY, "vae_visual_bridge: error condition");
         return NIMCP_ERROR_VAE_VISUAL_NO_MEMORY;
     }
 
@@ -274,6 +279,7 @@ int vae_visual_decode(vae_visual_bridge_t* bridge,
         nimcp_tensor_destroy(latent_tensor);
         nimcp_tensor_destroy(output_tensor);
         bridge->state = VAE_VISUAL_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_VISUAL_DECODE_FAILED, "vae_visual_bridge: error condition");
         return NIMCP_ERROR_VAE_VISUAL_DECODE_FAILED;
     }
 

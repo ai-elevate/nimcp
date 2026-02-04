@@ -25,31 +25,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wernicke_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for omni_wernicke_bridge module */
-static nimcp_health_agent_t* g_omni_wernicke_bridge_health_agent = NULL;
+static mesh_participant_id_t g_omni_wernicke_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_omni_wernicke_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for omni_wernicke_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void omni_wernicke_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_omni_wernicke_bridge_health_agent = agent;
+nimcp_error_t omni_wernicke_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_omni_wernicke_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "omni_wernicke_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "omni_wernicke_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_omni_wernicke_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_omni_wernicke_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from omni_wernicke_bridge module */
-static inline void omni_wernicke_bridge_heartbeat(const char* operation, float progress) {
-    if (g_omni_wernicke_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_omni_wernicke_bridge_health_agent, operation, progress);
+void omni_wernicke_bridge_mesh_unregister(void) {
+    if (g_omni_wernicke_bridge_mesh_registry && g_omni_wernicke_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_omni_wernicke_bridge_mesh_registry, g_omni_wernicke_bridge_mesh_id);
+        g_omni_wernicke_bridge_mesh_id = 0;
+        g_omni_wernicke_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "OMNI_WERNICKE_BRIDGE"
 
@@ -270,7 +284,7 @@ int omni_wernicke_default_config(omni_wernicke_config_t* config) {
 omni_wernicke_bridge_t* omni_wernicke_bridge_create(
     const omni_wernicke_config_t* config
 ) {
-    omni_wernicke_bridge_t* bridge = calloc(1, sizeof(omni_wernicke_bridge_t));
+    omni_wernicke_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wernicke_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -287,19 +301,19 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
     }
 
     /* Allocate phoneme history */
-    bridge->phoneme_history = calloc(PHONEME_HISTORY_SIZE, sizeof(float));
+    bridge->phoneme_history = nimcp_calloc(PHONEME_HISTORY_SIZE, sizeof(float));
     if (!bridge->phoneme_history) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->phoneme_history_len = 0;
 
     /* Allocate context embedding */
     bridge->context_dim = CONTEXT_EMBEDDING_DIM;
-    bridge->word_context = calloc(CONTEXT_EMBEDDING_DIM, sizeof(float));
+    bridge->word_context = nimcp_calloc(CONTEXT_EMBEDDING_DIM, sizeof(float));
     if (!bridge->word_context) {
-        free(bridge->phoneme_history);
-        free(bridge);
+        nimcp_free(bridge->phoneme_history);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -320,37 +334,37 @@ void omni_wernicke_bridge_destroy(omni_wernicke_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_wernicke");
 
     /* Free phoneme prediction */
-    free(bridge->omni_effects.phoneme_pred.phoneme_probs);
+    nimcp_free(bridge->omni_effects.phoneme_pred.phoneme_probs);
 
     /* Free word prediction */
     if (bridge->omni_effects.word_pred.word_candidates) {
         for (uint32_t i = 0; i < bridge->omni_effects.word_pred.num_candidates; i++) {
-            free(bridge->omni_effects.word_pred.word_candidates[i]);
+            nimcp_free(bridge->omni_effects.word_pred.word_candidates[i]);
         }
-        free(bridge->omni_effects.word_pred.word_candidates);
+        nimcp_free(bridge->omni_effects.word_pred.word_candidates);
     }
-    free(bridge->omni_effects.word_pred.word_probs);
+    nimcp_free(bridge->omni_effects.word_pred.word_probs);
 
     /* Free semantic prediction */
-    free(bridge->omni_effects.semantic_pred.predicted_concepts);
-    free(bridge->omni_effects.semantic_pred.concept_activations);
+    nimcp_free(bridge->omni_effects.semantic_pred.predicted_concepts);
+    nimcp_free(bridge->omni_effects.semantic_pred.concept_activations);
 
     /* Free cross-modal */
-    free(bridge->omni_effects.crossmodal.audio_prediction);
-    free(bridge->omni_effects.crossmodal.visual_prediction);
+    nimcp_free(bridge->omni_effects.crossmodal.audio_prediction);
+    nimcp_free(bridge->omni_effects.crossmodal.visual_prediction);
 
     /* Free Wernicke effects */
-    free(bridge->wernicke_effects.recognized_word);
+    nimcp_free(bridge->wernicke_effects.recognized_word);
 
     /* Free world update */
-    free(bridge->world_update.updated_concepts);
-    free(bridge->world_update.concept_deltas);
+    nimcp_free(bridge->world_update.updated_concepts);
+    nimcp_free(bridge->world_update.concept_deltas);
 
     /* Free internal state */
-    free(bridge->phoneme_history);
-    free(bridge->word_context);
+    nimcp_free(bridge->phoneme_history);
+    nimcp_free(bridge->word_context);
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 /*=============================================================================
@@ -552,8 +566,8 @@ int omni_wernicke_predict_phoneme(omni_wernicke_bridge_t* bridge,
 
     /* Allocate if needed */
     if (!prediction->phoneme_probs || prediction->num_phonemes != num_phonemes) {
-        free(prediction->phoneme_probs);
-        prediction->phoneme_probs = calloc(num_phonemes, sizeof(float));
+        nimcp_free(prediction->phoneme_probs);
+        prediction->phoneme_probs = nimcp_calloc(num_phonemes, sizeof(float));
         if (!prediction->phoneme_probs) return -1;
         prediction->num_phonemes = num_phonemes;
     }
@@ -757,7 +771,7 @@ float omni_wernicke_observe_word(omni_wernicke_bridge_t* bridge,
     bridge->wernicke_effects.word_pe = pe;
 
     /* Store recognized word */
-    free(bridge->wernicke_effects.recognized_word);
+    nimcp_free(bridge->wernicke_effects.recognized_word);
     bridge->wernicke_effects.recognized_word = strdup(word);
 
     /* Update statistics */
@@ -1065,8 +1079,8 @@ int omni_wernicke_apply_world_update(omni_wernicke_bridge_t* bridge) {
 void omni_wernicke_clear_world_update(omni_wernicke_bridge_t* bridge) {
     if (!bridge) return;
 
-    free(bridge->world_update.updated_concepts);
-    free(bridge->world_update.concept_deltas);
+    nimcp_free(bridge->world_update.updated_concepts);
+    nimcp_free(bridge->world_update.concept_deltas);
     memset(&bridge->world_update, 0, sizeof(omni_wernicke_world_update_t));
 }
 

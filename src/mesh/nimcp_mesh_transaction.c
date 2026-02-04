@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/crypto/nimcp_crypto.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -311,11 +312,13 @@ nimcp_error_t mesh_transaction_set_payload(
 
     if (size > 0) {
         if (size > MESH_MAX_PAYLOAD_SIZE) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_transaction: error condition");
             return NIMCP_ERROR_BUFFER_OVERFLOW;
         }
 
         tx->payload = nimcp_malloc(size);
         if (!tx->payload) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_transaction: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
 
@@ -376,6 +379,7 @@ nimcp_error_t mesh_tx_propose(
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR("Transaction manager full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_transaction: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -417,6 +421,7 @@ nimcp_error_t mesh_tx_collect_endorsements(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -443,6 +448,7 @@ nimcp_error_t mesh_tx_add_endorsement(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -458,6 +464,7 @@ nimcp_error_t mesh_tx_add_endorsement(
         );
         if (!new_arr) {
             nimcp_mutex_unlock(manager->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_transaction: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         tx->endorsements.endorsements = new_arr;
@@ -505,11 +512,13 @@ nimcp_error_t mesh_tx_submit_for_ordering(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!entry->tx->endorsements.policy_satisfied) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "mesh_transaction: error condition");
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -536,6 +545,7 @@ nimcp_error_t mesh_tx_mark_ordered(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -570,6 +580,7 @@ nimcp_error_t mesh_tx_validate(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -607,6 +618,7 @@ nimcp_error_t mesh_tx_commit(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -659,6 +671,7 @@ nimcp_error_t mesh_tx_fail(
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
     if (!entry || !entry->tx) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_transaction: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -789,6 +802,7 @@ nimcp_error_t mesh_tx_batch_add(
     if (!batch || !tx) return NIMCP_ERROR_NULL_POINTER;
 
     if (batch->count >= batch->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_transaction: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

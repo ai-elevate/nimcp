@@ -21,34 +21,10 @@
 #include "api/nimcp_api_internal.h"  /* For internal brain access */
 #include "nimcp.h"  /* For training API */
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for types module */
-static nimcp_health_agent_t* g_types_health_agent = NULL;
-
-/**
- * @brief Set health agent for types heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void types_set_health_agent(nimcp_health_agent_t* agent) {
-    g_types_health_agent = agent;
-}
-
-/** @brief Send heartbeat from types module */
-static inline void types_heartbeat(const char* operation, float progress) {
-    if (g_types_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_types_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(types)
 
 /* Forward declaration from nimcp_training_py.c */
 extern PyObject* TrainingResult_FromC(const nimcp_training_result_t* result);
@@ -166,7 +142,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
         return NULL;
     }
 
-    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (!features) {
         return PyErr_NoMemory();
     }
@@ -175,7 +151,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
         PyObject* item = PyList_GetItem(features_list, i);
         features[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
-            free(features);
+            nimcp_free(features);
             return NULL;
         }
     }
@@ -183,7 +159,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
     // Copy label since we release GIL
     char* label_copy = strdup(label);
     if (!label_copy) {
-        free(features);
+        nimcp_free(features);
         return PyErr_NoMemory();
     }
 
@@ -194,8 +170,8 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
         self->brain, features, (uint32_t)num_features, label_copy, confidence);
     Py_END_ALLOW_THREADS
 
-    free(features);
-    free(label_copy);
+    nimcp_free(features);
+    nimcp_free(label_copy);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to learn from example");
@@ -226,7 +202,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (!features) {
         return PyErr_NoMemory();
     }
@@ -235,7 +211,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
         PyObject* item = PyList_GetItem(features_list, i);
         features[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
-            free(features);
+            nimcp_free(features);
             return NULL;
         }
     }
@@ -251,7 +227,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
         self->brain, features, (uint32_t)num_features, label, &confidence);
     Py_END_ALLOW_THREADS
 
-    free(features);
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to make prediction");
@@ -312,7 +288,7 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args)
     status = nimcp_brain_save(self->brain, filepath_copy);
     Py_END_ALLOW_THREADS
 
-    free(filepath_copy);
+    nimcp_free(filepath_copy);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to save brain");
@@ -343,7 +319,7 @@ static PyObject* Brain_load(PyObject* cls, PyObject* args)
     brain = nimcp_brain_load(filepath_copy);
     Py_END_ALLOW_THREADS
 
-    free(filepath_copy);
+    nimcp_free(filepath_copy);
 
     if (!brain) {
         PyErr_SetString(NIMCPError, "Failed to load brain from file");
@@ -386,7 +362,7 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
     if (models_dir) {
         models_dir_copy = strdup(models_dir);
         if (!models_dir_copy) {
-            free(model_name_copy);
+            nimcp_free(model_name_copy);
             return PyErr_NoMemory();
         }
     }
@@ -397,8 +373,8 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
     brain = (nimcp_brain_t)brain_load_pretrained(model_name_copy, models_dir_copy);
     Py_END_ALLOW_THREADS
 
-    free(model_name_copy);
-    free(models_dir_copy);
+    nimcp_free(model_name_copy);
+    nimcp_free(models_dir_copy);
 
     if (!brain) {
         PyErr_Format(NIMCPError, "Failed to load pre-trained model: %s", model_name);
@@ -607,7 +583,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     }
 
     /* Convert features to C array */
-    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (features == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -616,7 +592,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     for (Py_ssize_t i = 0; i < num_features; i++) {
         PyObject* item = PyList_GetItem(features_list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
-            free(features);
+            nimcp_free(features);
             PyErr_SetString(PyExc_TypeError, "All feature values must be numbers");
             return NULL;
         }
@@ -624,9 +600,9 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     }
 
     /* Convert targets to C array */
-    float* targets = (float*)malloc(sizeof(float) * (size_t)num_targets);
+    float* targets = (float*)nimcp_malloc(sizeof(float) * (size_t)num_targets);
     if (targets == NULL) {
-        free(features);
+        nimcp_free(features);
         PyErr_NoMemory();
         return NULL;
     }
@@ -634,8 +610,8 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     for (Py_ssize_t i = 0; i < num_targets; i++) {
         PyObject* item = PyList_GetItem(targets_list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
-            free(features);
-            free(targets);
+            nimcp_free(features);
+            nimcp_free(targets);
             PyErr_SetString(PyExc_TypeError, "All target values must be numbers");
             return NULL;
         }
@@ -651,8 +627,8 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
                                     targets, (uint32_t)num_targets, &result);
     Py_END_ALLOW_THREADS
 
-    free(features);
-    free(targets);
+    nimcp_free(features);
+    nimcp_free(targets);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Training step failed");
@@ -706,12 +682,12 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
     }
 
     /* Allocate flattened arrays */
-    float* features = (float*)malloc(sizeof(float) * (size_t)(batch_size * num_features));
-    float* targets = (float*)malloc(sizeof(float) * (size_t)(batch_size * num_targets));
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)(batch_size * num_features));
+    float* targets = (float*)nimcp_malloc(sizeof(float) * (size_t)(batch_size * num_targets));
 
     if (features == NULL || targets == NULL) {
-        free(features);
-        free(targets);
+        nimcp_free(features);
+        nimcp_free(targets);
         PyErr_NoMemory();
         return NULL;
     }
@@ -722,14 +698,14 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
         PyObject* targ_row = PyList_GetItem(targets_list, b);
 
         if (!PyList_Check(feat_row) || PyList_Size(feat_row) != num_features) {
-            free(features);
-            free(targets);
+            nimcp_free(features);
+            nimcp_free(targets);
             PyErr_SetString(PyExc_ValueError, "All feature rows must have same length");
             return NULL;
         }
         if (!PyList_Check(targ_row) || PyList_Size(targ_row) != num_targets) {
-            free(features);
-            free(targets);
+            nimcp_free(features);
+            nimcp_free(targets);
             PyErr_SetString(PyExc_ValueError, "All target rows must have same length");
             return NULL;
         }
@@ -754,8 +730,8 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
                                      (uint32_t)num_targets, &result);
     Py_END_ALLOW_THREADS
 
-    free(features);
-    free(targets);
+    nimcp_free(features);
+    nimcp_free(targets);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Batch training failed");
@@ -1093,7 +1069,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     }
 
     /* Allocate array for snapshot infos */
-    nimcp_brain_snapshot_info_t* infos = (nimcp_brain_snapshot_info_t*)malloc(
+    nimcp_brain_snapshot_info_t* infos = (nimcp_brain_snapshot_info_t*)nimcp_malloc(
         sizeof(nimcp_brain_snapshot_info_t) * max_count);
     if (infos == NULL) {
         PyErr_NoMemory();
@@ -1108,7 +1084,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
-        free(infos);
+        nimcp_free(infos);
         PyErr_SetString(NIMCPError, "Failed to list snapshots");
         return NULL;
     }
@@ -1116,7 +1092,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     /* Build Python list of dicts */
     PyObject* result_list = PyList_New((Py_ssize_t)out_count);
     if (result_list == NULL) {
-        free(infos);
+        nimcp_free(infos);
         return NULL;
     }
 
@@ -1124,7 +1100,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
         PyObject* dict = PyDict_New();
         if (dict == NULL) {
             Py_DECREF(result_list);
-            free(infos);
+            nimcp_free(infos);
             return NULL;
         }
 
@@ -1138,7 +1114,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
         PyList_SET_ITEM(result_list, i, dict);  /* Steals reference */
     }
 
-    free(infos);
+    nimcp_free(infos);
     return result_list;
 }
 
@@ -1193,7 +1169,7 @@ static PyObject* Brain_working_memory_add(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    float* data = (float*)malloc(sizeof(float) * (size_t)size);
+    float* data = (float*)nimcp_malloc(sizeof(float) * (size_t)size);
     if (data == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -1209,7 +1185,7 @@ static PyObject* Brain_working_memory_add(BrainObject* self, PyObject* args)
     status = nimcp_brain_working_memory_add(self->brain, data, (uint32_t)size, salience);
     Py_END_ALLOW_THREADS
 
-    free(data);
+    nimcp_free(data);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to add to working memory");
@@ -1326,7 +1302,7 @@ static PyObject* Brain_workspace_compete(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    float* content = (float*)malloc(sizeof(float) * (size_t)content_dim);
+    float* content = (float*)nimcp_malloc(sizeof(float) * (size_t)content_dim);
     if (content == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -1343,7 +1319,7 @@ static PyObject* Brain_workspace_compete(BrainObject* self, PyObject* args)
                                            content, (uint32_t)content_dim, strength);
     Py_END_ALLOW_THREADS
 
-    free(content);
+    nimcp_free(content);
 
     /* Return True if won competition, False otherwise */
     return PyBool_FromLong(status == NIMCP_OK);
@@ -1360,7 +1336,7 @@ static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    float* content = (float*)malloc(sizeof(float) * max_dim);
+    float* content = (float*)nimcp_malloc(sizeof(float) * max_dim);
     if (content == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -1375,14 +1351,14 @@ static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
     Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
-        free(content);
+        nimcp_free(content);
         Py_RETURN_NONE;
     }
 
     /* Build result list */
     PyObject* result_list = PyList_New((Py_ssize_t)actual_dim);
     if (result_list == NULL) {
-        free(content);
+        nimcp_free(content);
         return NULL;
     }
 
@@ -1390,7 +1366,7 @@ static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
         PyList_SET_ITEM(result_list, i, PyFloat_FromDouble((double)content[i]));
     }
 
-    free(content);
+    nimcp_free(content);
 
     return Py_BuildValue("(OIi)", result_list, (unsigned int)actual_dim, (int)source_module);
 }
@@ -1563,7 +1539,7 @@ static PyObject* Brain_get_phase_coherence(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    uint32_t* neuron_ids = (uint32_t*)malloc(sizeof(uint32_t) * (size_t)count);
+    uint32_t* neuron_ids = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * (size_t)count);
     if (neuron_ids == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -1579,7 +1555,7 @@ static PyObject* Brain_get_phase_coherence(BrainObject* self, PyObject* args)
     coherence = nimcp_get_phase_coherence(self->brain, neuron_ids, (uint32_t)count);
     Py_END_ALLOW_THREADS
 
-    free(neuron_ids);
+    nimcp_free(neuron_ids);
 
     return PyFloat_FromDouble((double)coherence);
 }
@@ -1611,7 +1587,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    float* inputs = (float*)malloc(sizeof(float) * (size_t)num_inputs);
+    float* inputs = (float*)nimcp_malloc(sizeof(float) * (size_t)num_inputs);
     if (!inputs) {
         return PyErr_NoMemory();
     }
@@ -1620,7 +1596,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
         PyObject* item = PyList_GetItem(inputs_obj, i);
         inputs[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
-            free(inputs);
+            nimcp_free(inputs);
             return NULL;
         }
     }
@@ -1634,7 +1610,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
     status = nimcp_brain_predict(self->brain, inputs, (uint32_t)num_inputs, label, &confidence);
     Py_END_ALLOW_THREADS
 
-    free(inputs);
+    nimcp_free(inputs);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to process inputs");
@@ -2350,7 +2326,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         return NULL;
     }
 
-    float* inputs = (float*)malloc(sizeof(float) * (size_t)input_size);
+    float* inputs = (float*)nimcp_malloc(sizeof(float) * (size_t)input_size);
     if (!inputs) {
         return PyErr_NoMemory();
     }
@@ -2359,15 +2335,15 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         PyObject* item = PyList_GetItem(input_list, i);
         inputs[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
-            free(inputs);
+            nimcp_free(inputs);
             return NULL;
         }
     }
 
     // Allocate output array
-    float* outputs = (float*)malloc(sizeof(float) * (size_t)num_outputs);
+    float* outputs = (float*)nimcp_malloc(sizeof(float) * (size_t)num_outputs);
     if (!outputs) {
-        free(inputs);
+        nimcp_free(inputs);
         return PyErr_NoMemory();
     }
 
@@ -2378,8 +2354,8 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
     Py_END_ALLOW_THREADS
 
     if (!success) {
-        free(inputs);
-        free(outputs);
+        nimcp_free(inputs);
+        nimcp_free(outputs);
         PyErr_SetString(NetworkError, "Forward pass failed");
         return NULL;
     }
@@ -2387,8 +2363,8 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
     // Convert output array to Python list
     PyObject* result = PyList_New(num_outputs);
     if (!result) {
-        free(inputs);
-        free(outputs);
+        nimcp_free(inputs);
+        nimcp_free(outputs);
         return NULL;
     }
 
@@ -2396,8 +2372,8 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         PyObject* item = PyFloat_FromDouble(outputs[i]);
         if (!item) {
             Py_DECREF(result);
-            free(inputs);
-            free(outputs);
+            nimcp_free(inputs);
+            nimcp_free(outputs);
             return NULL;
         }
         // PyList_SetItem steals reference on success, so don't decref item
@@ -2405,14 +2381,14 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
             // On failure, item is NOT stolen, so we must decref it
             Py_DECREF(item);
             Py_DECREF(result);
-            free(inputs);
-            free(outputs);
+            nimcp_free(inputs);
+            nimcp_free(outputs);
             return NULL;
         }
     }
 
-    free(inputs);
-    free(outputs);
+    nimcp_free(inputs);
+    nimcp_free(outputs);
 
     return result;
 }
@@ -2761,7 +2737,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
     // Copy password if provided since we release GIL
     char* password_copy = NULL;
     if (password && password_len > 0) {
-        password_copy = (char*)malloc((size_t)password_len + 1);
+        password_copy = (char*)nimcp_malloc((size_t)password_len + 1);
         if (!password_copy) {
             nimcp_serializer_destroy(serializer);
             return PyErr_NoMemory();
@@ -2784,7 +2760,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
     );
     Py_END_ALLOW_THREADS
 
-    free(password_copy);
+    nimcp_free(password_copy);
 
     if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
         nimcp_serializer_destroy(serializer);
@@ -2834,7 +2810,7 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     // Copy password if provided since we release GIL
     char* password_copy = NULL;
     if (password && password_len > 0) {
-        password_copy = (char*)malloc((size_t)password_len + 1);
+        password_copy = (char*)nimcp_malloc((size_t)password_len + 1);
         if (!password_copy) {
             nimcp_serializer_destroy(serializer);
             return PyErr_NoMemory();
@@ -2858,7 +2834,7 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     Py_END_ALLOW_THREADS
 
     nimcp_serializer_destroy(serializer);
-    free(password_copy);
+    nimcp_free(password_copy);
 
     if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
         PyErr_Format(NetworkError, "Deserialization failed: %s",

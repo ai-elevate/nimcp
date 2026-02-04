@@ -15,35 +15,9 @@
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for brain_immune_py module */
-static nimcp_health_agent_t* g_brain_immune_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for brain_immune_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void brain_immune_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_brain_immune_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from brain_immune_py module */
-static inline void brain_immune_py_heartbeat(const char* operation, float progress) {
-    if (g_brain_immune_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_brain_immune_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_immune_py)
 
 /* ============================================================================
  * BrainAntigen Type (read-only container)

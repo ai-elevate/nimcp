@@ -48,34 +48,44 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_kg_bridge)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for pr_kg_bridge module */
-static nimcp_health_agent_t* g_pr_kg_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_kg_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_kg_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_kg_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_kg_bridge_health_agent = agent;
+nimcp_error_t pr_kg_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_kg_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_kg_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_kg_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_kg_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_kg_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_kg_bridge module */
-static inline void pr_kg_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_kg_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_kg_bridge_health_agent, operation, progress);
+void pr_kg_bridge_mesh_unregister(void) {
+    if (g_pr_kg_bridge_mesh_registry && g_pr_kg_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_kg_bridge_mesh_registry, g_pr_kg_bridge_mesh_id);
+        g_pr_kg_bridge_mesh_id = 0;
+        g_pr_kg_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_kg_bridge module (instance-level) */
 static inline void pr_kg_bridge_heartbeat_instance(
@@ -104,13 +114,14 @@ static inline void pr_kg_bridge_heartbeat_instance(
     #define MUTEX_LOCK(m) EnterCriticalSection(&(m))
     #define MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
-    #include <pthread.h>
-#include "utils/logging/nimcp_logging.h"
-    #define MUTEX_T pthread_mutex_t
-    #define MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
-    #define MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
-    #define MUTEX_LOCK(m) pthread_mutex_lock(&(m))
-    #define MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+    #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+    #define MUTEX_T nimcp_mutex_t
+    #define MUTEX_INIT(m) nimcp_mutex_init(&(m), NULL)
+    #define MUTEX_DESTROY(m) nimcp_mutex_destroy(&(m))
+    #define MUTEX_LOCK(m) nimcp_mutex_lock(&(m))
+    #define MUTEX_UNLOCK(m) nimcp_mutex_unlock(&(m))
 #endif
 
 //=============================================================================
@@ -258,7 +269,7 @@ static int hash_insert_pr(struct pr_kg_bridge_struct* bridge,
                           uint64_t pr_id, uint32_t mapping_idx) {
     uint32_t bucket = hash_pr_id(pr_id);
 
-    pr_hash_entry_t* entry = (pr_hash_entry_t*)malloc(sizeof(pr_hash_entry_t));
+    pr_hash_entry_t* entry = (pr_hash_entry_t*)nimcp_malloc(sizeof(pr_hash_entry_t));
     if (!entry) {
         set_error("Failed to allocate PR hash entry");
         return -1;
@@ -279,7 +290,7 @@ static int hash_insert_kg(struct pr_kg_bridge_struct* bridge,
                           brain_kg_node_id_t kg_id, uint32_t mapping_idx) {
     uint32_t bucket = hash_kg_id(kg_id);
 
-    kg_hash_entry_t* entry = (kg_hash_entry_t*)malloc(sizeof(kg_hash_entry_t));
+    kg_hash_entry_t* entry = (kg_hash_entry_t*)nimcp_malloc(sizeof(kg_hash_entry_t));
     if (!entry) {
         set_error("Failed to allocate KG hash entry");
         return -1;
@@ -340,7 +351,7 @@ static int hash_remove_pr(struct pr_kg_bridge_struct* bridge, uint64_t pr_id) {
         if ((*pp)->pr_node_id == pr_id) {
             pr_hash_entry_t* to_free = *pp;
             *pp = (*pp)->next;
-            free(to_free);
+            nimcp_free(to_free);
             return 0;
         }
         pp = &(*pp)->next;
@@ -361,7 +372,7 @@ static int hash_remove_kg(struct pr_kg_bridge_struct* bridge,
         if ((*pp)->kg_node_id == kg_id) {
             kg_hash_entry_t* to_free = *pp;
             *pp = (*pp)->next;
-            free(to_free);
+            nimcp_free(to_free);
             return 0;
         }
         pp = &(*pp)->next;
@@ -385,7 +396,7 @@ static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
         pr_hash_entry_t* entry = bridge->pr_to_kg_hash[i];
         while (entry) {
             pr_hash_entry_t* next = entry->next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         bridge->pr_to_kg_hash[i] = NULL;
@@ -402,7 +413,7 @@ static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
         kg_hash_entry_t* entry = bridge->kg_to_pr_hash[i];
         while (entry) {
             kg_hash_entry_t* next = entry->next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         bridge->kg_to_pr_hash[i] = NULL;
@@ -447,7 +458,7 @@ static uint32_t allocate_mapping(struct pr_kg_bridge_struct* bridge) {
             return HASH_INVALID;
         }
 
-        pr_kg_mapping_t* new_mappings = (pr_kg_mapping_t*)realloc(
+        pr_kg_mapping_t* new_mappings = (pr_kg_mapping_t*)nimcp_realloc(
             bridge->mappings, new_capacity * sizeof(pr_kg_mapping_t));
         if (!new_mappings) {
             set_error("Failed to expand mapping array");
@@ -516,7 +527,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
 
 
     struct pr_kg_bridge_struct* bridge =
-        (struct pr_kg_bridge_struct*)calloc(1, sizeof(struct pr_kg_bridge_struct));
+        (struct pr_kg_bridge_struct*)nimcp_calloc(1, sizeof(struct pr_kg_bridge_struct));
     if (!bridge) {
         set_error("Failed to allocate bridge structure");
         return NULL;
@@ -528,26 +539,26 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
 
     /* Initialize mapping array */
     bridge->mapping_capacity = 1024;  /* Initial capacity */
-    bridge->mappings = (pr_kg_mapping_t*)calloc(
+    bridge->mappings = (pr_kg_mapping_t*)nimcp_calloc(
         bridge->mapping_capacity, sizeof(pr_kg_mapping_t));
     if (!bridge->mappings) {
         set_error("Failed to allocate mapping array");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Initialize hash tables */
-    bridge->pr_to_kg_hash = (pr_hash_entry_t**)calloc(
+    bridge->pr_to_kg_hash = (pr_hash_entry_t**)nimcp_calloc(
         HASH_TABLE_SIZE, sizeof(pr_hash_entry_t*));
-    bridge->kg_to_pr_hash = (kg_hash_entry_t**)calloc(
+    bridge->kg_to_pr_hash = (kg_hash_entry_t**)nimcp_calloc(
         HASH_TABLE_SIZE, sizeof(kg_hash_entry_t*));
 
     if (!bridge->pr_to_kg_hash || !bridge->kg_to_pr_hash) {
         set_error("Failed to allocate hash tables");
-        free(bridge->mappings);
-        free(bridge->pr_to_kg_hash);
-        free(bridge->kg_to_pr_hash);
-        free(bridge);
+        nimcp_free(bridge->mappings);
+        nimcp_free(bridge->pr_to_kg_hash);
+        nimcp_free(bridge->kg_to_pr_hash);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -583,11 +594,11 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
     hash_clear_all(bridge);
 
     /* Free hash table arrays */
-    free(bridge->pr_to_kg_hash);
-    free(bridge->kg_to_pr_hash);
+    nimcp_free(bridge->pr_to_kg_hash);
+    nimcp_free(bridge->kg_to_pr_hash);
 
     /* Free mappings array */
-    free(bridge->mappings);
+    nimcp_free(bridge->mappings);
 
     bridge->initialized = false;
     bridge->connected = false;
@@ -595,7 +606,7 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
     MUTEX_UNLOCK(bridge->base.mutex);
     MUTEX_DESTROY(bridge->base.mutex);
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
@@ -1208,7 +1219,7 @@ int pr_kg_get_context(
     uint32_t map_idx = hash_find_kg(bridge, kg_node_id);
     if (map_idx != HASH_INVALID) {
         context->memory_count = 1;
-        context->memory_ids = (uint64_t*)malloc(sizeof(uint64_t));
+        context->memory_ids = (uint64_t*)nimcp_malloc(sizeof(uint64_t));
         if (context->memory_ids) {
             context->memory_ids[0] = bridge->mappings[map_idx].pr_node_id;
         }
@@ -1237,7 +1248,7 @@ void pr_kg_context_destroy(pr_kg_context_t* context) {
 
 
     if (context->memory_ids) {
-        free(context->memory_ids);
+        nimcp_free(context->memory_ids);
         context->memory_ids = NULL;
     }
 
@@ -1928,16 +1939,16 @@ pr_kg_query_result_t* pr_kg_query_result_create(uint32_t capacity) {
         capacity = PR_KG_MAX_QUERY_RESULTS;
     }
 
-    pr_kg_query_result_t* result = (pr_kg_query_result_t*)calloc(
+    pr_kg_query_result_t* result = (pr_kg_query_result_t*)nimcp_calloc(
         1, sizeof(pr_kg_query_result_t));
     if (!result) {
         set_error("Failed to allocate query result");
         return NULL;
     }
 
-    result->mappings = (pr_kg_mapping_t*)calloc(capacity, sizeof(pr_kg_mapping_t));
+    result->mappings = (pr_kg_mapping_t*)nimcp_calloc(capacity, sizeof(pr_kg_mapping_t));
     if (!result->mappings) {
-        free(result);
+        nimcp_free(result);
         set_error("Failed to allocate mapping array");
         return NULL;
     }
@@ -1958,10 +1969,10 @@ void pr_kg_query_result_destroy(pr_kg_query_result_t* result) {
 
 
     if (result->mappings) {
-        free(result->mappings);
+        nimcp_free(result->mappings);
     }
 
-    free(result);
+    nimcp_free(result);
 }
 
 void pr_kg_query_result_clear(pr_kg_query_result_t* result) {

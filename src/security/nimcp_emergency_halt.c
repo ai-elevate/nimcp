@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Constants
@@ -200,6 +201,7 @@ void emergency_halt_destroy(emergency_halt_t* halt) {
 nimcp_error_t emergency_halt_reset(emergency_halt_t* halt,
                                     const uint8_t* authorization_code) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -215,6 +217,7 @@ nimcp_error_t emergency_halt_reset(emergency_halt_t* halt,
         NIMCP_LOGGING_ERROR("%s Reset rejected: physical restart required",
                            HALT_LOG_PREFIX);
         nimcp_mutex_unlock(halt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "emergency_halt: error condition");
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -259,6 +262,7 @@ nimcp_error_t emergency_halt_reset(emergency_halt_t* halt,
 
 nimcp_error_t emergency_halt_heartbeat(emergency_halt_t* halt) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -266,6 +270,7 @@ nimcp_error_t emergency_halt_heartbeat(emergency_halt_t* halt) {
 
     if (halt->is_halted) {
         nimcp_mutex_unlock(halt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SYSTEM_HALTED, "emergency_halt: error condition");
         return NIMCP_ERROR_SYSTEM_HALTED;
     }
 
@@ -292,6 +297,7 @@ uint32_t emergency_halt_time_until_timeout(const emergency_halt_t* halt) {
 nimcp_error_t emergency_halt_set_watchdog_enabled(emergency_halt_t* halt,
                                                    bool enabled) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -318,6 +324,7 @@ nimcp_error_t emergency_halt_trigger(emergency_halt_t* halt,
                                       halt_trigger_t trigger,
                                       const char* reason) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -329,10 +336,12 @@ nimcp_error_t emergency_halt_kill_phrase(emergency_halt_t* halt,
                                           halt_level_t level,
                                           const char* reason) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC || !kill_phrase) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!halt->config.enable_kill_phrase) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED, "emergency_halt: error condition");
         return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
@@ -345,6 +354,7 @@ nimcp_error_t emergency_halt_kill_phrase(emergency_halt_t* halt,
         halt->stats.kill_phrase_failures++;
         nimcp_mutex_unlock(halt->mutex);
         NIMCP_LOGGING_WARN("%s Invalid kill phrase attempt", HALT_LOG_PREFIX);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SIGNATURE_INVALID, "emergency_halt: error condition");
         return NIMCP_ERROR_SIGNATURE_INVALID;
     }
 
@@ -369,6 +379,7 @@ nimcp_error_t emergency_halt_kill_phrase(emergency_halt_t* halt,
 nimcp_error_t emergency_halt_confirm_alive(emergency_halt_t* halt,
                                             const char* confirmation_code) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -419,10 +430,12 @@ nimcp_error_t emergency_halt_get_reason(const emergency_halt_t* halt,
                                          char* reason_out,
                                          size_t max_len) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC || !reason_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!halt->is_halted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "emergency_halt: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -440,6 +453,7 @@ uint64_t emergency_halt_get_timestamp(const emergency_halt_t* halt) {
 nimcp_error_t emergency_halt_get_stats(const emergency_halt_t* halt,
                                         emergency_halt_stats_t* stats) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -461,6 +475,7 @@ nimcp_error_t emergency_halt_get_events(const emergency_halt_t* halt,
                                          size_t max_events,
                                          size_t* count_out) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC || !events || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -488,6 +503,7 @@ nimcp_error_t emergency_halt_get_events(const emergency_halt_t* halt,
 nimcp_error_t emergency_halt_dump_state(emergency_halt_t* halt,
                                          const char* dump_path) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -500,6 +516,7 @@ nimcp_error_t emergency_halt_register_dump_handler(emergency_halt_t* halt,
                                                     halt_state_dump_handler_t handler,
                                                     void* user_data) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC || !module_name || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -507,6 +524,7 @@ nimcp_error_t emergency_halt_register_dump_handler(emergency_halt_t* halt,
 
     if (halt->dump_handler_count >= HALT_MAX_DUMP_HANDLERS) {
         nimcp_mutex_unlock(halt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_QUEUE_FULL, "emergency_halt: error condition");
         return NIMCP_ERROR_QUEUE_FULL;
     }
 
@@ -531,6 +549,7 @@ nimcp_error_t emergency_halt_register_dump_handler(emergency_halt_t* halt,
 
 nimcp_error_t emergency_halt_connect_bio_async(emergency_halt_t* halt) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -572,6 +591,7 @@ nimcp_error_t emergency_halt_connect_brain_immune(
     struct brain_immune* brain_immune)
 {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -615,6 +635,7 @@ const char* emergency_halt_trigger_name(halt_trigger_t trigger) {
 nimcp_error_t emergency_halt_hash_kill_phrase(const char* kill_phrase,
                                                uint8_t* hash_out) {
     if (!kill_phrase || !hash_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

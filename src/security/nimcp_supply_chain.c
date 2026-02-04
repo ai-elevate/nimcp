@@ -44,30 +44,42 @@
 
 #include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for supply_chain module */
-static nimcp_health_agent_t* g_supply_chain_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(supply_chain)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for supply_chain heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void supply_chain_set_health_agent(nimcp_health_agent_t* agent) {
-    g_supply_chain_health_agent = agent;
+static mesh_participant_id_t g_supply_chain_mesh_id = 0;
+static mesh_participant_registry_t* g_supply_chain_mesh_registry = NULL;
+
+nimcp_error_t supply_chain_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_supply_chain_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "supply_chain", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "supply_chain";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_supply_chain_mesh_id);
+    if (err == NIMCP_SUCCESS) g_supply_chain_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from supply_chain module */
-static inline void supply_chain_heartbeat(const char* operation, float progress) {
-    if (g_supply_chain_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_supply_chain_health_agent, operation, progress);
+void supply_chain_mesh_unregister(void) {
+    if (g_supply_chain_mesh_registry && g_supply_chain_mesh_id != 0) {
+        mesh_participant_unregister(g_supply_chain_mesh_registry, g_supply_chain_mesh_id);
+        g_supply_chain_mesh_id = 0;
+        g_supply_chain_mesh_registry = NULL;
     }
 }
 
@@ -92,7 +104,7 @@ struct nimcp_supply_chain {
     pthread_t monitor_thread;
     bool monitoring_active;
 
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bio_module_context_t bio_ctx;
     bool bio_registered;
 };
@@ -287,7 +299,7 @@ nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t
     }
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&sc->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&sc->lock, NULL) != 0) {
         nimcp_free(sc->sources);
         nimcp_free(sc->dependencies);
         nimcp_free(sc);
@@ -344,7 +356,7 @@ void nimcp_supply_chain_destroy(nimcp_supply_chain_t sc) {
     nimcp_free(sc->sources);
 
     /* Destroy mutex */
-    pthread_mutex_destroy(&sc->lock);
+    nimcp_mutex_destroy(&sc->lock);
 
     /* Clear magic */
     sc->magic = 0;
@@ -361,9 +373,9 @@ nimcp_error_t nimcp_supply_chain_get_stats(nimcp_supply_chain_t sc,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
     memcpy(stats, &sc->stats, sizeof(nimcp_supply_chain_stats_t));
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     return NIMCP_OK;
 }
@@ -386,19 +398,19 @@ nimcp_error_t nimcp_artifact_verify_hash(
     char computed_hash[129];
     nimcp_error_t err = compute_file_hash(filepath, algo, computed_hash);
     if (err != NIMCP_OK) {
-        pthread_mutex_lock(&sc->lock);
+        nimcp_mutex_lock(&sc->lock);
         sc->stats.failed_verifications++;
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_mutex_unlock(&sc->lock);
         LOG_ERROR("Hash computation failed for %s", filepath);
         return err;
     }
 
     /* Compare hashes (case-insensitive) */
     if (strcasecmp(computed_hash, expected_hash) != 0) {
-        pthread_mutex_lock(&sc->lock);
+        nimcp_mutex_lock(&sc->lock);
         sc->stats.failed_verifications++;
         sc->stats.integrity_violations++;
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_mutex_unlock(&sc->lock);
 
         LOG_ERROR("Hash mismatch for %s: expected %s, got %s",
                        filepath, expected_hash, computed_hash);
@@ -408,10 +420,10 @@ nimcp_error_t nimcp_artifact_verify_hash(
         return NIMCP_ERROR_VERIFICATION_FAILED;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
     sc->stats.verified_dependencies++;
     sc->stats.last_verification = time(NULL);
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_INFO("Hash verified successfully for %s", filepath);
 
@@ -442,9 +454,9 @@ nimcp_error_t nimcp_runtime_verify_library(nimcp_supply_chain_t sc,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
     sc->stats.runtime_checks++;
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_INFO("Runtime library verification for %s", library_path);
 
@@ -459,9 +471,9 @@ nimcp_error_t nimcp_runtime_verify_all(nimcp_supply_chain_t sc) {
     LOG_INFO("Verifying all loaded libraries...");
 
     /* Would iterate through all loaded libraries */
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
     sc->stats.runtime_checks++;
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     return NIMCP_OK;
 }
@@ -503,9 +515,9 @@ nimcp_error_t nimcp_runtime_verify_binary(nimcp_supply_chain_t sc,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
     sc->stats.runtime_checks++;
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_INFO("Binary integrity verification for %s", binary_path);
 

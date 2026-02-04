@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -230,18 +231,18 @@ static inline quantum_feature_map_t quantum_feature_map_create(
 
     /* Allocate context */
     quantum_feature_map_internal_t* ctx =
-        (quantum_feature_map_internal_t*)calloc(1, sizeof(quantum_feature_map_internal_t));
+        (quantum_feature_map_internal_t*)nimcp_calloc(1, sizeof(quantum_feature_map_internal_t));
     if (!ctx) return NULL;
 
     ctx->config = cfg;
 
     /* Allocate work buffers */
-    ctx->work_buffer = (float*)calloc(cfg.output_dim * 2, sizeof(float));
-    ctx->output_buffer = (float*)calloc(cfg.output_dim, sizeof(float));
+    ctx->work_buffer = (float*)nimcp_calloc(cfg.output_dim * 2, sizeof(float));
+    ctx->output_buffer = (float*)nimcp_calloc(cfg.output_dim, sizeof(float));
     if (!ctx->work_buffer || !ctx->output_buffer) {
-        free(ctx->work_buffer);
-        free(ctx->output_buffer);
-        free(ctx);
+        nimcp_free(ctx->work_buffer);
+        nimcp_free(ctx->output_buffer);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -250,15 +251,15 @@ static inline quantum_feature_map_t quantum_feature_map_create(
         uint32_t rng_state = cfg.seed;
         ctx->rff_state.num_features = cfg.num_rff_features;
         ctx->rff_state.input_dim = cfg.input_dim;
-        ctx->rff_state.W = (float*)calloc(cfg.num_rff_features * cfg.input_dim, sizeof(float));
-        ctx->rff_state.b = (float*)calloc(cfg.num_rff_features, sizeof(float));
+        ctx->rff_state.W = (float*)nimcp_calloc(cfg.num_rff_features * cfg.input_dim, sizeof(float));
+        ctx->rff_state.b = (float*)nimcp_calloc(cfg.num_rff_features, sizeof(float));
 
         if (!ctx->rff_state.W || !ctx->rff_state.b) {
-            free(ctx->rff_state.W);
-            free(ctx->rff_state.b);
-            free(ctx->work_buffer);
-            free(ctx->output_buffer);
-            free(ctx);
+            nimcp_free(ctx->rff_state.W);
+            nimcp_free(ctx->rff_state.b);
+            nimcp_free(ctx->work_buffer);
+            nimcp_free(ctx->output_buffer);
+            nimcp_free(ctx);
             return NULL;
         }
 
@@ -277,16 +278,16 @@ static inline quantum_feature_map_t quantum_feature_map_create(
         cfg.map_type == QFMAP_PAULI_ZZ) {
         uint32_t rng_state = cfg.seed + 1;
         uint32_t param_count = cfg.num_layers * 3 * cfg.input_dim;
-        ctx->var_state.params = (float*)calloc(param_count, sizeof(float));
+        ctx->var_state.params = (float*)nimcp_calloc(param_count, sizeof(float));
         ctx->var_state.num_layers = cfg.num_layers;
         ctx->var_state.dim = cfg.input_dim;
 
         if (!ctx->var_state.params) {
-            free(ctx->rff_state.W);
-            free(ctx->rff_state.b);
-            free(ctx->work_buffer);
-            free(ctx->output_buffer);
-            free(ctx);
+            nimcp_free(ctx->rff_state.W);
+            nimcp_free(ctx->rff_state.b);
+            nimcp_free(ctx->work_buffer);
+            nimcp_free(ctx->output_buffer);
+            nimcp_free(ctx);
             return NULL;
         }
 
@@ -308,12 +309,12 @@ static inline void quantum_feature_map_destroy(quantum_feature_map_t ctx) {
     if (!ctx) return;
     quantum_feature_map_internal_t* internal = (quantum_feature_map_internal_t*)ctx;
 
-    free(internal->rff_state.W);
-    free(internal->rff_state.b);
-    free(internal->var_state.params);
-    free(internal->work_buffer);
-    free(internal->output_buffer);
-    free(internal);
+    nimcp_free(internal->rff_state.W);
+    nimcp_free(internal->rff_state.b);
+    nimcp_free(internal->var_state.params);
+    nimcp_free(internal->work_buffer);
+    nimcp_free(internal->output_buffer);
+    nimcp_free(internal);
 }
 
 //=============================================================================
@@ -530,12 +531,12 @@ static inline void qfmap_hardware_efficient(
     const variational_state_t* var,
     quantum_entangle_pattern_t pattern
 ) {
-    float* state_real = (float*)calloc(dim, sizeof(float));
-    float* state_imag = (float*)calloc(dim, sizeof(float));
+    float* state_real = (float*)nimcp_calloc(dim, sizeof(float));
+    float* state_imag = (float*)nimcp_calloc(dim, sizeof(float));
 
     if (!state_real || !state_imag) {
-        free(state_real);
-        free(state_imag);
+        nimcp_free(state_real);
+        nimcp_free(state_imag);
         /* Fall back to simple encoding */
         qfmap_pauli_z_encode(input, output, dim);
         return;
@@ -577,8 +578,8 @@ static inline void qfmap_hardware_efficient(
     memcpy(output, state_real, dim * sizeof(float));
     memcpy(output + dim, state_imag, dim * sizeof(float));
 
-    free(state_real);
-    free(state_imag);
+    nimcp_free(state_real);
+    nimcp_free(state_imag);
 }
 
 //=============================================================================
@@ -685,12 +686,12 @@ static inline int quantum_feature_map_kernel(
     quantum_feature_map_internal_t* internal = (quantum_feature_map_internal_t*)ctx;
 
     /* Map both inputs */
-    float* phi_x = (float*)calloc(internal->config.output_dim, sizeof(float));
-    float* phi_y = (float*)calloc(internal->config.output_dim, sizeof(float));
+    float* phi_x = (float*)nimcp_calloc(internal->config.output_dim, sizeof(float));
+    float* phi_y = (float*)nimcp_calloc(internal->config.output_dim, sizeof(float));
 
     if (!phi_x || !phi_y) {
-        free(phi_x);
-        free(phi_y);
+        nimcp_free(phi_x);
+        nimcp_free(phi_y);
         return -3;
     }
 
@@ -705,8 +706,8 @@ static inline int quantum_feature_map_kernel(
 
     *kernel_value = dot;
 
-    free(phi_x);
-    free(phi_y);
+    nimcp_free(phi_x);
+    nimcp_free(phi_y);
 
     return 0;
 }
@@ -783,7 +784,7 @@ static inline int quantum_feature_map_gram(
     quantum_feature_map_internal_t* internal = (quantum_feature_map_internal_t*)ctx;
 
     /* Map all inputs first */
-    float* features = (float*)calloc(n_samples * internal->config.output_dim, sizeof(float));
+    float* features = (float*)nimcp_calloc(n_samples * internal->config.output_dim, sizeof(float));
     if (!features) return -3;
 
     quantum_feature_map_batch(ctx, inputs, features, n_samples);
@@ -801,7 +802,7 @@ static inline int quantum_feature_map_gram(
         }
     }
 
-    free(features);
+    nimcp_free(features);
     return 0;
 }
 

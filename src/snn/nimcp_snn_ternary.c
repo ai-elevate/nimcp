@@ -21,34 +21,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for snn_ternary module */
-static nimcp_health_agent_t* g_snn_ternary_health_agent = NULL;
-
-/**
- * @brief Set health agent for snn_ternary heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void snn_ternary_set_health_agent(nimcp_health_agent_t* agent) {
-    g_snn_ternary_health_agent = agent;
-}
-
-/** @brief Send heartbeat from snn_ternary module */
-static inline void snn_ternary_heartbeat(const char* operation, float progress) {
-    if (g_snn_ternary_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_snn_ternary_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_ternary)
 
 //=============================================================================
 // Lifecycle Functions
@@ -79,7 +55,7 @@ snn_ternary_weight_matrix_t* snn_ternary_create(
     }
 
     snn_ternary_weight_matrix_t* weights = (snn_ternary_weight_matrix_t*)
-        calloc(1, sizeof(snn_ternary_weight_matrix_t));
+        nimcp_calloc(1, sizeof(snn_ternary_weight_matrix_t));
     if (!weights) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_ternary_weight_matrix_t),
                           "Failed to allocate snn_ternary_weight_matrix_t");
@@ -106,16 +82,16 @@ snn_ternary_weight_matrix_t* snn_ternary_create(
     /* Create weight matrix */
     weights->weights = trit_matrix_create(pre_size, post_size, cfg.pack_mode);
     if (!weights->weights) {
-        free(weights);
+        nimcp_free(weights);
         return NULL;
     }
 
     /* Create accumulator for STDP */
     size_t numel = (size_t)pre_size * post_size;
-    weights->accumulated_delta = (float*)calloc(numel, sizeof(float));
+    weights->accumulated_delta = (float*)nimcp_calloc(numel, sizeof(float));
     if (!weights->accumulated_delta) {
         trit_matrix_destroy(weights->weights);
-        free(weights);
+        nimcp_free(weights);
         return NULL;
     }
 
@@ -127,10 +103,10 @@ void snn_ternary_destroy(snn_ternary_weight_matrix_t* weights) {
     if (weights->magic != SNN_TERNARY_MAGIC) return;
 
     trit_matrix_destroy(weights->weights);
-    free(weights->accumulated_delta);
+    nimcp_free(weights->accumulated_delta);
 
     weights->magic = 0;
-    free(weights);
+    nimcp_free(weights);
 }
 
 snn_ternary_weight_matrix_t* snn_ternary_from_floats(

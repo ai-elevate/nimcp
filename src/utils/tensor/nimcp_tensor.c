@@ -36,34 +36,9 @@
 //=============================================================================
 
 #define LOG_MODULE "Tensor"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for tensor module */
-static nimcp_health_agent_t* g_tensor_health_agent = NULL;
-
-/**
- * @brief Set health agent for tensor heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void tensor_set_health_agent(nimcp_health_agent_t* agent) {
-    g_tensor_health_agent = agent;
-}
-
-/** @brief Send heartbeat from tensor module */
-static inline void tensor_heartbeat(const char* operation, float progress) {
-    if (g_tensor_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_tensor_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(tensor)
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -85,7 +60,7 @@ struct nimcp_tensor_s {
     bool requires_grad;            /**< Track gradients */
     nimcp_tensor_t* grad;          /**< Accumulated gradient */
     uint32_t refcount;             /**< Reference count */
-    pthread_mutex_t lock;          /**< Thread safety lock */
+    nimcp_mutex_t lock;          /**< Thread safety lock */
 };
 
 /**
@@ -107,7 +82,7 @@ struct nimcp_autodiff_ctx_s {
     bool recording;
     nimcp_autodiff_node_t* tape_head;
     nimcp_autodiff_node_t* tape_tail;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 };
 
 //=============================================================================
@@ -730,20 +705,20 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
         return;
     }
 
-    pthread_mutex_lock(&t->lock);
+    nimcp_mutex_lock(&t->lock);
 
     /* Guard: Invalid magic means already destroyed or corrupted */
     /* MUST be re-checked INSIDE lock to handle race between pre-check and lock */
     if (!tensor_is_valid(t)) {
         /* Already destroyed or never initialized properly */
-        pthread_mutex_unlock(&t->lock);
+        nimcp_mutex_unlock(&t->lock);
         return;
     }
 
     /* Refcount management */
     t->refcount--;
     if (t->refcount > 0) {
-        pthread_mutex_unlock(&t->lock);
+        nimcp_mutex_unlock(&t->lock);
         return;
     }
 

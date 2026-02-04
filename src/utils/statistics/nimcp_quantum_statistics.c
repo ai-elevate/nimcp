@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Internal Constants
@@ -90,12 +91,12 @@ float qstats_complex_abs_squared(qstats_complex_t a) {
 qstats_pure_state_t* qstats_pure_state_create(uint32_t dim) {
     if (dim == 0) return NULL;
 
-    qstats_pure_state_t* state = malloc(sizeof(qstats_pure_state_t));
+    qstats_pure_state_t* state = nimcp_malloc(sizeof(qstats_pure_state_t));
     if (!state) return NULL;
 
-    state->amplitudes = calloc(dim, sizeof(qstats_complex_t));
+    state->amplitudes = nimcp_calloc(dim, sizeof(qstats_complex_t));
     if (!state->amplitudes) {
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -112,20 +113,20 @@ qstats_pure_state_t* qstats_pure_state_create(uint32_t dim) {
 
 void qstats_pure_state_destroy(qstats_pure_state_t* state) {
     if (state) {
-        free(state->amplitudes);
-        free(state);
+        nimcp_free(state->amplitudes);
+        nimcp_free(state);
     }
 }
 
 qstats_density_matrix_t* qstats_density_matrix_create(uint32_t dim) {
     if (dim == 0) return NULL;
 
-    qstats_density_matrix_t* dm = malloc(sizeof(qstats_density_matrix_t));
+    qstats_density_matrix_t* dm = nimcp_malloc(sizeof(qstats_density_matrix_t));
     if (!dm) return NULL;
 
-    dm->elements = calloc(dim * dim, sizeof(qstats_complex_t));
+    dm->elements = nimcp_calloc(dim * dim, sizeof(qstats_complex_t));
     if (!dm->elements) {
-        free(dm);
+        nimcp_free(dm);
         return NULL;
     }
 
@@ -141,9 +142,9 @@ qstats_density_matrix_t* qstats_density_matrix_create(uint32_t dim) {
 
 void qstats_density_matrix_destroy(qstats_density_matrix_t* dm) {
     if (dm) {
-        free(dm->elements);
-        free(dm->eigenvalues);
-        free(dm);
+        nimcp_free(dm->elements);
+        nimcp_free(dm->eigenvalues);
+        nimcp_free(dm);
     }
 }
 
@@ -227,7 +228,7 @@ qstats_density_matrix_t* qstats_density_matrix_thermal(
 
     // For diagonal Hamiltonian (simplified): ρᵢᵢ = exp(-β Hᵢᵢ) / Z
     float Z = 0.0f;
-    float* boltzmann = malloc(dim * sizeof(float));
+    float* boltzmann = nimcp_malloc(dim * sizeof(float));
     if (!boltzmann) {
         qstats_density_matrix_destroy(dm);
         return NULL;
@@ -245,7 +246,7 @@ qstats_density_matrix_t* qstats_density_matrix_thermal(
         dm->elements[i * dim + i].real = boltzmann[i] / Z;
     }
 
-    free(boltzmann);
+    nimcp_free(boltzmann);
     return dm;
 }
 
@@ -419,8 +420,8 @@ static void qstats_compute_eigenvalues_jacobi(
     uint32_t n = dm->dim;
 
     // Work with real part (density matrices are Hermitian, eigenvalues are real)
-    float* A = malloc(n * n * sizeof(float));
-    float* V = malloc(n * n * sizeof(float));
+    float* A = nimcp_malloc(n * n * sizeof(float));
+    float* V = nimcp_malloc(n * n * sizeof(float));
 
     // Copy real parts (for Hermitian matrix, eigenvalues come from real part structure)
     for (uint32_t i = 0; i < n; i++) {
@@ -499,8 +500,8 @@ static void qstats_compute_eigenvalues_jacobi(
         }
     }
 
-    free(A);
-    free(V);
+    nimcp_free(A);
+    nimcp_free(V);
 }
 
 qstats_result_t qstats_eigenvalues(
@@ -520,7 +521,7 @@ qstats_result_t qstats_eigenvalues(
     // Cache if possible (cast away const for caching)
     qstats_density_matrix_t* dm_mutable = (qstats_density_matrix_t*)dm;
     if (!dm_mutable->eigenvalues) {
-        dm_mutable->eigenvalues = malloc(dm->dim * sizeof(float));
+        dm_mutable->eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     }
     if (dm_mutable->eigenvalues) {
         memcpy(dm_mutable->eigenvalues, eigenvalues, dm->dim * sizeof(float));
@@ -537,7 +538,7 @@ qstats_result_t qstats_eigenvalues(
 float qstats_von_neumann_entropy(const qstats_density_matrix_t* dm) {
     if (!dm) return NAN;
 
-    float* eigenvalues = malloc(dm->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     if (!eigenvalues) return NAN;
 
     qstats_eigenvalues(dm, eigenvalues);
@@ -550,14 +551,14 @@ float qstats_von_neumann_entropy(const qstats_density_matrix_t* dm) {
         }
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return entropy;
 }
 
 float qstats_von_neumann_entropy_nats(const qstats_density_matrix_t* dm) {
     if (!dm) return NAN;
 
-    float* eigenvalues = malloc(dm->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     if (!eigenvalues) return NAN;
 
     qstats_eigenvalues(dm, eigenvalues);
@@ -570,7 +571,7 @@ float qstats_von_neumann_entropy_nats(const qstats_density_matrix_t* dm) {
         }
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return entropy;
 }
 
@@ -580,7 +581,7 @@ qstats_result_t qstats_entropy_all(
 ) {
     if (!dm || !result) return QSTATS_ERROR_NULL;
 
-    float* eigenvalues = malloc(dm->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     if (!eigenvalues) return QSTATS_ERROR_MEMORY;
 
     qstats_eigenvalues(dm, eigenvalues);
@@ -614,7 +615,7 @@ qstats_result_t qstats_entropy_all(
     // Rényi-2 entropy: H₂ = -log₂(Σᵢ λᵢ²) = -log₂(purity)
     result->renyi_2 = -log2f(fmaxf(result->purity, QSTATS_MIN_EIGENVALUE));
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return QSTATS_OK;
 }
 
@@ -624,11 +625,11 @@ float qstats_quantum_relative_entropy(
 ) {
     if (!rho || !sigma || rho->dim != sigma->dim) return NAN;
 
-    float* lambda_rho = malloc(rho->dim * sizeof(float));
-    float* lambda_sigma = malloc(sigma->dim * sizeof(float));
+    float* lambda_rho = nimcp_malloc(rho->dim * sizeof(float));
+    float* lambda_sigma = nimcp_malloc(sigma->dim * sizeof(float));
     if (!lambda_rho || !lambda_sigma) {
-        free(lambda_rho);
-        free(lambda_sigma);
+        nimcp_free(lambda_rho);
+        nimcp_free(lambda_sigma);
         return NAN;
     }
 
@@ -644,16 +645,16 @@ float qstats_quantum_relative_entropy(
         if (lambda_rho[i] > QSTATS_MIN_EIGENVALUE) {
             // Check if σ has support where ρ has support
             if (lambda_sigma[i] < QSTATS_MIN_EIGENVALUE) {
-                free(lambda_rho);
-                free(lambda_sigma);
+                nimcp_free(lambda_rho);
+                nimcp_free(lambda_sigma);
                 return INFINITY;
             }
             rel_entropy += lambda_rho[i] * (log2f(lambda_rho[i]) - log2f(lambda_sigma[i]));
         }
     }
 
-    free(lambda_rho);
-    free(lambda_sigma);
+    nimcp_free(lambda_rho);
+    nimcp_free(lambda_sigma);
     return rel_entropy;
 }
 
@@ -720,7 +721,7 @@ float qstats_linear_entropy(const qstats_density_matrix_t* dm) {
 float qstats_renyi_entropy(const qstats_density_matrix_t* dm, float alpha) {
     if (!dm || alpha <= 0.0f || fabsf(alpha - 1.0f) < QSTATS_EPSILON) return NAN;
 
-    float* eigenvalues = malloc(dm->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     if (!eigenvalues) return NAN;
 
     qstats_eigenvalues(dm, eigenvalues);
@@ -733,14 +734,14 @@ float qstats_renyi_entropy(const qstats_density_matrix_t* dm, float alpha) {
         }
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return log2f(sum) / (1.0f - alpha);
 }
 
 float qstats_min_entropy(const qstats_density_matrix_t* dm) {
     if (!dm) return NAN;
 
-    float* eigenvalues = malloc(dm->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dm->dim * sizeof(float));
     if (!eigenvalues) return NAN;
 
     qstats_eigenvalues(dm, eigenvalues);
@@ -748,7 +749,7 @@ float qstats_min_entropy(const qstats_density_matrix_t* dm) {
     // H_min = -log₂(λ_max)
     float lambda_max = eigenvalues[0];  // Already sorted descending
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return -log2f(fmaxf(lambda_max, QSTATS_MIN_EIGENVALUE));
 }
 
@@ -808,7 +809,7 @@ float qstats_trace_distance(
         diff->elements[i] = qstats_complex_sub(rho->elements[i], sigma->elements[i]);
     }
 
-    float* eigenvalues = malloc(n * sizeof(float));
+    float* eigenvalues = nimcp_malloc(n * sizeof(float));
     if (!eigenvalues) {
         qstats_density_matrix_destroy(diff);
         return NAN;
@@ -821,7 +822,7 @@ float qstats_trace_distance(
         trace_abs += fabsf(eigenvalues[i]);
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     qstats_density_matrix_destroy(diff);
 
     return 0.5f * trace_abs;
@@ -939,7 +940,7 @@ float qstats_negativity(
     // N = (||ρ^(T_A)||₁ - 1) / 2
     // ||ρ||₁ = Σᵢ |λᵢ| (trace norm)
 
-    float* eigenvalues = malloc(rho_pt->dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(rho_pt->dim * sizeof(float));
     if (!eigenvalues) {
         qstats_density_matrix_destroy(rho_pt);
         return NAN;
@@ -952,7 +953,7 @@ float qstats_negativity(
         trace_norm += fabsf(eigenvalues[i]);
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     qstats_density_matrix_destroy(rho_pt);
 
     return (trace_norm - 1.0f) / 2.0f;
@@ -981,7 +982,7 @@ float qstats_quantum_fisher_information(
     // F_Q = 2 Σᵢⱼ ((λᵢ-λⱼ)²/(λᵢ+λⱼ)) |⟨i|H|j⟩|²
     // Simplified for diagonal basis
 
-    float* eigenvalues = malloc(dim * sizeof(float));
+    float* eigenvalues = nimcp_malloc(dim * sizeof(float));
     if (!eigenvalues) return NAN;
 
     qstats_eigenvalues(rho, eigenvalues);
@@ -1001,7 +1002,7 @@ float qstats_quantum_fisher_information(
         }
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     return fisher;
 }
 
@@ -1014,12 +1015,12 @@ qstats_result_t qstats_quantum_fisher_matrix(
     if (!rho || !generators || !result) return QSTATS_ERROR_NULL;
 
     result->n_params = n_params;
-    result->fisher_matrix = calloc(n_params * n_params, sizeof(float));
-    result->cramer_rao_bounds = calloc(n_params, sizeof(float));
+    result->fisher_matrix = nimcp_calloc(n_params * n_params, sizeof(float));
+    result->cramer_rao_bounds = nimcp_calloc(n_params, sizeof(float));
 
     if (!result->fisher_matrix || !result->cramer_rao_bounds) {
-        free(result->fisher_matrix);
-        free(result->cramer_rao_bounds);
+        nimcp_free(result->fisher_matrix);
+        nimcp_free(result->cramer_rao_bounds);
         return QSTATS_ERROR_MEMORY;
     }
 
@@ -1041,8 +1042,8 @@ qstats_result_t qstats_quantum_fisher_matrix(
 
 void qstats_fisher_result_free(qstats_fisher_result_t* result) {
     if (result) {
-        free(result->fisher_matrix);
-        free(result->cramer_rao_bounds);
+        nimcp_free(result->fisher_matrix);
+        nimcp_free(result->cramer_rao_bounds);
         result->fisher_matrix = NULL;
         result->cramer_rao_bounds = NULL;
     }
@@ -1100,7 +1101,7 @@ float qstats_quantum_discrimination_error(
         diff->elements[i].imag = prior0 * rho0->elements[i].imag - prior1 * rho1->elements[i].imag;
     }
 
-    float* eigenvalues = malloc(n * sizeof(float));
+    float* eigenvalues = nimcp_malloc(n * sizeof(float));
     if (!eigenvalues) {
         qstats_density_matrix_destroy(diff);
         return NAN;
@@ -1113,7 +1114,7 @@ float qstats_quantum_discrimination_error(
         trace_norm += fabsf(eigenvalues[i]);
     }
 
-    free(eigenvalues);
+    nimcp_free(eigenvalues);
     qstats_density_matrix_destroy(diff);
 
     return 0.5f * (1.0f - trace_norm);
@@ -1318,7 +1319,7 @@ float qstats_thermodynamic_entropy(
 ) {
     if (!energies || num_states == 0 || temperature <= 0.0f) return NAN;
 
-    float* probs = malloc(num_states * sizeof(float));
+    float* probs = nimcp_malloc(num_states * sizeof(float));
     if (!probs) return NAN;
 
     qstats_boltzmann_distribution(energies, num_states, temperature, probs);
@@ -1331,7 +1332,7 @@ float qstats_thermodynamic_entropy(
 
     float F = qstats_free_energy(energies, num_states, temperature);
 
-    free(probs);
+    nimcp_free(probs);
 
     // S = (<E> - F) / T
     return (mean_E - F) / temperature;
@@ -1406,7 +1407,7 @@ float qstats_von_neumann_entropy_mc(
     if (!dm) return NAN;
 
     // For large systems, use MC sampling of diagonal
-    float* probs = malloc(dm->dim * sizeof(float));
+    float* probs = nimcp_malloc(dm->dim * sizeof(float));
     if (!probs) return NAN;
 
     qstats_diagonal_probabilities(dm, probs);
@@ -1444,7 +1445,7 @@ float qstats_von_neumann_entropy_mc(
         *variance_out = var / (float)num_samples;
     }
 
-    free(probs);
+    nimcp_free(probs);
     return mean;
 }
 
@@ -1456,11 +1457,11 @@ float qstats_quantum_relative_entropy_mc(
 ) {
     if (!rho || !sigma || rho->dim != sigma->dim) return NAN;
 
-    float* probs_rho = malloc(rho->dim * sizeof(float));
-    float* probs_sigma = malloc(sigma->dim * sizeof(float));
+    float* probs_rho = nimcp_malloc(rho->dim * sizeof(float));
+    float* probs_sigma = nimcp_malloc(sigma->dim * sizeof(float));
     if (!probs_rho || !probs_sigma) {
-        free(probs_rho);
-        free(probs_sigma);
+        nimcp_free(probs_rho);
+        nimcp_free(probs_sigma);
         return NAN;
     }
 
@@ -1493,8 +1494,8 @@ float qstats_quantum_relative_entropy_mc(
             sum_sq += contrib * contrib;
         } else if (probs_rho[idx] > QSTATS_MIN_EIGENVALUE) {
             // sigma has no support where rho has support
-            free(probs_rho);
-            free(probs_sigma);
+            nimcp_free(probs_rho);
+            nimcp_free(probs_sigma);
             return INFINITY;
         }
     }
@@ -1506,8 +1507,8 @@ float qstats_quantum_relative_entropy_mc(
         *variance_out = var / (float)num_samples;
     }
 
-    free(probs_rho);
-    free(probs_sigma);
+    nimcp_free(probs_rho);
+    nimcp_free(probs_sigma);
     return mean;
 }
 

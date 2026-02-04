@@ -60,6 +60,8 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/memory/nimcp_memory.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -120,7 +122,7 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
     }
 
     // Allocate array
-    float* array = (float*)malloc((*size) * sizeof(float));
+    float* array = (float*)nimcp_malloc((*size) * sizeof(float));
     if (!array) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (*size) * sizeof(float),
                           "py_list_to_float_array: Failed to allocate float array");
@@ -134,7 +136,7 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
     for (Py_ssize_t i = 0; i < *size; i++) {
         PyObject* item = PyList_GetItem(list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
-            free(array);
+            nimcp_free(array);
             NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                        "py_list_to_float_array: List element %zd is not a number", i);
             PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
@@ -251,7 +253,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     float loss = nimcp_brain_learn_example(self->brain, features,
                                            (uint32_t)num_features, label, confidence);
-    free(features);
+    nimcp_free(features);
 
     if (loss < 0.0F) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
@@ -293,7 +295,7 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
 
     nimcp_status_t status = nimcp_brain_predict(self->brain, features,
                                                 (uint32_t)num_features, label, &confidence);
-    free(features);
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
@@ -346,17 +348,17 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     }
 
     // Allocate batch arrays
-    const float** features_ptrs = (const float**)malloc(batch_size * sizeof(float*));
-    float** feature_arrays = (float**)malloc(batch_size * sizeof(float*));
-    char** labels = (char**)malloc(batch_size * sizeof(char*));
-    float* confidences = (float*)malloc(batch_size * sizeof(float));
+    const float** features_ptrs = (const float**)nimcp_malloc(batch_size * sizeof(float*));
+    float** feature_arrays = (float**)nimcp_malloc(batch_size * sizeof(float*));
+    char** labels = (char**)nimcp_malloc(batch_size * sizeof(char*));
+    float* confidences = (float*)nimcp_malloc(batch_size * sizeof(float));
 
     if (!features_ptrs || !feature_arrays || !labels || !confidences) {
-        free(first_features);
-        free(features_ptrs);
-        free(feature_arrays);
-        free(labels);
-        free(confidences);
+        nimcp_free(first_features);
+        nimcp_free(features_ptrs);
+        nimcp_free(feature_arrays);
+        nimcp_free(labels);
+        nimcp_free(confidences);
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, batch_size * sizeof(float*),
                           "Brain_predict_batch: Failed to allocate batch arrays");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate batch arrays");
@@ -374,12 +376,12 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
         if (!features || size != num_features) {
             // Clean up
             for (Py_ssize_t j = 0; j < i; j++) {
-                free(feature_arrays[j]);
+                nimcp_free(feature_arrays[j]);
             }
-            free(features_ptrs);
-            free(feature_arrays);
-            free(labels);
-            free(confidences);
+            nimcp_free(features_ptrs);
+            nimcp_free(feature_arrays);
+            nimcp_free(labels);
+            nimcp_free(confidences);
             PyErr_SetString(PyExc_ValueError, "All feature lists must have same length");
             return NULL;
         }
@@ -389,18 +391,18 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
     // Allocate label buffers
     for (Py_ssize_t i = 0; i < batch_size; i++) {
-        labels[i] = (char*)malloc(256);
+        labels[i] = (char*)nimcp_malloc(256);
         if (!labels[i]) {
             for (Py_ssize_t j = 0; j < i; j++) {
-                free(labels[j]);
+                nimcp_free(labels[j]);
             }
             for (Py_ssize_t j = 0; j < batch_size; j++) {
-                free(feature_arrays[j]);
+                nimcp_free(feature_arrays[j]);
             }
-            free(features_ptrs);
-            free(feature_arrays);
-            free(labels);
-            free(confidences);
+            nimcp_free(features_ptrs);
+            nimcp_free(feature_arrays);
+            nimcp_free(labels);
+            nimcp_free(confidences);
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 256,
                               "Brain_predict_batch: Failed to allocate label buffer %zd", i);
             PyErr_SetString(PyExc_MemoryError, "Failed to allocate label buffers");
@@ -434,13 +436,13 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
     // Clean up
     for (Py_ssize_t i = 0; i < batch_size; i++) {
-        free(feature_arrays[i]);
-        free(labels[i]);
+        nimcp_free(feature_arrays[i]);
+        nimcp_free(labels[i]);
     }
-    free(features_ptrs);
-    free(feature_arrays);
-    free(labels);
-    free(confidences);
+    nimcp_free(features_ptrs);
+    nimcp_free(feature_arrays);
+    nimcp_free(labels);
+    nimcp_free(confidences);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());

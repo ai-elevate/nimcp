@@ -14,29 +14,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perirhinal)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for perirhinal module */
-static nimcp_health_agent_t* g_perirhinal_health_agent = NULL;
+static mesh_participant_id_t g_perirhinal_mesh_id = 0;
+static mesh_participant_registry_t* g_perirhinal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for perirhinal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void perirhinal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_perirhinal_health_agent = agent;
+nimcp_error_t perirhinal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_perirhinal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "perirhinal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "perirhinal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_perirhinal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_perirhinal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from perirhinal module */
-static inline void perirhinal_heartbeat(const char* operation, float progress) {
-    if (g_perirhinal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_perirhinal_health_agent, operation, progress);
+void perirhinal_mesh_unregister(void) {
+    if (g_perirhinal_mesh_registry && g_perirhinal_mesh_id != 0) {
+        mesh_participant_unregister(g_perirhinal_mesh_registry, g_perirhinal_mesh_id);
+        g_perirhinal_mesh_id = 0;
+        g_perirhinal_mesh_registry = NULL;
     }
 }
 
@@ -150,7 +163,7 @@ perirhinal_config_t perirhinal_default_config(void) {
 }
 
 nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
-    nimcp_perirhinal_t* pr = (nimcp_perirhinal_t*)calloc(1, sizeof(nimcp_perirhinal_t));
+    nimcp_perirhinal_t* pr = (nimcp_perirhinal_t*)nimcp_calloc(1, sizeof(nimcp_perirhinal_t));
     if (!pr) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr is NULL");
@@ -168,7 +181,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
     /* Allocate object cells */
     pr->num_object_cells = pr->config.num_object_cells;
-    pr->object_cells = (nimcp_object_cell_t*)calloc(
+    pr->object_cells = (nimcp_object_cell_t*)nimcp_calloc(
         pr->num_object_cells, sizeof(nimcp_object_cell_t));
     if (!pr->object_cells) goto error;
 
@@ -178,7 +191,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
         pr->object_cells[i].selectivity = pr->config.object_selectivity;
         pr->object_cells[i].view_invariance = pr->config.view_invariance_target;
         pr->object_cells[i].feature_dim = pr->config.feature_dim;
-        pr->object_cells[i].feature_weights = (float*)calloc(
+        pr->object_cells[i].feature_weights = (float*)nimcp_calloc(
             pr->config.feature_dim, sizeof(float));
         if (!pr->object_cells[i].feature_weights) goto error;
 
@@ -192,7 +205,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
     /* Allocate familiarity cells */
     pr->num_familiarity_cells = pr->config.num_familiarity_cells;
-    pr->familiarity_cells = (nimcp_familiarity_cell_t*)calloc(
+    pr->familiarity_cells = (nimcp_familiarity_cell_t*)nimcp_calloc(
         pr->num_familiarity_cells, sizeof(nimcp_familiarity_cell_t));
     if (!pr->familiarity_cells) goto error;
 
@@ -204,14 +217,14 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
         pr->familiarity_cells[i].baseline_response = 1.0f;
         pr->familiarity_cells[i].trace_size = pr->config.max_stored_objects;
         pr->familiarity_cells[i].trace_decay = 0.99f;
-        pr->familiarity_cells[i].memory_trace = (float*)calloc(
+        pr->familiarity_cells[i].memory_trace = (float*)nimcp_calloc(
             pr->config.max_stored_objects, sizeof(float));
         if (!pr->familiarity_cells[i].memory_trace) goto error;
     }
 
     /* Allocate novelty detectors */
     pr->num_novelty_cells = pr->config.num_novelty_cells;
-    pr->novelty_cells = (nimcp_novelty_detector_t*)calloc(
+    pr->novelty_cells = (nimcp_novelty_detector_t*)nimcp_calloc(
         pr->num_novelty_cells, sizeof(nimcp_novelty_detector_t));
     if (!pr->novelty_cells) goto error;
 
@@ -222,9 +235,9 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
         pr->novelty_cells[i].habituation_rate = pr->config.habituation_rate;
         pr->novelty_cells[i].recovery_rate = 0.01f;
         pr->novelty_cells[i].feature_dim = pr->config.feature_dim;
-        pr->novelty_cells[i].expected_features = (float*)calloc(
+        pr->novelty_cells[i].expected_features = (float*)nimcp_calloc(
             pr->config.feature_dim, sizeof(float));
-        pr->novelty_cells[i].feature_variance = (float*)calloc(
+        pr->novelty_cells[i].feature_variance = (float*)nimcp_calloc(
             pr->config.feature_dim, sizeof(float));
         if (!pr->novelty_cells[i].expected_features ||
             !pr->novelty_cells[i].feature_variance) goto error;
@@ -237,7 +250,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
     /* Allocate recency cells */
     pr->num_recency_cells = pr->config.num_recency_cells;
-    pr->recency_cells = (nimcp_recency_cell_t*)calloc(
+    pr->recency_cells = (nimcp_recency_cell_t*)nimcp_calloc(
         pr->num_recency_cells, sizeof(nimcp_recency_cell_t));
     if (!pr->recency_cells) goto error;
 
@@ -255,7 +268,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
     /* Allocate stored objects */
     pr->max_stored_objects = pr->config.max_stored_objects;
-    pr->stored_objects = (nimcp_stored_object_t*)calloc(
+    pr->stored_objects = (nimcp_stored_object_t*)nimcp_calloc(
         pr->max_stored_objects, sizeof(nimcp_stored_object_t));
     if (!pr->stored_objects) goto error;
 
@@ -267,7 +280,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
     /* Initialize processing state */
     pr->current_input_dim = pr->config.feature_dim;
-    pr->current_visual_input = (float*)calloc(pr->current_input_dim, sizeof(float));
+    pr->current_visual_input = (float*)nimcp_calloc(pr->current_input_dim, sizeof(float));
     if (!pr->current_visual_input) goto error;
 
     /* Initialize timing */
@@ -292,53 +305,53 @@ void perirhinal_destroy(nimcp_perirhinal_t* pr) {
     /* Free object cells */
     if (pr->object_cells) {
         for (uint32_t i = 0; i < pr->num_object_cells; i++) {
-            free(pr->object_cells[i].feature_weights);
+            nimcp_free(pr->object_cells[i].feature_weights);
         }
-        free(pr->object_cells);
+        nimcp_free(pr->object_cells);
     }
 
     /* Free familiarity cells */
     if (pr->familiarity_cells) {
         for (uint32_t i = 0; i < pr->num_familiarity_cells; i++) {
-            free(pr->familiarity_cells[i].memory_trace);
+            nimcp_free(pr->familiarity_cells[i].memory_trace);
         }
-        free(pr->familiarity_cells);
+        nimcp_free(pr->familiarity_cells);
     }
 
     /* Free novelty detectors */
     if (pr->novelty_cells) {
         for (uint32_t i = 0; i < pr->num_novelty_cells; i++) {
-            free(pr->novelty_cells[i].expected_features);
-            free(pr->novelty_cells[i].feature_variance);
+            nimcp_free(pr->novelty_cells[i].expected_features);
+            nimcp_free(pr->novelty_cells[i].feature_variance);
         }
-        free(pr->novelty_cells);
+        nimcp_free(pr->novelty_cells);
     }
 
     /* Free recency cells */
-    free(pr->recency_cells);
+    nimcp_free(pr->recency_cells);
 
     /* Free stored objects */
     if (pr->stored_objects) {
         for (uint32_t i = 0; i < pr->max_stored_objects; i++) {
             if (pr->stored_objects[i].object_id != UINT32_MAX) {
-                free(pr->stored_objects[i].visual_features);
-                free(pr->stored_objects[i].identity_vector);
-                free(pr->stored_objects[i].spatial_context);
-                free(pr->stored_objects[i].associated_objects);
-                free(pr->stored_objects[i].association_strengths);
+                nimcp_free(pr->stored_objects[i].visual_features);
+                nimcp_free(pr->stored_objects[i].identity_vector);
+                nimcp_free(pr->stored_objects[i].spatial_context);
+                nimcp_free(pr->stored_objects[i].associated_objects);
+                nimcp_free(pr->stored_objects[i].association_strengths);
                 if (pr->stored_objects[i].view_vectors) {
                     for (uint32_t v = 0; v < pr->stored_objects[i].num_views; v++) {
-                        free(pr->stored_objects[i].view_vectors[v]);
+                        nimcp_free(pr->stored_objects[i].view_vectors[v]);
                     }
-                    free(pr->stored_objects[i].view_vectors);
+                    nimcp_free(pr->stored_objects[i].view_vectors);
                 }
             }
         }
-        free(pr->stored_objects);
+        nimcp_free(pr->stored_objects);
     }
 
-    free(pr->current_visual_input);
-    free(pr);
+    nimcp_free(pr->current_visual_input);
+    nimcp_free(pr);
 }
 
 int perirhinal_reset(nimcp_perirhinal_t* pr) {
@@ -457,7 +470,7 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
 
     /* Allocate and copy visual features */
     obj->feature_dim = feature_dim;
-    obj->visual_features = (float*)malloc(feature_dim * sizeof(float));
+    obj->visual_features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!obj->visual_features) {
         obj->object_id = UINT32_MAX;
         pr->last_error = PERIRHINAL_ERROR_ENCODING_FAILED;
@@ -467,9 +480,9 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
 
     /* Create identity vector */
     obj->identity_dim = pr->config.identity_dim;
-    obj->identity_vector = (float*)calloc(obj->identity_dim, sizeof(float));
+    obj->identity_vector = (float*)nimcp_calloc(obj->identity_dim, sizeof(float));
     if (!obj->identity_vector) {
-        free(obj->visual_features);
+        nimcp_free(obj->visual_features);
         obj->object_id = UINT32_MAX;
         pr->last_error = PERIRHINAL_ERROR_ENCODING_FAILED;
         return -1;
@@ -482,9 +495,9 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
 
     /* Initialize first view */
     obj->num_views = 1;
-    obj->view_vectors = (float**)malloc(sizeof(float*));
+    obj->view_vectors = (float**)nimcp_malloc(sizeof(float*));
     if (obj->view_vectors) {
-        obj->view_vectors[0] = (float*)malloc(feature_dim * sizeof(float));
+        obj->view_vectors[0] = (float*)nimcp_malloc(feature_dim * sizeof(float));
         if (obj->view_vectors[0]) {
             memcpy(obj->view_vectors[0], visual_features, feature_dim * sizeof(float));
         }
@@ -617,12 +630,12 @@ int perirhinal_add_object_view(nimcp_perirhinal_t* pr,
     }
 
     /* Reallocate view array */
-    float** new_views = (float**)realloc(obj->view_vectors,
+    float** new_views = (float**)nimcp_realloc(obj->view_vectors,
         (obj->num_views + 1) * sizeof(float*));
     if (!new_views) return -1;
 
     obj->view_vectors = new_views;
-    obj->view_vectors[obj->num_views] = (float*)malloc(feature_dim * sizeof(float));
+    obj->view_vectors[obj->num_views] = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!obj->view_vectors[obj->num_views]) return -1;
 
     memcpy(obj->view_vectors[obj->num_views], view_features, feature_dim * sizeof(float));
@@ -661,17 +674,17 @@ int perirhinal_forget_object(nimcp_perirhinal_t* pr, uint32_t object_id) {
     if (obj->object_id == UINT32_MAX) return -1;
 
     /* Free allocated memory */
-    free(obj->visual_features);
-    free(obj->identity_vector);
-    free(obj->spatial_context);
-    free(obj->associated_objects);
-    free(obj->association_strengths);
+    nimcp_free(obj->visual_features);
+    nimcp_free(obj->identity_vector);
+    nimcp_free(obj->spatial_context);
+    nimcp_free(obj->associated_objects);
+    nimcp_free(obj->association_strengths);
 
     if (obj->view_vectors) {
         for (uint32_t v = 0; v < obj->num_views; v++) {
-            free(obj->view_vectors[v]);
+            nimcp_free(obj->view_vectors[v]);
         }
-        free(obj->view_vectors);
+        nimcp_free(obj->view_vectors);
     }
 
     /* Mark as empty */
@@ -926,14 +939,14 @@ int perirhinal_create_association(nimcp_perirhinal_t* pr,
     }
 
     /* Add new association */
-    uint32_t* new_ids = (uint32_t*)realloc(obj_a->associated_objects,
+    uint32_t* new_ids = (uint32_t*)nimcp_realloc(obj_a->associated_objects,
         (obj_a->num_associations + 1) * sizeof(uint32_t));
-    float* new_strengths = (float*)realloc(obj_a->association_strengths,
+    float* new_strengths = (float*)nimcp_realloc(obj_a->association_strengths,
         (obj_a->num_associations + 1) * sizeof(float));
 
     if (!new_ids || !new_strengths) {
-        free(new_ids);
-        free(new_strengths);
+        nimcp_free(new_ids);
+        nimcp_free(new_strengths);
         return -1;
     }
 
@@ -1003,10 +1016,10 @@ int perirhinal_bind_spatial_context(nimcp_perirhinal_t* pr,
     if (obj->object_id == UINT32_MAX) return -1;
 
     /* Free old context if exists */
-    free(obj->spatial_context);
+    nimcp_free(obj->spatial_context);
 
     obj->spatial_dim = spatial_dim;
-    obj->spatial_context = (float*)malloc(spatial_dim * sizeof(float));
+    obj->spatial_context = (float*)nimcp_malloc(spatial_dim * sizeof(float));
     if (!obj->spatial_context) return -1;
 
     memcpy(obj->spatial_context, spatial_context, spatial_dim * sizeof(float));
@@ -1138,7 +1151,7 @@ int perirhinal_process_visual_input(nimcp_perirhinal_t* pr,
 
     /* Store current input */
     if (feature_dim != pr->current_input_dim) {
-        float* new_input = (float*)realloc(pr->current_visual_input,
+        float* new_input = (float*)nimcp_realloc(pr->current_visual_input,
             feature_dim * sizeof(float));
         if (!new_input) return -1;
         pr->current_visual_input = new_input;

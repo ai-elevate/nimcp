@@ -176,7 +176,7 @@ typedef struct {
     float throughput;           /**< Operations per second */
     float error_rate;           /**< Error rate [0, 1] */
     uint64_t timestamp_ms;      /**< Timestamp (milliseconds) */
-} health_metrics_t;
+} failure_health_metrics_t;
 
 /**
  * @brief Opaque failure predictor handle
@@ -289,7 +289,7 @@ bool failure_predictor_update_indicator(
  */
 bool failure_predictor_update_from_health_metrics(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 /**
@@ -355,7 +355,7 @@ leading_indicator_t* failure_predictor_get_all_indicators(
  */
 failure_prediction_t* failure_predictor_predict(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 /**
@@ -457,7 +457,7 @@ void failure_predictor_clear_predictions(failure_predictor_t* predictor);
  */
 bool failure_predictor_detect_memory_leak(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 /**
@@ -478,7 +478,7 @@ bool failure_predictor_detect_memory_leak(
  */
 bool failure_predictor_detect_gradient_explosion(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 /**
@@ -494,7 +494,7 @@ bool failure_predictor_detect_gradient_explosion(
  */
 uint64_t failure_predictor_estimate_time_to_oom(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 /**
@@ -509,7 +509,7 @@ uint64_t failure_predictor_estimate_time_to_oom(
  */
 uint64_t failure_predictor_estimate_time_to_explosion(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 );
 
 //=============================================================================

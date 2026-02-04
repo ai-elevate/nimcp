@@ -14,30 +14,42 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_vta_guard module */
-static nimcp_health_agent_t* g_lgss_vta_guard_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_vta_guard)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_vta_guard heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_vta_guard_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_vta_guard_health_agent = agent;
+static mesh_participant_id_t g_lgss_vta_guard_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_vta_guard_mesh_registry = NULL;
+
+nimcp_error_t lgss_vta_guard_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_vta_guard_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_vta_guard", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_vta_guard";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_vta_guard_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_vta_guard_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_vta_guard module */
-static inline void lgss_vta_guard_heartbeat(const char* operation, float progress) {
-    if (g_lgss_vta_guard_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_vta_guard_health_agent, operation, progress);
+void lgss_vta_guard_mesh_unregister(void) {
+    if (g_lgss_vta_guard_mesh_registry && g_lgss_vta_guard_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_vta_guard_mesh_registry, g_lgss_vta_guard_mesh_id);
+        g_lgss_vta_guard_mesh_id = 0;
+        g_lgss_vta_guard_mesh_registry = NULL;
     }
 }
 
@@ -139,7 +151,7 @@ vta_guard_config_t vta_guard_default_config(void) {
 }
 
 vta_guard_t* vta_guard_create(const vta_guard_config_t* config) {
-    vta_guard_t* guard = calloc(1, sizeof(vta_guard_t));
+    vta_guard_t* guard = nimcp_calloc(1, sizeof(vta_guard_t));
     if (!guard) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
@@ -197,12 +209,12 @@ void vta_guard_destroy(vta_guard_t* guard) {
 
     guard->magic = 0;
     guard->initialized = false;
-    free(guard);
+    nimcp_free(guard);
 }
 
 int vta_guard_reset(vta_guard_t* guard) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Reset state */
@@ -475,10 +487,10 @@ vta_guard_status_t vta_guard_trigger_burst(
 
 int vta_guard_get_da_rate(const vta_guard_t* guard, float* rate) {
     if (!guard || !rate) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     *rate = calculate_da_rate(guard);
@@ -522,10 +534,10 @@ float vta_guard_get_rate_limit_factor(const vta_guard_t* guard) {
 
 int vta_guard_protect_pathway(vta_guard_t* guard, da_pathway_t pathway) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (pathway >= DA_PATHWAY_COUNT) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     guard->pathways_protected[pathway] = true;
@@ -568,7 +580,7 @@ int vta_guard_update_receptor_activation(
     float d2_activation)
 {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     guard->d1_activation = clampf(d1_activation, 0.0f, 1.0f);
@@ -597,7 +609,7 @@ int vta_guard_update_receptor_activation(
 
 int vta_guard_get_d1_d2_ratio(const vta_guard_t* guard, float* ratio) {
     if (!guard || !ratio || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (guard->d2_activation > 0.001f) {
@@ -628,7 +640,7 @@ bool vta_guard_receptor_balance_ok(const vta_guard_t* guard) {
 
 int vta_guard_set_vta(vta_guard_t* guard, void* vta) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     guard->vta = vta;
     return 0;
@@ -639,7 +651,7 @@ int vta_guard_set_reward_monitor(
     reward_alignment_monitor_t* monitor)
 {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     guard->reward_monitor = monitor;
     return 0;
@@ -651,7 +663,7 @@ int vta_guard_set_reward_monitor(
 
 int vta_guard_get_stats(const vta_guard_t* guard, vta_guard_stats_t* stats) {
     if (!guard || !stats || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     *stats = guard->stats;
     return 0;
@@ -659,7 +671,7 @@ int vta_guard_get_stats(const vta_guard_t* guard, vta_guard_stats_t* stats) {
 
 int vta_guard_reset_stats(vta_guard_t* guard) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     memset(&guard->stats, 0, sizeof(vta_guard_stats_t));
     return 0;
@@ -675,7 +687,7 @@ int vta_guard_set_alert_callback(
     void* user_data)
 {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     guard->alert_callback = callback;
     guard->callback_user_data = user_data;

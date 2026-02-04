@@ -14,6 +14,8 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * CONSTANTS
@@ -263,7 +265,7 @@ static void init_phoneme_model(phoneme_model_t* model) {
     model->num_features = 8;
 
     /* Allocate feature distributions */
-    model->feature_dist = (float*)calloc(model->num_phonemes * model->num_features,
+    model->feature_dist = (float*)nimcp_calloc(model->num_phonemes * model->num_features,
                                           sizeof(float));
     if (!model->feature_dist) return;
 
@@ -304,7 +306,7 @@ ling_stats_bridge_config_t ling_stats_bridge_default_config(void) {
 ling_stats_bridge_t* ling_stats_bridge_create(
     const ling_stats_bridge_config_t* config
 ) {
-    ling_stats_bridge_t* bridge = (ling_stats_bridge_t*)calloc(1, sizeof(*bridge));
+    ling_stats_bridge_t* bridge = (ling_stats_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         set_error("Failed to allocate statistics bridge");
         return NULL;
@@ -340,11 +342,11 @@ void ling_stats_bridge_destroy(ling_stats_bridge_t* bridge) {
     }
 
     if (bridge->phoneme_model.feature_dist) {
-        free(bridge->phoneme_model.feature_dist);
+        nimcp_free(bridge->phoneme_model.feature_dist);
     }
 
     bridge->magic = 0;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int ling_stats_bridge_register_mesh(
@@ -455,7 +457,7 @@ int ling_stats_hmm_viterbi_decode(
     }
 
     /* Backtrace */
-    result->state_sequence = (num_hmm_state_t*)malloc(num_obs * sizeof(num_hmm_state_t));
+    result->state_sequence = (num_hmm_state_t*)nimcp_malloc(num_obs * sizeof(num_hmm_state_t));
     if (!result->state_sequence) {
         return LING_STATS_ERR_HMM_FAIL;
     }

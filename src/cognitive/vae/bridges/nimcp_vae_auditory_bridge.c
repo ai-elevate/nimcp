@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -135,6 +136,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
     float* features = (float*)nimcp_calloc(feature_dim, sizeof(float));
     if (!features) {
         bridge->state = VAE_AUDIO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_NO_MEMORY, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
     }
 
@@ -163,6 +165,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         nimcp_free(features);
         bridge->state = VAE_AUDIO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_NO_MEMORY, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
     }
 
@@ -176,6 +179,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
         nimcp_tensor_destroy(logvar_tensor);
         nimcp_free(features);
         bridge->state = VAE_AUDIO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED;
     }
 
@@ -234,6 +238,7 @@ int vae_audio_encode_features(vae_audio_bridge_t* bridge,
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_NO_MEMORY, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
     }
 
@@ -245,6 +250,7 @@ int vae_audio_encode_features(vae_audio_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED;
     }
 
@@ -281,6 +287,7 @@ int vae_audio_decode(vae_audio_bridge_t* bridge,
     if (!latent_tensor || !output_tensor) {
         if (latent_tensor) nimcp_tensor_destroy(latent_tensor);
         if (output_tensor) nimcp_tensor_destroy(output_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_NO_MEMORY, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
     }
 
@@ -291,6 +298,7 @@ int vae_audio_decode(vae_audio_bridge_t* bridge,
     if (ret != 0) {
         nimcp_tensor_destroy(latent_tensor);
         nimcp_tensor_destroy(output_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_DECODE_FAILED, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_DECODE_FAILED;
     }
 

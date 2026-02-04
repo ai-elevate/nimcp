@@ -103,6 +103,7 @@ void swarm_quantum_reset_stats(swarm_quantum_bridge_t* bridge);
 
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct swarm_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -125,7 +126,7 @@ swarm_quantum_config_t swarm_quantum_default_config(void) {
 swarm_quantum_bridge_t* swarm_quantum_bridge_create(
     const swarm_quantum_config_t* config
 ) {
-    swarm_quantum_bridge_t* bridge = (swarm_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    swarm_quantum_bridge_t* bridge = (swarm_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : swarm_quantum_default_config();
@@ -137,7 +138,7 @@ swarm_quantum_bridge_t* swarm_quantum_bridge_create(
 
     bridge->qconsensus = quantum_consensus_create(&qconfig);
     if (!bridge->qconsensus) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -148,7 +149,7 @@ swarm_quantum_bridge_t* swarm_quantum_bridge_create(
 void swarm_quantum_bridge_destroy(swarm_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->qconsensus) quantum_consensus_destroy(bridge->qconsensus);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool swarm_quantum_bridge_is_enabled(const swarm_quantum_bridge_t* bridge) {

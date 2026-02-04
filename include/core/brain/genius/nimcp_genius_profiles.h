@@ -807,7 +807,7 @@ genius_error_t genius_profiles_send_message(
  * @param bridge Bridge instance
  * @return GENIUS_ERROR_SUCCESS or error code
  */
-genius_error_t genius_profiles_heartbeat(genius_profiles_bridge_t* bridge);
+genius_error_t genius_profiles_bridge_heartbeat(genius_profiles_bridge_t* bridge);
 
 /**
  * @brief Start health agent monitoring

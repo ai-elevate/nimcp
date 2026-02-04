@@ -26,31 +26,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spaced_repetition)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for spaced_repetition module */
-static nimcp_health_agent_t* g_spaced_repetition_health_agent = NULL;
+static mesh_participant_id_t g_spaced_repetition_mesh_id = 0;
+static mesh_participant_registry_t* g_spaced_repetition_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for spaced_repetition heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void spaced_repetition_set_health_agent(nimcp_health_agent_t* agent) {
-    g_spaced_repetition_health_agent = agent;
+nimcp_error_t spaced_repetition_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_spaced_repetition_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "spaced_repetition", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "spaced_repetition";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_spaced_repetition_mesh_id);
+    if (err == NIMCP_SUCCESS) g_spaced_repetition_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from spaced_repetition module */
-static inline void spaced_repetition_heartbeat(const char* operation, float progress) {
-    if (g_spaced_repetition_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_spaced_repetition_health_agent, operation, progress);
+void spaced_repetition_mesh_unregister(void) {
+    if (g_spaced_repetition_mesh_registry && g_spaced_repetition_mesh_id != 0) {
+        mesh_participant_unregister(g_spaced_repetition_mesh_registry, g_spaced_repetition_mesh_id);
+        g_spaced_repetition_mesh_id = 0;
+        g_spaced_repetition_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from spaced_repetition module (instance-level) */
 static inline void spaced_repetition_heartbeat_instance(
@@ -354,7 +368,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
         cfg = sr_config_default();
     }
 
-    sr_system_t system = (sr_system_t)calloc(1, sizeof(struct sr_system_struct));
+    sr_system_t system = (sr_system_t)nimcp_calloc(1, sizeof(struct sr_system_struct));
     if (!system) {
         sr_set_error("Failed to allocate system structure");
         return NULL;
@@ -366,34 +380,34 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
 
     // Initialize hash table
     system->table_size = 1024;
-    system->items_table = (sr_hash_entry_t**)calloc(system->table_size, sizeof(sr_hash_entry_t*));
+    system->items_table = (sr_hash_entry_t**)nimcp_calloc(system->table_size, sizeof(sr_hash_entry_t*));
     if (!system->items_table) {
         sr_set_error("Failed to allocate hash table");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
     // Initialize heap
     system->heap_capacity = SR_DEFAULT_QUEUE_CAPACITY;
-    system->heap = (sr_heap_node_t**)calloc(system->heap_capacity, sizeof(sr_heap_node_t*));
+    system->heap = (sr_heap_node_t**)nimcp_calloc(system->heap_capacity, sizeof(sr_heap_node_t*));
     if (!system->heap) {
         sr_set_error("Failed to allocate heap");
-        free(system->items_table);
-        free(system);
+        nimcp_free(system->items_table);
+        nimcp_free(system);
         return NULL;
     }
 
     // Initialize history tracking
     system->history_capacity = 365;
-    system->daily_review_counts = (size_t*)calloc(system->history_capacity, sizeof(size_t));
-    system->daily_retention_rates = (float*)calloc(system->history_capacity, sizeof(float));
+    system->daily_review_counts = (size_t*)nimcp_calloc(system->history_capacity, sizeof(size_t));
+    system->daily_retention_rates = (float*)nimcp_calloc(system->history_capacity, sizeof(float));
     if (!system->daily_review_counts || !system->daily_retention_rates) {
         sr_set_error("Failed to allocate history arrays");
-        free(system->daily_retention_rates);
-        free(system->daily_review_counts);
-        free(system->heap);
-        free(system->items_table);
-        free(system);
+        nimcp_free(system->daily_retention_rates);
+        nimcp_free(system->daily_review_counts);
+        nimcp_free(system->heap);
+        nimcp_free(system->items_table);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -422,7 +436,7 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
         while (entry) {
             sr_hash_entry_t* next = entry->next;
             item_destroy(entry->item);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
@@ -435,14 +449,14 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
                              (float)(i + 1) / (float)system->heap_size);
         }
 
-        free(system->heap[i]);
+        nimcp_free(system->heap[i]);
     }
 
-    free(system->heap);
-    free(system->items_table);
-    free(system->daily_review_counts);
-    free(system->daily_retention_rates);
-    free(system);
+    nimcp_free(system->heap);
+    nimcp_free(system->items_table);
+    nimcp_free(system->daily_review_counts);
+    nimcp_free(system->daily_retention_rates);
+    nimcp_free(system);
 }
 
 NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
@@ -462,7 +476,7 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
         while (entry) {
             sr_hash_entry_t* next = entry->next;
             item_destroy(entry->item);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         system->items_table[i] = NULL;
@@ -476,7 +490,7 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
                              (float)(i + 1) / (float)system->heap_size);
         }
 
-        free(system->heap[i]);
+        nimcp_free(system->heap[i]);
         system->heap[i] = NULL;
     }
     system->heap_size = 0;
@@ -1423,7 +1437,7 @@ NIMCP_EXPORT sr_error_t sr_optimize_schedule(
         float value;  // retention impact per minute
     } item_value_t;
 
-    item_value_t* items = (item_value_t*)malloc(due_count * sizeof(item_value_t));
+    item_value_t* items = (item_value_t*)nimcp_malloc(due_count * sizeof(item_value_t));
     if (!items) {
         return SR_ERROR_NO_MEMORY;
     }
@@ -1475,7 +1489,7 @@ NIMCP_EXPORT sr_error_t sr_optimize_schedule(
         }
     }
 
-    free(items);
+    nimcp_free(items);
     return SR_SUCCESS;
 }
 
@@ -1929,7 +1943,7 @@ NIMCP_EXPORT sr_error_t sr_generate_cues(
     uint64_t memory_id = pr_memory_node_get_id(item->memory);
 
     // Get strongest connected memories from entanglement graph
-    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)malloc(
+    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)nimcp_malloc(
         max_cues * sizeof(entangle_neighbor_t));
     if (!neighbors) {
         return SR_ERROR_NO_MEMORY;
@@ -1944,7 +1958,7 @@ NIMCP_EXPORT sr_error_t sr_generate_cues(
         }
     }
 
-    free(neighbors);
+    nimcp_free(neighbors);
     return SR_SUCCESS;
 }
 
@@ -1972,7 +1986,7 @@ NIMCP_EXPORT sr_error_t sr_find_similar_items(
         float similarity;
     } similar_entry_t;
 
-    similar_entry_t* candidates = (similar_entry_t*)malloc(
+    similar_entry_t* candidates = (similar_entry_t*)nimcp_malloc(
         system->num_items * sizeof(similar_entry_t));
     if (!candidates) {
         return SR_ERROR_NO_MEMORY;
@@ -2019,7 +2033,7 @@ NIMCP_EXPORT sr_error_t sr_find_similar_items(
         (*count)++;
     }
 
-    free(candidates);
+    nimcp_free(candidates);
     return SR_SUCCESS;
 }
 
@@ -2551,7 +2565,7 @@ static sr_spaced_item_t* hash_lookup(sr_system_t system, uint64_t item_id) {
 static void hash_insert(sr_system_t system, sr_spaced_item_t* item) {
     uint64_t idx = hash_id(item->item_id, system->table_size);
 
-    sr_hash_entry_t* entry = (sr_hash_entry_t*)malloc(sizeof(sr_hash_entry_t));
+    sr_hash_entry_t* entry = (sr_hash_entry_t*)nimcp_malloc(sizeof(sr_hash_entry_t));
     entry->item_id = item->item_id;
     entry->item = item;
     entry->next = system->items_table[idx];
@@ -2567,7 +2581,7 @@ static void hash_remove(sr_system_t system, uint64_t item_id) {
         if ((*entry_ptr)->item_id == item_id) {
             sr_hash_entry_t* to_remove = *entry_ptr;
             *entry_ptr = to_remove->next;
-            free(to_remove);
+            nimcp_free(to_remove);
             system->num_items--;
             return;
         }
@@ -2576,7 +2590,7 @@ static void hash_remove(sr_system_t system, uint64_t item_id) {
 }
 
 static sr_spaced_item_t* item_create(sr_system_t system, pr_memory_node_t* memory) {
-    sr_spaced_item_t* item = (sr_spaced_item_t*)calloc(1, sizeof(sr_spaced_item_t));
+    sr_spaced_item_t* item = (sr_spaced_item_t*)nimcp_calloc(1, sizeof(sr_spaced_item_t));
     if (!item) {
         sr_set_error("Failed to allocate item");
         return NULL;
@@ -2614,7 +2628,7 @@ static sr_spaced_item_t* item_create(sr_system_t system, pr_memory_node_t* memor
     // Allocate history buffer
     item->history_capacity = system->config.history_capacity;
     if (item->history_capacity > 0) {
-        item->response_history = (sr_review_record_t*)calloc(
+        item->response_history = (sr_review_record_t*)nimcp_calloc(
             item->history_capacity, sizeof(sr_review_record_t));
         if (!item->response_history) {
             item->history_capacity = 0;
@@ -2628,8 +2642,8 @@ static void item_destroy(sr_spaced_item_t* item) {
     if (!item) {
         return;
     }
-    free(item->response_history);
-    free(item);
+    nimcp_free(item->response_history);
+    nimcp_free(item);
 }
 
 static void item_add_history(sr_spaced_item_t* item, const sr_review_record_t* record) {
@@ -2816,7 +2830,7 @@ static void heap_insert(sr_system_t system, sr_spaced_item_t* item) {
     // Grow heap if needed
     if (system->heap_size >= system->heap_capacity) {
         size_t new_capacity = system->heap_capacity * 2;
-        sr_heap_node_t** new_heap = (sr_heap_node_t**)realloc(
+        sr_heap_node_t** new_heap = (sr_heap_node_t**)nimcp_realloc(
             system->heap, new_capacity * sizeof(sr_heap_node_t*));
         if (!new_heap) {
             return;
@@ -2826,7 +2840,7 @@ static void heap_insert(sr_system_t system, sr_spaced_item_t* item) {
     }
 
     // Create heap node
-    sr_heap_node_t* node = (sr_heap_node_t*)malloc(sizeof(sr_heap_node_t));
+    sr_heap_node_t* node = (sr_heap_node_t*)nimcp_malloc(sizeof(sr_heap_node_t));
     if (!node) {
         return;
     }
@@ -2860,7 +2874,7 @@ static sr_spaced_item_t* heap_extract_min(sr_system_t system) {
     system->heap[0]->heap_index = 0;
     system->heap_size--;
 
-    free(min_node);
+    nimcp_free(min_node);
 
     if (system->heap_size > 0) {
         heap_sift_down(system, 0);
@@ -2942,7 +2956,7 @@ static void heap_remove(sr_system_t system, sr_spaced_item_t* item) {
     last->heap_index = index;
     system->heap_size--;
 
-    free(node);
+    nimcp_free(node);
 
     if (index < system->heap_size) {
         heap_sift_up(system, index);

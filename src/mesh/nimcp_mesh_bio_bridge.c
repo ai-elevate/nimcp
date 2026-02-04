@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -319,6 +320,7 @@ nimcp_error_t mesh_bio_bridge_connect_router(
     bio_router_t* router
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!router) return NIMCP_ERROR_NULL_POINTER;
@@ -328,6 +330,7 @@ nimcp_error_t mesh_bio_bridge_connect_router(
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->mutex);
         LOG_WARN("Bio bridge already connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_bio_bridge: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
@@ -346,6 +349,7 @@ nimcp_error_t mesh_bio_bridge_connect_router(
 
 nimcp_error_t mesh_bio_bridge_disconnect_router(mesh_bio_bridge_t* bridge) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -382,6 +386,7 @@ nimcp_error_t mesh_bio_bridge_extract_pattern(
     mesh_pattern_t* pattern_out
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!bio_msg || !pattern_out) return NIMCP_ERROR_NULL_POINTER;
@@ -466,6 +471,7 @@ nimcp_error_t mesh_bio_bridge_translate_to_mesh(
     mesh_transaction_t** tx_out
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!bio_msg || !tx_out) return NIMCP_ERROR_NULL_POINTER;
@@ -487,6 +493,7 @@ nimcp_error_t mesh_bio_bridge_translate_to_mesh(
     if (!tx) {
         bridge->stats.translation_failures++;
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY, "mesh_bio_bridge: error condition");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
 
@@ -569,6 +576,7 @@ nimcp_error_t mesh_bio_bridge_register_mesh_callback(
     void* ctx
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -588,6 +596,7 @@ nimcp_error_t mesh_bio_bridge_translate_to_bio(
     size_t max_size
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx || !bio_msg_out || !msg_size_out) return NIMCP_ERROR_NULL_POINTER;
@@ -689,6 +698,7 @@ nimcp_error_t mesh_bio_bridge_set_channel_mapping(
     mesh_channel_id_t channel_id
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -707,6 +717,7 @@ nimcp_error_t mesh_bio_bridge_set_channel_mapping(
     /* Add new mapping */
     if (bridge->mapping_count >= MAX_CHANNEL_MAPPINGS) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_bio_bridge: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -742,6 +753,7 @@ nimcp_error_t mesh_bio_bridge_get_stats(
     mesh_bio_bridge_stats_t* stats
 ) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -755,6 +767,7 @@ nimcp_error_t mesh_bio_bridge_get_stats(
 
 nimcp_error_t mesh_bio_bridge_reset_stats(mesh_bio_bridge_t* bridge) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

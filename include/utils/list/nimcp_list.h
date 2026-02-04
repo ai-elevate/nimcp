@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "utils/containers/nimcp_darray.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,12 +35,12 @@ typedef struct nimcp_list {
  * @return New list or NULL on failure
  */
 static inline nimcp_list_t* nimcp_list_create(void) {
-    nimcp_list_t* list = (nimcp_list_t*)malloc(sizeof(nimcp_list_t));
+    nimcp_list_t* list = (nimcp_list_t*)nimcp_malloc(sizeof(nimcp_list_t));
     if (!list) return NULL;
 
     list->items = nimcp_darray_create(sizeof(void*), 16);
     if (!list->items) {
-        free(list);
+        nimcp_free(list);
         return NULL;
     }
     return list;
@@ -54,7 +55,7 @@ static inline void nimcp_list_destroy(nimcp_list_t* list) {
     if (list->items) {
         nimcp_darray_destroy(list->items);
     }
-    free(list);
+    nimcp_free(list);
 }
 
 /**

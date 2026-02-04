@@ -24,31 +24,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(prospective)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for prospective module */
-static nimcp_health_agent_t* g_prospective_health_agent = NULL;
+static mesh_participant_id_t g_prospective_mesh_id = 0;
+static mesh_participant_registry_t* g_prospective_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for prospective heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void prospective_set_health_agent(nimcp_health_agent_t* agent) {
-    g_prospective_health_agent = agent;
+nimcp_error_t prospective_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_prospective_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "prospective", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "prospective";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_prospective_mesh_id);
+    if (err == NIMCP_SUCCESS) g_prospective_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from prospective module */
-static inline void prospective_heartbeat(const char* operation, float progress) {
-    if (g_prospective_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_prospective_health_agent, operation, progress);
+void prospective_mesh_unregister(void) {
+    if (g_prospective_mesh_registry && g_prospective_mesh_id != 0) {
+        mesh_participant_unregister(g_prospective_mesh_registry, g_prospective_mesh_id);
+        g_prospective_mesh_id = 0;
+        g_prospective_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from prospective module (instance-level) */
 static inline void prospective_heartbeat_instance(
@@ -209,7 +223,7 @@ static void free_intention(prospective_intention_t* intent) {
     if (!intent) return;
 
     if (intent->action_description) {
-        free(intent->action_description);
+        nimcp_free(intent->action_description);
         intent->action_description = NULL;
     }
 
@@ -236,7 +250,7 @@ static char* copy_action(const char* action) {
         len = PROSP_MAX_ACTION_DESCRIPTION - 1;
     }
 
-    char* copy = (char*)malloc(len + 1);
+    char* copy = (char*)nimcp_malloc(len + 1);
     if (!copy) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate copy");
@@ -549,7 +563,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     }
 
     // Allocate manager
-    prospective_memory_t pm = (prospective_memory_t)calloc(1, sizeof(struct prospective_memory_internal));
+    prospective_memory_t pm = (prospective_memory_t)nimcp_calloc(1, sizeof(struct prospective_memory_internal));
     if (!pm) {
         set_error("Memory allocation failed for manager");
         return NULL;
@@ -561,10 +575,10 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     pm->theta_gamma = theta_gamma;
 
     // Allocate intentions array
-    pm->intentions = (prospective_intention_t*)calloc(cfg.max_intentions, sizeof(prospective_intention_t));
+    pm->intentions = (prospective_intention_t*)nimcp_calloc(cfg.max_intentions, sizeof(prospective_intention_t));
     if (!pm->intentions) {
         set_error("Memory allocation failed for intentions");
-        free(pm);
+        nimcp_free(pm);
         return NULL;
     }
 
@@ -583,12 +597,12 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     pm->max_intentions = cfg.max_intentions;
 
     // Allocate active monitors array
-    pm->active_monitors = (prospective_intention_t**)calloc(cfg.max_active_monitors,
+    pm->active_monitors = (prospective_intention_t**)nimcp_calloc(cfg.max_active_monitors,
                                                              sizeof(prospective_intention_t*));
     if (!pm->active_monitors) {
         set_error("Memory allocation failed for active monitors");
-        free(pm->intentions);
-        free(pm);
+        nimcp_free(pm->intentions);
+        nimcp_free(pm);
         return NULL;
     }
 
@@ -624,15 +638,15 @@ NIMCP_EXPORT void prospective_destroy(prospective_memory_t pm) {
 
             free_intention(&pm->intentions[i]);
         }
-        free(pm->intentions);
+        nimcp_free(pm->intentions);
     }
 
     // Free active monitors array (not the intentions themselves)
     if (pm->active_monitors) {
-        free(pm->active_monitors);
+        nimcp_free(pm->active_monitors);
     }
 
-    free(pm);
+    nimcp_free(pm);
 }
 
 NIMCP_EXPORT prospective_error_t prospective_reset(prospective_memory_t pm) {
@@ -1667,7 +1681,7 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
         float urgency_score;
     } urgency_entry_t;
 
-    urgency_entry_t* entries = (urgency_entry_t*)malloc(pm->num_intentions * sizeof(urgency_entry_t));
+    urgency_entry_t* entries = (urgency_entry_t*)nimcp_malloc(pm->num_intentions * sizeof(urgency_entry_t));
     if (!entries) {
         set_error("Memory allocation failed");
         return PROSP_ERROR_NO_MEMORY;
@@ -1731,7 +1745,7 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
         }
     }
 
-    free(entries);
+    nimcp_free(entries);
 
     if (count_out) *count_out = count;
     return PROSP_SUCCESS;

@@ -21,32 +21,41 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_telemetry)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for lgss_telemetry module */
-static nimcp_health_agent_t* g_lgss_telemetry_health_agent = NULL;
+static mesh_participant_id_t g_lgss_telemetry_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_telemetry_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for lgss_telemetry heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_telemetry_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_telemetry_health_agent = agent;
+nimcp_error_t lgss_telemetry_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_telemetry_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_telemetry", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_telemetry";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_telemetry_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_telemetry_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_telemetry module */
-static inline void lgss_telemetry_heartbeat(const char* operation, float progress) {
-    if (g_lgss_telemetry_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_telemetry_health_agent, operation, progress);
+void lgss_telemetry_mesh_unregister(void) {
+    if (g_lgss_telemetry_mesh_registry && g_lgss_telemetry_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_telemetry_mesh_registry, g_lgss_telemetry_mesh_id);
+        g_lgss_telemetry_mesh_id = 0;
+        g_lgss_telemetry_mesh_registry = NULL;
     }
 }
 
@@ -159,7 +168,7 @@ int lgss_telemetry_config_init(lgss_telemetry_config_t* config)
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(config, 0, sizeof(lgss_telemetry_config_t));
@@ -275,7 +284,7 @@ void lgss_telemetry_destroy(lgss_telemetry_t* telemetry)
 int lgss_telemetry_start(lgss_telemetry_t* telemetry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!telemetry->config.async_logging) {
@@ -291,7 +300,7 @@ int lgss_telemetry_start(lgss_telemetry_t* telemetry)
 int lgss_telemetry_stop(lgss_telemetry_t* telemetry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!telemetry->async_running) {
@@ -363,7 +372,7 @@ static int write_entry_to_file(
     char buffer[2048];
     int len = lgss_telemetry_format_entry(entry, buffer, sizeof(buffer));
     if (len < 0) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     fprintf(telemetry->log_file, "%s\n", buffer);
@@ -398,7 +407,7 @@ int lgss_telemetry_log(
     ...)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (severity < telemetry->config.min_severity) {
@@ -452,7 +461,7 @@ int lgss_telemetry_log_evaluation(
     const char* source)
 {
     if (!telemetry || !context || !result) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     lgss_telemetry_event_t event;
@@ -532,7 +541,7 @@ int lgss_telemetry_log_rule_trigger(
     const safety_action_context_t* context)
 {
     if (!telemetry || !rule) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     return lgss_telemetry_log(telemetry,
@@ -556,7 +565,7 @@ int lgss_telemetry_log_override(
     if (!telemetry) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "telemetry is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     return lgss_telemetry_log(telemetry,
@@ -577,7 +586,7 @@ int lgss_telemetry_log_system(
     if (!telemetry) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "telemetry is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     lgss_telemetry_severity_t severity = LGSS_TELEM_SEVERITY_INFO;
@@ -603,7 +612,7 @@ int lgss_telemetry_get_recent(
     size_t offset)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC || !entries) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     if (!telemetry->buffer.entries || telemetry->buffer.count == 0) {
@@ -638,7 +647,7 @@ int lgss_telemetry_query_by_type(
     size_t max_entries)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC || !entries) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     if (!telemetry->buffer.entries) {
@@ -668,7 +677,7 @@ int lgss_telemetry_query_by_time(
     size_t max_entries)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC || !entries) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     if (!telemetry->buffer.entries) {
@@ -698,7 +707,7 @@ int lgss_telemetry_query_by_time(
 int lgss_telemetry_verify_chain(lgss_telemetry_t* telemetry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!telemetry->buffer.entries || telemetry->buffer.count < 2) {
@@ -721,7 +730,7 @@ int lgss_telemetry_verify_chain(lgss_telemetry_t* telemetry)
             telemetry->stats.chain_failures++;
             telemetry->stats.chain_valid = false;
             TELEM_LOG_ERROR("Chain verification failed at entry %zu", i);
-            return -1;
+            return NIMCP_ERROR_OPERATION_FAILED;
         }
     }
 
@@ -769,7 +778,7 @@ int lgss_telemetry_get_stats(
     lgss_telemetry_stats_t* stats)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memcpy(stats, &telemetry->stats, sizeof(lgss_telemetry_stats_t));
@@ -779,7 +788,7 @@ int lgss_telemetry_get_stats(
 int lgss_telemetry_flush(lgss_telemetry_t* telemetry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (telemetry->log_file) {
@@ -793,7 +802,7 @@ int lgss_telemetry_flush(lgss_telemetry_t* telemetry)
 int lgss_telemetry_clear(lgss_telemetry_t* telemetry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     TELEM_LOG_WARN("Clearing telemetry buffer (audit trail destroyed)");
@@ -876,7 +885,7 @@ int lgss_telemetry_format_entry(
     size_t buffer_size)
 {
     if (!entry || !buffer || buffer_size == 0) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return snprintf(buffer, buffer_size,

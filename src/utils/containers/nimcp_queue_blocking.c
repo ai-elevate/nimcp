@@ -28,34 +28,9 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "QUEUE_BLOCKING"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for queue_blocking module */
-static nimcp_health_agent_t* g_queue_blocking_health_agent = NULL;
-
-/**
- * @brief Set health agent for queue_blocking heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void queue_blocking_set_health_agent(nimcp_health_agent_t* agent) {
-    g_queue_blocking_health_agent = agent;
-}
-
-/** @brief Send heartbeat from queue_blocking module */
-static inline void queue_blocking_heartbeat(const char* operation, float progress) {
-    if (g_queue_blocking_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_queue_blocking_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(queue_blocking)
 
 //=============================================================================
 // Internal Structure

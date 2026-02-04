@@ -14,29 +14,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mammillary)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for mammillary module */
-static nimcp_health_agent_t* g_mammillary_health_agent = NULL;
+static mesh_participant_id_t g_mammillary_mesh_id = 0;
+static mesh_participant_registry_t* g_mammillary_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for mammillary heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void mammillary_set_health_agent(nimcp_health_agent_t* agent) {
-    g_mammillary_health_agent = agent;
+nimcp_error_t mammillary_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_mammillary_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "mammillary", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "mammillary";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_mammillary_mesh_id);
+    if (err == NIMCP_SUCCESS) g_mammillary_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from mammillary module */
-static inline void mammillary_heartbeat(const char* operation, float progress) {
-    if (g_mammillary_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_mammillary_health_agent, operation, progress);
+void mammillary_mesh_unregister(void) {
+    if (g_mammillary_mesh_registry && g_mammillary_mesh_id != 0) {
+        mesh_participant_unregister(g_mammillary_mesh_registry, g_mammillary_mesh_id);
+        g_mammillary_mesh_id = 0;
+        g_mammillary_mesh_registry = NULL;
     }
 }
 
@@ -108,7 +121,7 @@ mammillary_config_t mammillary_default_config(void) {
 nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
     mammillary_config_t cfg = config ? *config : mammillary_default_config();
 
-    nimcp_mammillary_t* mb = (nimcp_mammillary_t*)calloc(1, sizeof(nimcp_mammillary_t));
+    nimcp_mammillary_t* mb = (nimcp_mammillary_t*)nimcp_calloc(1, sizeof(nimcp_mammillary_t));
     if (!mb) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
@@ -123,9 +136,9 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
 
     /* Allocate head direction cells */
     mb->num_hd_cells = cfg.num_hd_cells;
-    mb->hd_cells = (nimcp_hd_cell_t*)calloc(cfg.num_hd_cells, sizeof(nimcp_hd_cell_t));
+    mb->hd_cells = (nimcp_hd_cell_t*)nimcp_calloc(cfg.num_hd_cells, sizeof(nimcp_hd_cell_t));
     if (!mb->hd_cells) {
-        free(mb);
+        nimcp_free(mb);
         return NULL;
     }
 
@@ -147,10 +160,10 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
 
     /* Allocate relay cells */
     mb->num_relay_cells = cfg.num_relay_cells;
-    mb->relay_cells = (nimcp_relay_cell_t*)calloc(cfg.num_relay_cells, sizeof(nimcp_relay_cell_t));
+    mb->relay_cells = (nimcp_relay_cell_t*)nimcp_calloc(cfg.num_relay_cells, sizeof(nimcp_relay_cell_t));
     if (!mb->relay_cells) {
-        free(mb->hd_cells);
-        free(mb);
+        nimcp_free(mb->hd_cells);
+        nimcp_free(mb);
         return NULL;
     }
 
@@ -164,11 +177,11 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
 
     /* Allocate spatial cells */
     mb->num_spatial_cells = cfg.num_spatial_cells;
-    mb->spatial_cells = (nimcp_spatial_cell_t*)calloc(cfg.num_spatial_cells, sizeof(nimcp_spatial_cell_t));
+    mb->spatial_cells = (nimcp_spatial_cell_t*)nimcp_calloc(cfg.num_spatial_cells, sizeof(nimcp_spatial_cell_t));
     if (!mb->spatial_cells) {
-        free(mb->relay_cells);
-        free(mb->hd_cells);
-        free(mb);
+        nimcp_free(mb->relay_cells);
+        nimcp_free(mb->hd_cells);
+        nimcp_free(mb);
         return NULL;
     }
 
@@ -179,12 +192,12 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
 
     /* Allocate memory traces */
     mb->max_memory_traces = cfg.max_memory_traces;
-    mb->memory_traces = (nimcp_memory_trace_t*)calloc(cfg.max_memory_traces, sizeof(nimcp_memory_trace_t));
+    mb->memory_traces = (nimcp_memory_trace_t*)nimcp_calloc(cfg.max_memory_traces, sizeof(nimcp_memory_trace_t));
     if (!mb->memory_traces) {
-        free(mb->spatial_cells);
-        free(mb->relay_cells);
-        free(mb->hd_cells);
-        free(mb);
+        nimcp_free(mb->spatial_cells);
+        nimcp_free(mb->relay_cells);
+        nimcp_free(mb->hd_cells);
+        nimcp_free(mb);
         return NULL;
     }
 
@@ -219,31 +232,31 @@ void mammillary_destroy(nimcp_mammillary_t* mb) {
     /* Free memory trace contents */
     for (uint32_t i = 0; i < mb->num_memory_traces; i++) {
         if (mb->memory_traces[i].content) {
-            free(mb->memory_traces[i].content);
+            nimcp_free(mb->memory_traces[i].content);
         }
     }
 
     /* Free relay cell weights */
     for (uint32_t i = 0; i < mb->num_relay_cells; i++) {
-        if (mb->relay_cells[i].input_weights) free(mb->relay_cells[i].input_weights);
-        if (mb->relay_cells[i].output_weights) free(mb->relay_cells[i].output_weights);
-        if (mb->relay_cells[i].memory_tuning) free(mb->relay_cells[i].memory_tuning);
+        if (mb->relay_cells[i].input_weights) nimcp_free(mb->relay_cells[i].input_weights);
+        if (mb->relay_cells[i].output_weights) nimcp_free(mb->relay_cells[i].output_weights);
+        if (mb->relay_cells[i].memory_tuning) nimcp_free(mb->relay_cells[i].memory_tuning);
     }
 
     /* Free spatial cell tuning */
     for (uint32_t i = 0; i < mb->num_spatial_cells; i++) {
-        if (mb->spatial_cells[i].spatial_tuning) free(mb->spatial_cells[i].spatial_tuning);
+        if (mb->spatial_cells[i].spatial_tuning) nimcp_free(mb->spatial_cells[i].spatial_tuning);
     }
 
-    if (mb->memory_traces) free(mb->memory_traces);
-    if (mb->spatial_cells) free(mb->spatial_cells);
-    if (mb->relay_cells) free(mb->relay_cells);
-    if (mb->hd_cells) free(mb->hd_cells);
+    if (mb->memory_traces) nimcp_free(mb->memory_traces);
+    if (mb->spatial_cells) nimcp_free(mb->spatial_cells);
+    if (mb->relay_cells) nimcp_free(mb->relay_cells);
+    if (mb->hd_cells) nimcp_free(mb->hd_cells);
 
     /* Free entorhinal bridge grid phase */
-    if (mb->entorhinal_bridge.grid_phase) free(mb->entorhinal_bridge.grid_phase);
+    if (mb->entorhinal_bridge.grid_phase) nimcp_free(mb->entorhinal_bridge.grid_phase);
 
-    free(mb);
+    nimcp_free(mb);
 }
 
 int mammillary_reset(nimcp_mammillary_t* mb) {
@@ -275,7 +288,7 @@ int mammillary_reset(nimcp_mammillary_t* mb) {
     /* Clear memory traces */
     for (uint32_t i = 0; i < mb->num_memory_traces; i++) {
         if (mb->memory_traces[i].content) {
-            free(mb->memory_traces[i].content);
+            nimcp_free(mb->memory_traces[i].content);
             mb->memory_traces[i].content = NULL;
         }
         memset(&mb->memory_traces[i], 0, sizeof(nimcp_memory_trace_t));
@@ -542,7 +555,7 @@ int mammillary_receive_hippocampal_input(nimcp_mammillary_t* mb,
     nimcp_memory_trace_t* mt = &mb->memory_traces[slot];
 
     /* Allocate and copy content */
-    mt->content = (float*)malloc(trace_dim * sizeof(float));
+    mt->content = (float*)nimcp_malloc(trace_dim * sizeof(float));
     if (!mt->content) {
         mb->last_error = MAMMILLARY_ERROR_INTERNAL;
         return -1;
@@ -841,7 +854,7 @@ int mammillary_remove_trace(nimcp_mammillary_t* mb, uint32_t trace_id) {
     nimcp_memory_trace_t* mt = &mb->memory_traces[trace_id];
     if (!mt->content) return -1;
 
-    free(mt->content);
+    nimcp_free(mt->content);
     memset(mt, 0, sizeof(nimcp_memory_trace_t));
 
     /* Update count */

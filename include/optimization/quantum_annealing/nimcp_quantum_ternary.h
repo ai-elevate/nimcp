@@ -40,6 +40,7 @@
 
 #include "utils/ternary/nimcp_ternary.h"
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,7 +95,7 @@ static inline trit_ising_config_t* trit_ising_create(
     double superposition_penalty
 ) {
     trit_ising_config_t* config = (trit_ising_config_t*)
-        calloc(1, sizeof(trit_ising_config_t));
+        nimcp_calloc(1, sizeof(trit_ising_config_t));
     if (!config) return NULL;
 
     config->magic = TERNARY_MAGIC;
@@ -105,7 +106,7 @@ static inline trit_ising_config_t* trit_ising_create(
     config->spins = trit_vector_create_filled(n_spins, TRIT_SPIN_SUPERPOSITION,
                                                TERNARY_PACK_BASE243);
     if (!config->spins) {
-        free(config);
+        nimcp_free(config);
         return NULL;
     }
 
@@ -126,7 +127,7 @@ static inline void trit_ising_destroy(trit_ising_config_t* config) {
     if (config->spins) trit_vector_destroy(config->spins);
     if (config->J) trit_matrix_destroy(config->J);
     config->magic = 0;
-    free(config);
+    nimcp_free(config);
 }
 
 //=============================================================================

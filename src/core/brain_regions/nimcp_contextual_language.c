@@ -17,36 +17,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for contextual_language module */
-static nimcp_health_agent_t* g_contextual_language_health_agent = NULL;
-
-/**
- * @brief Set health agent for contextual_language heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void contextual_language_set_health_agent(nimcp_health_agent_t* agent) {
-    g_contextual_language_health_agent = agent;
-}
-
-/** @brief Send heartbeat from contextual_language module */
-static inline void contextual_language_heartbeat(const char* operation, float progress) {
-    if (g_contextual_language_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_contextual_language_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(contextual_language)
 
 //=============================================================================
 // Constants
@@ -102,7 +77,7 @@ typedef struct contextual_language_struct {
     bio_module_context_t bio_ctx;
 
     // Thread safety
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 } contextual_language_struct;
 
 //=============================================================================
@@ -309,7 +284,7 @@ contextual_language_t contextual_language_create(
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&cl->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&cl->lock, NULL) != 0) {
         set_error("Failed to initialize mutex");
         nimcp_free(cl);
         return NULL;
@@ -322,7 +297,7 @@ contextual_language_t contextual_language_create(
     );
     if (!cl->history) {
         set_error("Failed to allocate context history buffer");
-        pthread_mutex_destroy(&cl->lock);
+        nimcp_mutex_destroy(&cl->lock);
         nimcp_free(cl);
         return NULL;
     }
@@ -397,7 +372,7 @@ void contextual_language_destroy(contextual_language_t cl) {
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&cl->lock);
+    nimcp_mutex_destroy(&cl->lock);
 
     // Free structure
     nimcp_free(cl);
@@ -415,7 +390,7 @@ int contextual_detect_context(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
 
     // Compute logits for each context
     float logits[CONTEXT_TYPE_COUNT] = {0};
@@ -457,7 +432,7 @@ int contextual_detect_context(
     cl->stats.total_detections++;
     cl->stats.context_distribution[max_ctx]++;
 
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     LOG_DEBUG("Detected context: %s (confidence=%.2f)",
               contextual_get_context_name(detected->current_context), max_prob);
@@ -484,7 +459,7 @@ int contextual_adapt_message(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
 
     uint32_t source_ctx = cl->current_context.current_context;
     uint32_t target_ctx = target_context->current_context;
@@ -524,7 +499,7 @@ int contextual_adapt_message(
         cl->stats.context_switches++;
     }
 
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -547,7 +522,7 @@ int contextual_learn_context_mapping(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
 
     uint32_t src_ctx = source->current_context;
     uint32_t tgt_ctx = target->current_context;
@@ -560,7 +535,7 @@ int contextual_learn_context_mapping(
     // Update stats
     cl->stats.learning_updates++;
 
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     LOG_DEBUG("Learned transformation: %s -> %s",
               contextual_get_context_name(src_ctx),
@@ -579,9 +554,9 @@ int contextual_get_current_context(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
     *state = cl->current_context;
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -596,10 +571,10 @@ int contextual_set_current_context(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
     cl->current_context = *state;
     cl->last_update_us = get_time_us();
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -616,7 +591,7 @@ int contextual_get_history(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
 
     uint32_t num_entries = MIN(max_count, cl->history_count);
     uint32_t start = (cl->history_head + cl->history_size - num_entries) % cl->history_size;
@@ -628,7 +603,7 @@ int contextual_get_history(
 
     *count = num_entries;
 
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -640,11 +615,11 @@ int contextual_clear_history(contextual_language_t cl) {
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
     cl->history_head = 0;
     cl->history_count = 0;
     memset(cl->history, 0, cl->history_size * sizeof(context_history_entry_t));
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -659,9 +634,9 @@ int contextual_get_stats(
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
     *stats = cl->stats;
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }
@@ -673,9 +648,9 @@ int contextual_reset_stats(contextual_language_t cl) {
         return -1;
     }
 
-    pthread_mutex_lock(&cl->lock);
+    nimcp_mutex_lock(&cl->lock);
     memset(&cl->stats, 0, sizeof(contextual_language_stats_t));
-    pthread_mutex_unlock(&cl->lock);
+    nimcp_mutex_unlock(&cl->lock);
 
     return 0;
 }

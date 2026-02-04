@@ -27,7 +27,7 @@
  *   └─────────────────────────────────────────────────────────┘
  *
  * PERFORMANCE:
- * - malloc(): O(log n) system call overhead
+ * - nimcp_malloc(): O(log n) system call overhead
  * - pool_acquire(): O(1) free-list pop
  * - pool_release(): O(1) free-list push
  *
@@ -48,6 +48,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {

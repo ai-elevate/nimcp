@@ -21,6 +21,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Constants
@@ -33,24 +34,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_alignment_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(alignment)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void alignment_monitor_set_health_agent(nimcp_health_agent_t* agent) {
-    g_alignment_health_agent = agent;
+static mesh_participant_id_t g_alignment_mesh_id = 0;
+static mesh_participant_registry_t* g_alignment_mesh_registry = NULL;
+
+nimcp_error_t alignment_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_alignment_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "alignment", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "alignment";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_alignment_mesh_id);
+    if (err == NIMCP_SUCCESS) g_alignment_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void alignment_heartbeat(const char* operation, float progress) {
-    if (g_alignment_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_alignment_health_agent, operation, progress);
+void alignment_mesh_unregister(void) {
+    if (g_alignment_mesh_registry && g_alignment_mesh_id != 0) {
+        mesh_participant_unregister(g_alignment_mesh_registry, g_alignment_mesh_id);
+        g_alignment_mesh_id = 0;
+        g_alignment_mesh_registry = NULL;
     }
 }
+
 
 /* Default value dimension names */
 static const char* DEFAULT_VALUE_NAMES[] = {
@@ -344,7 +366,7 @@ alignment_monitor_config_t alignment_monitor_default_config(void)
 alignment_monitor_t* alignment_monitor_create(
     const alignment_monitor_config_t* config)
 {
-    alignment_monitor_t* monitor = calloc(1, sizeof(alignment_monitor_t));
+    alignment_monitor_t* monitor = nimcp_calloc(1, sizeof(alignment_monitor_t));
     if (monitor == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate alignment monitor");
         return NULL;
@@ -354,7 +376,7 @@ alignment_monitor_t* alignment_monitor_create(
     monitor->mutex = nimcp_mutex_create(NULL);
     if (monitor->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
-        free(monitor);
+        nimcp_free(monitor);
         return NULL;
     }
 
@@ -377,14 +399,14 @@ alignment_monitor_t* alignment_monitor_create(
     size_t obs_capacity = monitor->config.thresholds.observation_window_size;
     if (obs_capacity == 0) obs_capacity = 1000;
 
-    monitor->observations.actions = calloc(obs_capacity, sizeof(alignment_action_observation_t));
-    monitor->observations.explanations = calloc(obs_capacity, sizeof(alignment_explanation_observation_t));
+    monitor->observations.actions = nimcp_calloc(obs_capacity, sizeof(alignment_action_observation_t));
+    monitor->observations.explanations = nimcp_calloc(obs_capacity, sizeof(alignment_explanation_observation_t));
     if (monitor->observations.actions == NULL || monitor->observations.explanations == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate observation buffers");
-        free(monitor->observations.actions);
-        free(monitor->observations.explanations);
+        nimcp_free(monitor->observations.actions);
+        nimcp_free(monitor->observations.explanations);
         nimcp_mutex_destroy(monitor->mutex);
-        free(monitor);
+        nimcp_free(monitor);
         return NULL;
     }
     monitor->observations.action_capacity = obs_capacity;
@@ -418,15 +440,15 @@ void alignment_monitor_destroy(alignment_monitor_t* monitor)
     monitor->magic = 0;
 
     /* Free observation buffers */
-    free(monitor->observations.actions);
-    free(monitor->observations.explanations);
+    nimcp_free(monitor->observations.actions);
+    nimcp_free(monitor->observations.explanations);
 
     /* Destroy mutex */
     if (monitor->mutex != NULL) {
         nimcp_mutex_destroy(monitor->mutex);
     }
 
-    free(monitor);
+    nimcp_free(monitor);
 
     NIMCP_LOG_INFO(LOG_CATEGORY, "Alignment monitor destroyed");
 }
@@ -434,6 +456,7 @@ void alignment_monitor_destroy(alignment_monitor_t* monitor)
 nimcp_error_t alignment_monitor_reset(alignment_monitor_t* monitor)
 {
     if (!is_valid_handle(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -478,6 +501,7 @@ nimcp_error_t alignment_monitor_observe_action(
     const alignment_action_observation_t* observation)
 {
     if (!is_valid_handle(monitor) || observation == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -534,6 +558,7 @@ nimcp_error_t alignment_monitor_observe_explanation(
     const alignment_explanation_observation_t* observation)
 {
     if (!is_valid_handle(monitor) || observation == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -565,6 +590,7 @@ nimcp_error_t alignment_monitor_observe_values(
     float confidence)
 {
     if (!is_valid_handle(monitor) || values == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -599,6 +625,7 @@ nimcp_error_t alignment_monitor_check_drift(
     alignment_status_t* status)
 {
     if (!is_valid_handle(monitor) || drift_detected == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -749,6 +776,7 @@ nimcp_error_t alignment_monitor_infer_values(
     float* inferred_values)
 {
     if (!is_valid_handle(monitor) || inferred_values == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -766,6 +794,7 @@ nimcp_error_t alignment_monitor_get_status(
     alignment_status_t* status)
 {
     if (!is_valid_handle(monitor) || status == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -794,6 +823,7 @@ nimcp_error_t alignment_monitor_compute_kl_divergence(
     float* kl_divergence)
 {
     if (!is_valid_handle(monitor) || kl_divergence == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -817,6 +847,7 @@ nimcp_error_t alignment_monitor_compute_js_divergence(
     float* js_divergence)
 {
     if (!is_valid_handle(monitor) || js_divergence == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -840,6 +871,7 @@ nimcp_error_t alignment_monitor_compute_mutual_info(
     float* mutual_info)
 {
     if (!is_valid_handle(monitor) || mutual_info == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -853,6 +885,7 @@ nimcp_error_t alignment_monitor_compute_cosine_similarity(
     float* similarity)
 {
     if (!is_valid_handle(monitor) || similarity == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -875,6 +908,7 @@ nimcp_error_t alignment_monitor_get_stats(
     alignment_monitor_stats_t* stats)
 {
     if (!is_valid_handle(monitor) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -895,6 +929,7 @@ nimcp_error_t alignment_monitor_get_drift_events(
     size_t* count_out)
 {
     if (!is_valid_handle(monitor) || events == NULL || count_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -923,6 +958,7 @@ nimcp_error_t alignment_monitor_get_baseline(
     float* baseline)
 {
     if (!is_valid_handle(monitor) || baseline == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -941,10 +977,12 @@ nimcp_error_t alignment_monitor_get_dimension(
     value_dimension_t* info)
 {
     if (!is_valid_handle(monitor) || info == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
     if (dimension >= ALIGNMENT_VALUE_DIMENSIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -965,6 +1003,7 @@ nimcp_error_t alignment_monitor_get_dimension(
 nimcp_error_t alignment_monitor_connect_bio_async(alignment_monitor_t* monitor)
 {
     if (!is_valid_handle(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1000,6 +1039,7 @@ nimcp_error_t alignment_monitor_connect_tripwires(
     void* tripwires)
 {
     if (!is_valid_handle(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1016,6 +1056,7 @@ nimcp_error_t alignment_monitor_connect_value_commitment(
     void* commitment)
 {
     if (!is_valid_handle(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1032,6 +1073,7 @@ nimcp_error_t alignment_monitor_connect_brain_immune(
     struct brain_immune* brain_immune)
 {
     if (!is_valid_handle(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "alignment_monitor: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

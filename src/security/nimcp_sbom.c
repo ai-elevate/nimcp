@@ -39,31 +39,41 @@
 #include <time.h>
 
 #include "utils/memory/nimcp_memory.h"
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for sbom module */
-static nimcp_health_agent_t* g_sbom_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sbom)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for sbom heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void sbom_set_health_agent(nimcp_health_agent_t* agent) {
-    g_sbom_health_agent = agent;
+static mesh_participant_id_t g_sbom_mesh_id = 0;
+static mesh_participant_registry_t* g_sbom_mesh_registry = NULL;
+
+nimcp_error_t sbom_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_sbom_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "sbom", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "sbom";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_sbom_mesh_id);
+    if (err == NIMCP_SUCCESS) g_sbom_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from sbom module */
-static inline void sbom_heartbeat(const char* operation, float progress) {
-    if (g_sbom_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_sbom_health_agent, operation, progress);
+void sbom_mesh_unregister(void) {
+    if (g_sbom_mesh_registry && g_sbom_mesh_id != 0) {
+        mesh_participant_unregister(g_sbom_mesh_registry, g_sbom_mesh_id);
+        g_sbom_mesh_id = 0;
+        g_sbom_mesh_registry = NULL;
     }
 }
 
@@ -94,12 +104,14 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
                                const char* filepath,
                                nimcp_sbom_format_t format) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     FILE* file = fopen(filepath, "r");
     if (!file) {
         LOG_ERROR("nimcp_sbom_load: Cannot open file %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "sbom: error condition");
         return NIMCP_ERROR_IO;
     }
 
@@ -113,6 +125,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
     char* content = (char*)nimcp_malloc(file_size + 1);
     if (!content) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -125,7 +138,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
      * For now, we'll look for dependency patterns
      */
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     /* Simple pattern matching for demonstration */
     char* line = strtok(content, "\n");
@@ -141,7 +154,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
     sc->stats.sbom_loads++;
     sc->stats.last_sbom_update = time(NULL);
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     nimcp_free(content);
 
@@ -159,6 +172,7 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
     char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -262,6 +276,7 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
     nimcp_free(sbom);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
     return NIMCP_ERROR_NO_MEMORY;
 }
 
@@ -270,6 +285,7 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
     char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -377,6 +393,7 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
     nimcp_free(sbom);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
     return NIMCP_ERROR_NO_MEMORY;
 }
 
@@ -384,10 +401,11 @@ nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,
                                    nimcp_sbom_format_t format,
                                    char** output) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     nimcp_error_t err;
     if (format == NIMCP_SBOM_FORMAT_SPDX) {
@@ -395,7 +413,8 @@ nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,
     } else if (format == NIMCP_SBOM_FORMAT_CYCLONEDX) {
         err = generate_cyclonedx_sbom(sc, output);
     } else {
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_mutex_unlock(&sc->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -404,7 +423,7 @@ nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,
         sc->stats.last_sbom_update = time(NULL);
     }
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_INFO("SBOM generated successfully (format=%d, size=%zu)",
                    format, *output ? strlen(*output) : 0);
@@ -416,6 +435,7 @@ nimcp_error_t nimcp_sbom_save(nimcp_supply_chain_t sc,
                                const char* filepath,
                                nimcp_sbom_format_t format) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -429,6 +449,7 @@ nimcp_error_t nimcp_sbom_save(nimcp_supply_chain_t sc,
     if (!file) {
         nimcp_free(sbom_content);
         LOG_ERROR("nimcp_sbom_save: Cannot open file %s for writing", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "sbom: error condition");
         return NIMCP_ERROR_IO;
     }
 
@@ -438,6 +459,7 @@ nimcp_error_t nimcp_sbom_save(nimcp_supply_chain_t sc,
 
     if (bytes_written == 0) {
         LOG_ERROR("nimcp_sbom_save: Write failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "sbom: error condition");
         return NIMCP_ERROR_IO;
     }
 
@@ -454,29 +476,31 @@ nimcp_error_t nimcp_sbom_get_dependencies(nimcp_supply_chain_t sc,
                                            nimcp_dependency_t** deps,
                                            size_t* count) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !deps || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     if (sc->dependency_count == 0) {
         *deps = NULL;
         *count = 0;
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_mutex_unlock(&sc->lock);
         return NIMCP_OK;
     }
 
     /* Allocate copy of dependencies */
     *deps = (nimcp_dependency_t*)nimcp_malloc(sc->dependency_count * sizeof(nimcp_dependency_t));
     if (!*deps) {
-        pthread_mutex_unlock(&sc->lock);
+        nimcp_mutex_unlock(&sc->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
     memcpy(*deps, sc->dependencies, sc->dependency_count * sizeof(nimcp_dependency_t));
     *count = sc->dependency_count;
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_DEBUG("Retrieved %zu dependencies", *count);
 
@@ -486,10 +510,11 @@ nimcp_error_t nimcp_sbom_get_dependencies(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
                                          const nimcp_dependency_t* dep) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !dep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     /* Check capacity */
     if (sc->dependency_count >= sc->dependency_capacity) {
@@ -499,7 +524,8 @@ nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
             new_capacity * sizeof(nimcp_dependency_t)
         );
         if (!new_deps) {
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_mutex_unlock(&sc->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         sc->dependencies = new_deps;
@@ -512,7 +538,7 @@ nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
     sc->dependency_count++;
     sc->stats.total_dependencies++;
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_INFO("Added dependency: %s version %s", dep->name, dep->version);
 
@@ -522,10 +548,11 @@ nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_sbom_remove_dependency(nimcp_supply_chain_t sc,
                                             const char* name) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     /* Find and remove dependency */
     for (size_t i = 0; i < sc->dependency_count; i++) {
@@ -534,15 +561,16 @@ nimcp_error_t nimcp_sbom_remove_dependency(nimcp_supply_chain_t sc,
             memmove(&sc->dependencies[i], &sc->dependencies[i + 1],
                     (sc->dependency_count - i - 1) * sizeof(nimcp_dependency_t));
             sc->dependency_count--;
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_mutex_unlock(&sc->lock);
             LOG_INFO("Removed dependency: %s", name);
             return NIMCP_OK;
         }
     }
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
     LOG_WARN("Dependency not found: %s", name);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "sbom: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -550,21 +578,23 @@ nimcp_error_t nimcp_sbom_query_dependency(nimcp_supply_chain_t sc,
                                            const char* name,
                                            nimcp_dependency_t* dep) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !name || !dep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sbom: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&sc->lock);
+    nimcp_mutex_lock(&sc->lock);
 
     /* Find dependency */
     for (size_t i = 0; i < sc->dependency_count; i++) {
         if (strcmp(sc->dependencies[i].name, name) == 0) {
             memcpy(dep, &sc->dependencies[i], sizeof(nimcp_dependency_t));
-            pthread_mutex_unlock(&sc->lock);
+            nimcp_mutex_unlock(&sc->lock);
             return NIMCP_OK;
         }
     }
 
-    pthread_mutex_unlock(&sc->lock);
+    nimcp_mutex_unlock(&sc->lock);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "sbom: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }

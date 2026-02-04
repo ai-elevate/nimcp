@@ -32,37 +32,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <time.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for portia_swarm_bridge module */
-static nimcp_health_agent_t* g_portia_swarm_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for portia_swarm_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void __attribute__((unused)) portia_swarm_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_portia_swarm_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from portia_swarm_bridge module */
-static inline void portia_swarm_bridge_heartbeat(const char* operation, float progress) {
-    if (g_portia_swarm_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_portia_swarm_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_swarm_bridge)
 
 //=============================================================================
 // Module ID Definition
@@ -107,7 +82,7 @@ struct portia_swarm_bridge_t {
     void* collective_user_data;
 
     /* Synchronization */
-    pthread_mutex_t* mutex;
+    nimcp_mutex_t* mutex;
 
     /* Runtime state */
     bool running;
@@ -302,9 +277,9 @@ portia_swarm_bridge_t* portia_swarm_bridge_create(
     bridge->last_gossip_time = now;
 
     /* Create mutex for thread safety */
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (mutex) {
-        pthread_mutex_init(mutex, NULL);
+        nimcp_mutex_init(mutex, NULL);
         bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_WARN("portia_swarm_bridge_create: mutex allocation failed");
@@ -339,7 +314,7 @@ void portia_swarm_bridge_destroy(portia_swarm_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -358,7 +333,7 @@ int portia_swarm_bridge_start(portia_swarm_bridge_t* bridge) {
         return 0; /* Already running */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Connect bio-async if enabled in config (use unlocked version since we hold lock) */
     if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
@@ -367,7 +342,7 @@ int portia_swarm_bridge_start(portia_swarm_bridge_t* bridge) {
 
     bridge->running = true;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: started");
     return 0;
@@ -385,9 +360,9 @@ int portia_swarm_bridge_stop(portia_swarm_bridge_t* bridge) {
         return 0; /* Not running */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->running = false;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: stopped");
     return 0;
@@ -409,9 +384,9 @@ int portia_swarm_connect_brain(
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
     NIMCP_CHECK_THROW(swarm_brain != NULL, NIMCP_ERROR_INVALID, "swarm_brain is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->swarm_brain = swarm_brain;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: connected to swarm brain");
     return 0;
@@ -429,9 +404,9 @@ int portia_swarm_connect_consensus(
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
     NIMCP_CHECK_THROW(consensus != NULL, NIMCP_ERROR_INVALID, "consensus is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->swarm_consensus = consensus;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: connected to swarm consensus");
     return 0;
@@ -449,9 +424,9 @@ int portia_swarm_connect_emergence(
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
     NIMCP_CHECK_THROW(emergence != NULL, NIMCP_ERROR_INVALID, "emergence is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->swarm_emergence = emergence;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: connected to swarm emergence");
     return 0;
@@ -469,9 +444,9 @@ int portia_swarm_connect_energy_gossip(
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
     NIMCP_CHECK_THROW(energy_gossip != NULL, NIMCP_ERROR_INVALID, "energy_gossip is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->swarm_energy_gossip = energy_gossip;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: connected to energy gossip");
     return 0;
@@ -511,9 +486,9 @@ int portia_swarm_connect_bio_async(portia_swarm_bridge_t* bridge) {
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     int result = connect_bio_async_unlocked(bridge);
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return result;
 }
@@ -530,7 +505,7 @@ int portia_swarm_disconnect_bio_async(portia_swarm_bridge_t* bridge) {
         return 0; /* Not connected */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
@@ -540,7 +515,7 @@ int portia_swarm_disconnect_bio_async(portia_swarm_bridge_t* bridge) {
     bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("portia_swarm_bridge: disconnected from bio-async router");
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -572,7 +547,7 @@ int portia_swarm_update(portia_swarm_bridge_t* bridge) {
         return 0; /* Not running, skip update */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     uint64_t now = get_time_ms();
 
@@ -604,7 +579,7 @@ int portia_swarm_update(portia_swarm_bridge_t* bridge) {
         update_collective_state(bridge);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -634,9 +609,9 @@ int portia_swarm_broadcast_state(portia_swarm_bridge_t* bridge) {
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     int result = broadcast_state_unlocked(bridge);
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return result;
 }
@@ -653,7 +628,7 @@ int portia_swarm_request_recommendation(
     NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in request_recommendation");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* NOTE: Placeholder - actual consensus query would happen here */
     recommendation->recommended_tier = bridge->local_state.platform_tier;
@@ -678,7 +653,7 @@ int portia_swarm_request_recommendation(
                                  bridge->recommendation_user_data);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -694,7 +669,7 @@ int portia_swarm_notify_tier_change(
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update local state */
     bridge->local_state.platform_tier = new_tier;
@@ -702,7 +677,7 @@ int portia_swarm_notify_tier_change(
     /* NOTE: Actual tier change notification would use bio-async */
     bridge->stats.messages_sent++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: tier change %u -> %u notified",
                        old_tier, new_tier);
@@ -721,7 +696,7 @@ int portia_swarm_notify_degradation(
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update local state */
     bridge->local_state.degradation_level = degradation_level;
@@ -729,7 +704,7 @@ int portia_swarm_notify_degradation(
     /* NOTE: Actual degradation notification would use bio-async */
     bridge->stats.messages_sent++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: degradation level %u (reason: %u) notified",
                        degradation_level, reason);
@@ -752,9 +727,9 @@ int portia_swarm_get_collective_state(
     NIMCP_CHECK_THROW(bridge != NULL && state != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in get_collective_state");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->collective_state, sizeof(portia_swarm_collective_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -771,9 +746,9 @@ int portia_swarm_get_local_state(
     NIMCP_CHECK_THROW(bridge != NULL && state != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in get_local_state");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->local_state, sizeof(portia_swarm_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -790,10 +765,10 @@ int portia_swarm_get_recommendation(
     NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in get_recommendation");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(recommendation, &bridge->latest_recommendation,
            sizeof(portia_swarm_recommendation_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -810,9 +785,9 @@ int portia_swarm_get_stats(
     NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in get_stats");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(portia_swarm_stats_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -825,9 +800,9 @@ int portia_swarm_reset_stats(portia_swarm_bridge_t* bridge) {
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(portia_swarm_stats_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -848,10 +823,10 @@ int portia_swarm_register_recommendation_cb(
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->recommendation_cb = callback;
     bridge->recommendation_user_data = user_data;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -868,10 +843,10 @@ int portia_swarm_register_emergence_cb(
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->emergence_cb = callback;
     bridge->emergence_user_data = user_data;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -888,10 +863,10 @@ int portia_swarm_register_collective_cb(
      */
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->collective_cb = callback;
     bridge->collective_user_data = user_data;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -913,7 +888,7 @@ int portia_swarm_compute_optimal_tier(
     NIMCP_CHECK_THROW(bridge != NULL && optimal_tier != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in compute_optimal_tier");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get influence level */
     float local_weight = bridge->config.local_weight;
@@ -936,7 +911,7 @@ int portia_swarm_compute_optimal_tier(
 
     *optimal_tier = (uint8_t)(blended + 0.5f); /* Round to nearest */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -953,13 +928,13 @@ bool portia_swarm_consensus_supports_tier(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Check if proposed tier matches latest recommendation within tolerance */
     bool supported = (abs((int)proposed_tier -
                          (int)bridge->latest_recommendation.recommended_tier) <= 1);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return supported;
 }
@@ -976,7 +951,7 @@ int portia_swarm_apply_recommendation(
     NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
                       NIMCP_ERROR_NULL_ARG, "NULL parameter in apply_recommendation");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* NOTE: Actual Portia API would be called here to apply tier change */
     bridge->local_state.platform_tier = recommendation->recommended_tier;
@@ -985,7 +960,7 @@ int portia_swarm_apply_recommendation(
     /* Update statistics */
     bridge->stats.recommendations_applied++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("portia_swarm_bridge: applied recommendation tier=%u degradation=%u",
                        recommendation->recommended_tier,

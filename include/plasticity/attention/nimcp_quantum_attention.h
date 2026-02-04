@@ -53,6 +53,7 @@
 #include "optimization/quantum_annealing/nimcp_quantum_annealing_ternary.h"
 #include "utils/quantum/nimcp_quantum_walk_ternary.h"
 #include "utils/ternary/nimcp_ternary.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -229,7 +230,7 @@ static inline quantum_attention_t quantum_attention_create(
     }
 
     struct quantum_attention_ctx* ctx = (struct quantum_attention_ctx*)
-        calloc(1, sizeof(struct quantum_attention_ctx));
+        nimcp_calloc(1, sizeof(struct quantum_attention_ctx));
     if (!ctx) return NULL;
 
     ctx->magic = QUANTUM_ATTENTION_MAGIC;
@@ -241,9 +242,9 @@ static inline quantum_attention_t quantum_attention_create(
     /* Allocate Ising models for attention optimization */
     uint32_t n_pairs = seq_length * seq_length;
     ctx->attention_ising = (trit_ising_config_t**)
-        calloc(num_heads, sizeof(trit_ising_config_t*));
+        nimcp_calloc(num_heads, sizeof(trit_ising_config_t*));
     if (!ctx->attention_ising) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -254,15 +255,15 @@ static inline quantum_attention_t quantum_attention_create(
             for (uint32_t i = 0; i < h; i++) {
                 trit_ising_destroy(ctx->attention_ising[i]);
             }
-            free(ctx->attention_ising);
-            free(ctx);
+            nimcp_free(ctx->attention_ising);
+            nimcp_free(ctx);
             return NULL;
         }
     }
 
     /* Allocate quantum walkers for walk mode */
     if (config->mode == QUANTUM_ATTENTION_WALK) {
-        ctx->walkers = (trit_walker_1d_t**)calloc(num_heads, sizeof(trit_walker_1d_t*));
+        ctx->walkers = (trit_walker_1d_t**)nimcp_calloc(num_heads, sizeof(trit_walker_1d_t*));
         if (ctx->walkers) {
             for (uint32_t h = 0; h < num_heads; h++) {
                 ctx->walkers[h] = trit_walker_1d_create(
@@ -276,8 +277,8 @@ static inline quantum_attention_t quantum_attention_create(
     }
 
     /* Allocate workspace buffers */
-    ctx->qk_scores = (float*)calloc(n_pairs, sizeof(float));
-    ctx->attention_probs = (float*)calloc(n_pairs, sizeof(float));
+    ctx->qk_scores = (float*)nimcp_calloc(n_pairs, sizeof(float));
+    ctx->attention_probs = (float*)nimcp_calloc(n_pairs, sizeof(float));
     ctx->attention_mask = trit_matrix_create(seq_length, seq_length, TERNARY_PACK_BASE243);
 
     if (!ctx->qk_scores || !ctx->attention_probs || !ctx->attention_mask) {
@@ -304,7 +305,7 @@ static inline void quantum_attention_destroy(quantum_attention_t ctx) {
                 trit_ising_destroy(ctx->attention_ising[h]);
             }
         }
-        free(ctx->attention_ising);
+        nimcp_free(ctx->attention_ising);
     }
 
     /* Destroy walkers */
@@ -314,16 +315,16 @@ static inline void quantum_attention_destroy(quantum_attention_t ctx) {
                 trit_walker_1d_destroy(ctx->walkers[h]);
             }
         }
-        free(ctx->walkers);
+        nimcp_free(ctx->walkers);
     }
 
     /* Free workspace */
-    free(ctx->qk_scores);
-    free(ctx->attention_probs);
+    nimcp_free(ctx->qk_scores);
+    nimcp_free(ctx->attention_probs);
     if (ctx->attention_mask) trit_matrix_destroy(ctx->attention_mask);
 
     ctx->magic = 0;
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 //=============================================================================
@@ -555,7 +556,7 @@ static inline int quantum_attention_anneal(
     uint32_t n_pairs = n * n;
 
     /* Build coupling matrix (sparse, neighbor attention) */
-    float* J = (float*)calloc(n_pairs * n_pairs, sizeof(float));
+    float* J = (float*)nimcp_calloc(n_pairs * n_pairs, sizeof(float));
     if (!J) return -3;
 
     /* Coupling: encourage attention continuity */
@@ -572,9 +573,9 @@ static inline int quantum_attention_anneal(
     }
 
     /* Use Q×K scores as external field */
-    float* h = (float*)malloc(n_pairs * sizeof(float));
+    float* h = (float*)nimcp_malloc(n_pairs * sizeof(float));
     if (!h) {
-        free(J);
+        nimcp_free(J);
         return -3;
     }
     for (uint32_t i = 0; i < n_pairs; i++) {
@@ -592,8 +593,8 @@ static inline int quantum_attention_anneal(
     quantum_ternary_result_t anneal_result;
     int err = quantum_ternary_anneal(ising, J, h, &anneal_config, &anneal_result);
 
-    free(J);
-    free(h);
+    nimcp_free(J);
+    nimcp_free(h);
 
     if (err != 0) return err;
 

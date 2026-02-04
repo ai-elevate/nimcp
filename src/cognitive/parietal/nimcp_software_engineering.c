@@ -19,31 +19,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(software_engineering)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for software_engineering module */
-static nimcp_health_agent_t* g_software_engineering_health_agent = NULL;
+static mesh_participant_id_t g_software_engineering_mesh_id = 0;
+static mesh_participant_registry_t* g_software_engineering_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for software_engineering heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void software_engineering_set_health_agent(nimcp_health_agent_t* agent) {
-    g_software_engineering_health_agent = agent;
+nimcp_error_t software_engineering_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_software_engineering_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "software_engineering", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "software_engineering";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_software_engineering_mesh_id);
+    if (err == NIMCP_SUCCESS) g_software_engineering_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from software_engineering module */
-static inline void software_engineering_heartbeat(const char* operation, float progress) {
-    if (g_software_engineering_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_software_engineering_health_agent, operation, progress);
+void software_engineering_mesh_unregister(void) {
+    if (g_software_engineering_mesh_registry && g_software_engineering_mesh_id != 0) {
+        mesh_participant_unregister(g_software_engineering_mesh_registry, g_software_engineering_mesh_id);
+        g_software_engineering_mesh_id = 0;
+        g_software_engineering_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from software_engineering module (instance-level) */
 static inline void software_engineering_heartbeat_instance(
@@ -196,7 +210,7 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
         return NULL;
     }
 
-    software_eng_t* se = calloc(1, sizeof(software_eng_t));
+    software_eng_t* se = nimcp_calloc(1, sizeof(software_eng_t));
     if (!se) {
         set_sweng_error("Failed to allocate software_eng struct");
         return NULL;
@@ -210,7 +224,7 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
     se->lock = nimcp_mutex_create(&attr);
     if (!se->lock) {
         set_sweng_error("Failed to create mutex");
-        free(se);
+        nimcp_free(se);
         return NULL;
     }
 
@@ -227,7 +241,7 @@ void software_eng_destroy(software_eng_t* se) {
     if (se->lock) {
         nimcp_mutex_free(se->lock);
     }
-    free(se);
+    nimcp_free(se);
 }
 
 /* ============================================================================
@@ -1198,7 +1212,7 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
     software_engineering_heartbeat("software_eng_software_eng_create_", 0.0f);
 
 
-    se_metric_series_t* series = calloc(1, sizeof(se_metric_series_t));
+    se_metric_series_t* series = nimcp_calloc(1, sizeof(se_metric_series_t));
     if (!series) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate series");
@@ -1207,9 +1221,9 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
 
     }
 
-    series->points = calloc(initial_capacity, sizeof(se_metric_point_t));
+    series->points = nimcp_calloc(initial_capacity, sizeof(se_metric_point_t));
     if (!series->points) {
-        free(series);
+        nimcp_free(series);
         return NULL;
     }
 
@@ -1224,8 +1238,8 @@ void software_eng_destroy_series(se_metric_series_t* series) {
     software_engineering_heartbeat("software_eng_software_eng_destroy", 0.0f);
 
 
-    free(series->points);
-    free(series);
+    nimcp_free(series->points);
+    nimcp_free(series);
 }
 
 int software_eng_add_data_point(
@@ -1242,7 +1256,7 @@ int software_eng_add_data_point(
 
     if (series->num_points >= series->capacity) {
         uint32_t new_cap = series->capacity * 2;
-        se_metric_point_t* new_points = realloc(series->points, new_cap * sizeof(se_metric_point_t));
+        se_metric_point_t* new_points = nimcp_realloc(series->points, new_cap * sizeof(se_metric_point_t));
         if (!new_points) return -1;
         series->points = new_points;
         series->capacity = new_cap;
@@ -1269,9 +1283,9 @@ void software_eng_free_extrapolation(se_extrapolation_t* result) {
                                  (float)(i + 1) / (float)result->num_predicted);
             }
 
-            free(result->predicted[i]);
+            nimcp_free(result->predicted[i]);
         }
-        free(result->predicted);
+        nimcp_free(result->predicted);
         result->predicted = NULL;
     }
     result->num_predicted = 0;
@@ -1283,9 +1297,9 @@ void software_eng_free_synthesis(se_synthesis_t* synthesis) {
     software_engineering_heartbeat("software_eng_software_eng_free_sy", 0.0f);
 
 
-    free(synthesis->insights);
-    free(synthesis->knowledge_gaps);
-    free(synthesis->contradictions);
+    nimcp_free(synthesis->insights);
+    nimcp_free(synthesis->knowledge_gaps);
+    nimcp_free(synthesis->contradictions);
     synthesis->insights = NULL;
     synthesis->knowledge_gaps = NULL;
     synthesis->contradictions = NULL;

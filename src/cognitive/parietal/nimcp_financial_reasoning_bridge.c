@@ -27,29 +27,49 @@
 
 #include "cognitive/parietal/nimcp_financial_reasoning_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_reasoning)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial reasoning bridge module */
-static nimcp_health_agent_t* g_fin_reasoning_health_agent = NULL;
+static mesh_participant_id_t g_fin_reasoning_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_reasoning_mesh_registry = NULL;
 
-void financial_reasoning_bridge_set_health_agent_global(void* agent) {
-    g_fin_reasoning_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_reasoning_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_reasoning_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_reasoning", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_reasoning";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_reasoning_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_reasoning_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_reasoning_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_reasoning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_reasoning_health_agent, operation, progress);
+void fin_reasoning_mesh_unregister(void) {
+    if (g_fin_reasoning_mesh_registry && g_fin_reasoning_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_reasoning_mesh_registry, g_fin_reasoning_mesh_id);
+        g_fin_reasoning_mesh_id = 0;
+        g_fin_reasoning_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -272,7 +292,7 @@ financial_reasoning_bridge_t* financial_reasoning_bridge_create(
     fin_reasoning_heartbeat_global("fin_reasoning_create", 0.0f);
 
     financial_reasoning_bridge_t* bridge = (financial_reasoning_bridge_t*)
-        malloc(sizeof(financial_reasoning_bridge_t));
+        nimcp_malloc(sizeof(financial_reasoning_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_reasoning_bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -291,11 +311,11 @@ financial_reasoning_bridge_t* financial_reasoning_bridge_create(
     }
 
     /* Allocate rule base */
-    bridge->rules = (fin_rule_entry_t*)malloc(
+    bridge->rules = (fin_rule_entry_t*)nimcp_malloc(
         FIN_REASONING_MAX_RULES * sizeof(fin_rule_entry_t));
     if (!bridge->rules) {
         set_error("Failed to allocate rule base");
-        free(bridge);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate rule base");
         return NULL;
@@ -305,12 +325,12 @@ financial_reasoning_bridge_t* financial_reasoning_bridge_create(
     bridge->next_rule_id = 1;
 
     /* Allocate working memory */
-    bridge->facts = (fin_fact_t*)malloc(
+    bridge->facts = (fin_fact_t*)nimcp_malloc(
         FIN_REASONING_MAX_FACTS * sizeof(fin_fact_t));
     if (!bridge->facts) {
         set_error("Failed to allocate working memory");
-        free(bridge->rules);
-        free(bridge);
+        nimcp_free(bridge->rules);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate working memory");
         return NULL;
@@ -333,14 +353,14 @@ void financial_reasoning_bridge_destroy(financial_reasoning_bridge_t* bridge) {
 
     if (bridge) {
         if (bridge->rules) {
-            free(bridge->rules);
+            nimcp_free(bridge->rules);
         }
         if (bridge->facts) {
-            free(bridge->facts);
+            nimcp_free(bridge->facts);
         }
         bridge->magic = 0;
         bridge->op_state = FIN_REASONING_OP_STATE_UNINITIALIZED;
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 
@@ -1351,9 +1371,9 @@ int financial_reasoning_bridge_derive_signals(
     financial_reasoning_result_init(result);
 
     /* Allocate arrays for triggered rules and signals */
-    result->triggered_rules = (fin_trading_rule_t*)malloc(
+    result->triggered_rules = (fin_trading_rule_t*)nimcp_malloc(
         FIN_REASONING_MAX_TRIGGERED * sizeof(fin_trading_rule_t));
-    result->derived_signals = (int*)malloc(
+    result->derived_signals = (int*)nimcp_malloc(
         FIN_REASONING_MAX_SIGNALS * sizeof(int));
 
     if (!result->triggered_rules || !result->derived_signals) {
@@ -1727,11 +1747,11 @@ void financial_reasoning_result_init(fin_reasoning_result_t* result) {
 void financial_reasoning_result_free(fin_reasoning_result_t* result) {
     if (result) {
         if (result->triggered_rules) {
-            free(result->triggered_rules);
+            nimcp_free(result->triggered_rules);
             result->triggered_rules = NULL;
         }
         if (result->derived_signals) {
-            free(result->derived_signals);
+            nimcp_free(result->derived_signals);
             result->derived_signals = NULL;
         }
         result->num_triggered = 0;

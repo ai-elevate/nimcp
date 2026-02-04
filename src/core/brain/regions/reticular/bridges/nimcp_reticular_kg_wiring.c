@@ -15,29 +15,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reticular_kg_wiring)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for reticular_kg_wiring module */
-static nimcp_health_agent_t* g_reticular_kg_wiring_health_agent = NULL;
+static mesh_participant_id_t g_reticular_kg_wiring_mesh_id = 0;
+static mesh_participant_registry_t* g_reticular_kg_wiring_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for reticular_kg_wiring heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void reticular_kg_wiring_set_health_agent(nimcp_health_agent_t* agent) {
-    g_reticular_kg_wiring_health_agent = agent;
+nimcp_error_t reticular_kg_wiring_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_reticular_kg_wiring_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "reticular_kg_wiring", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "reticular_kg_wiring";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_reticular_kg_wiring_mesh_id);
+    if (err == NIMCP_SUCCESS) g_reticular_kg_wiring_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from reticular_kg_wiring module */
-static inline void reticular_kg_wiring_heartbeat(const char* operation, float progress) {
-    if (g_reticular_kg_wiring_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_reticular_kg_wiring_health_agent, operation, progress);
+void reticular_kg_wiring_mesh_unregister(void) {
+    if (g_reticular_kg_wiring_mesh_registry && g_reticular_kg_wiring_mesh_id != 0) {
+        mesh_participant_unregister(g_reticular_kg_wiring_mesh_registry, g_reticular_kg_wiring_mesh_id);
+        g_reticular_kg_wiring_mesh_id = 0;
+        g_reticular_kg_wiring_mesh_registry = NULL;
     }
 }
 
@@ -1518,15 +1531,15 @@ brain_kg_node_list_t* reticular_kg_get_nuclei_for_modulator(
     }
 
     /* Allocate result list */
-    brain_kg_node_list_t* result = (brain_kg_node_list_t*)malloc(sizeof(brain_kg_node_list_t));
+    brain_kg_node_list_t* result = (brain_kg_node_list_t*)nimcp_malloc(sizeof(brain_kg_node_list_t));
     if (!result) {
         brain_kg_edge_list_destroy(edges);
         return NULL;
     }
 
-    result->nodes = (brain_kg_node_t**)malloc(edges->count * sizeof(brain_kg_node_t*));
+    result->nodes = (brain_kg_node_t**)nimcp_malloc(edges->count * sizeof(brain_kg_node_t*));
     if (!result->nodes) {
-        free(result);
+        nimcp_free(result);
         brain_kg_edge_list_destroy(edges);
         return NULL;
     }
@@ -1564,15 +1577,15 @@ brain_kg_node_list_t* reticular_kg_get_modulators_from_nucleus(
     }
 
     /* Allocate result list */
-    brain_kg_node_list_t* result = (brain_kg_node_list_t*)malloc(sizeof(brain_kg_node_list_t));
+    brain_kg_node_list_t* result = (brain_kg_node_list_t*)nimcp_malloc(sizeof(brain_kg_node_list_t));
     if (!result) {
         brain_kg_edge_list_destroy(edges);
         return NULL;
     }
 
-    result->nodes = (brain_kg_node_t**)malloc(edges->count * sizeof(brain_kg_node_t*));
+    result->nodes = (brain_kg_node_t**)nimcp_malloc(edges->count * sizeof(brain_kg_node_t*));
     if (!result->nodes) {
-        free(result);
+        nimcp_free(result);
         brain_kg_edge_list_destroy(edges);
         return NULL;
     }

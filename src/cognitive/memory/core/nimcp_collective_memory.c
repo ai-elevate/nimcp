@@ -27,31 +27,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(collective_memory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for collective_memory module */
-static nimcp_health_agent_t* g_collective_memory_health_agent = NULL;
+static mesh_participant_id_t g_collective_memory_mesh_id = 0;
+static mesh_participant_registry_t* g_collective_memory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for collective_memory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void collective_memory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_collective_memory_health_agent = agent;
+nimcp_error_t collective_memory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_collective_memory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "collective_memory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "collective_memory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_collective_memory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_collective_memory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from collective_memory module */
-static inline void collective_memory_heartbeat(const char* operation, float progress) {
-    if (g_collective_memory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_collective_memory_health_agent, operation, progress);
+void collective_memory_mesh_unregister(void) {
+    if (g_collective_memory_mesh_registry && g_collective_memory_mesh_id != 0) {
+        mesh_participant_unregister(g_collective_memory_mesh_registry, g_collective_memory_mesh_id);
+        g_collective_memory_mesh_id = 0;
+        g_collective_memory_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from collective_memory module (instance-level) */
 static inline void collective_memory_heartbeat_instance(
@@ -180,12 +194,12 @@ static collective_error_t add_agent_to_memory(collective_memory_t* memory,
         size_t new_cap = memory->agent_capacity * ARRAY_GROWTH_FACTOR;
         if (new_cap == 0) new_cap = 4;
 
-        uint64_t* new_ids = realloc(memory->agent_ids, new_cap * sizeof(uint64_t));
-        float* new_versions = realloc(memory->agent_versions, new_cap * sizeof(float));
+        uint64_t* new_ids = nimcp_realloc(memory->agent_ids, new_cap * sizeof(uint64_t));
+        float* new_versions = nimcp_realloc(memory->agent_versions, new_cap * sizeof(float));
 
         if (!new_ids || !new_versions) {
-            free(new_ids);
-            free(new_versions);
+            nimcp_free(new_ids);
+            nimcp_free(new_versions);
             return COLLECTIVE_ERROR_NO_MEMORY;
         }
 
@@ -237,7 +251,7 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
                                                        collective_type_t type,
                                                        uint64_t origin_agent_id,
                                                        float origin_time) {
-    collective_memory_t* memory = calloc(1, sizeof(collective_memory_t));
+    collective_memory_t* memory = nimcp_calloc(1, sizeof(collective_memory_t));
     if (!memory) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate memory");
@@ -260,13 +274,13 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
 
     // Initialize arrays
     memory->agent_capacity = 4;
-    memory->agent_ids = malloc(memory->agent_capacity * sizeof(uint64_t));
-    memory->agent_versions = malloc(memory->agent_capacity * sizeof(float));
+    memory->agent_ids = nimcp_malloc(memory->agent_capacity * sizeof(uint64_t));
+    memory->agent_versions = nimcp_malloc(memory->agent_capacity * sizeof(float));
 
     if (!memory->agent_ids || !memory->agent_versions) {
-        free(memory->agent_ids);
-        free(memory->agent_versions);
-        free(memory);
+        nimcp_free(memory->agent_ids);
+        nimcp_free(memory->agent_versions);
+        nimcp_free(memory);
         return NULL;
     }
 
@@ -284,12 +298,12 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
 static void destroy_collective_memory(collective_memory_t* memory) {
     if (!memory) return;
 
-    free(memory->agent_ids);
-    free(memory->agent_versions);
+    nimcp_free(memory->agent_ids);
+    nimcp_free(memory->agent_versions);
 
     // Note: memory_node is owned externally, don't free here
 
-    free(memory);
+    nimcp_free(memory);
 }
 
 /**
@@ -310,14 +324,14 @@ static collective_error_t init_agent_state(agent_memory_state_t* state,
 
     // Initialize memory arrays
     state->memory_capacity = 16;
-    state->memories = malloc(state->memory_capacity * sizeof(prime_signature_t));
-    state->memory_ids = malloc(state->memory_capacity * sizeof(uint64_t));
-    state->memory_versions = malloc(state->memory_capacity * sizeof(float));
+    state->memories = nimcp_malloc(state->memory_capacity * sizeof(prime_signature_t));
+    state->memory_ids = nimcp_malloc(state->memory_capacity * sizeof(uint64_t));
+    state->memory_versions = nimcp_malloc(state->memory_capacity * sizeof(float));
 
     if (!state->memories || !state->memory_ids || !state->memory_versions) {
-        free(state->memories);
-        free(state->memory_ids);
-        free(state->memory_versions);
+        nimcp_free(state->memories);
+        nimcp_free(state->memory_ids);
+        nimcp_free(state->memory_versions);
         return COLLECTIVE_ERROR_NO_MEMORY;
     }
 
@@ -332,9 +346,9 @@ static collective_error_t init_agent_state(agent_memory_state_t* state,
 static void cleanup_agent_state(agent_memory_state_t* state) {
     if (!state) return;
 
-    free(state->memories);
-    free(state->memory_ids);
-    free(state->memory_versions);
+    nimcp_free(state->memories);
+    nimcp_free(state->memory_ids);
+    nimcp_free(state->memory_versions);
 
     state->memories = NULL;
     state->memory_ids = NULL;
@@ -400,7 +414,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     pr_node_manager_t node_manager,
     const collective_memory_config_t* config) {
 
-    collective_memory_system_t* system = calloc(1, sizeof(collective_memory_system_t));
+    collective_memory_system_t* system = nimcp_calloc(1, sizeof(collective_memory_system_t));
     if (!system) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
@@ -412,7 +426,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     // Set configuration
     if (config) {
         if (!collective_memory_config_validate(config)) {
-            free(system);
+            nimcp_free(system);
             return NULL;
         }
         system->config = *config;
@@ -427,27 +441,27 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     entangle_config_t entangle_cfg = entangle_config_default();
     system->entanglement = entangle_graph_create(&entangle_cfg);
     if (!system->entanglement) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
     // Initialize memory array
     system->memory_capacity = INITIAL_MEMORY_CAPACITY;
-    system->memories = calloc(system->memory_capacity, sizeof(collective_memory_t*));
+    system->memories = nimcp_calloc(system->memory_capacity, sizeof(collective_memory_t*));
     if (!system->memories) {
         entangle_graph_destroy(system->entanglement);
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
     system->num_memories = 0;
 
     // Initialize agent array
     system->agent_capacity = INITIAL_AGENT_CAPACITY;
-    system->agents = calloc(system->agent_capacity, sizeof(agent_memory_state_t));
+    system->agents = nimcp_calloc(system->agent_capacity, sizeof(agent_memory_state_t));
     if (!system->agents) {
-        free(system->memories);
+        nimcp_free(system->memories);
         entangle_graph_destroy(system->entanglement);
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
     system->num_agents = 0;
@@ -474,7 +488,7 @@ NIMCP_EXPORT void collective_memory_destroy(collective_memory_system_t* system) 
 
         destroy_collective_memory(system->memories[i]);
     }
-    free(system->memories);
+    nimcp_free(system->memories);
 
     // Cleanup all agent states
     for (size_t i = 0; i < system->num_agents; i++) {
@@ -486,12 +500,12 @@ NIMCP_EXPORT void collective_memory_destroy(collective_memory_system_t* system) 
 
         cleanup_agent_state(&system->agents[i]);
     }
-    free(system->agents);
+    nimcp_free(system->agents);
 
     // Destroy entanglement graph
     entangle_graph_destroy(system->entanglement);
 
-    free(system);
+    nimcp_free(system);
 }
 
 NIMCP_EXPORT collective_error_t collective_memory_reset(
@@ -555,7 +569,7 @@ NIMCP_EXPORT collective_error_t collective_memory_add_agent(
     // Grow array if needed
     if (system->num_agents >= system->agent_capacity) {
         size_t new_cap = system->agent_capacity * ARRAY_GROWTH_FACTOR;
-        agent_memory_state_t* new_agents = realloc(system->agents,
+        agent_memory_state_t* new_agents = nimcp_realloc(system->agents,
             new_cap * sizeof(agent_memory_state_t));
         if (!new_agents) return COLLECTIVE_ERROR_NO_MEMORY;
 
@@ -668,7 +682,7 @@ NIMCP_EXPORT collective_error_t collective_memory_share(
     // Grow memory array if needed
     if (system->num_memories >= system->memory_capacity) {
         size_t new_cap = system->memory_capacity * ARRAY_GROWTH_FACTOR;
-        collective_memory_t** new_mems = realloc(system->memories,
+        collective_memory_t** new_mems = nimcp_realloc(system->memories,
             new_cap * sizeof(collective_memory_t*));
         if (!new_mems) return COLLECTIVE_ERROR_NO_MEMORY;
 

@@ -29,6 +29,7 @@
 #include "nimcp_ternary_types.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +89,7 @@ static inline trit_tensor_t* trit_tensor_create(
 ) {
     if (!dims || rank == 0 || rank > TRIT_TENSOR_MAX_RANK) return NULL;
 
-    trit_tensor_t* tensor = (trit_tensor_t*)calloc(1, sizeof(trit_tensor_t));
+    trit_tensor_t* tensor = (trit_tensor_t*)nimcp_calloc(1, sizeof(trit_tensor_t));
     if (!tensor) return NULL;
 
     tensor->magic = TRIT_TENSOR_MAGIC;
@@ -112,25 +113,25 @@ static inline trit_tensor_t* trit_tensor_create(
     size_t data_size;
     if (pack_mode == TERNARY_PACK_NONE) {
         data_size = tensor->numel * sizeof(trit_t);
-        tensor->data.unpacked = (trit_t*)calloc(tensor->numel, sizeof(trit_t));
+        tensor->data.unpacked = (trit_t*)nimcp_calloc(tensor->numel, sizeof(trit_t));
         if (!tensor->data.unpacked) {
-            free(tensor);
+            nimcp_free(tensor);
             return NULL;
         }
         // Initialize to TRIT_UNKNOWN (0)
         memset(tensor->data.unpacked, TRIT_UNKNOWN, tensor->numel);
     } else if (pack_mode == TERNARY_PACK_2BIT) {
         data_size = (tensor->numel + 3) / 4;  // 4 trits per byte
-        tensor->data.packed = (uint8_t*)calloc(data_size, 1);
+        tensor->data.packed = (uint8_t*)nimcp_calloc(data_size, 1);
         if (!tensor->data.packed) {
-            free(tensor);
+            nimcp_free(tensor);
             return NULL;
         }
     } else {  // TERNARY_PACK_BASE243
         data_size = (tensor->numel + 4) / 5;  // 5 trits per byte
-        tensor->data.packed = (uint8_t*)calloc(data_size, 1);
+        tensor->data.packed = (uint8_t*)nimcp_calloc(data_size, 1);
         if (!tensor->data.packed) {
-            free(tensor);
+            nimcp_free(tensor);
             return NULL;
         }
     }
@@ -147,13 +148,13 @@ static inline void trit_tensor_destroy(trit_tensor_t* tensor) {
     if (!tensor || tensor->magic != TRIT_TENSOR_MAGIC) return;
 
     if (tensor->pack_mode == TERNARY_PACK_NONE) {
-        free(tensor->data.unpacked);
+        nimcp_free(tensor->data.unpacked);
     } else {
-        free(tensor->data.packed);
+        nimcp_free(tensor->data.packed);
     }
 
     tensor->magic = 0;  // Invalidate
-    free(tensor);
+    nimcp_free(tensor);
 }
 
 //=============================================================================

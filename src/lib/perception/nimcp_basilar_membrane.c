@@ -36,33 +36,9 @@ struct basilar_membrane {
     uint64_t samples_processed;
     uint64_t frames_processed;
 };
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for basilar_membrane module */
-static nimcp_health_agent_t* g_basilar_membrane_health_agent = NULL;
-
-/**
- * @brief Set health agent for basilar_membrane heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void basilar_membrane_set_health_agent(nimcp_health_agent_t* agent) {
-    g_basilar_membrane_health_agent = agent;
-}
-
-/** @brief Send heartbeat from basilar_membrane module */
-static inline void basilar_membrane_heartbeat(const char* operation, float progress) {
-    if (g_basilar_membrane_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_basilar_membrane_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(basilar_membrane)
 
 //=============================================================================
 // Core API Implementation
@@ -119,13 +95,13 @@ basilar_membrane_t* basilar_membrane_create(const bm_config_t* config) {
     if (!config) return NULL;
     if (config->num_channels == 0 || config->num_channels > BM_MAX_CHANNELS) return NULL;
 
-    basilar_membrane_t* bm = (basilar_membrane_t*)calloc(1, sizeof(basilar_membrane_t));
+    basilar_membrane_t* bm = (basilar_membrane_t*)nimcp_calloc(1, sizeof(basilar_membrane_t));
     if (!bm) return NULL;
 
     bm->config = *config;
-    bm->filters = (bm_filter_t*)calloc(config->num_channels, sizeof(bm_filter_t));
+    bm->filters = (bm_filter_t*)nimcp_calloc(config->num_channels, sizeof(bm_filter_t));
     if (!bm->filters) {
-        free(bm);
+        nimcp_free(bm);
         return NULL;
     }
 
@@ -144,8 +120,8 @@ basilar_membrane_t* basilar_membrane_create(const bm_config_t* config) {
 
 void basilar_membrane_destroy(basilar_membrane_t* bm) {
     if (!bm) return;
-    free(bm->filters);
-    free(bm);
+    nimcp_free(bm->filters);
+    nimcp_free(bm);
 }
 
 nimcp_error_t basilar_membrane_reset(basilar_membrane_t* bm) {
@@ -275,18 +251,18 @@ nimcp_error_t bm_config_validate(const bm_config_t* config) {
 bm_output_t* bm_output_create(basilar_membrane_t* bm, uint32_t max_samples) {
     if (!bm || max_samples == 0) return NULL;
     uint32_t n = bm->config.num_channels;
-    bm_output_t* out = (bm_output_t*)calloc(1, sizeof(bm_output_t));
+    bm_output_t* out = (bm_output_t*)nimcp_calloc(1, sizeof(bm_output_t));
     if (!out) return NULL;
     out->num_channels = n;
     out->num_samples = max_samples;
-    out->channel_output = (float*)calloc(n, sizeof(float));
-    out->envelope = (float*)calloc(n, sizeof(float));
-    out->fine_structure = (float*)calloc(n, sizeof(float));
-    out->phase = (float*)calloc(n, sizeof(float));
+    out->channel_output = (float*)nimcp_calloc(n, sizeof(float));
+    out->envelope = (float*)nimcp_calloc(n, sizeof(float));
+    out->fine_structure = (float*)nimcp_calloc(n, sizeof(float));
+    out->phase = (float*)nimcp_calloc(n, sizeof(float));
     if (!out->channel_output || !out->envelope || !out->fine_structure || !out->phase) {
-        free(out->channel_output); free(out->envelope);
-        free(out->fine_structure); free(out->phase);
-        free(out);
+        nimcp_free(out->channel_output); nimcp_free(out->envelope);
+        nimcp_free(out->fine_structure); nimcp_free(out->phase);
+        nimcp_free(out);
         return NULL;
     }
     return out;
@@ -294,11 +270,11 @@ bm_output_t* bm_output_create(basilar_membrane_t* bm, uint32_t max_samples) {
 
 void bm_output_destroy(bm_output_t* output) {
     if (!output) return;
-    free(output->channel_output);
-    free(output->envelope);
-    free(output->fine_structure);
-    free(output->phase);
-    free(output);
+    nimcp_free(output->channel_output);
+    nimcp_free(output->envelope);
+    nimcp_free(output->fine_structure);
+    nimcp_free(output->phase);
+    nimcp_free(output);
 }
 
 float bm_erb_at_freq(float freq_hz) {

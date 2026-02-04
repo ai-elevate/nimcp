@@ -12,38 +12,14 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include <ctype.h>
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for reciprocity_eval module */
-static nimcp_health_agent_t* g_reciprocity_eval_health_agent = NULL;
-
-/**
- * @brief Set health agent for reciprocity_eval heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void reciprocity_eval_set_health_agent(nimcp_health_agent_t* agent) {
-    g_reciprocity_eval_health_agent = agent;
-}
-
-/** @brief Send heartbeat from reciprocity_eval module */
-static inline void reciprocity_eval_heartbeat(const char* operation, float progress) {
-    if (g_reciprocity_eval_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_reciprocity_eval_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reciprocity_eval)
 
 /* ============================================================================
  * Internal Structure
@@ -64,7 +40,7 @@ struct reciprocity_evaluator_struct {
     bool bio_async_enabled;
 
     /* Thread safety */
-    pthread_mutex_t* mutex;
+    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -231,14 +207,14 @@ reciprocity_evaluator_t reciprocity_eval_create(const reciprocity_config_t* conf
     eval->bio_async_enabled = false;
 
     /* Initialize mutex */
-    eval->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    eval->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!eval->mutex) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: mutex malloc failed");
         nimcp_free(eval);
         return NULL;
     }
 
-    if (pthread_mutex_init(eval->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(eval->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: mutex init failed");
         nimcp_free(eval);
         return NULL;
@@ -261,7 +237,7 @@ void reciprocity_eval_destroy(reciprocity_evaluator_t evaluator) {
 
     /* Destroy mutex */
     if (evaluator->mutex) {
-        pthread_mutex_destroy(evaluator->mutex);
+        nimcp_mutex_destroy(evaluator->mutex);
     }
 
     /* Free evaluator */
@@ -287,7 +263,7 @@ int reciprocity_eval_check(
     }
 
     /* Lock mutex */
-    pthread_mutex_lock(evaluator->mutex);
+    nimcp_mutex_lock(evaluator->mutex);
 
     /* Compute symmetry score */
     float symmetry = reciprocity_eval_get_symmetry_score(evaluator, action, target);
@@ -351,7 +327,7 @@ int reciprocity_eval_check(
     }
 
     /* Unlock mutex */
-    pthread_mutex_unlock(evaluator->mutex);
+    nimcp_mutex_unlock(evaluator->mutex);
 
     return 0;
 }
@@ -459,13 +435,13 @@ int reciprocity_eval_get_stats(
     }
 
     /* Lock mutex */
-    pthread_mutex_lock(evaluator->mutex);
+    nimcp_mutex_lock(evaluator->mutex);
 
     /* Copy statistics */
     memcpy(stats, &evaluator->stats, sizeof(reciprocity_stats_t));
 
     /* Unlock mutex */
-    pthread_mutex_unlock(evaluator->mutex);
+    nimcp_mutex_unlock(evaluator->mutex);
 
     return 0;
 }
@@ -478,13 +454,13 @@ int reciprocity_eval_reset_stats(reciprocity_evaluator_t evaluator) {
     }
 
     /* Lock mutex */
-    pthread_mutex_lock(evaluator->mutex);
+    nimcp_mutex_lock(evaluator->mutex);
 
     /* Reset statistics */
     memset(&evaluator->stats, 0, sizeof(reciprocity_stats_t));
 
     /* Unlock mutex */
-    pthread_mutex_unlock(evaluator->mutex);
+    nimcp_mutex_unlock(evaluator->mutex);
 
     NIMCP_LOGGING_INFO("Reciprocity evaluator statistics reset");
     return 0;

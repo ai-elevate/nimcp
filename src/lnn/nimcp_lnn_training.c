@@ -28,43 +28,10 @@
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *===========================================================================*/
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/* Global health agent reference for LNN training */
-static nimcp_health_agent_t* g_lnn_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(lnn)
 
-static void lnn_training_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lnn_health_agent = agent;
-}
-
-static inline void lnn_training_heartbeat(const char* operation, float progress) {
-    if (g_lnn_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lnn_health_agent, operation, progress);
-    }
-}
-
-/*=============================================================================
- * Constants
- *===========================================================================*/
-
-#define LNN_TRAINING_DEFAULT_LR           NIMCP_DEFAULT_DECAY_RATE
-#define LNN_TRAINING_DEFAULT_WEIGHT_DECAY 0.0f
-#define LNN_TRAINING_DEFAULT_BETA1        0.9f
-#define LNN_TRAINING_DEFAULT_BETA2        0.999f
-#define LNN_TRAINING_DEFAULT_EPSILON      1e-8f
-#define LNN_TRAINING_MAX_SCHEDULE_PARAMS  8
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-/**
- * @brief Compute new LR for step schedule
- */
 static float compute_step_schedule_lr(
     float base_lr,
     uint64_t step,
@@ -111,6 +78,27 @@ static float compute_warmup_cosine_lr(
 ) {
     if (step < warmup_steps) {
 #include <stddef.h>  /* for NULL */
+
+/* Default training hyperparameters */
+#ifndef LNN_TRAINING_DEFAULT_LR
+#define LNN_TRAINING_DEFAULT_LR 0.001f
+#endif
+#ifndef LNN_TRAINING_DEFAULT_WEIGHT_DECAY
+#define LNN_TRAINING_DEFAULT_WEIGHT_DECAY 0.0001f
+#endif
+#ifndef LNN_TRAINING_DEFAULT_BETA1
+#define LNN_TRAINING_DEFAULT_BETA1 0.9f
+#endif
+#ifndef LNN_TRAINING_DEFAULT_BETA2
+#define LNN_TRAINING_DEFAULT_BETA2 0.999f
+#endif
+#ifndef LNN_TRAINING_DEFAULT_EPSILON
+#define LNN_TRAINING_DEFAULT_EPSILON 1e-8f
+#endif
+#ifndef LNN_TRAINING_MAX_SCHEDULE_PARAMS
+#define LNN_TRAINING_MAX_SCHEDULE_PARAMS 32
+#endif
+
         // Linear warmup
         return base_lr * ((float)step / (float)warmup_steps);
     } else {

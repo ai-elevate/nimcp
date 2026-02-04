@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +55,7 @@ extern "C" {
  * @brief Tracked mutex with timeout and ordering
  */
 typedef struct {
-    pthread_mutex_t mutex;         /**< Underlying mutex */
+    nimcp_mutex_t mutex;         /**< Underlying mutex */
     const char* name;              /**< Debug name */
     uint32_t order;                /**< Lock order number */
     uint32_t timeout_ms;           /**< Lock timeout in ms */
@@ -270,13 +271,13 @@ void deadlock_detector_set_default_timeout(uint32_t timeout_ms);
 
 // Fallback to standard pthread mutexes (no tracking)
 #define TRACKED_MUTEX_INIT(mutex, timeout_ms) \
-    (pthread_mutex_init(&(mutex)->mutex, NULL) == 0)
+    (nimcp_mutex_init(&(mutex)->mutex, NULL) == 0)
 
 #define TRACKED_MUTEX_LOCK(mutex) \
-    (pthread_mutex_lock(&(mutex)->mutex) == 0)
+    (nimcp_mutex_lock(&(mutex)->mutex) == 0)
 
 #define TRACKED_MUTEX_UNLOCK(mutex) \
-    pthread_mutex_unlock(&(mutex)->mutex)
+    nimcp_mutex_unlock(&(mutex)->mutex)
 
 #endif // NIMCP_ENABLE_DEADLOCK_DETECTION
 

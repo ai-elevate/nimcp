@@ -349,7 +349,7 @@ float nimcp_stats_mode(const float* data, uint32_t n, float bin_width) {
     }
 
     uint32_t n_bins = (uint32_t)ceilf((max_val - min_val) / bin_width) + 1;
-    uint32_t* counts = (uint32_t*)calloc(n_bins, sizeof(uint32_t));
+    uint32_t* counts = (uint32_t*)nimcp_calloc(n_bins, sizeof(uint32_t));
     if (!counts) return NAN;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -2246,10 +2246,10 @@ float nimcp_stats_transfer_entropy(
 
     uint32_t n_samples = n - k;
     uint32_t joint_size = n_bins * n_bins * n_bins;  // y_t, y_past, x_past
-    uint32_t* counts_yyx = (uint32_t*)calloc(joint_size, sizeof(uint32_t));
-    uint32_t* counts_yx = (uint32_t*)calloc(n_bins * n_bins, sizeof(uint32_t));
-    uint32_t* counts_yy = (uint32_t*)calloc(n_bins * n_bins, sizeof(uint32_t));
-    uint32_t* counts_y = (uint32_t*)calloc(n_bins, sizeof(uint32_t));
+    uint32_t* counts_yyx = (uint32_t*)nimcp_calloc(joint_size, sizeof(uint32_t));
+    uint32_t* counts_yx = (uint32_t*)nimcp_calloc(n_bins * n_bins, sizeof(uint32_t));
+    uint32_t* counts_yy = (uint32_t*)nimcp_calloc(n_bins * n_bins, sizeof(uint32_t));
+    uint32_t* counts_y = (uint32_t*)nimcp_calloc(n_bins, sizeof(uint32_t));
 
     if (!counts_yyx || !counts_yx || !counts_yy || !counts_y) {
         nimcp_free(x_bins); nimcp_free(y_bins);

@@ -222,7 +222,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         cfg = social_memory_config_default();
     }
 
-    social_memory_internal_t* mem = (social_memory_internal_t*)calloc(1, sizeof(social_memory_internal_t));
+    social_memory_internal_t* mem = (social_memory_internal_t*)nimcp_calloc(1, sizeof(social_memory_internal_t));
     if (!mem) {
         set_error("Failed to allocate social memory");
         return NULL;
@@ -235,10 +235,10 @@ NIMCP_EXPORT social_memory_t social_memory_create(
 
     // Initialize person hash table
     mem->person_bucket_count = HASH_INITIAL_CAPACITY;
-    mem->person_buckets = (person_entry_t**)calloc(mem->person_bucket_count, sizeof(person_entry_t*));
+    mem->person_buckets = (person_entry_t**)nimcp_calloc(mem->person_bucket_count, sizeof(person_entry_t*));
     if (!mem->person_buckets) {
         set_error("Failed to allocate person buckets");
-        free(mem);
+        nimcp_free(mem);
         return NULL;
     }
     mem->max_persons = cfg.max_persons;
@@ -246,11 +246,11 @@ NIMCP_EXPORT social_memory_t social_memory_create(
 
     // Initialize episode hash table
     mem->episode_bucket_count = HASH_INITIAL_CAPACITY;
-    mem->episode_buckets = (episode_entry_t**)calloc(mem->episode_bucket_count, sizeof(episode_entry_t*));
+    mem->episode_buckets = (episode_entry_t**)nimcp_calloc(mem->episode_bucket_count, sizeof(episode_entry_t*));
     if (!mem->episode_buckets) {
         set_error("Failed to allocate episode buckets");
-        free(mem->person_buckets);
-        free(mem);
+        nimcp_free(mem->person_buckets);
+        nimcp_free(mem);
         return NULL;
     }
     mem->max_episodes = cfg.max_episodes;
@@ -265,18 +265,18 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     mem->matrix_size = 0;
 
     size_t matrix_elements = initial_matrix * initial_matrix;
-    mem->relationship_matrix = (float*)calloc(matrix_elements, sizeof(float));
-    mem->relationship_types = (relationship_type_t*)calloc(matrix_elements, sizeof(relationship_type_t));
-    mem->matrix_person_ids = (uint64_t*)calloc(initial_matrix, sizeof(uint64_t));
+    mem->relationship_matrix = (float*)nimcp_calloc(matrix_elements, sizeof(float));
+    mem->relationship_types = (relationship_type_t*)nimcp_calloc(matrix_elements, sizeof(relationship_type_t));
+    mem->matrix_person_ids = (uint64_t*)nimcp_calloc(initial_matrix, sizeof(uint64_t));
 
     if (!mem->relationship_matrix || !mem->relationship_types || !mem->matrix_person_ids) {
         set_error("Failed to allocate relationship matrix");
-        free(mem->relationship_matrix);
-        free(mem->relationship_types);
-        free(mem->matrix_person_ids);
-        free(mem->episode_buckets);
-        free(mem->person_buckets);
-        free(mem);
+        nimcp_free(mem->relationship_matrix);
+        nimcp_free(mem->relationship_types);
+        nimcp_free(mem->matrix_person_ids);
+        nimcp_free(mem->episode_buckets);
+        nimcp_free(mem->person_buckets);
+        nimcp_free(mem);
         return NULL;
     }
 
@@ -325,11 +325,11 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
         while (entry) {
             person_entry_t* next = entry->next;
             free_person_node(entry->person);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
-    free(mem->person_buckets);
+    nimcp_free(mem->person_buckets);
 
     // Free all episodes
     for (size_t i = 0; i < mem->episode_bucket_count; i++) {
@@ -343,19 +343,19 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
         while (entry) {
             episode_entry_t* next = entry->next;
             free_episode(entry->episode);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
-    free(mem->episode_buckets);
+    nimcp_free(mem->episode_buckets);
 
     // Free relationship matrix
-    free(mem->relationship_matrix);
-    free(mem->relationship_types);
-    free(mem->matrix_person_ids);
+    nimcp_free(mem->relationship_matrix);
+    nimcp_free(mem->relationship_types);
+    nimcp_free(mem->matrix_person_ids);
 
     mem->magic = 0;
-    free(mem);
+    nimcp_free(mem);
 }
 
 NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) {
@@ -380,7 +380,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
         while (entry) {
             person_entry_t* next = entry->next;
             free_person_node(entry->person);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         mem->person_buckets[i] = NULL;
@@ -400,7 +400,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
         while (entry) {
             episode_entry_t* next = entry->next;
             free_episode(entry->episode);
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         mem->episode_buckets[i] = NULL;
@@ -554,7 +554,7 @@ NIMCP_EXPORT uint64_t social_memory_add_person_full(
     if (person->facts && person->num_facts > 0) {
         new_person->max_facts = person->num_facts > mem->config.max_facts_per_person ?
                                 mem->config.max_facts_per_person : person->num_facts;
-        new_person->facts = (prime_signature_t*)malloc(new_person->max_facts * sizeof(prime_signature_t));
+        new_person->facts = (prime_signature_t*)nimcp_malloc(new_person->max_facts * sizeof(prime_signature_t));
         if (new_person->facts) {
             memcpy(new_person->facts, person->facts, person->num_facts * sizeof(prime_signature_t));
             new_person->num_facts = person->num_facts;
@@ -956,7 +956,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_identify_top_k(
     }
 
     // Allocate temporary array for all scores
-    person_query_result_t* all_results = (person_query_result_t*)malloc(total_persons * sizeof(person_query_result_t));
+    person_query_result_t* all_results = (person_query_result_t*)nimcp_malloc(total_persons * sizeof(person_query_result_t));
     if (!all_results) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
@@ -998,7 +998,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_identify_top_k(
     }
 
     *count = result_count;
-    free(all_results);
+    nimcp_free(all_results);
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -1082,7 +1082,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_add_fact(
     // Allocate facts array if needed
     if (!person->facts) {
         person->max_facts = mem->config.max_facts_per_person;
-        person->facts = (prime_signature_t*)malloc(person->max_facts * sizeof(prime_signature_t));
+        person->facts = (prime_signature_t*)nimcp_malloc(person->max_facts * sizeof(prime_signature_t));
         if (!person->facts) {
             return SOCIAL_MEM_ERROR_NO_MEMORY;
         }
@@ -1119,7 +1119,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_update_name(
         return SOCIAL_MEM_ERROR_NOT_FOUND;
     }
 
-    free(entry->person->name);
+    nimcp_free(entry->person->name);
     entry->person->name = strdup(name);
     if (!entry->person->name) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
@@ -1671,7 +1671,7 @@ NIMCP_EXPORT uint64_t social_memory_record_episode(
     if (participant_ids && num_participants > 0) {
         size_t max_p = (num_participants > SOCIAL_MEM_MAX_EPISODE_PARTICIPANTS) ?
                        SOCIAL_MEM_MAX_EPISODE_PARTICIPANTS : num_participants;
-        episode->participant_ids = (uint64_t*)malloc(max_p * sizeof(uint64_t));
+        episode->participant_ids = (uint64_t*)nimcp_malloc(max_p * sizeof(uint64_t));
         if (episode->participant_ids) {
             memcpy(episode->participant_ids, participant_ids, max_p * sizeof(uint64_t));
             episode->num_participants = max_p;
@@ -1746,7 +1746,7 @@ NIMCP_EXPORT uint64_t social_memory_record_episode_full(
 
     // Copy participants
     if (episode->participant_ids && episode->num_participants > 0) {
-        new_ep->participant_ids = (uint64_t*)malloc(episode->num_participants * sizeof(uint64_t));
+        new_ep->participant_ids = (uint64_t*)nimcp_malloc(episode->num_participants * sizeof(uint64_t));
         if (new_ep->participant_ids) {
             memcpy(new_ep->participant_ids, episode->participant_ids,
                    episode->num_participants * sizeof(uint64_t));
@@ -2031,14 +2031,14 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
     }
 
     // BFS to find shortest path
-    int* distance = (int*)calloc(mem->matrix_size, sizeof(int));
-    bool* visited = (bool*)calloc(mem->matrix_size, sizeof(bool));
-    int* queue = (int*)malloc(mem->matrix_size * sizeof(int));
+    int* distance = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
+    bool* visited = (bool*)nimcp_calloc(mem->matrix_size, sizeof(bool));
+    int* queue = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
 
     if (!distance || !visited || !queue) {
-        free(distance);
-        free(visited);
-        free(queue);
+        nimcp_free(distance);
+        nimcp_free(visited);
+        nimcp_free(queue);
         return -1;
     }
 
@@ -2076,9 +2076,9 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
         }
     }
 
-    free(distance);
-    free(visited);
-    free(queue);
+    nimcp_free(distance);
+    nimcp_free(visited);
+    nimcp_free(queue);
 
     return result;
 }
@@ -2101,7 +2101,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
     }
 
     // Simple connected components clustering
-    int* component = (int*)malloc(mem->matrix_size * sizeof(int));
+    int* component = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
     if (!component) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
@@ -2129,9 +2129,9 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
         if (mem->matrix_person_ids[start] == SOCIAL_MEM_INVALID_PERSON_ID) continue;
 
         // BFS from this node
-        int* queue = (int*)malloc(mem->matrix_size * sizeof(int));
+        int* queue = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
         if (!queue) {
-            free(component);
+            nimcp_free(component);
             return SOCIAL_MEM_ERROR_NO_MEMORY;
         }
 
@@ -2161,7 +2161,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
             }
         }
 
-        free(queue);
+        nimcp_free(queue);
         current_cluster++;
     }
 
@@ -2178,7 +2178,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
         (*count)++;
     }
 
-    free(component);
+    nimcp_free(component);
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -2349,7 +2349,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_get_entangled(
     }
 
     // Get neighbors from entanglement graph
-    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)malloc(max_ids * sizeof(entangle_neighbor_t));
+    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)nimcp_malloc(max_ids * sizeof(entangle_neighbor_t));
     if (!neighbors) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
@@ -2361,7 +2361,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_get_entangled(
         }
     }
 
-    free(neighbors);
+    nimcp_free(neighbors);
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -2630,31 +2630,45 @@ NIMCP_EXPORT uint64_t social_memory_current_time_ms(void) {
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(social_memory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for social_memory module */
-static nimcp_health_agent_t* g_social_memory_health_agent = NULL;
+static mesh_participant_id_t g_social_memory_mesh_id = 0;
+static mesh_participant_registry_t* g_social_memory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for social_memory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void social_memory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_social_memory_health_agent = agent;
+nimcp_error_t social_memory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_social_memory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "social_memory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "social_memory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_social_memory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_social_memory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from social_memory module */
-static inline void social_memory_heartbeat(const char* operation, float progress) {
-    if (g_social_memory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_social_memory_health_agent, operation, progress);
+void social_memory_mesh_unregister(void) {
+    if (g_social_memory_mesh_registry && g_social_memory_mesh_id != 0) {
+        mesh_participant_unregister(g_social_memory_mesh_registry, g_social_memory_mesh_id);
+        g_social_memory_mesh_id = 0;
+        g_social_memory_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from social_memory module (instance-level) */
 static inline void social_memory_heartbeat_instance(
@@ -2732,7 +2746,7 @@ static bool add_person_entry(social_memory_internal_t* mem, person_node_t* perso
     uint64_t h = hash_uint64(person->person_id);
     size_t bucket = h % mem->person_bucket_count;
 
-    person_entry_t* entry = (person_entry_t*)malloc(sizeof(person_entry_t));
+    person_entry_t* entry = (person_entry_t*)nimcp_malloc(sizeof(person_entry_t));
     if (!entry) {
         return false;
     }
@@ -2757,7 +2771,7 @@ static bool add_episode_entry(social_memory_internal_t* mem, social_episode_t* e
     uint64_t h = hash_uint64(episode->episode_id);
     size_t bucket = h % mem->episode_bucket_count;
 
-    episode_entry_t* entry = (episode_entry_t*)malloc(sizeof(episode_entry_t));
+    episode_entry_t* entry = (episode_entry_t*)nimcp_malloc(sizeof(episode_entry_t));
     if (!entry) {
         return false;
     }
@@ -2782,7 +2796,7 @@ static bool remove_person_entry(social_memory_internal_t* mem, uint64_t person_i
         if (entry->key == person_id) {
             *prev = entry->next;
             free_person_node(entry->person);
-            free(entry);
+            nimcp_free(entry);
             mem->num_persons--;
             return true;
         }
@@ -2795,7 +2809,7 @@ static bool remove_person_entry(social_memory_internal_t* mem, uint64_t person_i
 
 static bool resize_person_table(social_memory_internal_t* mem) {
     size_t new_count = mem->person_bucket_count * 2;
-    person_entry_t** new_buckets = (person_entry_t**)calloc(new_count, sizeof(person_entry_t*));
+    person_entry_t** new_buckets = (person_entry_t**)nimcp_calloc(new_count, sizeof(person_entry_t*));
     if (!new_buckets) {
         return false;
     }
@@ -2819,7 +2833,7 @@ static bool resize_person_table(social_memory_internal_t* mem) {
         }
     }
 
-    free(mem->person_buckets);
+    nimcp_free(mem->person_buckets);
     mem->person_buckets = new_buckets;
     mem->person_bucket_count = new_count;
 
@@ -2828,7 +2842,7 @@ static bool resize_person_table(social_memory_internal_t* mem) {
 
 static bool resize_episode_table(social_memory_internal_t* mem) {
     size_t new_count = mem->episode_bucket_count * 2;
-    episode_entry_t** new_buckets = (episode_entry_t**)calloc(new_count, sizeof(episode_entry_t*));
+    episode_entry_t** new_buckets = (episode_entry_t**)nimcp_calloc(new_count, sizeof(episode_entry_t*));
     if (!new_buckets) {
         return false;
     }
@@ -2851,7 +2865,7 @@ static bool resize_episode_table(social_memory_internal_t* mem) {
         }
     }
 
-    free(mem->episode_buckets);
+    nimcp_free(mem->episode_buckets);
     mem->episode_buckets = new_buckets;
     mem->episode_bucket_count = new_count;
 
@@ -2869,14 +2883,14 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
 
     size_t new_elements = new_capacity * new_capacity;
 
-    float* new_matrix = (float*)calloc(new_elements, sizeof(float));
-    relationship_type_t* new_types = (relationship_type_t*)calloc(new_elements, sizeof(relationship_type_t));
-    uint64_t* new_ids = (uint64_t*)calloc(new_capacity, sizeof(uint64_t));
+    float* new_matrix = (float*)nimcp_calloc(new_elements, sizeof(float));
+    relationship_type_t* new_types = (relationship_type_t*)nimcp_calloc(new_elements, sizeof(relationship_type_t));
+    uint64_t* new_ids = (uint64_t*)nimcp_calloc(new_capacity, sizeof(uint64_t));
 
     if (!new_matrix || !new_types || !new_ids) {
-        free(new_matrix);
-        free(new_types);
-        free(new_ids);
+        nimcp_free(new_matrix);
+        nimcp_free(new_types);
+        nimcp_free(new_ids);
         return false;
     }
 
@@ -2925,9 +2939,9 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
         }
     }
 
-    free(mem->relationship_matrix);
-    free(mem->relationship_types);
-    free(mem->matrix_person_ids);
+    nimcp_free(mem->relationship_matrix);
+    nimcp_free(mem->relationship_types);
+    nimcp_free(mem->matrix_person_ids);
 
     mem->relationship_matrix = new_matrix;
     mem->relationship_types = new_types;
@@ -2978,9 +2992,9 @@ static void free_person_node(person_node_t* person) {
         return;
     }
 
-    free(person->name);
-    free(person->facts);
-    free(person);
+    nimcp_free(person->name);
+    nimcp_free(person->facts);
+    nimcp_free(person);
 }
 
 static void free_episode(social_episode_t* episode) {
@@ -2988,14 +3002,14 @@ static void free_episode(social_episode_t* episode) {
         return;
     }
 
-    free(episode->participant_ids);
-    free(episode->location);
-    free(episode->description);
-    free(episode);
+    nimcp_free(episode->participant_ids);
+    nimcp_free(episode->location);
+    nimcp_free(episode->description);
+    nimcp_free(episode);
 }
 
 static person_node_t* create_person_node(const char* name) {
-    person_node_t* person = (person_node_t*)calloc(1, sizeof(person_node_t));
+    person_node_t* person = (person_node_t*)nimcp_calloc(1, sizeof(person_node_t));
     if (!person) {
         set_error("Failed to allocate person node");
         return NULL;
@@ -3004,7 +3018,7 @@ static person_node_t* create_person_node(const char* name) {
     if (name) {
         person->name = strdup(name);
         if (!person->name) {
-            free(person);
+            nimcp_free(person);
             set_error("Failed to allocate person name");
             return NULL;
         }
@@ -3025,7 +3039,7 @@ static person_node_t* create_person_node(const char* name) {
 }
 
 static social_episode_t* create_episode(void) {
-    social_episode_t* episode = (social_episode_t*)calloc(1, sizeof(social_episode_t));
+    social_episode_t* episode = (social_episode_t*)nimcp_calloc(1, sizeof(social_episode_t));
     if (!episode) {
         set_error("Failed to allocate episode");
         return NULL;

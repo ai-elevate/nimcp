@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -128,6 +129,7 @@ static int create_emotion_condition(const vae_emotion_bridge_t* bridge,
                                      const vae_emotion_state_t* emotion,
                                      float* condition, uint32_t cond_dim) {
     if (cond_dim < VAE_EMOTION_DIM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_INVALID_STATE, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_INVALID_STATE;
     }
 
@@ -417,9 +419,11 @@ int vae_emotion_encode_with_emotion(vae_emotion_bridge_t* bridge,
                                      const vae_emotion_state_t* emotion,
                                      vae_emotion_encode_result_t* result) {
     if (!bridge || !input || !emotion || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NULL, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NULL;
     }
     if (bridge->state != VAE_EMOTION_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NOT_CONNECTED, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NOT_CONNECTED;
     }
 
@@ -434,6 +438,7 @@ int vae_emotion_encode_with_emotion(vae_emotion_bridge_t* bridge,
     result->latent = nimcp_calloc(latent_dim, sizeof(float));
     if (!result->latent) {
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NO_MEMORY, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NO_MEMORY;
     }
     result->latent_dim = latent_dim;
@@ -455,6 +460,7 @@ int vae_emotion_encode_with_emotion(vae_emotion_bridge_t* bridge,
         nimcp_free(result->latent);
         result->latent = NULL;
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NO_MEMORY, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NO_MEMORY;
     }
 
@@ -471,6 +477,7 @@ int vae_emotion_encode_with_emotion(vae_emotion_bridge_t* bridge,
         nimcp_free(result->latent);
         result->latent = NULL;
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_ENCODE_FAILED, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_ENCODE_FAILED;
     }
 
@@ -528,9 +535,11 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
                                        const vae_emotion_state_t* target_emotion,
                                        vae_emotion_generate_result_t* result) {
     if (!bridge || !target_emotion || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NULL, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NULL;
     }
     if (bridge->state != VAE_EMOTION_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NOT_CONNECTED, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NOT_CONNECTED;
     }
 
@@ -552,6 +561,7 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
     result->latent = nimcp_calloc(latent_dim, sizeof(float));
     if (!result->latent) {
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NO_MEMORY, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NO_MEMORY;
     }
     result->latent_dim = latent_dim;
@@ -580,6 +590,7 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
         nimcp_free(result->latent);
         result->latent = NULL;
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NO_MEMORY, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NO_MEMORY;
     }
     result->generated_dim = output_dim;
@@ -596,6 +607,7 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
         result->generated = NULL;
         result->latent = NULL;
         bridge->state = VAE_EMOTION_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NO_MEMORY, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NO_MEMORY;
     }
 
@@ -656,6 +668,7 @@ int vae_emotion_interpolate_emotions(vae_emotion_bridge_t* bridge,
                                       float t,
                                       vae_emotion_generate_result_t* result) {
     if (!bridge || !emotion_a || !emotion_b || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NULL, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NULL;
     }
 
@@ -722,6 +735,7 @@ int vae_emotion_find_by_emotion(vae_emotion_bridge_t* bridge,
                                  float tolerance,
                                  float* latent, uint32_t* latent_dim) {
     if (!bridge || !target || !latent || !latent_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_EMOTION_NULL, "vae_emotion_bridge: error condition");
         return NIMCP_ERROR_VAE_EMOTION_NULL;
     }
 

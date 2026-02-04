@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * BBB Integration for Mesh Topology
@@ -269,7 +270,7 @@ static topo_node_t* find_empty_slot(mesh_topology_ctx_t ctx, mesh_participant_id
 static void free_adj_list(adj_entry_t* head) {
     while (head) {
         adj_entry_t* next = head->next;
-        free(head);
+        nimcp_free(head);
         head = next;
     }
 }
@@ -291,7 +292,7 @@ static nimcp_error_t add_neighbor(topo_node_t* node, mesh_participant_id_t neigh
     }
 
     /* Add new entry */
-    adj_entry_t* new_entry = (adj_entry_t*)malloc(sizeof(adj_entry_t));
+    adj_entry_t* new_entry = (adj_entry_t*)nimcp_malloc(sizeof(adj_entry_t));
     if (!new_entry) return NIMCP_ERROR_NO_MEMORY;
 
     new_entry->neighbor = neighbor;
@@ -314,7 +315,7 @@ static void remove_neighbor(topo_node_t* node, mesh_participant_id_t neighbor) {
         if ((*pp)->neighbor == neighbor) {
             adj_entry_t* to_free = *pp;
             *pp = (*pp)->next;
-            free(to_free);
+            nimcp_free(to_free);
             node->degree--;
             return;
         }
@@ -349,25 +350,25 @@ mesh_topology_config_t mesh_topology_default_config(void) {
 }
 
 mesh_topology_ctx_t mesh_topology_create(const mesh_topology_config_t* config) {
-    mesh_topology_ctx_t ctx = (mesh_topology_ctx_t)calloc(1, sizeof(struct mesh_topology_ctx_internal));
+    mesh_topology_ctx_t ctx = (mesh_topology_ctx_t)nimcp_calloc(1, sizeof(struct mesh_topology_ctx_internal));
     if (!ctx) return NULL;
 
     ctx->config = config ? *config : mesh_topology_default_config();
 
     /* Initial node capacity */
     ctx->node_capacity = 128;
-    ctx->nodes = (topo_node_t*)calloc(ctx->node_capacity, sizeof(topo_node_t));
+    ctx->nodes = (topo_node_t*)nimcp_calloc(ctx->node_capacity, sizeof(topo_node_t));
     if (!ctx->nodes) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     /* Hub storage */
     ctx->hub_capacity = 32;
-    ctx->hub_ids = (mesh_participant_id_t*)malloc(ctx->hub_capacity * sizeof(mesh_participant_id_t));
+    ctx->hub_ids = (mesh_participant_id_t*)nimcp_malloc(ctx->hub_capacity * sizeof(mesh_participant_id_t));
     if (!ctx->hub_ids) {
-        free(ctx->nodes);
-        free(ctx);
+        nimcp_free(ctx->nodes);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -384,9 +385,9 @@ void mesh_topology_destroy(mesh_topology_ctx_t ctx) {
         }
     }
 
-    free(ctx->nodes);
-    free(ctx->hub_ids);
-    free(ctx);
+    nimcp_free(ctx->nodes);
+    nimcp_free(ctx->hub_ids);
+    nimcp_free(ctx);
 }
 
 /* ============================================================================
@@ -417,7 +418,7 @@ nimcp_error_t mesh_topology_add_participant(
     /* Resize if needed */
     if (ctx->node_count >= ctx->node_capacity * 0.7) {
         size_t new_capacity = ctx->node_capacity * 2;
-        topo_node_t* new_nodes = (topo_node_t*)calloc(new_capacity, sizeof(topo_node_t));
+        topo_node_t* new_nodes = (topo_node_t*)nimcp_calloc(new_capacity, sizeof(topo_node_t));
         if (!new_nodes) return NIMCP_ERROR_NO_MEMORY;
 
         /* Rehash all nodes */
@@ -431,7 +432,7 @@ nimcp_error_t mesh_topology_add_participant(
             }
         }
 
-        free(ctx->nodes);
+        nimcp_free(ctx->nodes);
         ctx->nodes = new_nodes;
         ctx->node_capacity = new_capacity;
     }
@@ -662,7 +663,7 @@ nimcp_error_t mesh_topology_identify_hubs(
     }
 
     /* Collect all valid nodes */
-    topo_node_t** sorted = (topo_node_t**)malloc(ctx->node_count * sizeof(topo_node_t*));
+    topo_node_t** sorted = (topo_node_t**)nimcp_malloc(ctx->node_count * sizeof(topo_node_t*));
     if (!sorted) return NIMCP_ERROR_NO_MEMORY;
 
     size_t idx = 0;
@@ -691,7 +692,7 @@ nimcp_error_t mesh_topology_identify_hubs(
     }
 
     *num_hubs = hub_count;
-    free(sorted);
+    nimcp_free(sorted);
 
     return NIMCP_SUCCESS;
 }
@@ -727,11 +728,11 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
         }
 
         /* BFS from this source */
-        uint32_t* dist = (uint32_t*)malloc(ctx->node_capacity * sizeof(uint32_t));
-        uint32_t* paths = (uint32_t*)malloc(ctx->node_capacity * sizeof(uint32_t));
+        uint32_t* dist = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
+        uint32_t* paths = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
         if (!dist || !paths) {
-            free(dist);
-            free(paths);
+            nimcp_free(dist);
+            nimcp_free(paths);
             return NIMCP_ERROR_NO_MEMORY;
         }
 
@@ -743,10 +744,10 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
         paths[src_idx] = 1;
 
         /* Simple BFS queue (array-based) */
-        size_t* queue = (size_t*)malloc(ctx->node_capacity * sizeof(size_t));
+        size_t* queue = (size_t*)nimcp_malloc(ctx->node_capacity * sizeof(size_t));
         if (!queue) {
-            free(dist);
-            free(paths);
+            nimcp_free(dist);
+            nimcp_free(paths);
             return NIMCP_ERROR_NO_MEMORY;
         }
 
@@ -786,9 +787,9 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
             }
         }
 
-        free(queue);
-        free(dist);
-        free(paths);
+        nimcp_free(queue);
+        nimcp_free(dist);
+        nimcp_free(paths);
     }
 
     /* Normalize betweenness */
@@ -830,7 +831,7 @@ bool mesh_topology_is_scale_free(
     if (max_degree < 3) return false;
 
     /* Count degree frequencies */
-    uint32_t* freq = (uint32_t*)calloc(max_degree + 1, sizeof(uint32_t));
+    uint32_t* freq = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!freq) return false;
 
     for (size_t i = 0; i < ctx->node_capacity; i++) {
@@ -857,7 +858,7 @@ bool mesh_topology_is_scale_free(
         }
     }
 
-    free(freq);
+    nimcp_free(freq);
 
     if (n < 3) return false;
 
@@ -941,7 +942,7 @@ nimcp_error_t mesh_topology_recommend_placement(
 
     /* Get hubs for leader assignment */
     if (ctx->hub_count > 0) {
-        placement->hub_assignments = (mesh_participant_id_t*)malloc(
+        placement->hub_assignments = (mesh_participant_id_t*)nimcp_malloc(
             ctx->hub_count * sizeof(mesh_participant_id_t));
         if (!placement->hub_assignments) return NIMCP_ERROR_NO_MEMORY;
 
@@ -952,9 +953,9 @@ nimcp_error_t mesh_topology_recommend_placement(
 
     /* Compute expected load distribution */
     uint32_t pool_size = placement->recommended_pool_size;
-    placement->load_distribution = (float*)calloc(pool_size, sizeof(float));
+    placement->load_distribution = (float*)nimcp_calloc(pool_size, sizeof(float));
     if (!placement->load_distribution) {
-        free(placement->hub_assignments);
+        nimcp_free(placement->hub_assignments);
         return NIMCP_ERROR_NO_MEMORY;
     }
     placement->distribution_size = pool_size;
@@ -1064,7 +1065,7 @@ nimcp_error_t mesh_topology_detect_clusters(
         }
 
         /* BFS to find connected component */
-        size_t* queue = (size_t*)malloc(ctx->node_count * sizeof(size_t));
+        size_t* queue = (size_t*)nimcp_malloc(ctx->node_count * sizeof(size_t));
         if (!queue) return NIMCP_ERROR_NO_MEMORY;
 
         size_t front = 0, back = 0;
@@ -1089,7 +1090,7 @@ nimcp_error_t mesh_topology_detect_clusters(
             }
         }
 
-        free(queue);
+        nimcp_free(queue);
         cluster_count++;
     }
 
@@ -1165,8 +1166,8 @@ void mesh_topology_print_debug(mesh_topology_ctx_t ctx) {
 void mesh_coord_placement_free(mesh_coord_placement_t* placement) {
     if (!placement) return;
 
-    free(placement->hub_assignments);
-    free(placement->load_distribution);
+    nimcp_free(placement->hub_assignments);
+    nimcp_free(placement->load_distribution);
     placement->hub_assignments = NULL;
     placement->load_distribution = NULL;
     placement->hub_count = 0;

@@ -249,6 +249,7 @@ int executive_quantum_get_config(
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 /**
  * @brief Internal structure
@@ -286,7 +287,7 @@ executive_quantum_config_t executive_quantum_default_config(void) {
 executive_quantum_bridge_t* executive_quantum_bridge_create(
     const executive_quantum_config_t* config
 ) {
-    executive_quantum_bridge_t* bridge = (executive_quantum_bridge_t*)calloc(
+    executive_quantum_bridge_t* bridge = (executive_quantum_bridge_t*)nimcp_calloc(
         1, sizeof(executive_quantum_bridge_t));
     if (!bridge) return NULL;
 
@@ -301,17 +302,17 @@ executive_quantum_bridge_t* executive_quantum_bridge_create(
 
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Allocate hypothesis tracking */
     bridge->max_hypotheses = bridge->config.hypothesis_count;
-    bridge->hypotheses = (quantum_hypothesis_t**)calloc(
+    bridge->hypotheses = (quantum_hypothesis_t**)nimcp_calloc(
         bridge->max_hypotheses, sizeof(quantum_hypothesis_t*));
     if (!bridge->hypotheses) {
         qreason_destroy(bridge->quantum_reasoner);
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -330,19 +331,19 @@ void executive_quantum_bridge_destroy(executive_quantum_bridge_t* bridge) {
         for (uint32_t i = 0; i < bridge->num_hypotheses; i++) {
             if (bridge->hypotheses[i]) {
                 if (bridge->hypotheses[i]->action_sequence) {
-                    free(bridge->hypotheses[i]->action_sequence);
+                    nimcp_free(bridge->hypotheses[i]->action_sequence);
                 }
-                free(bridge->hypotheses[i]);
+                nimcp_free(bridge->hypotheses[i]);
             }
         }
-        free(bridge->hypotheses);
+        nimcp_free(bridge->hypotheses);
     }
 
     if (bridge->quantum_reasoner) {
         qreason_destroy(bridge->quantum_reasoner);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool executive_quantum_bridge_is_enabled(const executive_quantum_bridge_t* bridge) {
@@ -368,9 +369,9 @@ int executive_quantum_plan(
     for (uint32_t i = 0; i < bridge->num_hypotheses; i++) {
         if (bridge->hypotheses[i]) {
             if (bridge->hypotheses[i]->action_sequence) {
-                free(bridge->hypotheses[i]->action_sequence);
+                nimcp_free(bridge->hypotheses[i]->action_sequence);
             }
-            free(bridge->hypotheses[i]);
+            nimcp_free(bridge->hypotheses[i]);
             bridge->hypotheses[i] = NULL;
         }
     }
@@ -403,7 +404,7 @@ int executive_quantum_plan(
 
     /* Generate hypotheses from quantum state */
     for (uint32_t h = 0; h < num_to_generate && h < bridge->max_hypotheses; h++) {
-        quantum_hypothesis_t* hyp = (quantum_hypothesis_t*)calloc(1, sizeof(quantum_hypothesis_t));
+        quantum_hypothesis_t* hyp = (quantum_hypothesis_t*)nimcp_calloc(1, sizeof(quantum_hypothesis_t));
         if (!hyp) break;
 
         hyp->hypothesis_id = h;
@@ -411,9 +412,9 @@ int executive_quantum_plan(
                          (qreason_rand(&bridge->rng_state) % max_plan_steps) + 1 : 1;
 
         /* Allocate action sequence */
-        hyp->action_sequence = (uint32_t*)calloc(hyp->num_steps, sizeof(uint32_t));
+        hyp->action_sequence = (uint32_t*)nimcp_calloc(hyp->num_steps, sizeof(uint32_t));
         if (!hyp->action_sequence) {
-            free(hyp);
+            nimcp_free(hyp);
             break;
         }
 

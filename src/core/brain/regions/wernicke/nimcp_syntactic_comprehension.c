@@ -20,29 +20,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(syntactic_comprehension)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for syntactic_comprehension module */
-static nimcp_health_agent_t* g_syntactic_comprehension_health_agent = NULL;
+static mesh_participant_id_t g_syntactic_comprehension_mesh_id = 0;
+static mesh_participant_registry_t* g_syntactic_comprehension_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for syntactic_comprehension heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void syntactic_comprehension_set_health_agent(nimcp_health_agent_t* agent) {
-    g_syntactic_comprehension_health_agent = agent;
+nimcp_error_t syntactic_comprehension_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_syntactic_comprehension_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "syntactic_comprehension", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "syntactic_comprehension";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_syntactic_comprehension_mesh_id);
+    if (err == NIMCP_SUCCESS) g_syntactic_comprehension_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from syntactic_comprehension module */
-static inline void syntactic_comprehension_heartbeat(const char* operation, float progress) {
-    if (g_syntactic_comprehension_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_syntactic_comprehension_health_agent, operation, progress);
+void syntactic_comprehension_mesh_unregister(void) {
+    if (g_syntactic_comprehension_mesh_registry && g_syntactic_comprehension_mesh_id != 0) {
+        mesh_participant_unregister(g_syntactic_comprehension_mesh_registry, g_syntactic_comprehension_mesh_id);
+        g_syntactic_comprehension_mesh_id = 0;
+        g_syntactic_comprehension_mesh_registry = NULL;
     }
 }
 
@@ -132,7 +145,7 @@ struct syntactic_comprehension {
 static void init_grammar_rules(syntactic_comprehension_t* ctx) {
     /* Allocate basic rules */
     ctx->num_rules = 10;
-    ctx->rules = calloc(ctx->num_rules, sizeof(grammar_rule_t));
+    ctx->rules = nimcp_calloc(ctx->num_rules, sizeof(grammar_rule_t));
     if (!ctx->rules) {
         ctx->num_rules = 0;
         return;
@@ -224,7 +237,7 @@ static void init_grammar_rules(syntactic_comprehension_t* ctx) {
  */
 static void init_argument_frames(syntactic_comprehension_t* ctx) {
     ctx->num_frames = 5;
-    ctx->arg_frames = calloc(ctx->num_frames, sizeof(argument_frame_t));
+    ctx->arg_frames = nimcp_calloc(ctx->num_frames, sizeof(argument_frame_t));
     if (!ctx->arg_frames) {
         ctx->num_frames = 0;
         return;
@@ -428,7 +441,7 @@ int syntactic_default_config(syntactic_config_t* config) {
 syntactic_comprehension_t* syntactic_comprehension_create(
     const syntactic_config_t* config
 ) {
-    syntactic_comprehension_t* ctx = calloc(1, sizeof(syntactic_comprehension_t));
+    syntactic_comprehension_t* ctx = nimcp_calloc(1, sizeof(syntactic_comprehension_t));
     if (!ctx) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -455,9 +468,9 @@ syntactic_comprehension_t* syntactic_comprehension_create(
 void syntactic_comprehension_destroy(syntactic_comprehension_t* ctx) {
     if (!ctx) return;
 
-    free(ctx->rules);
-    free(ctx->arg_frames);
-    free(ctx);
+    nimcp_free(ctx->rules);
+    nimcp_free(ctx->arg_frames);
+    nimcp_free(ctx);
 }
 
 /*=============================================================================
@@ -625,7 +638,7 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
     memset(parse, 0, sizeof(syntactic_parse_t));
 
     /* Copy words */
-    parse->words = calloc(ctx->buffer_len, sizeof(syntactic_word_t));
+    parse->words = nimcp_calloc(ctx->buffer_len, sizeof(syntactic_word_t));
     if (parse->words) {
         memcpy(parse->words, ctx->word_buffer,
                ctx->buffer_len * sizeof(syntactic_word_t));
@@ -644,7 +657,7 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
             root->probability = ctx->current_probability;
 
             /* Allocate children array */
-            root->children = calloc(ctx->stack_depth, sizeof(syntactic_node_t*));
+            root->children = nimcp_calloc(ctx->stack_depth, sizeof(syntactic_node_t*));
             if (root->children) {
                 for (uint32_t i = 0; i < ctx->stack_depth; i++) {
                     root->children[i] = ctx->parse_stack[i];
@@ -658,7 +671,7 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
     }
 
     /* Copy nodes */
-    parse->nodes = calloc(ctx->nodes_allocated, sizeof(syntactic_node_t));
+    parse->nodes = nimcp_calloc(ctx->nodes_allocated, sizeof(syntactic_node_t));
     if (parse->nodes) {
         memcpy(parse->nodes, ctx->node_pool,
                ctx->nodes_allocated * sizeof(syntactic_node_t));
@@ -673,7 +686,7 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
     parse->syntactic_complexity = syntactic_compute_complexity(parse);
 
     /* Extract dependencies */
-    parse->dependencies = calloc(SYNTACTIC_MAX_DEPENDENCIES,
+    parse->dependencies = nimcp_calloc(SYNTACTIC_MAX_DEPENDENCIES,
                                   sizeof(syntactic_dependency_t));
     if (parse->dependencies) {
         syntactic_extract_dependencies(ctx, parse,
@@ -684,7 +697,7 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
 
     /* Assign thematic roles */
     if (ctx->config.enable_thematic_roles) {
-        parse->roles = calloc(SYNTACTIC_MAX_ROLES, sizeof(thematic_assignment_t));
+        parse->roles = nimcp_calloc(SYNTACTIC_MAX_ROLES, sizeof(thematic_assignment_t));
         if (parse->roles) {
             syntactic_assign_roles(ctx, parse,
                                     parse->roles,
@@ -1138,16 +1151,16 @@ bool syntactic_is_grammatical(const syntactic_comprehension_t* ctx,
 void syntactic_parse_free(syntactic_parse_t* parse) {
     if (!parse) return;
 
-    free(parse->words);
-    free(parse->dependencies);
-    free(parse->roles);
+    nimcp_free(parse->words);
+    nimcp_free(parse->dependencies);
+    nimcp_free(parse->roles);
 
     /* Free node children arrays */
     if (parse->nodes) {
         for (uint32_t i = 0; i < parse->num_nodes; i++) {
-            free(parse->nodes[i].children);
+            nimcp_free(parse->nodes[i].children);
         }
-        free(parse->nodes);
+        nimcp_free(parse->nodes);
     }
 
     memset(parse, 0, sizeof(syntactic_parse_t));
@@ -1168,7 +1181,7 @@ int syntactic_parse_clone(const syntactic_parse_t* src,
 
     /* Clone words */
     if (src->words && src->num_words > 0) {
-        dst->words = calloc(src->num_words, sizeof(syntactic_word_t));
+        dst->words = nimcp_calloc(src->num_words, sizeof(syntactic_word_t));
         if (dst->words) {
             memcpy(dst->words, src->words,
                    src->num_words * sizeof(syntactic_word_t));
@@ -1178,7 +1191,7 @@ int syntactic_parse_clone(const syntactic_parse_t* src,
 
     /* Clone dependencies */
     if (src->dependencies && src->num_dependencies > 0) {
-        dst->dependencies = calloc(src->num_dependencies,
+        dst->dependencies = nimcp_calloc(src->num_dependencies,
                                     sizeof(syntactic_dependency_t));
         if (dst->dependencies) {
             memcpy(dst->dependencies, src->dependencies,
@@ -1189,7 +1202,7 @@ int syntactic_parse_clone(const syntactic_parse_t* src,
 
     /* Clone roles */
     if (src->roles && src->num_roles > 0) {
-        dst->roles = calloc(src->num_roles, sizeof(thematic_assignment_t));
+        dst->roles = nimcp_calloc(src->num_roles, sizeof(thematic_assignment_t));
         if (dst->roles) {
             memcpy(dst->roles, src->roles,
                    src->num_roles * sizeof(thematic_assignment_t));

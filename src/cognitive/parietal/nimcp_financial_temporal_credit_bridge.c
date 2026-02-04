@@ -27,29 +27,49 @@
 
 #include "cognitive/parietal/nimcp_financial_temporal_credit_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_temporal_credit)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial temporal credit bridge module */
-static nimcp_health_agent_t* g_fin_temporal_credit_health_agent = NULL;
+static mesh_participant_id_t g_fin_temporal_credit_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_temporal_credit_mesh_registry = NULL;
 
-void financial_temporal_credit_bridge_set_health_agent_global(void* agent) {
-    g_fin_temporal_credit_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_temporal_credit_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_temporal_credit_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_temporal_credit", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_temporal_credit";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_temporal_credit_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_temporal_credit_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_temporal_credit_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_temporal_credit_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_temporal_credit_health_agent, operation, progress);
+void fin_temporal_credit_mesh_unregister(void) {
+    if (g_fin_temporal_credit_mesh_registry && g_fin_temporal_credit_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_temporal_credit_mesh_registry, g_fin_temporal_credit_mesh_id);
+        g_fin_temporal_credit_mesh_id = 0;
+        g_fin_temporal_credit_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -281,7 +301,7 @@ financial_temporal_credit_bridge_t* financial_temporal_credit_bridge_create(
     fin_temporal_credit_heartbeat_global("fin_temporal_credit_create", 0.0f);
 
     financial_temporal_credit_bridge_t* bridge = (financial_temporal_credit_bridge_t*)
-        malloc(sizeof(financial_temporal_credit_bridge_t));
+        nimcp_malloc(sizeof(financial_temporal_credit_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_temporal_credit_bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -301,11 +321,11 @@ financial_temporal_credit_bridge_t* financial_temporal_credit_bridge_create(
 
     /* Allocate decision history */
     bridge->decisions_capacity = bridge->config.max_history_size;
-    bridge->decisions = (fin_decision_t*)malloc(
+    bridge->decisions = (fin_decision_t*)nimcp_malloc(
         bridge->decisions_capacity * sizeof(fin_decision_t));
     if (!bridge->decisions) {
         set_error("Failed to allocate decision history");
-        free(bridge);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate decision history");
         return NULL;
@@ -314,12 +334,12 @@ financial_temporal_credit_bridge_t* financial_temporal_credit_bridge_create(
     bridge->num_decisions = 0;
 
     /* Allocate eligibility traces */
-    bridge->eligibility_traces = (float*)malloc(
+    bridge->eligibility_traces = (float*)nimcp_malloc(
         bridge->decisions_capacity * sizeof(float));
     if (!bridge->eligibility_traces) {
         set_error("Failed to allocate eligibility traces");
-        free(bridge->decisions);
-        free(bridge);
+        nimcp_free(bridge->decisions);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate eligibility traces");
         return NULL;
@@ -339,23 +359,23 @@ void financial_temporal_credit_bridge_destroy(financial_temporal_credit_bridge_t
 
     if (bridge) {
         if (bridge->eligibility_traces) {
-            free(bridge->eligibility_traces);
+            nimcp_free(bridge->eligibility_traces);
         }
         if (bridge->decisions) {
-            free(bridge->decisions);
+            nimcp_free(bridge->decisions);
         }
         if (bridge->extended_decisions) {
             /* Free pattern_ids arrays in extended decisions */
             for (uint32_t i = 0; i < bridge->num_extended; i++) {
                 if (bridge->extended_decisions[i].pattern_ids) {
-                    free(bridge->extended_decisions[i].pattern_ids);
+                    nimcp_free(bridge->extended_decisions[i].pattern_ids);
                 }
             }
-            free(bridge->extended_decisions);
+            nimcp_free(bridge->extended_decisions);
         }
         bridge->magic = 0;
         bridge->op_state = FIN_TEMPORAL_CREDIT_OP_STATE_UNINITIALIZED;
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 
@@ -647,7 +667,7 @@ int financial_temporal_credit_bridge_record_extended_decision(
     /* Store extended info if space available */
     if (bridge->extended_decisions == NULL) {
         bridge->extended_capacity = bridge->decisions_capacity;
-        bridge->extended_decisions = (fin_extended_decision_t*)calloc(
+        bridge->extended_decisions = (fin_extended_decision_t*)nimcp_calloc(
             bridge->extended_capacity, sizeof(fin_extended_decision_t));
         if (!bridge->extended_decisions) {
             return FIN_TEMPORAL_CREDIT_ERR_OK;  /* Extended storage is optional */
@@ -659,7 +679,7 @@ int financial_temporal_credit_bridge_record_extended_decision(
         /* Deep copy pattern_ids if present */
         if (decision->pattern_ids && decision->num_patterns > 0) {
             bridge->extended_decisions[bridge->num_extended].pattern_ids =
-                (uint32_t*)malloc(decision->num_patterns * sizeof(uint32_t));
+                (uint32_t*)nimcp_malloc(decision->num_patterns * sizeof(uint32_t));
             if (bridge->extended_decisions[bridge->num_extended].pattern_ids) {
                 memcpy(bridge->extended_decisions[bridge->num_extended].pattern_ids,
                        decision->pattern_ids,
@@ -803,7 +823,7 @@ int financial_temporal_credit_bridge_assign(
     financial_temporal_credit_result_init(result);
 
     /* Allocate result array */
-    result->results = (fin_credit_result_t*)malloc(
+    result->results = (fin_credit_result_t*)nimcp_malloc(
         bridge->num_decisions * sizeof(fin_credit_result_t));
     if (!result->results) {
         set_error("Failed to allocate credit results");
@@ -946,7 +966,7 @@ int financial_temporal_credit_bridge_assign_causal(
     /* Initialize result */
     financial_temporal_credit_result_init(result);
 
-    result->results = (fin_credit_result_t*)malloc(
+    result->results = (fin_credit_result_t*)nimcp_malloc(
         num_causal_ids * sizeof(fin_credit_result_t));
     if (!result->results) {
         set_error("Failed to allocate credit results");
@@ -1031,7 +1051,7 @@ int financial_temporal_credit_bridge_eligibility_trace(
         return FIN_TEMPORAL_CREDIT_ERR_OK;
     }
 
-    result->traces = (float*)malloc(bridge->num_decisions * sizeof(float));
+    result->traces = (float*)nimcp_malloc(bridge->num_decisions * sizeof(float));
     if (!result->traces) {
         set_error("Failed to allocate trace results");
         return FIN_TEMPORAL_CREDIT_ERR_NO_MEMORY;
@@ -1182,7 +1202,7 @@ void financial_temporal_credit_result_init(fin_credit_assignment_result_t* resul
 void financial_temporal_credit_result_free(fin_credit_assignment_result_t* result) {
     if (result) {
         if (result->results) {
-            free(result->results);
+            nimcp_free(result->results);
             result->results = NULL;
         }
         result->num_results = 0;
@@ -1199,7 +1219,7 @@ void financial_temporal_eligibility_result_init(fin_eligibility_result_t* result
 void financial_temporal_eligibility_result_free(fin_eligibility_result_t* result) {
     if (result) {
         if (result->traces) {
-            free(result->traces);
+            nimcp_free(result->traces);
             result->traces = NULL;
         }
         result->num_traces = 0;

@@ -81,6 +81,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -172,7 +173,7 @@ typedef struct fn_dispatch_table {
     fn_dispatch_entry_t* entries;      /**< Array of dispatch entries */
     uint32_t count;                     /**< Number of registered functions */
     uint32_t capacity;                  /**< Capacity of entries array */
-    pthread_mutex_t table_lock;         /**< Global table lock for modifications */
+    nimcp_mutex_t table_lock;         /**< Global table lock for modifications */
     bool auto_registered;               /**< Whether auto-registration completed */
     uint32_t magic;                     /**< Magic number for validation */
 } fn_dispatch_table_t;

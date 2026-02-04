@@ -42,30 +42,43 @@
 #include <openssl/rsa.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for artifact_verify module */
-static nimcp_health_agent_t* g_artifact_verify_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(artifact_verify)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for artifact_verify heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void artifact_verify_set_health_agent(nimcp_health_agent_t* agent) {
-    g_artifact_verify_health_agent = agent;
+static mesh_participant_id_t g_artifact_verify_mesh_id = 0;
+static mesh_participant_registry_t* g_artifact_verify_mesh_registry = NULL;
+
+nimcp_error_t artifact_verify_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_artifact_verify_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "artifact_verify", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "artifact_verify";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_artifact_verify_mesh_id);
+    if (err == NIMCP_SUCCESS) g_artifact_verify_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from artifact_verify module */
-static inline void artifact_verify_heartbeat(const char* operation, float progress) {
-    if (g_artifact_verify_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_artifact_verify_health_agent, operation, progress);
+void artifact_verify_mesh_unregister(void) {
+    if (g_artifact_verify_mesh_registry && g_artifact_verify_mesh_id != 0) {
+        mesh_participant_unregister(g_artifact_verify_mesh_registry, g_artifact_verify_mesh_id);
+        g_artifact_verify_mesh_id = 0;
+        g_artifact_verify_mesh_registry = NULL;
     }
 }
 
@@ -83,7 +96,7 @@ struct nimcp_supply_chain {
     size_t source_capacity;
     pthread_t monitor_thread;
     bool monitoring_active;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bio_module_context_t bio_ctx;
     bool bio_registered;
 };
@@ -131,7 +144,7 @@ static nimcp_error_t verify_ed25519_signature(
     long file_size = ftell(msg_file);
     fseek(msg_file, 0, SEEK_SET);
 
-    uint8_t* message = (uint8_t*)malloc(file_size);
+    uint8_t* message = (uint8_t*)nimcp_malloc(file_size);
     if (!message) {
         fclose(msg_file);
         EVP_PKEY_free(pkey);
@@ -144,7 +157,7 @@ static nimcp_error_t verify_ed25519_signature(
     /* Verify signature */
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) {
-        free(message);
+        nimcp_free(message);
         EVP_PKEY_free(pkey);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "failed to create verification context");
     }
@@ -155,7 +168,7 @@ static nimcp_error_t verify_ed25519_signature(
     }
 
     EVP_MD_CTX_free(ctx);
-    free(message);
+    nimcp_free(message);
     EVP_PKEY_free(pkey);
 
     NIMCP_CHECK_THROW_MSG(result == 1, NIMCP_ERROR_INVALID_SIGNATURE, "Ed25519 signature verification failed");
@@ -204,7 +217,7 @@ static nimcp_error_t verify_rsa_signature(
     long file_size = ftell(msg_file);
     fseek(msg_file, 0, SEEK_SET);
 
-    uint8_t* message = (uint8_t*)malloc(file_size);
+    uint8_t* message = (uint8_t*)nimcp_malloc(file_size);
     if (!message) {
         fclose(msg_file);
         EVP_PKEY_free(pkey);
@@ -217,7 +230,7 @@ static nimcp_error_t verify_rsa_signature(
     /* Verify using SHA-256 digest */
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) {
-        free(message);
+        nimcp_free(message);
         EVP_PKEY_free(pkey);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "failed to create EVP_MD_CTX for RSA verification");
     }
@@ -228,7 +241,7 @@ static nimcp_error_t verify_rsa_signature(
     }
 
     EVP_MD_CTX_free(ctx);
-    free(message);
+    nimcp_free(message);
     EVP_PKEY_free(pkey);
 
     NIMCP_CHECK_THROW_MSG(result == 1, NIMCP_ERROR_INVALID_SIGNATURE, "RSA signature verification failed");
@@ -255,7 +268,7 @@ static nimcp_error_t verify_dilithium_signature(
     size_t pk_len, sk_len, sig_len;
     nimcp_dilithium_get_sizes(variant, &pk_len, &sk_len, &sig_len);
 
-    uint8_t* public_key = (uint8_t*)malloc(pk_len);
+    uint8_t* public_key = (uint8_t*)nimcp_malloc(pk_len);
     if (!public_key) {
         fclose(key_file);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium public key");
@@ -265,20 +278,20 @@ static nimcp_error_t verify_dilithium_signature(
     fclose(key_file);
 
     if (bytes_read != pk_len) {
-        free(public_key);
+        nimcp_free(public_key);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_INVALID_PARAM, "invalid Dilithium public key size");
     }
 
     /* Read signature */
     FILE* sig_file = fopen(signature_path, "rb");
     if (!sig_file) {
-        free(public_key);
+        nimcp_free(public_key);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open signature file %s", signature_path);
     }
 
-    uint8_t* signature = (uint8_t*)malloc(sig_len);
+    uint8_t* signature = (uint8_t*)nimcp_malloc(sig_len);
     if (!signature) {
-        free(public_key);
+        nimcp_free(public_key);
         fclose(sig_file);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium signature");
     }
@@ -287,16 +300,16 @@ static nimcp_error_t verify_dilithium_signature(
     fclose(sig_file);
 
     if (bytes_read != sig_len) {
-        free(signature);
-        free(public_key);
+        nimcp_free(signature);
+        nimcp_free(public_key);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_INVALID_SIGNATURE, "invalid Dilithium signature size");
     }
 
     /* Read message */
     FILE* msg_file = fopen(filepath, "rb");
     if (!msg_file) {
-        free(signature);
-        free(public_key);
+        nimcp_free(signature);
+        nimcp_free(public_key);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open file %s for Dilithium verification", filepath);
     }
 
@@ -304,11 +317,11 @@ static nimcp_error_t verify_dilithium_signature(
     long file_size = ftell(msg_file);
     fseek(msg_file, 0, SEEK_SET);
 
-    uint8_t* message = (uint8_t*)malloc(file_size);
+    uint8_t* message = (uint8_t*)nimcp_malloc(file_size);
     if (!message) {
         fclose(msg_file);
-        free(signature);
-        free(public_key);
+        nimcp_free(signature);
+        nimcp_free(public_key);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium message");
     }
 
@@ -319,9 +332,9 @@ static nimcp_error_t verify_dilithium_signature(
     nimcp_error_t err = nimcp_dilithium_verify(variant, public_key, message,
                                                 bytes_read, signature, sig_len);
 
-    free(message);
-    free(signature);
-    free(public_key);
+    nimcp_free(message);
+    nimcp_free(signature);
+    nimcp_free(public_key);
 
     NIMCP_CHECK_THROW_MSG(err == NIMCP_OK, err, "Dilithium signature verification failed");
 
@@ -464,7 +477,7 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
     /* Check capacity */
     if (sc->source_count >= sc->source_capacity) {
         size_t new_capacity = sc->source_capacity * 2;
-        nimcp_trusted_source_t* new_sources = (nimcp_trusted_source_t*)realloc(
+        nimcp_trusted_source_t* new_sources = (nimcp_trusted_source_t*)nimcp_realloc(
             sc->sources, new_capacity * sizeof(nimcp_trusted_source_t));
         if (!new_sources) {
             nimcp_platform_mutex_unlock(&sc->lock);
@@ -537,7 +550,7 @@ nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
         return NIMCP_OK;
     }
 
-    *sources = (nimcp_trusted_source_t*)malloc(sc->source_count * sizeof(nimcp_trusted_source_t));
+    *sources = (nimcp_trusted_source_t*)nimcp_malloc(sc->source_count * sizeof(nimcp_trusted_source_t));
     if (!*sources) {
         nimcp_platform_mutex_unlock(&sc->lock);
         NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for sources list");
@@ -644,7 +657,7 @@ nimcp_error_t nimcp_supply_chain_export_report(nimcp_supply_chain_t sc,
 
     /* Generate simple report */
     size_t report_size = 4096;
-    char* report = (char*)malloc(report_size);
+    char* report = (char*)nimcp_malloc(report_size);
     NIMCP_CHECK_THROW_MSG(report, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for report");
 
     nimcp_supply_chain_stats_t stats;

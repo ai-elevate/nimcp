@@ -11,31 +11,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(world_model_multimodal)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for world_model_multimodal module */
-static nimcp_health_agent_t* g_world_model_multimodal_health_agent = NULL;
+static mesh_participant_id_t g_world_model_multimodal_mesh_id = 0;
+static mesh_participant_registry_t* g_world_model_multimodal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for world_model_multimodal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void world_model_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_world_model_multimodal_health_agent = agent;
+nimcp_error_t world_model_multimodal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_world_model_multimodal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "world_model_multimodal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "world_model_multimodal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_world_model_multimodal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_world_model_multimodal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from world_model_multimodal module */
-static inline void world_model_multimodal_heartbeat(const char* operation, float progress) {
-    if (g_world_model_multimodal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_world_model_multimodal_health_agent, operation, progress);
+void world_model_multimodal_mesh_unregister(void) {
+    if (g_world_model_multimodal_mesh_registry && g_world_model_multimodal_mesh_id != 0) {
+        mesh_participant_unregister(g_world_model_multimodal_mesh_registry, g_world_model_multimodal_mesh_id);
+        g_world_model_multimodal_mesh_id = 0;
+        g_world_model_multimodal_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from world_model_multimodal module (instance-level) */
 static inline void world_model_multimodal_heartbeat_instance(
@@ -77,7 +91,7 @@ static void init_modality_encoders(nimcp_world_model_t* wm) {
         }
 
         wm->encoder_dims[i] = default_dims[i];
-        wm->modality_encoders[i] = calloc(default_dims[i], sizeof(float));
+        wm->modality_encoders[i] = nimcp_calloc(default_dims[i], sizeof(float));
         wm->modality_active[i] = false;
     }
 
@@ -233,7 +247,7 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
     world_model_multimodal_heartbeat("world_model__wm_create", 0.0f);
 
 
-    nimcp_world_model_t* wm = calloc(1, sizeof(nimcp_world_model_t));
+    nimcp_world_model_t* wm = nimcp_calloc(1, sizeof(nimcp_world_model_t));
     if (!wm) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate world model");
         return NULL;
@@ -247,45 +261,45 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
 
     /* Allocate global state */
     wm->global_state_dim = wm->config.latent_dim;
-    wm->global_state = calloc(wm->global_state_dim, sizeof(float));
+    wm->global_state = nimcp_calloc(wm->global_state_dim, sizeof(float));
     if (!wm->global_state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate global state");
-        free(wm);
+        nimcp_free(wm);
         return NULL;
     }
 
     /* Allocate context buffer */
-    wm->context_buffer = calloc(wm->config.context_size * wm->config.latent_dim, sizeof(float));
+    wm->context_buffer = nimcp_calloc(wm->config.context_size * wm->config.latent_dim, sizeof(float));
     if (!wm->context_buffer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate context buffer");
-        free(wm->global_state);
-        free(wm);
+        nimcp_free(wm->global_state);
+        nimcp_free(wm);
         return NULL;
     }
     wm->context_pos = 0;
 
     /* Allocate entities */
     wm->entity_capacity = wm->config.max_entities;
-    wm->entities = calloc(wm->entity_capacity, sizeof(wm_entity_t));
+    wm->entities = nimcp_calloc(wm->entity_capacity, sizeof(wm_entity_t));
     if (!wm->entities) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate entities");
-        free(wm->context_buffer);
-        free(wm->global_state);
-        free(wm);
+        nimcp_free(wm->context_buffer);
+        nimcp_free(wm->global_state);
+        nimcp_free(wm);
         return NULL;
     }
     wm->num_entities = 0;
 
     /* Allocate prediction buffer */
-    wm->prediction_buffer = calloc(
+    wm->prediction_buffer = nimcp_calloc(
         wm->config.max_prediction_steps * wm->config.latent_dim,
         sizeof(float));
     if (!wm->prediction_buffer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate prediction buffer");
-        free(wm->entities);
-        free(wm->context_buffer);
-        free(wm->global_state);
-        free(wm);
+        nimcp_free(wm->entities);
+        nimcp_free(wm->context_buffer);
+        nimcp_free(wm->global_state);
+        nimcp_free(wm);
         return NULL;
     }
 
@@ -359,10 +373,10 @@ void wm_destroy(nimcp_world_model_t* wm) {
     world_model_multimodal_heartbeat("world_model__wm_destroy", 0.0f);
 
 
-    free(wm->global_state);
-    free(wm->context_buffer);
-    free(wm->entities);
-    free(wm->prediction_buffer);
+    nimcp_free(wm->global_state);
+    nimcp_free(wm->context_buffer);
+    nimcp_free(wm->entities);
+    nimcp_free(wm->prediction_buffer);
 
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -371,10 +385,10 @@ void wm_destroy(nimcp_world_model_t* wm) {
                              (float)(i + 1) / (float)WM_MODALITY_COUNT);
         }
 
-        free(wm->modality_encoders[i]);
+        nimcp_free(wm->modality_encoders[i]);
     }
 
-    free(wm);
+    nimcp_free(wm);
 }
 
 /*=============================================================================
@@ -585,7 +599,7 @@ wm_error_t wm_predict(
     wm->status = WM_STATUS_PREDICTING;
 
     /* Initialize prediction with current state */
-    float* current = calloc(wm->global_state_dim, sizeof(float));
+    float* current = nimcp_calloc(wm->global_state_dim, sizeof(float));
     if (!current) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate current state");
         wm->status = WM_STATUS_ERROR;
@@ -596,20 +610,20 @@ wm_error_t wm_predict(
 
     prediction->horizon_steps = horizon_steps;
     prediction->state_dim = wm->global_state_dim;
-    prediction->predicted_states = calloc(horizon_steps * wm->global_state_dim, sizeof(float));
+    prediction->predicted_states = nimcp_calloc(horizon_steps * wm->global_state_dim, sizeof(float));
     if (!prediction->predicted_states) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate predicted states");
-        free(current);
+        nimcp_free(current);
         wm->status = WM_STATUS_ERROR;
         wm->last_error = WM_ERR_MEMORY_ALLOC;
         return WM_ERR_MEMORY_ALLOC;
     }
-    prediction->uncertainties = calloc(horizon_steps, sizeof(float));
+    prediction->uncertainties = nimcp_calloc(horizon_steps, sizeof(float));
     if (!prediction->uncertainties) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate uncertainties");
-        free(prediction->predicted_states);
+        nimcp_free(prediction->predicted_states);
         prediction->predicted_states = NULL;
-        free(current);
+        nimcp_free(current);
         wm->status = WM_STATUS_ERROR;
         wm->last_error = WM_ERR_MEMORY_ALLOC;
         return WM_ERR_MEMORY_ALLOC;
@@ -648,7 +662,7 @@ wm_error_t wm_predict(
     prediction->surprise = 0.0f;
     prediction->num_entities = wm->num_entities;
 
-    free(current);
+    nimcp_free(current);
     wm->stats.predictions_made++;
     wm->status = WM_STATUS_IDLE;
 

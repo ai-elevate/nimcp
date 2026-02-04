@@ -14,29 +14,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotional_prosody)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for emotional_prosody module */
-static nimcp_health_agent_t* g_emotional_prosody_health_agent = NULL;
+static mesh_participant_id_t g_emotional_prosody_mesh_id = 0;
+static mesh_participant_registry_t* g_emotional_prosody_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for emotional_prosody heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void emotional_prosody_set_health_agent(nimcp_health_agent_t* agent) {
-    g_emotional_prosody_health_agent = agent;
+nimcp_error_t emotional_prosody_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_emotional_prosody_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "emotional_prosody", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "emotional_prosody";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_emotional_prosody_mesh_id);
+    if (err == NIMCP_SUCCESS) g_emotional_prosody_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from emotional_prosody module */
-static inline void emotional_prosody_heartbeat(const char* operation, float progress) {
-    if (g_emotional_prosody_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_emotional_prosody_health_agent, operation, progress);
+void emotional_prosody_mesh_unregister(void) {
+    if (g_emotional_prosody_mesh_registry && g_emotional_prosody_mesh_id != 0) {
+        mesh_participant_unregister(g_emotional_prosody_mesh_registry, g_emotional_prosody_mesh_id);
+        g_emotional_prosody_mesh_id = 0;
+        g_emotional_prosody_mesh_registry = NULL;
     }
 }
 
@@ -102,7 +115,7 @@ emotional_prosody_config_t emotional_prosody_default_config(void) {
 }
 
 emotional_prosody_t* emotional_prosody_create(const emotional_prosody_config_t* config) {
-    emotional_prosody_t* processor = (emotional_prosody_t*)calloc(1, sizeof(emotional_prosody_t));
+    emotional_prosody_t* processor = (emotional_prosody_t*)nimcp_calloc(1, sizeof(emotional_prosody_t));
     if (!processor) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
@@ -126,7 +139,7 @@ emotional_prosody_t* emotional_prosody_create(const emotional_prosody_config_t* 
 
 void emotional_prosody_destroy(emotional_prosody_t* processor) {
     if (!processor) return;
-    free(processor);
+    nimcp_free(processor);
 }
 
 bool emotional_prosody_reset(emotional_prosody_t* processor) {
@@ -327,7 +340,7 @@ bool emotional_prosody_generate_contour(
     }
     if (num_points < 2) num_points = 2;
 
-    contour->points = (prosody_contour_point_t*)calloc(num_points, sizeof(prosody_contour_point_t));
+    contour->points = (prosody_contour_point_t*)nimcp_calloc(num_points, sizeof(prosody_contour_point_t));
     if (!contour->points) {
         processor->last_error = PROSODY_ERROR_INTERNAL;
         processor->status = PROSODY_STATUS_ERROR;
@@ -411,7 +424,7 @@ bool emotional_prosody_apply_contour(
 void emotional_prosody_free_contour(prosodic_contour_t* contour) {
     if (!contour) return;
     if (contour->points) {
-        free(contour->points);
+        nimcp_free(contour->points);
         contour->points = NULL;
     }
     contour->point_count = 0;

@@ -26,31 +26,9 @@
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *============================================================================*/
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/* Global health agent for LNN network operations */
-static nimcp_health_agent_t* g_lnn_network_health_agent = NULL;
-
-/**
- * @brief Set health agent for LNN network heartbeat monitoring
- * @param agent Health agent instance (NULL to disable)
- */
-static void lnn_network_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lnn_network_health_agent = agent;
-}
-
-/**
- * @brief Internal helper to send heartbeat if agent is connected
- */
-static inline void lnn_network_heartbeat(const char* operation, float progress) {
-    if (g_lnn_network_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lnn_network_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_network)
 
 #include <stddef.h>  /* for NULL */
 // Thread-safe network ID counter

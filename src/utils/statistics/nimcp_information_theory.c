@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -31,43 +32,17 @@
 //=============================================================================
 
 /** Forward declaration for health agent */
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for this module */
-static nimcp_health_agent_t* g_info_theory_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(info_theory)
 
-/** External health agent heartbeat function */
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation, float progress);
-
-/** Macro for heartbeat with NULL check */
-#define INFO_THEORY_HEARTBEAT(operation, progress) \
-    do { \
-        if (g_info_theory_health_agent) { \
-            nimcp_health_agent_heartbeat_ex(g_info_theory_health_agent, operation, progress); \
-        } \
-    } while (0)
-
-//=============================================================================
-// CONSTANTS
-//=============================================================================
-
-#define PI 3.14159265358979323846
-#define LN2 0.693147180559945309417
-#define LOG2E 1.44269504088896340736
-
-//=============================================================================
-// Global State
-//=============================================================================
-
-static bool g_info_theory_initialized = false;
+/* Module state globals */
 static info_theory_config_t g_config;
-
-/* GPU statistics */
 static uint64_t g_gpu_calls = 0;
 static uint64_t g_cpu_calls = 0;
 static double g_gpu_time_ms = 0.0;
 static double g_cpu_time_ms = 0.0;
+static bool g_info_theory_initialized = false;
 
 /* Force flags */
 static bool g_force_gpu = false;
@@ -164,11 +139,11 @@ static void extract_marginal_y(const float* joint, uint32_t n_x, uint32_t n_y, f
  * @brief Compute mutual information from joint probability
  */
 static double compute_mi(const float* joint, uint32_t n_x, uint32_t n_y) {
-    float* marginal_x = (float*)malloc(n_x * sizeof(float));
-    float* marginal_y = (float*)malloc(n_y * sizeof(float));
+    float* marginal_x = (float*)nimcp_malloc(n_x * sizeof(float));
+    float* marginal_y = (float*)nimcp_malloc(n_y * sizeof(float));
     if (!marginal_x || !marginal_y) {
-        free(marginal_x);
-        free(marginal_y);
+        nimcp_free(marginal_x);
+        nimcp_free(marginal_y);
         return NAN;
     }
 
@@ -187,8 +162,8 @@ static double compute_mi(const float* joint, uint32_t n_x, uint32_t n_y) {
         }
     }
 
-    free(marginal_x);
-    free(marginal_y);
+    nimcp_free(marginal_x);
+    nimcp_free(marginal_y);
     return mi;
 }
 
@@ -264,14 +239,14 @@ static info_theory_result_t pid_compute_broja(
     uint32_t total_size = n_s1 * n_s2 * n_t;
 
     /* Extract marginals P(S1,T), P(S2,T), P(T) */
-    float* p_s1_t = (float*)calloc(n_s1 * n_t, sizeof(float));
-    float* p_s2_t = (float*)calloc(n_s2 * n_t, sizeof(float));
-    float* p_t = (float*)calloc(n_t, sizeof(float));
-    float* p_s1 = (float*)calloc(n_s1, sizeof(float));
-    float* p_s2 = (float*)calloc(n_s2, sizeof(float));
+    float* p_s1_t = (float*)nimcp_calloc(n_s1 * n_t, sizeof(float));
+    float* p_s2_t = (float*)nimcp_calloc(n_s2 * n_t, sizeof(float));
+    float* p_t = (float*)nimcp_calloc(n_t, sizeof(float));
+    float* p_s1 = (float*)nimcp_calloc(n_s1, sizeof(float));
+    float* p_s2 = (float*)nimcp_calloc(n_s2, sizeof(float));
 
     if (!p_s1_t || !p_s2_t || !p_t || !p_s1 || !p_s2) {
-        free(p_s1_t); free(p_s2_t); free(p_t); free(p_s1); free(p_s2);
+        nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t); nimcp_free(p_s1); nimcp_free(p_s2);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PID BROJA memory allocation failed");
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -297,9 +272,9 @@ static info_theory_result_t pid_compute_broja(
     result->mi_s2_t = (float)compute_mi(p_s2_t, n_s2, n_t);
 
     /* For total MI, need P(S1,S2), P(T) joint */
-    float* p_s1s2_t = (float*)malloc(n_s1 * n_s2 * n_t * sizeof(float));
+    float* p_s1s2_t = (float*)nimcp_malloc(n_s1 * n_s2 * n_t * sizeof(float));
     if (!p_s1s2_t) {
-        free(p_s1_t); free(p_s2_t); free(p_t); free(p_s1); free(p_s2);
+        nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t); nimcp_free(p_s1); nimcp_free(p_s2);
         return INFO_THEORY_ERROR_MEMORY;
     }
     memcpy(p_s1s2_t, joint_prob, total_size * sizeof(float));
@@ -308,10 +283,10 @@ static info_theory_result_t pid_compute_broja(
     double h_t = compute_entropy(p_t, n_t);
     double h_s1s2t = compute_entropy(joint_prob, total_size);
 
-    float* p_s1s2 = (float*)calloc(n_s1 * n_s2, sizeof(float));
+    float* p_s1s2 = (float*)nimcp_calloc(n_s1 * n_s2, sizeof(float));
     if (!p_s1s2) {
-        free(p_s1_t); free(p_s2_t); free(p_t); free(p_s1); free(p_s2);
-        free(p_s1s2_t);
+        nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t); nimcp_free(p_s1); nimcp_free(p_s2);
+        nimcp_free(p_s1s2_t);
         return INFO_THEORY_ERROR_MEMORY;
     }
     for (uint32_t i = 0; i < n_s1; i++) {
@@ -346,8 +321,8 @@ static info_theory_result_t pid_compute_broja(
     result->converged = true;
     result->iterations = 1;
 
-    free(p_s1_t); free(p_s2_t); free(p_t); free(p_s1); free(p_s2);
-    free(p_s1s2_t); free(p_s1s2);
+    nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t); nimcp_free(p_s1); nimcp_free(p_s2);
+    nimcp_free(p_s1s2_t); nimcp_free(p_s1s2);
 
     INFO_THEORY_HEARTBEAT("pid_broja", 1.0f);
     g_cpu_calls++;
@@ -368,12 +343,12 @@ static info_theory_result_t pid_compute_mmi(
     INFO_THEORY_HEARTBEAT("pid_mmi", 0.0f);
 
     /* Extract marginals */
-    float* p_s1_t = (float*)calloc(n_s1 * n_t, sizeof(float));
-    float* p_s2_t = (float*)calloc(n_s2 * n_t, sizeof(float));
-    float* p_t = (float*)calloc(n_t, sizeof(float));
+    float* p_s1_t = (float*)nimcp_calloc(n_s1 * n_t, sizeof(float));
+    float* p_s2_t = (float*)nimcp_calloc(n_s2 * n_t, sizeof(float));
+    float* p_t = (float*)nimcp_calloc(n_t, sizeof(float));
 
     if (!p_s1_t || !p_s2_t || !p_t) {
-        free(p_s1_t); free(p_s2_t); free(p_t);
+        nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PID MMI memory allocation failed");
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -400,9 +375,9 @@ static info_theory_result_t pid_compute_mmi(
     double h_joint = compute_entropy(joint_prob, total_size);
     double h_t = compute_entropy(p_t, n_t);
 
-    float* p_s1s2 = (float*)calloc(n_s1 * n_s2, sizeof(float));
+    float* p_s1s2 = (float*)nimcp_calloc(n_s1 * n_s2, sizeof(float));
     if (!p_s1s2) {
-        free(p_s1_t); free(p_s2_t); free(p_t);
+        nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t);
         return INFO_THEORY_ERROR_MEMORY;
     }
     for (uint32_t i = 0; i < n_s1; i++) {
@@ -431,7 +406,7 @@ static info_theory_result_t pid_compute_mmi(
     result->converged = true;
     result->iterations = 1;
 
-    free(p_s1_t); free(p_s2_t); free(p_t); free(p_s1s2);
+    nimcp_free(p_s1_t); nimcp_free(p_s2_t); nimcp_free(p_t); nimcp_free(p_s1s2);
 
     INFO_THEORY_HEARTBEAT("pid_mmi", 1.0f);
     g_cpu_calls++;
@@ -574,12 +549,12 @@ info_theory_result_t nimcp_info_pid_atoms(
 
         result->total_mi = bivar.total_mi;
         result->n_atoms = 4;  /* U1, U2, R, S */
-        result->atoms = (pid_atom_t*)calloc(4, sizeof(pid_atom_t));
-        result->unique = (float*)calloc(2, sizeof(float));
+        result->atoms = (pid_atom_t*)nimcp_calloc(4, sizeof(pid_atom_t));
+        result->unique = (float*)nimcp_calloc(2, sizeof(float));
 
         if (!result->atoms || !result->unique) {
-            free(result->atoms);
-            free(result->unique);
+            nimcp_free(result->atoms);
+            nimcp_free(result->unique);
             return INFO_THEORY_ERROR_MEMORY;
         }
 
@@ -613,12 +588,12 @@ info_theory_result_t nimcp_info_pid_atoms(
     /* Number of atoms grows super-exponentially, use heuristic decomposition */
     uint32_t n_atoms = (1U << num_sources) - 1;  /* 2^n - 1 subsets */
     result->n_atoms = n_atoms;
-    result->atoms = (pid_atom_t*)calloc(n_atoms, sizeof(pid_atom_t));
-    result->unique = (float*)calloc(num_sources, sizeof(float));
+    result->atoms = (pid_atom_t*)nimcp_calloc(n_atoms, sizeof(pid_atom_t));
+    result->unique = (float*)nimcp_calloc(num_sources, sizeof(float));
 
     if (!result->atoms || !result->unique) {
-        free(result->atoms);
-        free(result->unique);
+        nimcp_free(result->atoms);
+        nimcp_free(result->unique);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -646,8 +621,8 @@ info_theory_result_t nimcp_info_pid_atoms(
 
 void nimcp_info_pid_result_free(pid_full_result_t* result) {
     if (!result) return;
-    free(result->atoms);
-    free(result->unique);
+    nimcp_free(result->atoms);
+    nimcp_free(result->unique);
     memset(result, 0, sizeof(pid_full_result_t));
 }
 
@@ -788,11 +763,11 @@ float nimcp_info_renyi_mutual_info(
     INFO_THEORY_HEARTBEAT("renyi_mi", 0.0f);
 
     /* Extract marginals */
-    float* marginal_x = (float*)malloc(n_x * sizeof(float));
-    float* marginal_y = (float*)malloc(n_y * sizeof(float));
+    float* marginal_x = (float*)nimcp_malloc(n_x * sizeof(float));
+    float* marginal_y = (float*)nimcp_malloc(n_y * sizeof(float));
     if (!marginal_x || !marginal_y) {
-        free(marginal_x);
-        free(marginal_y);
+        nimcp_free(marginal_x);
+        nimcp_free(marginal_y);
         return NAN;
     }
 
@@ -804,8 +779,8 @@ float nimcp_info_renyi_mutual_info(
     float h_y = nimcp_info_renyi_entropy(marginal_y, n_y, alpha);
     float h_xy = nimcp_info_renyi_entropy(joint_prob, n_x * n_y, alpha);
 
-    free(marginal_x);
-    free(marginal_y);
+    nimcp_free(marginal_x);
+    nimcp_free(marginal_y);
 
     INFO_THEORY_HEARTBEAT("renyi_mi", 1.0f);
 
@@ -855,7 +830,7 @@ info_theory_result_t nimcp_info_renyi_all(
 
     result->order = alpha;
     result->entropy = nimcp_info_renyi_entropy(probabilities, n, alpha);
-    result->entropy_nats = result->entropy / (float)LOG2E;
+    result->entropy_nats = result->entropy / (float)M_LOG2E;
 
     /* Min entropy: alpha -> infinity */
     float max_p = 0.0f;
@@ -957,11 +932,11 @@ info_theory_result_t nimcp_info_quantum_discord(
     uint32_t dim_ab = dim_a * dim_b;
 
     /* Allocate reduced density matrices */
-    float* rho_a = (float*)malloc(dim_a * dim_a * sizeof(float));
-    float* rho_b = (float*)malloc(dim_b * dim_b * sizeof(float));
+    float* rho_a = (float*)nimcp_malloc(dim_a * dim_a * sizeof(float));
+    float* rho_b = (float*)nimcp_malloc(dim_b * dim_b * sizeof(float));
     if (!rho_a || !rho_b) {
-        free(rho_a);
-        free(rho_b);
+        nimcp_free(rho_a);
+        nimcp_free(rho_b);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Quantum discord: memory allocation failed");
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -1006,8 +981,8 @@ info_theory_result_t nimcp_info_quantum_discord(
 
     *discord = (float)discord_approx;
 
-    free(rho_a);
-    free(rho_b);
+    nimcp_free(rho_a);
+    nimcp_free(rho_b);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("quantum_discord", 1.0f);
@@ -1030,11 +1005,11 @@ info_theory_result_t nimcp_info_classical_correlation(
 
     uint32_t dim_ab = dim_a * dim_b;
 
-    float* rho_a = (float*)malloc(dim_a * dim_a * sizeof(float));
-    float* rho_b = (float*)malloc(dim_b * dim_b * sizeof(float));
+    float* rho_a = (float*)nimcp_malloc(dim_a * dim_a * sizeof(float));
+    float* rho_b = (float*)nimcp_malloc(dim_b * dim_b * sizeof(float));
     if (!rho_a || !rho_b) {
-        free(rho_a);
-        free(rho_b);
+        nimcp_free(rho_a);
+        nimcp_free(rho_b);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1047,8 +1022,8 @@ info_theory_result_t nimcp_info_classical_correlation(
     /* Classical correlation upper bound */
     *classical = (float)fmin(s_a, s_b);
 
-    free(rho_a);
-    free(rho_b);
+    nimcp_free(rho_a);
+    nimcp_free(rho_b);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("classical_correlation", 1.0f);
@@ -1071,11 +1046,11 @@ info_theory_result_t nimcp_info_quantum_mutual_info(
 
     uint32_t dim_ab = dim_a * dim_b;
 
-    float* rho_a = (float*)malloc(dim_a * dim_a * sizeof(float));
-    float* rho_b = (float*)malloc(dim_b * dim_b * sizeof(float));
+    float* rho_a = (float*)nimcp_malloc(dim_a * dim_a * sizeof(float));
+    float* rho_b = (float*)nimcp_malloc(dim_b * dim_b * sizeof(float));
     if (!rho_a || !rho_b) {
-        free(rho_a);
-        free(rho_b);
+        nimcp_free(rho_a);
+        nimcp_free(rho_b);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1088,8 +1063,8 @@ info_theory_result_t nimcp_info_quantum_mutual_info(
 
     *qmi = (float)(s_a + s_b - s_ab);
 
-    free(rho_a);
-    free(rho_b);
+    nimcp_free(rho_a);
+    nimcp_free(rho_b);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("quantum_mi", 1.0f);
@@ -1115,7 +1090,7 @@ info_theory_result_t nimcp_info_accessible_information(
     INFO_THEORY_HEARTBEAT("accessible_info", 0.0f);
 
     /* Compute average state: rho = sum_i p_i rho_i */
-    float* avg_state = (float*)calloc(dim * dim, sizeof(float));
+    float* avg_state = (float*)nimcp_calloc(dim * dim, sizeof(float));
     if (!avg_state) {
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -1140,7 +1115,7 @@ info_theory_result_t nimcp_info_accessible_information(
     *accessible = (float)(s_avg - weighted_entropy_sum);
     if (*accessible < 0) *accessible = 0;  /* Numerical precision */
 
-    free(avg_state);
+    nimcp_free(avg_state);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("accessible_info", 1.0f);
@@ -1207,11 +1182,11 @@ info_theory_result_t nimcp_info_directed_information(
     result->n_steps = n - history;
 
     /* Discretize time series */
-    uint32_t* bins_x = (uint32_t*)malloc(n * sizeof(uint32_t));
-    uint32_t* bins_y = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* bins_x = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    uint32_t* bins_y = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!bins_x || !bins_y) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Directed info: memory allocation failed");
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -1219,14 +1194,14 @@ info_theory_result_t nimcp_info_directed_information(
     info_theory_result_t rc;
     rc = nimcp_info_discretize(x, n, n_bins, bins_x, NULL);
     if (rc != INFO_THEORY_OK) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         return rc;
     }
     rc = nimcp_info_discretize(y, n, n_bins, bins_y, NULL);
     if (rc != INFO_THEORY_OK) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         return rc;
     }
 
@@ -1238,22 +1213,22 @@ info_theory_result_t nimcp_info_directed_information(
     double directed_x_to_y = 0.0;
     double directed_y_to_x = 0.0;
 
-    result->per_step = (float*)calloc(result->n_steps, sizeof(float));
+    result->per_step = (float*)nimcp_calloc(result->n_steps, sizeof(float));
     if (!result->per_step) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
     /* Estimate joint probabilities and compute transfer entropy */
     /* Transfer entropy is related to directed information */
     uint32_t joint_size = n_bins * n_bins * n_bins;  /* (Y_t, Y_{t-1}, X_t) */
-    float* joint = (float*)calloc(joint_size, sizeof(float));
-    float* joint_reverse = (float*)calloc(joint_size, sizeof(float));
+    float* joint = (float*)nimcp_calloc(joint_size, sizeof(float));
+    float* joint_reverse = (float*)nimcp_calloc(joint_size, sizeof(float));
 
     if (!joint || !joint_reverse) {
-        free(bins_x); free(bins_y); free(result->per_step);
-        free(joint); free(joint_reverse);
+        nimcp_free(bins_x); nimcp_free(bins_y); nimcp_free(result->per_step);
+        nimcp_free(joint); nimcp_free(joint_reverse);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1290,14 +1265,14 @@ info_theory_result_t nimcp_info_directed_information(
     /* TE(X->Y) = H(Y_t | Y_past) - H(Y_t | Y_past, X_past) */
 
     /* Marginals */
-    float* p_yt_ypast = (float*)calloc(n_bins * n_bins, sizeof(float));
-    float* p_ypast = (float*)calloc(n_bins, sizeof(float));
-    float* p_ypast_xpast = (float*)calloc(n_bins * n_bins, sizeof(float));
+    float* p_yt_ypast = (float*)nimcp_calloc(n_bins * n_bins, sizeof(float));
+    float* p_ypast = (float*)nimcp_calloc(n_bins, sizeof(float));
+    float* p_ypast_xpast = (float*)nimcp_calloc(n_bins * n_bins, sizeof(float));
 
     if (!p_yt_ypast || !p_ypast || !p_ypast_xpast) {
-        free(bins_x); free(bins_y); free(result->per_step);
-        free(joint); free(joint_reverse);
-        free(p_yt_ypast); free(p_ypast); free(p_ypast_xpast);
+        nimcp_free(bins_x); nimcp_free(bins_y); nimcp_free(result->per_step);
+        nimcp_free(joint); nimcp_free(joint_reverse);
+        nimcp_free(p_yt_ypast); nimcp_free(p_ypast); nimcp_free(p_ypast_xpast);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1350,9 +1325,9 @@ info_theory_result_t nimcp_info_directed_information(
     result->normalized_flow = (max_possible > 0) ?
         result->net_flow / (float)max_possible : 0.0f;
 
-    free(bins_x); free(bins_y);
-    free(joint); free(joint_reverse);
-    free(p_yt_ypast); free(p_ypast); free(p_ypast_xpast);
+    nimcp_free(bins_x); nimcp_free(bins_y);
+    nimcp_free(joint); nimcp_free(joint_reverse);
+    nimcp_free(p_yt_ypast); nimcp_free(p_ypast); nimcp_free(p_ypast_xpast);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("directed_info", 1.0f);
@@ -1378,11 +1353,11 @@ info_theory_result_t nimcp_info_causally_conditioned(
     memset(result, 0, sizeof(causal_entropy_result_t));
 
     /* Discretize */
-    uint32_t* bins_x = (uint32_t*)malloc(n * sizeof(uint32_t));
-    uint32_t* bins_y = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* bins_x = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    uint32_t* bins_y = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!bins_x || !bins_y) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1392,9 +1367,9 @@ info_theory_result_t nimcp_info_causally_conditioned(
     /* Build joint probability P(Y_t, Y_past, X_past) */
     /* Simplified: use single lag */
     uint32_t joint_size = n_bins * n_bins * n_bins;
-    float* joint = (float*)calloc(joint_size, sizeof(float));
+    float* joint = (float*)nimcp_calloc(joint_size, sizeof(float));
     if (!joint) {
-        free(bins_x); free(bins_y);
+        nimcp_free(bins_x); nimcp_free(bins_y);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1415,9 +1390,9 @@ info_theory_result_t nimcp_info_causally_conditioned(
     }
 
     /* Compute causal conditional entropy H(Y || X) = sum_t H(Y_t | Y_past, X_past) */
-    float* p_cond = (float*)calloc(n_bins * n_bins, sizeof(float));
+    float* p_cond = (float*)nimcp_calloc(n_bins * n_bins, sizeof(float));
     if (!p_cond) {
-        free(bins_x); free(bins_y); free(joint);
+        nimcp_free(bins_x); nimcp_free(bins_y); nimcp_free(joint);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1445,11 +1420,11 @@ info_theory_result_t nimcp_info_causally_conditioned(
     result->causal_entropy = (float)h_causal;
 
     /* Standard conditional entropy H(Y|X) */
-    float* p_x = (float*)calloc(n_bins, sizeof(float));
-    float* p_xy = (float*)calloc(n_bins * n_bins, sizeof(float));
+    float* p_x = (float*)nimcp_calloc(n_bins, sizeof(float));
+    float* p_xy = (float*)nimcp_calloc(n_bins * n_bins, sizeof(float));
     if (!p_x || !p_xy) {
-        free(bins_x); free(bins_y); free(joint); free(p_cond);
-        free(p_x); free(p_xy);
+        nimcp_free(bins_x); nimcp_free(bins_y); nimcp_free(joint); nimcp_free(p_cond);
+        nimcp_free(p_x); nimcp_free(p_xy);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1480,8 +1455,8 @@ info_theory_result_t nimcp_info_causally_conditioned(
     result->standard_conditional = (float)h_std;
     result->causal_gain = result->standard_conditional - result->causal_entropy;
 
-    free(bins_x); free(bins_y); free(joint); free(p_cond);
-    free(p_x); free(p_xy);
+    nimcp_free(bins_x); nimcp_free(bins_y); nimcp_free(joint); nimcp_free(p_cond);
+    nimcp_free(p_x); nimcp_free(p_xy);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("causal_entropy", 1.0f);
@@ -1531,7 +1506,7 @@ info_theory_result_t nimcp_info_information_flow(
 
 void nimcp_info_directed_result_free(directed_info_result_t* result) {
     if (!result) return;
-    free(result->per_step);
+    nimcp_free(result->per_step);
     memset(result, 0, sizeof(directed_info_result_t));
 }
 
@@ -1569,7 +1544,7 @@ info_theory_result_t nimcp_info_integration(
     /* Phi* = MI of system - sum of MI of parts */
 
     /* Compute entropy from TPM rows (stationary distribution approximation) */
-    float* stationary = (float*)calloc(n_states, sizeof(float));
+    float* stationary = (float*)nimcp_calloc(n_states, sizeof(float));
     if (!stationary) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Phi: memory allocation failed");
         return INFO_THEORY_ERROR_MEMORY;
@@ -1580,9 +1555,9 @@ info_theory_result_t nimcp_info_integration(
         stationary[i] = 1.0f / n_states;
     }
 
-    float* temp = (float*)malloc(n_states * sizeof(float));
+    float* temp = (float*)nimcp_malloc(n_states * sizeof(float));
     if (!temp) {
-        free(stationary);
+        nimcp_free(stationary);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1652,14 +1627,14 @@ info_theory_result_t nimcp_info_integration(
     result->phi_normalized = (h_system > 0) ? result->phi / (float)h_system : 0.0f;
 
     /* Create trivial partition (all in one group) */
-    result->partition = (uint32_t*)malloc(sizeof(uint32_t));
+    result->partition = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
     if (result->partition) {
         result->partition[0] = n_states;
         result->n_partitions = 1;
     }
 
-    free(stationary);
-    free(temp);
+    nimcp_free(stationary);
+    nimcp_free(temp);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("phi_integration", 1.0f);
@@ -1688,7 +1663,7 @@ info_theory_result_t nimcp_info_complexity(
     result->history_used = history;
 
     /* Discretize data */
-    uint32_t* bins = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* bins = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!bins) {
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -1698,9 +1673,9 @@ info_theory_result_t nimcp_info_complexity(
     INFO_THEORY_HEARTBEAT("complexity", 0.2f);
 
     /* Compute block entropies for increasing block sizes */
-    float* block_entropies = (float*)calloc(history + 1, sizeof(float));
+    float* block_entropies = (float*)nimcp_calloc(history + 1, sizeof(float));
     if (!block_entropies) {
-        free(bins);
+        nimcp_free(bins);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1712,10 +1687,10 @@ info_theory_result_t nimcp_info_complexity(
             if (n_patterns > 1000000) break;  /* Limit pattern space */
         }
 
-        float* pattern_counts = (float*)calloc(n_patterns, sizeof(float));
+        float* pattern_counts = (float*)nimcp_calloc(n_patterns, sizeof(float));
         if (!pattern_counts) {
-            free(bins);
-            free(block_entropies);
+            nimcp_free(bins);
+            nimcp_free(block_entropies);
             return INFO_THEORY_ERROR_MEMORY;
         }
 
@@ -1746,7 +1721,7 @@ info_theory_result_t nimcp_info_complexity(
 
         block_entropies[L] = (float)compute_entropy(pattern_counts, n_patterns);
 
-        free(pattern_counts);
+        nimcp_free(pattern_counts);
 
         INFO_THEORY_HEARTBEAT("complexity", 0.2f + 0.5f * L / history);
     }
@@ -1774,8 +1749,8 @@ info_theory_result_t nimcp_info_complexity(
     /* Effective measure complexity */
     result->effective_measure_complexity = result->statistical_complexity;
 
-    free(bins);
-    free(block_entropies);
+    nimcp_free(bins);
+    nimcp_free(block_entropies);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("complexity", 1.0f);
@@ -1822,7 +1797,7 @@ info_theory_result_t nimcp_info_predictive_information(
     INFO_THEORY_HEARTBEAT("predictive_info", 0.0f);
 
     /* Discretize */
-    uint32_t* bins = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* bins = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!bins) {
         return INFO_THEORY_ERROR_MEMORY;
     }
@@ -1835,9 +1810,9 @@ info_theory_result_t nimcp_info_predictive_information(
     /* Simplified: use single-step past and future */
 
     uint32_t joint_size = n_bins * n_bins;
-    float* joint = (float*)calloc(joint_size, sizeof(float));
+    float* joint = (float*)nimcp_calloc(joint_size, sizeof(float));
     if (!joint) {
-        free(bins);
+        nimcp_free(bins);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1859,8 +1834,8 @@ info_theory_result_t nimcp_info_predictive_information(
 
     *predictive = (float)compute_mi(joint, n_bins, n_bins);
 
-    free(bins);
-    free(joint);
+    nimcp_free(bins);
+    nimcp_free(joint);
 
     g_cpu_calls++;
     INFO_THEORY_HEARTBEAT("predictive_info", 1.0f);
@@ -1870,8 +1845,8 @@ info_theory_result_t nimcp_info_predictive_information(
 
 void nimcp_info_integration_result_free(integration_result_t* result) {
     if (!result) return;
-    free(result->partition);
-    free(result->phi_atoms);
+    nimcp_free(result->partition);
+    nimcp_free(result->phi_atoms);
     memset(result, 0, sizeof(integration_result_t));
 }
 
@@ -1951,11 +1926,11 @@ info_theory_result_t nimcp_info_discretize_adaptive(
     }
 
     /* Sort data to find quantile boundaries */
-    float* sorted = (float*)malloc(n * sizeof(float));
-    uint32_t* indices = (uint32_t*)malloc(n * sizeof(uint32_t));
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
+    uint32_t* indices = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!sorted || !indices) {
-        free(sorted);
-        free(indices);
+        nimcp_free(sorted);
+        nimcp_free(indices);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -1980,10 +1955,10 @@ info_theory_result_t nimcp_info_discretize_adaptive(
     }
 
     /* Compute bin edges at quantiles */
-    float* edges = (float*)malloc((n_bins + 1) * sizeof(float));
+    float* edges = (float*)nimcp_malloc((n_bins + 1) * sizeof(float));
     if (!edges) {
-        free(sorted);
-        free(indices);
+        nimcp_free(sorted);
+        nimcp_free(indices);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -2014,9 +1989,9 @@ info_theory_result_t nimcp_info_discretize_adaptive(
         memcpy(bin_edges, edges, (n_bins + 1) * sizeof(float));
     }
 
-    free(sorted);
-    free(indices);
-    free(edges);
+    nimcp_free(sorted);
+    nimcp_free(indices);
+    nimcp_free(edges);
 
     return INFO_THEORY_OK;
 }
@@ -2038,11 +2013,11 @@ info_theory_result_t nimcp_info_estimate_joint(
     }
 
     /* Discretize both variables */
-    uint32_t* bins_x = (uint32_t*)malloc(n * sizeof(uint32_t));
-    uint32_t* bins_y = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* bins_x = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    uint32_t* bins_y = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!bins_x || !bins_y) {
-        free(bins_x);
-        free(bins_y);
+        nimcp_free(bins_x);
+        nimcp_free(bins_y);
         return INFO_THEORY_ERROR_MEMORY;
     }
 
@@ -2062,8 +2037,8 @@ info_theory_result_t nimcp_info_estimate_joint(
         joint[i] /= n;
     }
 
-    free(bins_x);
-    free(bins_y);
+    nimcp_free(bins_x);
+    nimcp_free(bins_y);
 
     return INFO_THEORY_OK;
 }

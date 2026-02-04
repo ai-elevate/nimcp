@@ -19,33 +19,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for bio_async_py module */
-static nimcp_health_agent_t* g_bio_async_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for bio_async_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void bio_async_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_bio_async_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from bio_async_py module */
-static inline void bio_async_py_heartbeat(const char* operation, float progress) {
-    if (g_bio_async_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bio_async_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_async_py)
 
 /* ============================================================================
  * BioPromise Type
@@ -317,7 +294,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
 
     /* Allocate buffer for result - we use a reasonable default */
     size_t buffer_size = 4096;
-    void* buffer = malloc(buffer_size);
+    void* buffer = nimcp_malloc(buffer_size);
     if (buffer == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -330,7 +307,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
     Py_END_ALLOW_THREADS
 
     if (status != NIMCP_SUCCESS) {
-        free(buffer);
+        nimcp_free(buffer);
         if (status == NIMCP_BIO_ERROR_DECAY_COMPLETE) {
             PyErr_SetString(PyExc_TimeoutError, "Result decayed");
         } else {
@@ -341,7 +318,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
 
     /* Return as bytes */
     PyObject* result = PyBytes_FromStringAndSize(buffer, (Py_ssize_t)buffer_size);
-    free(buffer);
+    nimcp_free(buffer);
     return result;
 }
 
@@ -713,7 +690,7 @@ static void PredictiveModel_dealloc(PredictiveModelObject* self)
         self->model = NULL;
     }
     if (self->signal_name) {
-        free(self->signal_name);
+        nimcp_free(self->signal_name);
         self->signal_name = NULL;
     }
     Py_TYPE(self)->tp_free((PyObject*)self);

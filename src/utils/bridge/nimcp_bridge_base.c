@@ -26,33 +26,9 @@ extern int brain_cycle_coordinator_notify_tick(
     brain_cycle_coordinator_t* coord,
     int type,
     uint64_t duration_us);
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for bridge_base module */
-static nimcp_health_agent_t* g_bridge_base_health_agent = NULL;
-
-/**
- * @brief Set health agent for bridge_base heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void bridge_base_set_health_agent(nimcp_health_agent_t* agent) {
-    g_bridge_base_health_agent = agent;
-}
-
-/** @brief Send heartbeat from bridge_base module */
-static inline void bridge_base_heartbeat(const char* operation, float progress) {
-    if (g_bridge_base_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bridge_base_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bridge_base)
 
 /* ============================================================================
  * Lifecycle Functions

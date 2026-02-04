@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_CATEGORY "value_commitment"
 
@@ -22,24 +23,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_value_commitment_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(value_commitment)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void value_commitment_set_health_agent(nimcp_health_agent_t* agent) {
-    g_value_commitment_health_agent = agent;
+static mesh_participant_id_t g_value_commitment_mesh_id = 0;
+static mesh_participant_registry_t* g_value_commitment_mesh_registry = NULL;
+
+nimcp_error_t value_commitment_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_value_commitment_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "value_commitment", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "value_commitment";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_value_commitment_mesh_id);
+    if (err == NIMCP_SUCCESS) g_value_commitment_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void value_commitment_heartbeat(const char* operation, float progress) {
-    if (g_value_commitment_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_value_commitment_health_agent, operation, progress);
+void value_commitment_mesh_unregister(void) {
+    if (g_value_commitment_mesh_registry && g_value_commitment_mesh_id != 0) {
+        mesh_participant_unregister(g_value_commitment_mesh_registry, g_value_commitment_mesh_id);
+        g_value_commitment_mesh_id = 0;
+        g_value_commitment_mesh_registry = NULL;
     }
 }
+
 
 struct value_commitment_system {
     uint32_t magic;
@@ -97,11 +119,11 @@ value_commitment_config_t value_commitment_default_config(void) {
 value_commitment_system_t* value_commitment_system_create(
     const value_commitment_config_t* config)
 {
-    value_commitment_system_t* system = calloc(1, sizeof(value_commitment_system_t));
+    value_commitment_system_t* system = nimcp_calloc(1, sizeof(value_commitment_system_t));
     if (system == NULL) return NULL;
 
     system->mutex = nimcp_mutex_create(NULL);
-    if (system->mutex == NULL) { free(system); return NULL; }
+    if (system->mutex == NULL) { nimcp_free(system); return NULL; }
 
     if (config) memcpy(&system->config, config, sizeof(*config));
     else system->config = value_commitment_default_config();
@@ -123,7 +145,7 @@ void value_commitment_system_destroy(value_commitment_system_t* system) {
 
     system->magic = 0;
     if (system->mutex) nimcp_mutex_destroy(system->mutex);
-    free(system);
+    nimcp_free(system);
     NIMCP_LOG_INFO(LOG_CATEGORY, "Value commitment system destroyed");
 }
 
@@ -134,6 +156,7 @@ nimcp_error_t value_commitment_create(
     const char* signer_id)
 {
     if (!is_valid_handle(system) || commitment == NULL || values == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "value_commitment: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -174,6 +197,7 @@ nimcp_error_t value_commitment_verify(
 {
     if (!is_valid_handle(system) || commitment == NULL ||
         current_values == NULL || valid == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "value_commitment: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -218,6 +242,7 @@ nimcp_error_t value_commitment_attest(
 {
     if (!is_valid_handle(system) || commitment == NULL ||
         current_values == NULL || attestation == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "value_commitment: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -259,6 +284,7 @@ nimcp_error_t value_commitment_verify_attestation(
     bool* valid)
 {
     if (!is_valid_handle(system) || attestation == NULL || valid == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "value_commitment: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -277,6 +303,7 @@ nimcp_error_t value_commitment_get_stats(
     value_commitment_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "value_commitment: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

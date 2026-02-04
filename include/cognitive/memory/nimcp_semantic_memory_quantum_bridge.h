@@ -82,6 +82,7 @@ quantum_semantic_t semantic_quantum_get_context(semantic_quantum_bridge_t* bridg
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct semantic_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -103,7 +104,7 @@ semantic_quantum_config_t semantic_quantum_default_config(void) {
 semantic_quantum_bridge_t* semantic_quantum_bridge_create(
     const semantic_quantum_config_t* config
 ) {
-    semantic_quantum_bridge_t* bridge = (semantic_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    semantic_quantum_bridge_t* bridge = (semantic_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : semantic_quantum_default_config();
@@ -114,7 +115,7 @@ semantic_quantum_bridge_t* semantic_quantum_bridge_create(
 
     bridge->qsem = quantum_semantic_create(&qconfig, bridge->config.embedding_dim);
     if (!bridge->qsem) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -124,7 +125,7 @@ semantic_quantum_bridge_t* semantic_quantum_bridge_create(
 void semantic_quantum_bridge_destroy(semantic_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->qsem) quantum_semantic_destroy(bridge->qsem);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool semantic_quantum_bridge_is_enabled(const semantic_quantum_bridge_t* bridge) {

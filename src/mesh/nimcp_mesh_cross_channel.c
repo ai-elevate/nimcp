@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Error code compatibility aliases */
 
@@ -134,7 +136,7 @@ mesh_system_coordinator_t mesh_system_coord_create(
     mesh_ordering_service_t* ordering,
     mesh_msp_t* msp
 ) {
-    mesh_system_coordinator_t coord = (mesh_system_coordinator_t)calloc(
+    mesh_system_coordinator_t coord = (mesh_system_coordinator_t)nimcp_calloc(
         1, sizeof(struct mesh_system_coordinator_internal));
     if (!coord) return NULL;
 
@@ -152,9 +154,9 @@ void mesh_system_coord_destroy(mesh_system_coordinator_t coord) {
     coord->pending_conflict_count = 0;
 
     /* Free stats channel array */
-    free(coord->stats.channel_stats);
+    nimcp_free(coord->stats.channel_stats);
 
-    free(coord);
+    nimcp_free(coord);
 }
 
 nimcp_error_t mesh_system_coord_register_channel(
@@ -164,6 +166,7 @@ nimcp_error_t mesh_system_coord_register_channel(
 ) {
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
     if (coord->channel_count >= MESH_CROSS_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_cross_channel: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -211,6 +214,7 @@ nimcp_error_t mesh_system_coord_unregister_channel(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -222,7 +226,7 @@ mesh_cross_router_t mesh_cross_router_create(
     const mesh_cross_router_config_t* config,
     mesh_system_coordinator_t system_coord
 ) {
-    mesh_cross_router_t router = (mesh_cross_router_t)calloc(
+    mesh_cross_router_t router = (mesh_cross_router_t)nimcp_calloc(
         1, sizeof(struct mesh_cross_router_internal));
     if (!router) return NULL;
 
@@ -240,11 +244,11 @@ void mesh_cross_router_destroy(mesh_cross_router_t router) {
     while (entry) {
         cross_tx_entry_t* next = entry->next;
         mesh_cross_transaction_destroy(entry->tx);
-        free(entry);
+        nimcp_free(entry);
         entry = next;
     }
 
-    free(router);
+    nimcp_free(router);
 }
 
 nimcp_error_t mesh_cross_router_start(mesh_cross_router_t router) {
@@ -277,7 +281,7 @@ mesh_cross_transaction_t* mesh_cross_transaction_create(
     const void* payload,
     size_t payload_size
 ) {
-    mesh_cross_transaction_t* tx = (mesh_cross_transaction_t*)calloc(
+    mesh_cross_transaction_t* tx = (mesh_cross_transaction_t*)nimcp_calloc(
         1, sizeof(mesh_cross_transaction_t));
     if (!tx) return NULL;
 
@@ -290,9 +294,9 @@ mesh_cross_transaction_t* mesh_cross_transaction_create(
 
     /* Copy payload */
     if (payload && payload_size > 0) {
-        tx->payload = malloc(payload_size);
+        tx->payload = nimcp_malloc(payload_size);
         if (!tx->payload) {
-            free(tx);
+            nimcp_free(tx);
             return NULL;
         }
         memcpy(tx->payload, payload, payload_size);
@@ -310,13 +314,13 @@ mesh_cross_transaction_t* mesh_cross_transaction_create(
 void mesh_cross_transaction_destroy(mesh_cross_transaction_t* tx) {
     if (!tx) return;
 
-    free(tx->payload);
+    nimcp_free(tx->payload);
 
     /* Free endorsement sets */
-    free(tx->source_endorsements.endorsements);
-    free(tx->target_endorsements.endorsements);
+    nimcp_free(tx->source_endorsements.endorsements);
+    nimcp_free(tx->target_endorsements.endorsements);
 
-    free(tx);
+    nimcp_free(tx);
 }
 
 static nimcp_error_t process_cross_transaction(
@@ -382,6 +386,7 @@ nimcp_error_t mesh_cross_router_submit(
     if (!router || !tx) return NIMCP_ERROR_INVALID_PARAM;
     if (!router->running) return NIMCP_ERROR_NOT_READY;
     if (router->pending_count >= router->config.max_pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_cross_channel: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -444,6 +449,7 @@ nimcp_error_t mesh_system_coord_arbitrate(
     mesh_cross_transaction_t** winner
 ) {
     if (!coord || !tx1 || !tx2 || !winner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cross_channel: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -498,6 +504,7 @@ nimcp_error_t mesh_system_coord_compute_free_energy(
     float* free_energy
 ) {
     if (!coord || !tx || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cross_channel: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -622,6 +629,7 @@ nimcp_error_t mesh_system_coord_mark_unhealthy(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -639,6 +647,7 @@ nimcp_error_t mesh_system_coord_mark_healthy(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -656,7 +665,7 @@ nimcp_error_t mesh_system_coord_get_stats(
 
     /* Allocate and copy channel stats */
     if (coord->channel_count > 0) {
-        stats->channel_stats = (mesh_channel_system_stats_t*)calloc(
+        stats->channel_stats = (mesh_channel_system_stats_t*)nimcp_calloc(
             coord->channel_count, sizeof(mesh_channel_system_stats_t));
         if (stats->channel_stats) {
             for (size_t i = 0; i < coord->channel_count; i++) {
@@ -686,7 +695,7 @@ nimcp_error_t mesh_system_coord_reset_stats(mesh_system_coordinator_t coord) {
 
 void mesh_system_coord_stats_free(mesh_system_coord_stats_t* stats) {
     if (!stats) return;
-    free(stats->channel_stats);
+    nimcp_free(stats->channel_stats);
     stats->channel_stats = NULL;
     stats->channel_count = 0;
 }

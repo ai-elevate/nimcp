@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /* ============================================================================
@@ -372,6 +373,7 @@ nimcp_error_t mesh_integration_register_adapter(
     mesh_adapter_base_t* adapter_base
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!adapter_base) return NIMCP_ERROR_NULL_POINTER;
@@ -380,6 +382,7 @@ nimcp_error_t mesh_integration_register_adapter(
     
     if (integration->adapter_count >= MESH_MAX_ADAPTERS) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
     
@@ -444,6 +447,7 @@ nimcp_error_t mesh_integration_unregister_adapter(
     mesh_participant_id_t participant_id
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     
@@ -469,6 +473,7 @@ nimcp_error_t mesh_integration_unregister_adapter(
     }
     
     nimcp_mutex_unlock(integration->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_integration: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -864,6 +869,7 @@ nimcp_error_t mesh_integration_update(
     uint64_t delta_ms
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     
@@ -956,6 +962,7 @@ nimcp_error_t mesh_integration_submit_transaction(
     mesh_transaction_t* tx
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx) return NIMCP_ERROR_NULL_POINTER;
@@ -970,6 +977,7 @@ nimcp_error_t mesh_integration_submit_belief(
     const mesh_belief_t* belief
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!belief) return NIMCP_ERROR_NULL_POINTER;
@@ -995,6 +1003,7 @@ nimcp_error_t mesh_integration_get_stats(
     mesh_integration_stats_t* stats
 ) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;

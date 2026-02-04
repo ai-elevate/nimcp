@@ -18,31 +18,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(chemistry)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for chemistry module */
-static nimcp_health_agent_t* g_chemistry_health_agent = NULL;
+static mesh_participant_id_t g_chemistry_mesh_id = 0;
+static mesh_participant_registry_t* g_chemistry_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for chemistry heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void chemistry_set_health_agent(nimcp_health_agent_t* agent) {
-    g_chemistry_health_agent = agent;
+nimcp_error_t chemistry_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_chemistry_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "chemistry", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "chemistry";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_chemistry_mesh_id);
+    if (err == NIMCP_SUCCESS) g_chemistry_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from chemistry module */
-static inline void chemistry_heartbeat(const char* operation, float progress) {
-    if (g_chemistry_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_chemistry_health_agent, operation, progress);
+void chemistry_mesh_unregister(void) {
+    if (g_chemistry_mesh_registry && g_chemistry_mesh_id != 0) {
+        mesh_participant_unregister(g_chemistry_mesh_registry, g_chemistry_mesh_id);
+        g_chemistry_mesh_id = 0;
+        g_chemistry_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from chemistry module (instance-level) */
 static inline void chemistry_heartbeat_instance(
@@ -256,7 +270,7 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
         return NULL;
     }
 
-    chemistry_t* chem = calloc(1, sizeof(chemistry_t));
+    chemistry_t* chem = nimcp_calloc(1, sizeof(chemistry_t));
     if (!chem) {
         set_chemistry_error("Failed to allocate chemistry struct");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate chem");
@@ -272,7 +286,7 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
     chem->lock = nimcp_mutex_create(&attr);
     if (!chem->lock) {
         set_chemistry_error("Failed to create mutex");
-        free(chem);
+        nimcp_free(chem);
         return NULL;
     }
 
@@ -289,7 +303,7 @@ void chemistry_destroy(chemistry_t* chem) {
     if (chem->lock) {
         nimcp_mutex_free(chem->lock);
     }
-    free(chem);
+    nimcp_free(chem);
 }
 
 /* ============================================================================

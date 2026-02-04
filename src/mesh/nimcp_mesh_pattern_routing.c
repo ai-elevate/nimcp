@@ -11,6 +11,7 @@
 #include "mesh/nimcp_mesh_pattern_routing.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -118,6 +119,7 @@ nimcp_error_t mesh_pattern_blend(
     mesh_pattern_t* result
 ) {
     if (!patterns || !weights || !result || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -156,6 +158,7 @@ nimcp_error_t mesh_pattern_from_semantics(
     mesh_pattern_t* pattern_out
 ) {
     if (!description || !pattern_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -250,6 +253,7 @@ nimcp_error_t mesh_pattern_router_register_receptive_field(
     const mesh_receptive_field_t* field
 ) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!field) return NIMCP_ERROR_NULL_POINTER;
@@ -265,6 +269,7 @@ nimcp_error_t mesh_pattern_router_register_receptive_field(
 
     /* Add new */
     if (router->module_count >= MAX_REGISTERED_MODULES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_pattern_routing: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -289,6 +294,7 @@ nimcp_error_t mesh_pattern_router_update_receptive_field(
     float learning_rate
 ) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!new_preferred) return NIMCP_ERROR_NULL_POINTER;
@@ -314,6 +320,7 @@ nimcp_error_t mesh_pattern_router_update_receptive_field(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_pattern_routing: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -377,9 +384,11 @@ nimcp_error_t mesh_pattern_router_compute_activations(
     size_t* count_out
 ) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx || !activations || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_routing: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -448,6 +457,7 @@ nimcp_error_t mesh_pattern_router_get_endorsers(
     size_t* count_out
 ) {
     if (!router || !tx || !endorsers || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -495,10 +505,12 @@ nimcp_error_t mesh_pattern_router_apply_neuromodulation(
     float level
 ) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (neuromod > MESH_NEUROMOD_SEROTONIN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -527,6 +539,7 @@ nimcp_error_t mesh_pattern_router_learn_outcome(
     float reward_signal
 ) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_routing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

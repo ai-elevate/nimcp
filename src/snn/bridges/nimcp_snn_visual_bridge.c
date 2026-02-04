@@ -23,36 +23,11 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for snn_visual_bridge module */
-static nimcp_health_agent_t* g_snn_visual_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for snn_visual_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void snn_visual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_snn_visual_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from snn_visual_bridge module */
-static inline void snn_visual_bridge_heartbeat(const char* operation, float progress) {
-    if (g_snn_visual_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_snn_visual_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_visual_bridge)
 
 //=============================================================================
 // Default Configuration
@@ -133,20 +108,31 @@ snn_visual_bridge_t* snn_visual_bridge_create(
     bridge->visual_cortex = visual_cortex;
     bridge->config = *config;
 
-    /* Calculate buffer sizes */
-    uint32_t width = config->downsample_frames ?
+    /* Calculate buffer sizes with overflow protection */
+    uint64_t width = config->downsample_frames ?
         config->frame_width / config->downsample_factor : config->frame_width;
-    uint32_t height = config->downsample_frames ?
+    uint64_t height = config->downsample_frames ?
         config->frame_height / config->downsample_factor : config->frame_height;
-    uint32_t num_pixels = width * height * config->frame_channels;
-    uint32_t num_neurons = num_pixels * config->neurons_per_pixel;
+    uint64_t num_pixels = width * height * config->frame_channels;
+    uint64_t num_neurons = num_pixels * config->neurons_per_pixel;
+    uint64_t frame_buf_size = (uint64_t)config->frame_width * config->frame_height *
+                              config->frame_channels;
+
+    /* Guard against integer overflow producing insane allocation sizes */
+    if (num_neurons > SIZE_MAX / sizeof(float) || frame_buf_size > SIZE_MAX) {
+        NIMCP_LOGGING_ERROR("Visual bridge buffer size overflow: %llu neurons",
+                           (unsigned long long)num_neurons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_visual_bridge_create: buffer size overflow");
+        snn_visual_bridge_destroy(bridge);
+        return NULL;
+    }
 
     /* Allocate working buffers */
-    bridge->frame_buffer = nimcp_malloc(config->frame_width * config->frame_height *
-                                        config->frame_channels);
-    bridge->spike_input_buffer = nimcp_malloc(num_neurons * sizeof(float));
-    bridge->spike_output_buffer = nimcp_malloc(num_neurons * sizeof(float));
-    bridge->spike_mask = nimcp_malloc(num_neurons);
+    bridge->frame_buffer = nimcp_malloc((size_t)frame_buf_size);
+    bridge->spike_input_buffer = nimcp_malloc((size_t)(num_neurons * sizeof(float)));
+    bridge->spike_output_buffer = nimcp_malloc((size_t)(num_neurons * sizeof(float)));
+    bridge->spike_mask = nimcp_malloc((size_t)num_neurons);
 
     if (!bridge->frame_buffer || !bridge->spike_input_buffer ||
         !bridge->spike_output_buffer || !bridge->spike_mask) {
@@ -158,7 +144,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
 
     /* Allocate downsample buffer if needed */
     if (config->downsample_frames) {
-        bridge->downsample_buffer = nimcp_malloc(num_pixels);
+        bridge->downsample_buffer = nimcp_malloc((size_t)num_pixels);
         if (!bridge->downsample_buffer) {
             NIMCP_LOGGING_ERROR("Failed to allocate downsample buffer");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_visual_bridge_create: failed to allocate downsample buffer");

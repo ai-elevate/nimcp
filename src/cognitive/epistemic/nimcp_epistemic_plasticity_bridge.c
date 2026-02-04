@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(epistemic_plasticity_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for epistemic_plasticity_bridge module */
-static nimcp_health_agent_t* g_epistemic_plasticity_bridge_health_agent = NULL;
+static mesh_participant_id_t g_epistemic_plasticity_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_epistemic_plasticity_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for epistemic_plasticity_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void epistemic_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_epistemic_plasticity_bridge_health_agent = agent;
+nimcp_error_t epistemic_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_epistemic_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "epistemic_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "epistemic_plasticity_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_epistemic_plasticity_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_epistemic_plasticity_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from epistemic_plasticity_bridge module */
-static inline void epistemic_plasticity_bridge_heartbeat(const char* operation, float progress) {
-    if (g_epistemic_plasticity_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_epistemic_plasticity_bridge_health_agent, operation, progress);
+void epistemic_plasticity_bridge_mesh_unregister(void) {
+    if (g_epistemic_plasticity_bridge_mesh_registry && g_epistemic_plasticity_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_epistemic_plasticity_bridge_mesh_registry, g_epistemic_plasticity_bridge_mesh_id);
+        g_epistemic_plasticity_bridge_mesh_id = 0;
+        g_epistemic_plasticity_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from epistemic_plasticity_bridge module (instance-level) */
 static inline void epistemic_plasticity_bridge_heartbeat_instance(
@@ -227,7 +241,7 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
 
 
-    epistemic_plasticity_bridge_t* bridge = calloc(1, sizeof(epistemic_plasticity_bridge_t));
+    epistemic_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(epistemic_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate bridge");
         return NULL;
@@ -239,19 +253,19 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     bridge->max_sources = EPISTEMIC_PLASTICITY_MAX_SOURCES;
 
     // Allocate synapses
-    bridge->synapses = calloc(bridge->max_synapses, sizeof(epistemic_plasticity_synapse_t));
+    bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(epistemic_plasticity_synapse_t));
     if (!bridge->synapses) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate synapses");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     // Allocate sources
-    bridge->sources = calloc(bridge->max_sources, sizeof(epistemic_source_learning_t));
+    bridge->sources = nimcp_calloc(bridge->max_sources, sizeof(epistemic_source_learning_t));
     if (!bridge->sources) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate sources");
-        free(bridge->synapses);
-        free(bridge);
+        nimcp_free(bridge->synapses);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -270,9 +284,9 @@ void epistemic_plasticity_destroy(epistemic_plasticity_bridge_t* bridge) {
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
 
 
-    free(bridge->synapses);
-    free(bridge->sources);
-    free(bridge);
+    nimcp_free(bridge->synapses);
+    nimcp_free(bridge->sources);
+    nimcp_free(bridge);
 }
 
 int epistemic_plasticity_reset(epistemic_plasticity_bridge_t* bridge) {

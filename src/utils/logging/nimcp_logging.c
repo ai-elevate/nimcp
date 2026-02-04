@@ -52,6 +52,7 @@
 #ifdef __linux__
 #include <sys/syscall.h>
 #include <syslog.h>
+#include "utils/memory/nimcp_memory.h"
 #endif
 
 //=============================================================================
@@ -109,33 +110,9 @@ extern void* unified_mem_write(unified_mem_handle_t handle);
 //=============================================================================
 
 #define LOG_MODULE_NAME "logging"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for logging module */
-static nimcp_health_agent_t* g_logging_health_agent = NULL;
-
-/**
- * @brief Set health agent for logging heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void logging_set_health_agent(nimcp_health_agent_t* agent) {
-    g_logging_health_agent = agent;
-}
-
-/** @brief Send heartbeat from logging module */
-static inline void logging_heartbeat(const char* operation, float progress) {
-    if (g_logging_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_logging_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(logging)
 
 #define DEFAULT_LOG_PATH "/var/log/nimcp/nimcp.log"
 #define MAX_MODULE_FILTERS 64
@@ -341,7 +318,7 @@ static void* log_alloc(nimcp_logger_t logger, size_t size) {
 
     // Fallback to malloc
     size_t total = sizeof(log_alloc_header_t) + size;
-    void* base = malloc(total);
+    void* base = nimcp_malloc(total);
     if (base) {
         log_alloc_header_t* header = (log_alloc_header_t*)base;
         header->handle = NULL;
@@ -360,7 +337,7 @@ static void log_free(void* ptr) {
     if (header->handle) {
         unified_mem_free(header->handle);
     } else {
-        free(header);
+        nimcp_free(header);
     }
 }
 
@@ -1063,7 +1040,7 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
     nimcp_log_config_t cfg = config ? *config : nimcp_log_default_config();
 
     // Allocate logger (can't use unified memory yet as it's not initialized)
-    nimcp_logger_t logger = (nimcp_logger_t)malloc(sizeof(struct nimcp_logger_struct));
+    nimcp_logger_t logger = (nimcp_logger_t)nimcp_malloc(sizeof(struct nimcp_logger_struct));
     if (!logger) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logger is NULL");
 
@@ -1094,7 +1071,7 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
         nimcp_platform_mutex_init(&logger->filter_mutex, false) != 0 ||
         nimcp_platform_mutex_init(&logger->async_mutex, false) != 0 ||
         nimcp_platform_mutex_init(&logger->context_mutex, false) != 0) {
-        free(logger);
+        nimcp_free(logger);
         return NULL;
     }
 
@@ -1103,7 +1080,7 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
         nimcp_platform_mutex_destroy(&logger->filter_mutex);
         nimcp_platform_mutex_destroy(&logger->async_mutex);
         nimcp_platform_mutex_destroy(&logger->context_mutex);
-        free(logger);
+        nimcp_free(logger);
         return NULL;
     }
 
@@ -1236,7 +1213,7 @@ void nimcp_log_destroy(nimcp_logger_t logger) {
 
     // Invalidate and free
     logger->magic = 0;
-    free(logger);
+    nimcp_free(logger);
 }
 
 void nimcp_log_flush(nimcp_logger_t logger) {

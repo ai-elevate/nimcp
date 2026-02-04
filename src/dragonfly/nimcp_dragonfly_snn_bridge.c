@@ -13,32 +13,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_snn_bridge module */
-static nimcp_health_agent_t* g_dragonfly_snn_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_snn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_snn_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_snn_bridge module */
-static inline void dragonfly_snn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_snn_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_snn_bridge)
 
 #define LOG_MODULE "DRAGONFLY_SNN_BRIDGE"
 
@@ -202,7 +180,7 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
     void* snn_trainer,
     const dragonfly_snn_config_t* config
 ) {
-    dragonfly_snn_bridge_t* bridge = calloc(1, sizeof(*bridge));
+    dragonfly_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_snn_bridge_create: failed to allocate bridge");
@@ -214,7 +192,7 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
         if (dragonfly_snn_bridge_validate_config(config) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "dragonfly_snn_bridge_create: invalid configuration");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -236,11 +214,11 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
     bridge->num_weights = TSDN_NUM_NEURONS * (TSDN_NUM_NEURONS + TSDN_NUM_NEURONS);
     bridge->num_biases = TSDN_NUM_NEURONS;
 
-    bridge->weights = calloc(bridge->num_weights, sizeof(float));
-    bridge->biases = calloc(bridge->num_biases, sizeof(float));
-    bridge->weight_gradients = calloc(bridge->num_weights, sizeof(float));
-    bridge->bias_gradients = calloc(bridge->num_biases, sizeof(float));
-    bridge->eligibility_traces = calloc(bridge->num_weights, sizeof(float));
+    bridge->weights = nimcp_calloc(bridge->num_weights, sizeof(float));
+    bridge->biases = nimcp_calloc(bridge->num_biases, sizeof(float));
+    bridge->weight_gradients = nimcp_calloc(bridge->num_weights, sizeof(float));
+    bridge->bias_gradients = nimcp_calloc(bridge->num_biases, sizeof(float));
+    bridge->eligibility_traces = nimcp_calloc(bridge->num_weights, sizeof(float));
 
     if (!bridge->weights || !bridge->biases || !bridge->weight_gradients ||
         !bridge->bias_gradients || !bridge->eligibility_traces) {
@@ -267,12 +245,12 @@ void dragonfly_snn_bridge_destroy(dragonfly_snn_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_snn");
 
-    free(bridge->weights);
-    free(bridge->biases);
-    free(bridge->weight_gradients);
-    free(bridge->bias_gradients);
-    free(bridge->eligibility_traces);
-    free(bridge);
+    nimcp_free(bridge->weights);
+    nimcp_free(bridge->biases);
+    nimcp_free(bridge->weight_gradients);
+    nimcp_free(bridge->bias_gradients);
+    nimcp_free(bridge->eligibility_traces);
+    nimcp_free(bridge);
 }
 
 int dragonfly_snn_bridge_reset(dragonfly_snn_bridge_t* bridge) {

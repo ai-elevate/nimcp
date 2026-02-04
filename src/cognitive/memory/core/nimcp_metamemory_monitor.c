@@ -25,31 +25,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metamemory_monitor)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for metamemory_monitor module */
-static nimcp_health_agent_t* g_metamemory_monitor_health_agent = NULL;
+static mesh_participant_id_t g_metamemory_monitor_mesh_id = 0;
+static mesh_participant_registry_t* g_metamemory_monitor_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for metamemory_monitor heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void metamemory_monitor_set_health_agent(nimcp_health_agent_t* agent) {
-    g_metamemory_monitor_health_agent = agent;
+nimcp_error_t metamemory_monitor_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_metamemory_monitor_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "metamemory_monitor", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "metamemory_monitor";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_metamemory_monitor_mesh_id);
+    if (err == NIMCP_SUCCESS) g_metamemory_monitor_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from metamemory_monitor module */
-static inline void metamemory_monitor_heartbeat(const char* operation, float progress) {
-    if (g_metamemory_monitor_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_metamemory_monitor_health_agent, operation, progress);
+void metamemory_monitor_mesh_unregister(void) {
+    if (g_metamemory_monitor_mesh_registry && g_metamemory_monitor_mesh_id != 0) {
+        mesh_participant_unregister(g_metamemory_monitor_mesh_registry, g_metamemory_monitor_mesh_id);
+        g_metamemory_monitor_mesh_id = 0;
+        g_metamemory_monitor_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from metamemory_monitor module (instance-level) */
 static inline void metamemory_monitor_heartbeat_instance(
@@ -249,7 +263,7 @@ metamem_monitor_t metamem_monitor_create(
     }
 
     // Allocate monitor structure
-    metamem_monitor_t monitor = (metamem_monitor_t)calloc(1, sizeof(struct metamem_monitor_struct));
+    metamem_monitor_t monitor = (metamem_monitor_t)nimcp_calloc(1, sizeof(struct metamem_monitor_struct));
     if (!monitor) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate monitor");
 
@@ -299,7 +313,7 @@ void metamem_monitor_destroy(metamem_monitor_t monitor) {
     at_risk_cleanup(monitor);
     history_cleanup(monitor);
 
-    free(monitor);
+    nimcp_free(monitor);
 }
 
 //=============================================================================
@@ -346,7 +360,7 @@ metamem_error_t metamem_monitor_update(
             size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
             if (count == 0) continue;
 
-            pr_memory_node_t** nodes = (pr_memory_node_t**)malloc(count * sizeof(pr_memory_node_t*));
+            pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
             if (nodes) {
                 size_t actual = 0;
                 z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier, nodes, count, &actual);
@@ -364,7 +378,7 @@ metamem_error_t metamem_monitor_update(
                         total_access += state.z;
                     }
                 }
-                free(nodes);
+                nimcp_free(nodes);
             }
         }
 
@@ -483,7 +497,7 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
         size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         if (count == 0) continue;
 
-        pr_memory_node_t** nodes = (pr_memory_node_t**)malloc(count * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
         if (!nodes) continue;
 
         size_t actual = 0;
@@ -542,7 +556,7 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
             total_processed++;
         }
 
-        free(nodes);
+        nimcp_free(nodes);
     }
 
     // Finalize domain statistics
@@ -733,7 +747,7 @@ uint64_t metamem_monitor_register_domain(
     }
 
     domain->max_top = monitor->config.max_top_per_domain;
-    domain->top_memories = (pr_memory_node_t**)calloc(domain->max_top, sizeof(pr_memory_node_t*));
+    domain->top_memories = (pr_memory_node_t**)nimcp_calloc(domain->max_top, sizeof(pr_memory_node_t*));
     if (!domain->top_memories) {
         domain->max_top = 0;
     }
@@ -775,7 +789,7 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
         size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         if (count == 0) continue;
 
-        pr_memory_node_t** nodes = (pr_memory_node_t**)malloc(count * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
         if (!nodes) continue;
 
         size_t actual = 0;
@@ -820,7 +834,7 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
             }
         }
 
-        free(nodes);
+        nimcp_free(nodes);
     }
 
     // Sort by risk score (highest first)
@@ -960,7 +974,7 @@ metamem_error_t metamem_monitor_get_health_report(
         // Average strength per tier
         if (report->tier_counts[tier] > 0) {
             float total_strength = 0.0f;
-            pr_memory_node_t** nodes = (pr_memory_node_t**)malloc(
+            pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(
                 report->tier_counts[tier] * sizeof(pr_memory_node_t*));
             if (nodes) {
                 size_t actual = 0;
@@ -978,7 +992,7 @@ metamem_error_t metamem_monitor_get_health_report(
                     }
                 }
                 report->tier_avg_strength[tier] = total_strength / (float)actual;
-                free(nodes);
+                nimcp_free(nodes);
             }
         }
     }
@@ -1478,7 +1492,7 @@ bool metamem_monitor_validate(metamem_monitor_t monitor) {
 //=============================================================================
 
 static void domains_init(metamem_monitor_t monitor) {
-    monitor->domains = (knowledge_domain_t*)calloc(monitor->max_domains,
+    monitor->domains = (knowledge_domain_t*)nimcp_calloc(monitor->max_domains,
                                                     sizeof(knowledge_domain_t));
     monitor->num_domains = 0;
 
@@ -1491,7 +1505,7 @@ static void domains_init(metamem_monitor_t monitor) {
             }
 
             monitor->domains[i].max_top = monitor->config.max_top_per_domain;
-            monitor->domains[i].top_memories = (pr_memory_node_t**)calloc(
+            monitor->domains[i].top_memories = (pr_memory_node_t**)nimcp_calloc(
                 monitor->domains[i].max_top, sizeof(pr_memory_node_t*));
         }
     }
@@ -1507,24 +1521,24 @@ static void domains_cleanup(metamem_monitor_t monitor) {
             }
 
             if (monitor->domains[i].top_memories) {
-                free(monitor->domains[i].top_memories);
+                nimcp_free(monitor->domains[i].top_memories);
             }
         }
-        free(monitor->domains);
+        nimcp_free(monitor->domains);
         monitor->domains = NULL;
     }
     monitor->num_domains = 0;
 }
 
 static void at_risk_init(metamem_monitor_t monitor) {
-    monitor->at_risk = (at_risk_memory_t*)calloc(monitor->max_at_risk,
+    monitor->at_risk = (at_risk_memory_t*)nimcp_calloc(monitor->max_at_risk,
                                                   sizeof(at_risk_memory_t));
     monitor->num_at_risk = 0;
 }
 
 static void at_risk_cleanup(metamem_monitor_t monitor) {
     if (monitor->at_risk) {
-        free(monitor->at_risk);
+        nimcp_free(monitor->at_risk);
         monitor->at_risk = NULL;
     }
     monitor->num_at_risk = 0;
@@ -1535,17 +1549,17 @@ static void history_init(metamem_monitor_t monitor) {
     monitor->history_len = 0;
     monitor->history_index = 0;
 
-    monitor->consolidation_history = (float*)calloc(monitor->history_capacity, sizeof(float));
-    monitor->accessibility_history = (float*)calloc(monitor->history_capacity, sizeof(float));
-    monitor->retrieval_history = (float*)calloc(monitor->history_capacity, sizeof(float));
-    monitor->timestamp_history = (uint64_t*)calloc(monitor->history_capacity, sizeof(uint64_t));
+    monitor->consolidation_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    monitor->accessibility_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    monitor->retrieval_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    monitor->timestamp_history = (uint64_t*)nimcp_calloc(monitor->history_capacity, sizeof(uint64_t));
 }
 
 static void history_cleanup(metamem_monitor_t monitor) {
-    if (monitor->consolidation_history) free(monitor->consolidation_history);
-    if (monitor->accessibility_history) free(monitor->accessibility_history);
-    if (monitor->retrieval_history) free(monitor->retrieval_history);
-    if (monitor->timestamp_history) free(monitor->timestamp_history);
+    if (monitor->consolidation_history) nimcp_free(monitor->consolidation_history);
+    if (monitor->accessibility_history) nimcp_free(monitor->accessibility_history);
+    if (monitor->retrieval_history) nimcp_free(monitor->retrieval_history);
+    if (monitor->timestamp_history) nimcp_free(monitor->timestamp_history);
 
     monitor->consolidation_history = NULL;
     monitor->accessibility_history = NULL;

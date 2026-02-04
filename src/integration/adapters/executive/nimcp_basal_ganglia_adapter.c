@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for basal_ganglia_adapter module */
-static nimcp_health_agent_t* g_basal_ganglia_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for basal_ganglia_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void basal_ganglia_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_basal_ganglia_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from basal_ganglia_adapter module */
-static inline void basal_ganglia_adapter_heartbeat(const char* operation, float progress) {
-    if (g_basal_ganglia_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_basal_ganglia_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(basal_ganglia_adapter)
 
 #define BG_MAX_ACTIONS 32
 
@@ -210,7 +187,7 @@ nimcp_basal_ganglia_config_t nimcp_basal_ganglia_adapter_default_config(void) {
 }
 
 nimcp_basal_ganglia_adapter_t nimcp_basal_ganglia_adapter_create(const nimcp_basal_ganglia_config_t* config) {
-    nimcp_basal_ganglia_adapter_t adapter = (nimcp_basal_ganglia_adapter_t)calloc(1, sizeof(struct nimcp_basal_ganglia_adapter_struct));
+    nimcp_basal_ganglia_adapter_t adapter = (nimcp_basal_ganglia_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_basal_ganglia_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate basal ganglia adapter");
 
     adapter->config = config ? *config : nimcp_basal_ganglia_adapter_default_config();
@@ -232,7 +209,7 @@ nimcp_basal_ganglia_adapter_t nimcp_basal_ganglia_adapter_create(const nimcp_bas
 void nimcp_basal_ganglia_adapter_destroy(nimcp_basal_ganglia_adapter_t adapter) {
     if (!adapter) return;
     if (adapter->is_initialized) bg_shutdown(adapter);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_basal_ganglia_adapter_get_interface(nimcp_basal_ganglia_adapter_t adapter) {

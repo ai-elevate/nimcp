@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -218,7 +219,7 @@ static inline qseq_matcher_t qseq_matcher_create(
 
     /* Allocate context */
     qseq_matcher_internal_t* ctx =
-        (qseq_matcher_internal_t*)calloc(1, sizeof(qseq_matcher_internal_t));
+        (qseq_matcher_internal_t*)nimcp_calloc(1, sizeof(qseq_matcher_internal_t));
     if (!ctx) return NULL;
 
     ctx->config = cfg;
@@ -226,26 +227,26 @@ static inline qseq_matcher_t qseq_matcher_create(
     ctx->rng_state = cfg.seed;
 
     /* Allocate templates */
-    ctx->templates = (qseq_pattern_t*)calloc(cfg.max_templates, sizeof(qseq_pattern_t));
+    ctx->templates = (qseq_pattern_t*)nimcp_calloc(cfg.max_templates, sizeof(qseq_pattern_t));
 
     /* Allocate amplitude vectors */
-    ctx->query_amplitude = (float*)calloc(cfg.amplitude_dim, sizeof(float));
-    ctx->template_amplitudes = (float*)calloc(cfg.max_templates * cfg.amplitude_dim,
+    ctx->query_amplitude = (float*)nimcp_calloc(cfg.amplitude_dim, sizeof(float));
+    ctx->template_amplitudes = (float*)nimcp_calloc(cfg.max_templates * cfg.amplitude_dim,
                                               sizeof(float));
-    ctx->similarity_vector = (float*)calloc(cfg.max_templates, sizeof(float));
+    ctx->similarity_vector = (float*)nimcp_calloc(cfg.max_templates, sizeof(float));
 
     /* Allocate Grover state */
     ctx->grover_dim = cfg.max_templates;
-    ctx->grover_state = (float*)calloc(cfg.max_templates, sizeof(float));
+    ctx->grover_state = (float*)nimcp_calloc(cfg.max_templates, sizeof(float));
 
     if (!ctx->templates || !ctx->query_amplitude || !ctx->template_amplitudes ||
         !ctx->similarity_vector || !ctx->grover_state) {
-        free(ctx->templates);
-        free(ctx->query_amplitude);
-        free(ctx->template_amplitudes);
-        free(ctx->similarity_vector);
-        free(ctx->grover_state);
-        free(ctx);
+        nimcp_free(ctx->templates);
+        nimcp_free(ctx->query_amplitude);
+        nimcp_free(ctx->template_amplitudes);
+        nimcp_free(ctx->similarity_vector);
+        nimcp_free(ctx->grover_state);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -261,15 +262,15 @@ static inline void qseq_matcher_destroy(qseq_matcher_t ctx) {
 
     /* Free template amplitude vectors */
     for (uint32_t i = 0; i < internal->n_templates; i++) {
-        free(internal->templates[i].amplitude_vector);
+        nimcp_free(internal->templates[i].amplitude_vector);
     }
 
-    free(internal->templates);
-    free(internal->query_amplitude);
-    free(internal->template_amplitudes);
-    free(internal->similarity_vector);
-    free(internal->grover_state);
-    free(internal);
+    nimcp_free(internal->templates);
+    nimcp_free(internal->query_amplitude);
+    nimcp_free(internal->template_amplitudes);
+    nimcp_free(internal->similarity_vector);
+    nimcp_free(internal->grover_state);
+    nimcp_free(internal);
 }
 
 //=============================================================================
@@ -411,7 +412,7 @@ static inline int qseq_matcher_add_template(
 
     /* Allocate and compute amplitude encoding */
     internal->templates[idx].amplitude_vector =
-        (float*)calloc(internal->config.amplitude_dim, sizeof(float));
+        (float*)nimcp_calloc(internal->config.amplitude_dim, sizeof(float));
     internal->templates[idx].amplitude_dim = internal->config.amplitude_dim;
 
     if (!internal->templates[idx].amplitude_vector) {
@@ -450,7 +451,7 @@ static inline int qseq_matcher_remove_template(
     }
 
     /* Free amplitude vector */
-    free(internal->templates[pattern_id].amplitude_vector);
+    nimcp_free(internal->templates[pattern_id].amplitude_vector);
 
     /* Shift remaining templates */
     for (uint32_t i = pattern_id; i < internal->n_templates - 1; i++) {
@@ -474,7 +475,7 @@ static inline void qseq_matcher_clear_templates(qseq_matcher_t ctx) {
     qseq_matcher_internal_t* internal = (qseq_matcher_internal_t*)ctx;
 
     for (uint32_t i = 0; i < internal->n_templates; i++) {
-        free(internal->templates[i].amplitude_vector);
+        nimcp_free(internal->templates[i].amplitude_vector);
     }
     internal->n_templates = 0;
 }

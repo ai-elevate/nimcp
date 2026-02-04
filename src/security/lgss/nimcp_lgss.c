@@ -23,32 +23,41 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for lgss module */
-static nimcp_health_agent_t* g_lgss_health_agent = NULL;
+static mesh_participant_id_t g_lgss_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for lgss heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_health_agent = agent;
+nimcp_error_t lgss_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss module */
-static inline void lgss_heartbeat(const char* operation, float progress) {
-    if (g_lgss_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_health_agent, operation, progress);
+void lgss_mesh_unregister(void) {
+    if (g_lgss_mesh_registry && g_lgss_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_mesh_registry, g_lgss_mesh_id);
+        g_lgss_mesh_id = 0;
+        g_lgss_mesh_registry = NULL;
     }
 }
 
@@ -141,7 +150,7 @@ int lgss_config_init(lgss_config_t* config)
 {
     if (!config) {
         LGSS_LOG_ERROR("NULL config pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(config, 0, sizeof(lgss_config_t));
@@ -302,19 +311,19 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
 
     if (!rules_path) {
         LGSS_LOG_ERROR("NULL rules path");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (lgss->status != LGSS_STATUS_LOADING &&
         lgss->status != LGSS_STATUS_UNINITIALIZED) {
         LGSS_LOG_ERROR("Cannot load rules in current state: %s",
             lgss_status_name(lgss->status));
-        return -1;
+        return NIMCP_ERROR_INVALID_STATE;
     }
 
     if (symbolic_logic_safety_is_locked(lgss->safety_kb)) {
         LGSS_LOG_ERROR("Cannot load rules - KB is locked");
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     LGSS_LOG_INFO("Loading safety rules from: %s", rules_path);
@@ -325,7 +334,7 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
     if (num_rules < 0) {
         LGSS_LOG_ERROR("Failed to load rules from: %s", rules_path);
         lgss->status = LGSS_STATUS_ERROR;
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LGSS_LOG_INFO("Loaded %d safety rules", num_rules);
@@ -345,7 +354,7 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
     if (!compile_ok) {
         LGSS_LOG_ERROR("Failed to compile safety rules");
         lgss->status = LGSS_STATUS_ERROR;
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     LGSS_LOG_INFO("Safety rules compiled successfully");
@@ -375,7 +384,7 @@ int lgss_lock(lgss_context_t* lgss)
     if (!lock_result) {
         LGSS_LOG_ERROR("Failed to lock safety KB");
         lgss->status = LGSS_STATUS_ERROR;
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Log to telemetry */
@@ -426,7 +435,7 @@ int lgss_evaluate(
 
     if (!context || !result) {
         LGSS_LOG_ERROR("NULL context or result");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Initialize result with fail-safe defaults */
@@ -480,7 +489,7 @@ int lgss_evaluate(
         LGSS_LOG_ERROR("Safety evaluation failed");
         result->action = SAFETY_ACTION_DENY;
         lgss->stats.actions_denied++;
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     safety_action_t action = result->action;
 
@@ -548,7 +557,7 @@ int lgss_verify_integrity(lgss_context_t* lgss)
         }
 
         LGSS_LOG_ERROR("Safety KB integrity verification FAILED");
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     if (lgss->telemetry) {
@@ -563,7 +572,7 @@ int lgss_verify_integrity(lgss_context_t* lgss)
 int lgss_get_hash(const lgss_context_t* lgss, uint8_t hash[32])
 {
     if (!lgss || lgss->magic != NIMCP_LGSS_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     return symbolic_logic_safety_get_hash(lgss->safety_kb, hash) ? 0 : -1;
 }
@@ -575,7 +584,7 @@ int lgss_get_hash(const lgss_context_t* lgss, uint8_t hash[32])
 int lgss_get_stats(const lgss_context_t* lgss, lgss_stats_t* stats)
 {
     if (!lgss || lgss->magic != NIMCP_LGSS_MAGIC || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(stats, 0, sizeof(lgss_stats_t));

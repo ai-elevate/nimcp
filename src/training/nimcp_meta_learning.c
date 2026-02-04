@@ -24,36 +24,9 @@
 #include <stdio.h>
 
 #define LOG_MODULE "META_LEARNING"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: Heartbeat for Long Operations)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for meta-learning (set via meta_set_health_agent) */
-static nimcp_health_agent_t* g_meta_health_agent = NULL;
-
-/**
- * @brief Set health agent for meta-learning heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void meta_set_health_agent(nimcp_health_agent_t* agent) {
-    g_meta_health_agent = agent;
-}
-
-/**
- * @brief Send heartbeat during meta-learning operations
- */
-static inline void meta_heartbeat(const char* operation, float progress) {
-    if (g_meta_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_meta_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(meta)
 
 //=============================================================================
 // Internal Structures

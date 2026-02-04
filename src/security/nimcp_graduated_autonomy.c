@@ -25,24 +25,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_autonomy_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(autonomy)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void graduated_autonomy_set_health_agent(nimcp_health_agent_t* agent) {
-    g_autonomy_health_agent = agent;
+static mesh_participant_id_t g_autonomy_mesh_id = 0;
+static mesh_participant_registry_t* g_autonomy_mesh_registry = NULL;
+
+nimcp_error_t autonomy_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_autonomy_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "autonomy", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "autonomy";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_autonomy_mesh_id);
+    if (err == NIMCP_SUCCESS) g_autonomy_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void autonomy_heartbeat(const char* operation, float progress) {
-    if (g_autonomy_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_autonomy_health_agent, operation, progress);
+void autonomy_mesh_unregister(void) {
+    if (g_autonomy_mesh_registry && g_autonomy_mesh_id != 0) {
+        mesh_participant_unregister(g_autonomy_mesh_registry, g_autonomy_mesh_id);
+        g_autonomy_mesh_id = 0;
+        g_autonomy_mesh_registry = NULL;
     }
 }
+
 
 struct graduated_autonomy {
     uint32_t magic;
@@ -151,6 +172,7 @@ nimcp_error_t graduated_autonomy_update_trust(
     bool action_was_aligned)
 {
     if (!is_valid_handle(system) || domain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "graduated_autonomy: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -159,6 +181,7 @@ nimcp_error_t graduated_autonomy_update_trust(
     autonomy_domain_t* d = get_or_create_domain(system, domain);
     if (d == NULL) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "graduated_autonomy: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -224,6 +247,7 @@ nimcp_error_t graduated_autonomy_request_increase(
     bool* granted)
 {
     if (!is_valid_handle(system) || granted == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "graduated_autonomy: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -240,6 +264,7 @@ nimcp_error_t graduated_autonomy_request_increase(
     if (d == NULL) {
         *granted = false;
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "graduated_autonomy: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -265,6 +290,7 @@ nimcp_error_t graduated_autonomy_get_trust(
     float* trust_variance)
 {
     if (!is_valid_handle(system) || domain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "graduated_autonomy: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -294,6 +320,7 @@ nimcp_error_t graduated_autonomy_get_stats(
     graduated_autonomy_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "graduated_autonomy: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -345,6 +372,7 @@ nimcp_error_t graduated_autonomy_connect_brain_immune(
     struct brain_immune* brain_immune)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "graduated_autonomy: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

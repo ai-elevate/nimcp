@@ -19,35 +19,47 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reasoning_immune)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for reasoning_immune module */
-static nimcp_health_agent_t* g_reasoning_immune_health_agent = NULL;
+static mesh_participant_id_t g_reasoning_immune_mesh_id = 0;
+static mesh_participant_registry_t* g_reasoning_immune_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for reasoning_immune heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void reasoning_immune_set_health_agent(nimcp_health_agent_t* agent) {
-    g_reasoning_immune_health_agent = agent;
+nimcp_error_t reasoning_immune_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_reasoning_immune_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "reasoning_immune", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SECURITY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "reasoning_immune";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_reasoning_immune_mesh_id);
+    if (err == NIMCP_SUCCESS) g_reasoning_immune_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from reasoning_immune module */
-static inline void reasoning_immune_heartbeat(const char* operation, float progress) {
-    if (g_reasoning_immune_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_reasoning_immune_health_agent, operation, progress);
+void reasoning_immune_mesh_unregister(void) {
+    if (g_reasoning_immune_mesh_registry && g_reasoning_immune_mesh_id != 0) {
+        mesh_participant_unregister(g_reasoning_immune_mesh_registry, g_reasoning_immune_mesh_id);
+        g_reasoning_immune_mesh_id = 0;
+        g_reasoning_immune_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from reasoning_immune module (instance-level) */
 static inline void reasoning_immune_heartbeat_instance(
@@ -103,7 +115,7 @@ struct reasoning_immune_bridge {
     reasoning_immune_stats_t stats;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 };
 
 /* ============================================================================
@@ -450,7 +462,7 @@ int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
     reasoning_immune_heartbeat("reasoning_im_apply_cytokine_effec", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine impacts */
     float speed_impact = compute_cytokine_speed_impact(bridge);
@@ -488,7 +500,7 @@ int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
         bridge->stats.max_accuracy_reduction_observed = accuracy_reduction;
     }
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -505,7 +517,7 @@ int reasoning_immune_apply_inflammation_effects(reasoning_immune_bridge_t* bridg
     reasoning_immune_heartbeat("reasoning_im_apply_inflammation_e", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute inflammation penalty */
     float penalty = compute_inflammation_penalty(bridge);
@@ -537,7 +549,7 @@ int reasoning_immune_apply_inflammation_effects(reasoning_immune_bridge_t* bridg
     /* Update statistics */
     bridge->stats.total_inflammation_modulations++;
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -551,9 +563,9 @@ int reasoning_immune_get_impairment(
     reasoning_immune_heartbeat("reasoning_im_get_impairment", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *impairment = bridge->current_impairment;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -579,13 +591,13 @@ int reasoning_immune_report_contradiction(
     reasoning_immune_heartbeat("reasoning_im_report_contradiction", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Track contradiction */
     bridge->failure_state.contradictions_detected++;
     bridge->stats.contradictions_reported++;
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Present as antigen to immune system */
     /* Would call: brain_immune_present_antigen(
@@ -623,7 +635,7 @@ int reasoning_immune_report_proof_failure(
     reasoning_immune_heartbeat("reasoning_im_report_proof_failure", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = get_time_ms();
 
@@ -673,7 +685,7 @@ int reasoning_immune_report_proof_failure(
         }
     }
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -694,7 +706,7 @@ int reasoning_immune_report_unification_error(
     reasoning_immune_heartbeat("reasoning_im_report_unification_e", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = get_time_ms();
 
@@ -719,7 +731,7 @@ int reasoning_immune_report_unification_error(
         bridge->stats.total_immune_triggers++;
     }
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -736,7 +748,7 @@ int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
     reasoning_immune_heartbeat("reasoning_im_clear_failure_tracki", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all failure counters */
     bridge->failure_state.proof_failures_recent = 0;
@@ -746,7 +758,7 @@ int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
     bridge->failure_state.persistent_error_state = false;
     bridge->failure_state.error_state_start_ms = 0;
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_MODULE_INFO("reasoning_immune", "Cleared failure tracking");
     return 0;
@@ -766,9 +778,9 @@ int reasoning_immune_get_failure_state(
     reasoning_immune_heartbeat("reasoning_im_get_failure_state", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *failure_state = bridge->failure_state;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -783,7 +795,7 @@ int reasoning_immune_get_config(
     reasoning_immune_heartbeat("reasoning_im_get_config", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     config->enable_cytokine_reasoning_modulation = bridge->enable_cytokine_reasoning_modulation;
     config->enable_inflammation_cognitive_slowing = bridge->enable_inflammation_cognitive_slowing;
@@ -803,7 +815,7 @@ int reasoning_immune_get_config(
     config->failure_window_sec = bridge->failure_window_sec;
     config->contradiction_antigen_severity = bridge->contradiction_antigen_severity;
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -823,7 +835,7 @@ int reasoning_immune_set_config(
     reasoning_immune_heartbeat("reasoning_im_set_config", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->enable_cytokine_reasoning_modulation = config->enable_cytokine_reasoning_modulation;
     bridge->enable_inflammation_cognitive_slowing = config->enable_inflammation_cognitive_slowing;
@@ -843,7 +855,7 @@ int reasoning_immune_set_config(
     bridge->failure_window_sec = config->failure_window_sec;
     bridge->contradiction_antigen_severity = config->contradiction_antigen_severity;
 
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -857,9 +869,9 @@ int reasoning_immune_get_stats(
     reasoning_immune_heartbeat("reasoning_im_get_stats", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -877,9 +889,9 @@ int reasoning_immune_reset_stats(reasoning_immune_bridge_t* bridge) {
     reasoning_immune_heartbeat("reasoning_im_reset_stats", 0.0f);
 
 
-    pthread_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(reasoning_immune_stats_t));
-    pthread_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

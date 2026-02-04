@@ -27,34 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for language_orchestrator module */
-static nimcp_health_agent_t* g_language_orchestrator_health_agent = NULL;
-
-/**
- * @brief Set health agent for language_orchestrator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void language_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_language_orchestrator_health_agent = agent;
-}
-
-/** @brief Send heartbeat from language_orchestrator module */
-static inline void language_orchestrator_heartbeat(const char* operation, float progress) {
-    if (g_language_orchestrator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_language_orchestrator_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_orchestrator)
 
 //=============================================================================
 // Internal Constants
@@ -219,7 +195,7 @@ void language_orchestrator_default_config(language_orchestrator_config_t* config
 language_orchestrator_t* language_orchestrator_create(
     const language_orchestrator_config_t* config)
 {
-    language_orchestrator_t* orch = calloc(1, sizeof(language_orchestrator_t));
+    language_orchestrator_t* orch = nimcp_calloc(1, sizeof(language_orchestrator_t));
     if (!orch) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_orchestrator_create: Failed to allocate orchestrator");
         return NULL;
@@ -242,7 +218,7 @@ language_orchestrator_t* language_orchestrator_create(
     /* Initialize buffers */
     if (orchestrator_init_buffers(orch) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_orchestrator_create: Failed to initialize buffers");
-        free(orch);
+        nimcp_free(orch);
         return NULL;
     }
 
@@ -285,7 +261,7 @@ void language_orchestrator_destroy(language_orchestrator_t* orchestrator)
     language_comprehension_result_free(&orchestrator->current_comprehension);
     language_production_plan_free(&orchestrator->current_production);
 
-    free(orchestrator);
+    nimcp_free(orchestrator);
 }
 
 int language_orchestrator_start(language_orchestrator_t* orchestrator)
@@ -984,28 +960,28 @@ void language_comprehension_result_free(language_comprehension_result_t* result)
     if (!result) return;
 
     if (result->words) {
-        free(result->words);
+        nimcp_free(result->words);
         result->words = NULL;
     }
     if (result->concepts) {
-        free(result->concepts);
+        nimcp_free(result->concepts);
         result->concepts = NULL;
     }
     if (result->parse_tree) {
         /* Recursive tree free would go here */
-        free(result->parse_tree);
+        nimcp_free(result->parse_tree);
         result->parse_tree = NULL;
     }
     if (result->semantic_vector) {
-        free(result->semantic_vector);
+        nimcp_free(result->semantic_vector);
         result->semantic_vector = NULL;
     }
     if (result->prosody.pitch_contour) {
-        free(result->prosody.pitch_contour);
+        nimcp_free(result->prosody.pitch_contour);
         result->prosody.pitch_contour = NULL;
     }
     if (result->prosody.intensity_contour) {
-        free(result->prosody.intensity_contour);
+        nimcp_free(result->prosody.intensity_contour);
         result->prosody.intensity_contour = NULL;
     }
 }
@@ -1016,23 +992,23 @@ void language_production_plan_free(language_production_plan_t* plan)
 
     /* Note: semantic_input is not owned by plan */
     if (plan->words) {
-        free(plan->words);
+        nimcp_free(plan->words);
         plan->words = NULL;
     }
     if (plan->phonemes) {
-        free(plan->phonemes);
+        nimcp_free(plan->phonemes);
         plan->phonemes = NULL;
     }
     if (plan->motor_commands) {
-        free(plan->motor_commands);
+        nimcp_free(plan->motor_commands);
         plan->motor_commands = NULL;
     }
     if (plan->prosody.pitch_contour) {
-        free(plan->prosody.pitch_contour);
+        nimcp_free(plan->prosody.pitch_contour);
         plan->prosody.pitch_contour = NULL;
     }
     if (plan->prosody.intensity_contour) {
-        free(plan->prosody.intensity_contour);
+        nimcp_free(plan->prosody.intensity_contour);
         plan->prosody.intensity_contour = NULL;
     }
 }
@@ -1045,7 +1021,7 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
 {
     /* Allocate phoneme buffer */
     orch->input.phoneme_capacity = orch->config.phoneme_buffer_size;
-    orch->input.phonemes = calloc(orch->input.phoneme_capacity,
+    orch->input.phonemes = nimcp_calloc(orch->input.phoneme_capacity,
                                    sizeof(language_phoneme_t));
     if (!orch->input.phonemes) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate phoneme buffer");
@@ -1055,22 +1031,22 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
 
     /* Allocate word buffer */
     orch->input.word_capacity = orch->config.max_utterance_words;
-    orch->input.words = calloc(orch->input.word_capacity,
+    orch->input.words = nimcp_calloc(orch->input.word_capacity,
                                 sizeof(language_word_t));
     if (!orch->input.words) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate word buffer");
-        free(orch->input.phonemes);
+        nimcp_free(orch->input.phonemes);
         return -1;
     }
     orch->input.word_count = 0;
 
     /* Allocate text buffer */
     orch->input.text_capacity = 4096;
-    orch->input.text_buffer = calloc(orch->input.text_capacity, 1);
+    orch->input.text_buffer = nimcp_calloc(orch->input.text_capacity, 1);
     if (!orch->input.text_buffer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate text buffer");
-        free(orch->input.phonemes);
-        free(orch->input.words);
+        nimcp_free(orch->input.phonemes);
+        nimcp_free(orch->input.words);
         return -1;
     }
     orch->input.text_length = 0;
@@ -1081,15 +1057,15 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
 static void orchestrator_free_buffers(language_orchestrator_t* orch)
 {
     if (orch->input.phonemes) {
-        free(orch->input.phonemes);
+        nimcp_free(orch->input.phonemes);
         orch->input.phonemes = NULL;
     }
     if (orch->input.words) {
-        free(orch->input.words);
+        nimcp_free(orch->input.words);
         orch->input.words = NULL;
     }
     if (orch->input.text_buffer) {
-        free(orch->input.text_buffer);
+        nimcp_free(orch->input.text_buffer);
         orch->input.text_buffer = NULL;
     }
 }

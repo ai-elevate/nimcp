@@ -25,29 +25,49 @@
 
 #include "cognitive/parietal/nimcp_financial_stdp_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_stdp)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial STDP bridge module */
-static nimcp_health_agent_t* g_fin_stdp_health_agent = NULL;
+static mesh_participant_id_t g_fin_stdp_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_stdp_mesh_registry = NULL;
 
-void financial_stdp_bridge_set_health_agent_global(void* agent) {
-    g_fin_stdp_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_stdp_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_stdp_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_stdp", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_stdp";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_stdp_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_stdp_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_stdp_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_stdp_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_stdp_health_agent, operation, progress);
+void fin_stdp_mesh_unregister(void) {
+    if (g_fin_stdp_mesh_registry && g_fin_stdp_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_stdp_mesh_registry, g_fin_stdp_mesh_id);
+        g_fin_stdp_mesh_id = 0;
+        g_fin_stdp_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -307,7 +327,7 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
     fin_stdp_heartbeat_global("fin_stdp_create", 0.0f);
 
     financial_stdp_bridge_t* bridge = (financial_stdp_bridge_t*)
-        malloc(sizeof(financial_stdp_bridge_t));
+        nimcp_malloc(sizeof(financial_stdp_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_stdp_bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -327,11 +347,11 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
 
     /* Allocate signal buffer */
     bridge->signal_buffer_size = FIN_STDP_MAX_SIGNALS;
-    bridge->signal_buffer = (signal_buffer_entry_t*)malloc(
+    bridge->signal_buffer = (signal_buffer_entry_t*)nimcp_malloc(
         bridge->signal_buffer_size * sizeof(signal_buffer_entry_t));
     if (!bridge->signal_buffer) {
         set_error("Failed to allocate signal buffer");
-        free(bridge);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate signal buffer");
         return NULL;
@@ -341,12 +361,12 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
 
     /* Allocate outcome buffer */
     bridge->outcome_buffer_size = FIN_STDP_MAX_OUTCOMES;
-    bridge->outcome_buffer = (outcome_buffer_entry_t*)malloc(
+    bridge->outcome_buffer = (outcome_buffer_entry_t*)nimcp_malloc(
         bridge->outcome_buffer_size * sizeof(outcome_buffer_entry_t));
     if (!bridge->outcome_buffer) {
         set_error("Failed to allocate outcome buffer");
-        free(bridge->signal_buffer);
-        free(bridge);
+        nimcp_free(bridge->signal_buffer);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate outcome buffer");
         return NULL;
@@ -356,13 +376,13 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
 
     /* Allocate correlation storage */
     bridge->max_correlations = FIN_STDP_MAX_SIGNAL_TYPES;
-    bridge->correlations = (correlation_entry_t*)malloc(
+    bridge->correlations = (correlation_entry_t*)nimcp_malloc(
         bridge->max_correlations * sizeof(correlation_entry_t));
     if (!bridge->correlations) {
         set_error("Failed to allocate correlations");
-        free(bridge->outcome_buffer);
-        free(bridge->signal_buffer);
-        free(bridge);
+        nimcp_free(bridge->outcome_buffer);
+        nimcp_free(bridge->signal_buffer);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate correlations");
         return NULL;
@@ -386,17 +406,17 @@ void financial_stdp_bridge_destroy(financial_stdp_bridge_t* bridge) {
 
     if (bridge) {
         if (bridge->signal_buffer) {
-            free(bridge->signal_buffer);
+            nimcp_free(bridge->signal_buffer);
         }
         if (bridge->outcome_buffer) {
-            free(bridge->outcome_buffer);
+            nimcp_free(bridge->outcome_buffer);
         }
         if (bridge->correlations) {
-            free(bridge->correlations);
+            nimcp_free(bridge->correlations);
         }
         bridge->magic = 0;
         bridge->op_state = FIN_STDP_OP_STATE_UNINITIALIZED;
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 
@@ -1264,7 +1284,7 @@ int financial_stdp_bridge_get_top_predictive(
     }
 
     /* First get all correlations */
-    fin_stdp_correlation_t* all = (fin_stdp_correlation_t*)malloc(
+    fin_stdp_correlation_t* all = (fin_stdp_correlation_t*)nimcp_malloc(
         bridge->correlation_count * sizeof(fin_stdp_correlation_t));
     if (!all) {
         return -FIN_STDP_ERR_NO_MEMORY;
@@ -1272,7 +1292,7 @@ int financial_stdp_bridge_get_top_predictive(
 
     int total = financial_stdp_bridge_get_all_correlations(bridge, all, bridge->correlation_count);
     if (total <= 0) {
-        free(all);
+        nimcp_free(all);
         return total;
     }
 
@@ -1283,7 +1303,7 @@ int financial_stdp_bridge_get_top_predictive(
     uint32_t to_copy = (uint32_t)total < count ? (uint32_t)total : count;
     memcpy(correlations, all, to_copy * sizeof(fin_stdp_correlation_t));
 
-    free(all);
+    nimcp_free(all);
     return (int)to_copy;
 }
 

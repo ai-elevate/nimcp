@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /* ============================================================================
@@ -309,6 +310,7 @@ static nimcp_error_t add_pending_callback(
     void* ctx
 ) {
     if (integration->pending_count >= integration->pending_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -317,6 +319,7 @@ static nimcp_error_t add_pending_callback(
     /* Copy message */
     entry->original_msg = nimcp_malloc(msg_size);
     if (!entry->original_msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
     memcpy(entry->original_msg, msg, msg_size);
@@ -472,6 +475,7 @@ nimcp_error_t mesh_bio_integration_connect(
     bio_router_t router
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -480,6 +484,7 @@ nimcp_error_t mesh_bio_integration_connect(
     if (integration->connected) {
         nimcp_mutex_unlock(integration->mutex);
         LOG_WARN("Bio integration already connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
@@ -501,6 +506,7 @@ nimcp_error_t mesh_bio_integration_disconnect(
     mesh_bio_integration_t* integration
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -551,9 +557,11 @@ nimcp_error_t mesh_bio_integration_route_message(
     void* ctx
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!msg || msg_size < sizeof(bio_msg_header_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -567,8 +575,10 @@ nimcp_error_t mesh_bio_integration_route_message(
         integration->stats.direct_fallback++;
 
         if (integration->config.fallback_to_direct) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
             return NIMCP_ERROR_NOT_FOUND;  /* Signal to use direct routing */
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bio_integration: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -584,6 +594,7 @@ nimcp_error_t mesh_bio_integration_route_message(
         if (!should_route) {
             nimcp_mutex_unlock(integration->mutex);
             integration->stats.direct_fallback++;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
             return NIMCP_ERROR_NOT_FOUND;
         }
     }
@@ -592,6 +603,7 @@ nimcp_error_t mesh_bio_integration_route_message(
     if (header->target_module == 0 && !integration->config.route_broadcasts) {
         nimcp_mutex_unlock(integration->mutex);
         integration->stats.direct_fallback++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -676,6 +688,7 @@ nimcp_error_t mesh_bio_integration_route_message(
         if (integration->config.fallback_to_direct) {
             nimcp_mutex_unlock(integration->mutex);
             integration->stats.direct_fallback++;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
             return NIMCP_ERROR_NOT_FOUND;
         }
     }
@@ -693,6 +706,7 @@ nimcp_error_t mesh_bio_integration_route_priority(
     void* ctx
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -718,9 +732,11 @@ nimcp_error_t mesh_bio_integration_route_to_channel(
     mesh_channel_id_t channel
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!msg || msg_size < sizeof(bio_msg_header_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -728,6 +744,7 @@ nimcp_error_t mesh_bio_integration_route_to_channel(
 
     if (!integration->enabled || !integration->mesh_integration) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bio_integration: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -778,6 +795,7 @@ nimcp_error_t mesh_bio_integration_set_route_decision(
     void* ctx
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -794,6 +812,7 @@ nimcp_error_t mesh_bio_integration_set_priority_policy(
     const mesh_bio_priority_policy_t* policy
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!policy) return NIMCP_ERROR_NULL_POINTER;
@@ -811,6 +830,7 @@ nimcp_error_t mesh_bio_integration_set_priority_policy(
 
     if (integration->policy_count >= MAX_PRIORITY_POLICIES) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -826,6 +846,7 @@ nimcp_error_t mesh_bio_integration_set_category_channel(
     mesh_channel_id_t channel_id
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -843,6 +864,7 @@ nimcp_error_t mesh_bio_integration_set_category_channel(
 
     if (integration->mapping_count >= MAX_CATEGORY_MAPPINGS) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -862,6 +884,7 @@ nimcp_error_t mesh_bio_integration_set_enabled(
     bool enabled
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -940,6 +963,7 @@ nimcp_error_t mesh_bio_integration_get_stats(
     mesh_bio_integration_stats_t* stats
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -955,6 +979,7 @@ nimcp_error_t mesh_bio_integration_reset_stats(
     mesh_bio_integration_t* integration
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -981,10 +1006,12 @@ static nimcp_error_t mesh_bio_routing_hook_impl(
     mesh_bio_integration_t* integration = (mesh_bio_integration_t*)ctx;
 
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;  /* Continue to next handler */
     }
 
     if (!integration->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 

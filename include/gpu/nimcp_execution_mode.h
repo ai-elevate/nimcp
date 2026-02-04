@@ -46,6 +46,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common/nimcp_export.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -241,7 +242,7 @@ NIMCP_EXPORT bool execution_context_set_mode(
  * @return Pointer to allocated memory, or NULL
  *
  * BEHAVIOR:
- * - CPU mode: malloc()
+ * - CPU mode: nimcp_malloc()
  * - GPU mode: cudaMalloc() or cudaMallocManaged()
  * - Distributed: allocate on appropriate node
  */

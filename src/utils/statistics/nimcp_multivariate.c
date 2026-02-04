@@ -16,6 +16,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -182,7 +183,7 @@ nimcp_mv_result_t nimcp_mv_center(
     float* local_mean = mean;
     bool allocated_mean = false;
     if (!local_mean) {
-        local_mean = (float*)malloc(n_features * sizeof(float));
+        local_mean = (float*)nimcp_malloc(n_features * sizeof(float));
         if (!local_mean) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mean in center");
             return NIMCP_MV_ERROR_MEMORY;
@@ -209,7 +210,7 @@ nimcp_mv_result_t nimcp_mv_center(
     }
 
     if (allocated_mean) {
-        free(local_mean);
+        nimcp_free(local_mean);
     }
 
     return NIMCP_MV_OK;
@@ -231,14 +232,14 @@ nimcp_mv_result_t nimcp_mv_standardize(
         return NIMCP_MV_ERROR_SIZE;
     }
 
-    float* local_mean = mean ? mean : (float*)malloc(n_features * sizeof(float));
-    float* local_std = std ? std : (float*)malloc(n_features * sizeof(float));
+    float* local_mean = mean ? mean : (float*)nimcp_malloc(n_features * sizeof(float));
+    float* local_std = std ? std : (float*)nimcp_malloc(n_features * sizeof(float));
     bool alloc_mean = (mean == NULL);
     bool alloc_std = (std == NULL);
 
     if (!local_mean || !local_std) {
-        if (alloc_mean && local_mean) free(local_mean);
-        if (alloc_std && local_std) free(local_std);
+        if (alloc_mean && local_mean) nimcp_free(local_mean);
+        if (alloc_std && local_std) nimcp_free(local_std);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -276,8 +277,8 @@ nimcp_mv_result_t nimcp_mv_standardize(
         }
     }
 
-    if (alloc_mean) free(local_mean);
-    if (alloc_std) free(local_std);
+    if (alloc_mean) nimcp_free(local_mean);
+    if (alloc_std) nimcp_free(local_std);
 
     return NIMCP_MV_OK;
 }
@@ -332,14 +333,14 @@ static nimcp_mv_result_t svd_power_iteration(
     uint32_t min_mn = (m < n) ? m : n;
     if (k > min_mn) k = min_mn;
 
-    float* A_work = (float*)malloc(m * n * sizeof(float));
-    float* v = (float*)malloc(n * sizeof(float));
-    float* u = (float*)malloc(m * sizeof(float));
-    float* Av = (float*)malloc(m * sizeof(float));
-    float* Atu = (float*)malloc(n * sizeof(float));
+    float* A_work = (float*)nimcp_malloc(m * n * sizeof(float));
+    float* v = (float*)nimcp_malloc(n * sizeof(float));
+    float* u = (float*)nimcp_malloc(m * sizeof(float));
+    float* Av = (float*)nimcp_malloc(m * sizeof(float));
+    float* Atu = (float*)nimcp_malloc(n * sizeof(float));
 
     if (!A_work || !v || !u || !Av || !Atu) {
-        free(A_work); free(v); free(u); free(Av); free(Atu);
+        nimcp_free(A_work); nimcp_free(v); nimcp_free(u); nimcp_free(Av); nimcp_free(Atu);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -401,7 +402,7 @@ static nimcp_mv_result_t svd_power_iteration(
         }
     }
 
-    free(A_work); free(v); free(u); free(Av); free(Atu);
+    nimcp_free(A_work); nimcp_free(v); nimcp_free(u); nimcp_free(Av); nimcp_free(Atu);
     return NIMCP_MV_OK;
 }
 
@@ -431,7 +432,7 @@ nimcp_mv_result_t nimcp_mv_svd(
     int ldvt = full_matrices ? N : min_mn;
 
     // LAPACK expects column-major, so transpose
-    float* A_col = (float*)malloc(m * n * sizeof(float));
+    float* A_col = (float*)nimcp_malloc(m * n * sizeof(float));
     if (!A_col) return NIMCP_MV_ERROR_MEMORY;
     transpose_matrix(A, A_col, m, n);
 
@@ -440,25 +441,25 @@ nimcp_mv_result_t nimcp_mv_svd(
     // Query workspace
     int lwork = -1;
     float work_query;
-    int* iwork = (int*)malloc(8 * min_mn * sizeof(int));
+    int* iwork = (int*)nimcp_malloc(8 * min_mn * sizeof(int));
     int info;
 
-    float* U_col = U ? (float*)malloc(m * (full_matrices ? m : min_mn) * sizeof(float)) : NULL;
-    float* Vt_col = Vt ? (float*)malloc((full_matrices ? n : min_mn) * n * sizeof(float)) : NULL;
+    float* U_col = U ? (float*)nimcp_malloc(m * (full_matrices ? m : min_mn) * sizeof(float)) : NULL;
+    float* Vt_col = Vt ? (float*)nimcp_malloc((full_matrices ? n : min_mn) * n * sizeof(float)) : NULL;
 
     sgesdd_(&jobz, &M, &N, A_col, &lda, S, U_col, &ldu, Vt_col, &ldvt,
             &work_query, &lwork, iwork, &info);
 
     lwork = (int)work_query;
-    float* work = (float*)malloc(lwork * sizeof(float));
+    float* work = (float*)nimcp_malloc(lwork * sizeof(float));
 
     sgesdd_(&jobz, &M, &N, A_col, &lda, S, U_col, &ldu, Vt_col, &ldvt,
             work, &lwork, iwork, &info);
 
     if (info != 0) {
-        free(A_col); free(work); free(iwork);
-        if (U_col) free(U_col);
-        if (Vt_col) free(Vt_col);
+        nimcp_free(A_col); nimcp_free(work); nimcp_free(iwork);
+        if (U_col) nimcp_free(U_col);
+        if (Vt_col) nimcp_free(Vt_col);
         return NIMCP_MV_ERROR_LAPACK;
     }
 
@@ -472,9 +473,9 @@ nimcp_mv_result_t nimcp_mv_svd(
         transpose_matrix(Vt_col, Vt, n, vt_rows);
     }
 
-    free(A_col); free(work); free(iwork);
-    if (U_col) free(U_col);
-    if (Vt_col) free(Vt_col);
+    nimcp_free(A_col); nimcp_free(work); nimcp_free(iwork);
+    if (U_col) nimcp_free(U_col);
+    if (Vt_col) nimcp_free(Vt_col);
 
     return NIMCP_MV_OK;
 #else
@@ -505,7 +506,7 @@ nimcp_mv_result_t nimcp_mv_eigh(
     char uplo = 'U';
     int info;
 
-    float* A_work = (float*)malloc(n * n * sizeof(float));
+    float* A_work = (float*)nimcp_malloc(n * n * sizeof(float));
     if (!A_work) return NIMCP_MV_ERROR_MEMORY;
 
     // LAPACK expects column-major, transpose symmetric matrix
@@ -522,14 +523,14 @@ nimcp_mv_result_t nimcp_mv_eigh(
 
     lwork = (int)work_query;
     liwork = iwork_query;
-    float* work = (float*)malloc(lwork * sizeof(float));
-    int* iwork = (int*)malloc(liwork * sizeof(int));
+    float* work = (float*)nimcp_malloc(lwork * sizeof(float));
+    int* iwork = (int*)nimcp_malloc(liwork * sizeof(int));
 
     ssyevd_(&jobz, &uplo, &N, A_work, &lda, eigenvalues,
             work, &lwork, iwork, &liwork, &info);
 
     if (info != 0) {
-        free(A_work); free(work); free(iwork);
+        nimcp_free(A_work); nimcp_free(work); nimcp_free(iwork);
         return NIMCP_MV_ERROR_LAPACK;
     }
 
@@ -537,7 +538,7 @@ nimcp_mv_result_t nimcp_mv_eigh(
         transpose_matrix(A_work, eigenvectors, n, n);
     }
 
-    free(A_work); free(work); free(iwork);
+    nimcp_free(A_work); nimcp_free(work); nimcp_free(iwork);
     return NIMCP_MV_OK;
 #else
     // Simple power iteration for largest eigenvalue (fallback)
@@ -573,12 +574,12 @@ nimcp_mv_result_t nimcp_mv_gemm(
     int ldc = N;
 
     // Convert to column-major
-    float* A_col = (float*)malloc((trans_a ? k*m : m*k) * sizeof(float));
-    float* B_col = (float*)malloc((trans_b ? n*k : k*n) * sizeof(float));
-    float* C_col = (float*)malloc(m * n * sizeof(float));
+    float* A_col = (float*)nimcp_malloc((trans_a ? k*m : m*k) * sizeof(float));
+    float* B_col = (float*)nimcp_malloc((trans_b ? n*k : k*n) * sizeof(float));
+    float* C_col = (float*)nimcp_malloc(m * n * sizeof(float));
 
     if (!A_col || !B_col || !C_col) {
-        free(A_col); free(B_col); free(C_col);
+        nimcp_free(A_col); nimcp_free(B_col); nimcp_free(C_col);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -601,7 +602,7 @@ nimcp_mv_result_t nimcp_mv_gemm(
 
     transpose_matrix(C_col, C, n, m);
 
-    free(A_col); free(B_col); free(C_col);
+    nimcp_free(A_col); nimcp_free(B_col); nimcp_free(C_col);
     return NIMCP_MV_OK;
 #else
     // Simple fallback
@@ -646,12 +647,12 @@ nimcp_mv_result_t nimcp_mv_solve(
     int ldb = NRHS;
     int info;
 
-    float* A_col = (float*)malloc(n * n * sizeof(float));
-    float* B_col = (float*)malloc(n * nrhs * sizeof(float));
-    int* ipiv = (int*)malloc(n * sizeof(int));
+    float* A_col = (float*)nimcp_malloc(n * n * sizeof(float));
+    float* B_col = (float*)nimcp_malloc(n * nrhs * sizeof(float));
+    int* ipiv = (int*)nimcp_malloc(n * sizeof(int));
 
     if (!A_col || !B_col || !ipiv) {
-        free(A_col); free(B_col); free(ipiv);
+        nimcp_free(A_col); nimcp_free(B_col); nimcp_free(ipiv);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -661,13 +662,13 @@ nimcp_mv_result_t nimcp_mv_solve(
     sgesv_(&N, &NRHS, A_col, &lda, ipiv, B_col, &ldb, &info);
 
     if (info != 0) {
-        free(A_col); free(B_col); free(ipiv);
+        nimcp_free(A_col); nimcp_free(B_col); nimcp_free(ipiv);
         return info < 0 ? NIMCP_MV_ERROR_PARAMS : NIMCP_MV_ERROR_SINGULAR;
     }
 
     transpose_matrix(B_col, X, nrhs, n);
 
-    free(A_col); free(B_col); free(ipiv);
+    nimcp_free(A_col); nimcp_free(B_col); nimcp_free(ipiv);
     return NIMCP_MV_OK;
 #else
     return NIMCP_MV_ERROR_LAPACK;
@@ -687,18 +688,18 @@ nimcp_mv_result_t nimcp_mv_pinv(
 
     uint32_t min_mn = (m < n) ? m : n;
 
-    float* U = (float*)malloc(m * min_mn * sizeof(float));
-    float* S = (float*)malloc(min_mn * sizeof(float));
-    float* Vt = (float*)malloc(min_mn * n * sizeof(float));
+    float* U = (float*)nimcp_malloc(m * min_mn * sizeof(float));
+    float* S = (float*)nimcp_malloc(min_mn * sizeof(float));
+    float* Vt = (float*)nimcp_malloc(min_mn * n * sizeof(float));
 
     if (!U || !S || !Vt) {
-        free(U); free(S); free(Vt);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     nimcp_mv_result_t res = nimcp_mv_svd(A, m, n, U, S, Vt, false);
     if (res != NIMCP_MV_OK) {
-        free(U); free(S); free(Vt);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return res;
     }
 
@@ -706,9 +707,9 @@ nimcp_mv_result_t nimcp_mv_pinv(
     float threshold = rcond * S[0];
 
     // S_inv = 1/S for S > threshold, else 0
-    float* S_inv = (float*)calloc(min_mn, sizeof(float));
+    float* S_inv = (float*)nimcp_calloc(min_mn, sizeof(float));
     if (!S_inv) {
-        free(U); free(S); free(Vt);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -720,9 +721,9 @@ nimcp_mv_result_t nimcp_mv_pinv(
 
     // A_pinv = V @ diag(S_inv) @ U^T = Vt^T @ diag(S_inv) @ U^T
     // First: Vt^T @ diag(S_inv) = (n x min_mn) @ diag = scale columns of Vt^T
-    float* V_Sinv = (float*)malloc(n * min_mn * sizeof(float));
+    float* V_Sinv = (float*)nimcp_malloc(n * min_mn * sizeof(float));
     if (!V_Sinv) {
-        free(U); free(S); free(Vt); free(S_inv);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt); nimcp_free(S_inv);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -745,7 +746,7 @@ nimcp_mv_result_t nimcp_mv_pinv(
         }
     }
 
-    free(U); free(S); free(Vt); free(S_inv); free(V_Sinv);
+    nimcp_free(U); nimcp_free(S); nimcp_free(Vt); nimcp_free(S_inv); nimcp_free(V_Sinv);
     return NIMCP_MV_OK;
 }
 
@@ -758,7 +759,7 @@ nimcp_pca_t* nimcp_pca_create(
     nimcp_pca_whiten_t whiten,
     nimcp_pca_solver_t solver)
 {
-    nimcp_pca_t* pca = (nimcp_pca_t*)calloc(1, sizeof(nimcp_pca_t));
+    nimcp_pca_t* pca = (nimcp_pca_t*)nimcp_calloc(1, sizeof(nimcp_pca_t));
     if (!pca) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate PCA context");
         return NULL;
@@ -776,13 +777,13 @@ nimcp_pca_t* nimcp_pca_create(
 void nimcp_pca_destroy(nimcp_pca_t* pca) {
     if (!pca) return;
 
-    free(pca->components);
-    free(pca->explained_variance);
-    free(pca->explained_variance_ratio);
-    free(pca->singular_values);
-    free(pca->mean);
-    free(pca->std);
-    free(pca);
+    nimcp_free(pca->components);
+    nimcp_free(pca->explained_variance);
+    nimcp_free(pca->explained_variance_ratio);
+    nimcp_free(pca->singular_values);
+    nimcp_free(pca->mean);
+    nimcp_free(pca->std);
+    nimcp_free(pca);
 }
 
 nimcp_mv_result_t nimcp_pca_fit(
@@ -810,11 +811,11 @@ nimcp_mv_result_t nimcp_pca_fit(
     pca->n_samples_seen = n_samples;
 
     // Allocate arrays
-    pca->mean = (float*)malloc(n_features * sizeof(float));
-    pca->components = (float*)malloc(n_comp * n_features * sizeof(float));
-    pca->explained_variance = (float*)malloc(n_comp * sizeof(float));
-    pca->explained_variance_ratio = (float*)malloc(n_comp * sizeof(float));
-    pca->singular_values = (float*)malloc(n_comp * sizeof(float));
+    pca->mean = (float*)nimcp_malloc(n_features * sizeof(float));
+    pca->components = (float*)nimcp_malloc(n_comp * n_features * sizeof(float));
+    pca->explained_variance = (float*)nimcp_malloc(n_comp * sizeof(float));
+    pca->explained_variance_ratio = (float*)nimcp_malloc(n_comp * sizeof(float));
+    pca->singular_values = (float*)nimcp_malloc(n_comp * sizeof(float));
 
     if (!pca->mean || !pca->components || !pca->explained_variance ||
         !pca->explained_variance_ratio || !pca->singular_values) {
@@ -823,33 +824,33 @@ nimcp_mv_result_t nimcp_pca_fit(
     }
 
     // Center data
-    float* X_centered = (float*)malloc(n_samples * n_features * sizeof(float));
+    float* X_centered = (float*)nimcp_malloc(n_samples * n_features * sizeof(float));
     if (!X_centered) {
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     nimcp_mv_result_t res = nimcp_mv_center(X, n_samples, n_features, X_centered, pca->mean);
     if (res != NIMCP_MV_OK) {
-        free(X_centered);
+        nimcp_free(X_centered);
         return res;
     }
 
     // SVD of centered data
     uint32_t min_mn = (n_samples < n_features) ? n_samples : n_features;
-    float* U = (float*)malloc(n_samples * min_mn * sizeof(float));
-    float* S = (float*)malloc(min_mn * sizeof(float));
-    float* Vt = (float*)malloc(min_mn * n_features * sizeof(float));
+    float* U = (float*)nimcp_malloc(n_samples * min_mn * sizeof(float));
+    float* S = (float*)nimcp_malloc(min_mn * sizeof(float));
+    float* Vt = (float*)nimcp_malloc(min_mn * n_features * sizeof(float));
 
     if (!U || !S || !Vt) {
-        free(X_centered); free(U); free(S); free(Vt);
+        nimcp_free(X_centered); nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     res = nimcp_mv_svd(X_centered, n_samples, n_features, U, S, Vt, false);
-    free(X_centered);
+    nimcp_free(X_centered);
 
     if (res != NIMCP_MV_OK) {
-        free(U); free(S); free(Vt);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return res;
     }
 
@@ -884,7 +885,7 @@ nimcp_mv_result_t nimcp_pca_fit(
         pca->noise_variance = 0.0f;
     }
 
-    free(U); free(S); free(Vt);
+    nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
     pca->is_fitted = true;
 
     return NIMCP_MV_OK;
@@ -1012,11 +1013,11 @@ float nimcp_pca_score(
         return NAN;
     }
 
-    float* X_t = (float*)malloc(n_samples * pca->n_components * sizeof(float));
-    float* X_rec = (float*)malloc(n_samples * pca->n_features * sizeof(float));
+    float* X_t = (float*)nimcp_malloc(n_samples * pca->n_components * sizeof(float));
+    float* X_rec = (float*)nimcp_malloc(n_samples * pca->n_features * sizeof(float));
 
     if (!X_t || !X_rec) {
-        free(X_t); free(X_rec);
+        nimcp_free(X_t); nimcp_free(X_rec);
         return NAN;
     }
 
@@ -1031,7 +1032,7 @@ float nimcp_pca_score(
     }
     mse /= (float)(n_samples * pca->n_features);
 
-    free(X_t); free(X_rec);
+    nimcp_free(X_t); nimcp_free(X_rec);
     return mse;
 }
 
@@ -1084,7 +1085,7 @@ nimcp_ica_t* nimcp_ica_create(
         return NULL;
     }
 
-    nimcp_ica_t* ica = (nimcp_ica_t*)calloc(1, sizeof(nimcp_ica_t));
+    nimcp_ica_t* ica = (nimcp_ica_t*)nimcp_calloc(1, sizeof(nimcp_ica_t));
     if (!ica) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ICA context");
         return NULL;
@@ -1104,12 +1105,12 @@ nimcp_ica_t* nimcp_ica_create(
 void nimcp_ica_destroy(nimcp_ica_t* ica) {
     if (!ica) return;
 
-    free(ica->mixing);
-    free(ica->unmixing);
-    free(ica->components);
-    free(ica->mean);
-    free(ica->whitening);
-    free(ica);
+    nimcp_free(ica->mixing);
+    nimcp_free(ica->unmixing);
+    nimcp_free(ica->components);
+    nimcp_free(ica->mean);
+    nimcp_free(ica->whitening);
+    nimcp_free(ica);
 }
 
 nimcp_mv_result_t nimcp_ica_fit(
@@ -1130,17 +1131,17 @@ nimcp_mv_result_t nimcp_ica_fit(
     ica->n_features = n_features;
 
     // Allocate storage
-    ica->mean = (float*)malloc(n_features * sizeof(float));
-    ica->mixing = (float*)malloc(n_features * n_comp * sizeof(float));
-    ica->unmixing = (float*)malloc(n_comp * n_features * sizeof(float));
-    ica->whitening = (float*)malloc(n_comp * n_features * sizeof(float));
+    ica->mean = (float*)nimcp_malloc(n_features * sizeof(float));
+    ica->mixing = (float*)nimcp_malloc(n_features * n_comp * sizeof(float));
+    ica->unmixing = (float*)nimcp_malloc(n_comp * n_features * sizeof(float));
+    ica->whitening = (float*)nimcp_malloc(n_comp * n_features * sizeof(float));
 
     if (!ica->mean || !ica->mixing || !ica->unmixing || !ica->whitening) {
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     // Center data
-    float* X_centered = (float*)malloc(n_samples * n_features * sizeof(float));
+    float* X_centered = (float*)nimcp_malloc(n_samples * n_features * sizeof(float));
     if (!X_centered) return NIMCP_MV_ERROR_MEMORY;
 
     nimcp_mv_center(X, n_samples, n_features, X_centered, ica->mean);
@@ -1148,22 +1149,22 @@ nimcp_mv_result_t nimcp_ica_fit(
     // Whiten using PCA
     nimcp_pca_t* pca = nimcp_pca_create(n_comp, NIMCP_PCA_WHITEN_UNIT, NIMCP_PCA_SOLVER_AUTO);
     if (!pca) {
-        free(X_centered);
+        nimcp_free(X_centered);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
-    float* X_white = (float*)malloc(n_samples * n_comp * sizeof(float));
+    float* X_white = (float*)nimcp_malloc(n_samples * n_comp * sizeof(float));
     if (!X_white) {
         nimcp_pca_destroy(pca);
-        free(X_centered);
+        nimcp_free(X_centered);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     nimcp_mv_result_t res = nimcp_pca_fit_transform(pca, X_centered, n_samples, n_features, X_white);
     if (res != NIMCP_MV_OK) {
         nimcp_pca_destroy(pca);
-        free(X_centered);
-        free(X_white);
+        nimcp_free(X_centered);
+        nimcp_free(X_white);
         return res;
     }
 
@@ -1171,11 +1172,11 @@ nimcp_mv_result_t nimcp_ica_fit(
     nimcp_pca_get_components(pca, ica->whitening);
 
     // Initialize W randomly
-    float* W = (float*)malloc(n_comp * n_comp * sizeof(float));
+    float* W = (float*)nimcp_malloc(n_comp * n_comp * sizeof(float));
     if (!W) {
         nimcp_pca_destroy(pca);
-        free(X_centered);
-        free(X_white);
+        nimcp_free(X_centered);
+        nimcp_free(X_white);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1185,20 +1186,20 @@ nimcp_mv_result_t nimcp_ica_fit(
     }
 
     // Orthogonalize W using symmetric decorrelation: W = (W @ W^T)^(-1/2) @ W
-    float* WWT = (float*)malloc(n_comp * n_comp * sizeof(float));
-    float* eigenvalues = (float*)malloc(n_comp * sizeof(float));
-    float* eigenvectors = (float*)malloc(n_comp * n_comp * sizeof(float));
-    float* g = (float*)malloc(n_samples * sizeof(float));
-    float* g_prime = (float*)malloc(n_samples * sizeof(float));
-    float* wx = (float*)malloc(n_samples * sizeof(float));
-    float* w_new = (float*)malloc(n_comp * sizeof(float));
+    float* WWT = (float*)nimcp_malloc(n_comp * n_comp * sizeof(float));
+    float* eigenvalues = (float*)nimcp_malloc(n_comp * sizeof(float));
+    float* eigenvectors = (float*)nimcp_malloc(n_comp * n_comp * sizeof(float));
+    float* g = (float*)nimcp_malloc(n_samples * sizeof(float));
+    float* g_prime = (float*)nimcp_malloc(n_samples * sizeof(float));
+    float* wx = (float*)nimcp_malloc(n_samples * sizeof(float));
+    float* w_new = (float*)nimcp_malloc(n_comp * sizeof(float));
 
     if (!WWT || !eigenvalues || !eigenvectors || !g || !g_prime || !wx || !w_new) {
-        free(W); free(WWT); free(eigenvalues); free(eigenvectors);
-        free(g); free(g_prime); free(wx); free(w_new);
+        nimcp_free(W); nimcp_free(WWT); nimcp_free(eigenvalues); nimcp_free(eigenvectors);
+        nimcp_free(g); nimcp_free(g_prime); nimcp_free(wx); nimcp_free(w_new);
         nimcp_pca_destroy(pca);
-        free(X_centered);
-        free(X_white);
+        nimcp_free(X_centered);
+        nimcp_free(X_white);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1296,11 +1297,11 @@ nimcp_mv_result_t nimcp_ica_fit(
     nimcp_mv_pinv(ica->unmixing, n_comp, n_features, ica->mixing, NIMCP_MV_MIN_EIGENVALUE);
 
     // Cleanup
-    free(W); free(WWT); free(eigenvalues); free(eigenvectors);
-    free(g); free(g_prime); free(wx); free(w_new);
+    nimcp_free(W); nimcp_free(WWT); nimcp_free(eigenvalues); nimcp_free(eigenvectors);
+    nimcp_free(g); nimcp_free(g_prime); nimcp_free(wx); nimcp_free(w_new);
     nimcp_pca_destroy(pca);
-    free(X_centered);
-    free(X_white);
+    nimcp_free(X_centered);
+    nimcp_free(X_white);
 
     ica->is_fitted = true;
     return NIMCP_MV_OK;
@@ -1378,7 +1379,7 @@ nimcp_factor_t* nimcp_factor_create(
 {
     if (n_factors == 0) return NULL;
 
-    nimcp_factor_t* fa = (nimcp_factor_t*)calloc(1, sizeof(nimcp_factor_t));
+    nimcp_factor_t* fa = (nimcp_factor_t*)nimcp_calloc(1, sizeof(nimcp_factor_t));
     if (!fa) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Factor context");
         return NULL;
@@ -1396,14 +1397,14 @@ nimcp_factor_t* nimcp_factor_create(
 void nimcp_factor_destroy(nimcp_factor_t* fa) {
     if (!fa) return;
 
-    free(fa->loadings);
-    free(fa->communalities);
-    free(fa->uniquenesses);
-    free(fa->factor_variance);
-    free(fa->mean);
-    free(fa->rotation_matrix);
-    free(fa->factor_correlation);
-    free(fa);
+    nimcp_free(fa->loadings);
+    nimcp_free(fa->communalities);
+    nimcp_free(fa->uniquenesses);
+    nimcp_free(fa->factor_variance);
+    nimcp_free(fa->mean);
+    nimcp_free(fa->rotation_matrix);
+    nimcp_free(fa->factor_correlation);
+    nimcp_free(fa);
 }
 
 // Varimax rotation implementation
@@ -1416,7 +1417,7 @@ static void varimax_rotation(float* loadings, uint32_t n_vars, uint32_t n_factor
         }
     }
 
-    float* rotated = (float*)malloc(n_vars * n_factors * sizeof(float));
+    float* rotated = (float*)nimcp_malloc(n_vars * n_factors * sizeof(float));
     if (!rotated) return;
     memcpy(rotated, loadings, n_vars * n_factors * sizeof(float));
 
@@ -1466,7 +1467,7 @@ static void varimax_rotation(float* loadings, uint32_t n_vars, uint32_t n_factor
     }
 
     memcpy(loadings, rotated, n_vars * n_factors * sizeof(float));
-    free(rotated);
+    nimcp_free(rotated);
 }
 
 nimcp_mv_result_t nimcp_factor_fit(
@@ -1486,12 +1487,12 @@ nimcp_mv_result_t nimcp_factor_fit(
     fa->n_features = n_features;
 
     // Allocate
-    fa->loadings = (float*)malloc(n_features * fa->n_factors * sizeof(float));
-    fa->communalities = (float*)malloc(n_features * sizeof(float));
-    fa->uniquenesses = (float*)malloc(n_features * sizeof(float));
-    fa->factor_variance = (float*)malloc(fa->n_factors * sizeof(float));
-    fa->mean = (float*)malloc(n_features * sizeof(float));
-    fa->rotation_matrix = (float*)malloc(fa->n_factors * fa->n_factors * sizeof(float));
+    fa->loadings = (float*)nimcp_malloc(n_features * fa->n_factors * sizeof(float));
+    fa->communalities = (float*)nimcp_malloc(n_features * sizeof(float));
+    fa->uniquenesses = (float*)nimcp_malloc(n_features * sizeof(float));
+    fa->factor_variance = (float*)nimcp_malloc(fa->n_factors * sizeof(float));
+    fa->mean = (float*)nimcp_malloc(n_features * sizeof(float));
+    fa->rotation_matrix = (float*)nimcp_malloc(fa->n_factors * fa->n_factors * sizeof(float));
 
     if (!fa->loadings || !fa->communalities || !fa->uniquenesses ||
         !fa->factor_variance || !fa->mean || !fa->rotation_matrix) {
@@ -1499,15 +1500,15 @@ nimcp_mv_result_t nimcp_factor_fit(
     }
 
     // Center data
-    float* X_centered = (float*)malloc(n_samples * n_features * sizeof(float));
+    float* X_centered = (float*)nimcp_malloc(n_samples * n_features * sizeof(float));
     if (!X_centered) return NIMCP_MV_ERROR_MEMORY;
 
     nimcp_mv_center(X, n_samples, n_features, X_centered, fa->mean);
 
     // Compute covariance matrix
-    float* cov = (float*)malloc(n_features * n_features * sizeof(float));
+    float* cov = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
     if (!cov) {
-        free(X_centered);
+        nimcp_free(X_centered);
         return NIMCP_MV_ERROR_MEMORY;
     }
     nimcp_mv_covariance(X_centered, n_samples, n_features, cov, 1);
@@ -1518,13 +1519,13 @@ nimcp_mv_result_t nimcp_factor_fit(
     }
 
     // EM iterations for factor analysis
-    float* eigenvalues = (float*)malloc(n_features * sizeof(float));
-    float* eigenvectors = (float*)malloc(n_features * n_features * sizeof(float));
-    float* reduced_cov = (float*)malloc(n_features * n_features * sizeof(float));
+    float* eigenvalues = (float*)nimcp_malloc(n_features * sizeof(float));
+    float* eigenvectors = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
+    float* reduced_cov = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
 
     if (!eigenvalues || !eigenvectors || !reduced_cov) {
-        free(X_centered); free(cov); free(eigenvalues);
-        free(eigenvectors); free(reduced_cov);
+        nimcp_free(X_centered); nimcp_free(cov); nimcp_free(eigenvalues);
+        nimcp_free(eigenvectors); nimcp_free(reduced_cov);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1538,8 +1539,8 @@ nimcp_mv_result_t nimcp_factor_fit(
         // Eigendecomposition
         nimcp_mv_result_t res = nimcp_mv_eigh(reduced_cov, n_features, eigenvalues, eigenvectors);
         if (res != NIMCP_MV_OK) {
-            free(X_centered); free(cov); free(eigenvalues);
-            free(eigenvectors); free(reduced_cov);
+            nimcp_free(X_centered); nimcp_free(cov); nimcp_free(eigenvalues);
+            nimcp_free(eigenvectors); nimcp_free(reduced_cov);
             return res;
         }
 
@@ -1591,8 +1592,8 @@ nimcp_mv_result_t nimcp_factor_fit(
                          fa->rotation_matrix, 100, fa->tolerance);
     }
 
-    free(X_centered); free(cov); free(eigenvalues);
-    free(eigenvectors); free(reduced_cov);
+    nimcp_free(X_centered); nimcp_free(cov); nimcp_free(eigenvalues);
+    nimcp_free(eigenvectors); nimcp_free(reduced_cov);
 
     fa->is_fitted = true;
     return NIMCP_MV_OK;
@@ -1633,7 +1634,7 @@ nimcp_mv_result_t nimcp_factor_scores(
     // Where L is loadings matrix
 
     // Compute L^T @ L
-    float* LtL = (float*)malloc(fa->n_factors * fa->n_factors * sizeof(float));
+    float* LtL = (float*)nimcp_malloc(fa->n_factors * fa->n_factors * sizeof(float));
     if (!LtL) return NIMCP_MV_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < fa->n_factors; i++) {
@@ -1647,9 +1648,9 @@ nimcp_mv_result_t nimcp_factor_scores(
     }
 
     // Invert L^T L
-    float* LtL_inv = (float*)malloc(fa->n_factors * fa->n_factors * sizeof(float));
+    float* LtL_inv = (float*)nimcp_malloc(fa->n_factors * fa->n_factors * sizeof(float));
     if (!LtL_inv) {
-        free(LtL);
+        nimcp_free(LtL);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1659,9 +1660,9 @@ nimcp_mv_result_t nimcp_factor_scores(
     // Compute scores
     for (uint32_t s = 0; s < n_samples; s++) {
         // temp = (X - mean) @ L
-        float* temp = (float*)malloc(fa->n_factors * sizeof(float));
+        float* temp = (float*)nimcp_malloc(fa->n_factors * sizeof(float));
         if (!temp) {
-            free(LtL); free(LtL_inv);
+            nimcp_free(LtL); nimcp_free(LtL_inv);
             return NIMCP_MV_ERROR_MEMORY;
         }
 
@@ -1683,10 +1684,10 @@ nimcp_mv_result_t nimcp_factor_scores(
             scores[s * fa->n_factors + j] = sum;
         }
 
-        free(temp);
+        nimcp_free(temp);
     }
 
-    free(LtL); free(LtL_inv);
+    nimcp_free(LtL); nimcp_free(LtL_inv);
     return NIMCP_MV_OK;
 }
 
@@ -1714,7 +1715,7 @@ nimcp_lda_t* nimcp_lda_create(
     nimcp_lda_solver_t solver,
     uint32_t n_components)
 {
-    nimcp_lda_t* lda = (nimcp_lda_t*)calloc(1, sizeof(nimcp_lda_t));
+    nimcp_lda_t* lda = (nimcp_lda_t*)nimcp_calloc(1, sizeof(nimcp_lda_t));
     if (!lda) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate LDA context");
         return NULL;
@@ -1731,14 +1732,14 @@ nimcp_lda_t* nimcp_lda_create(
 void nimcp_lda_destroy(nimcp_lda_t* lda) {
     if (!lda) return;
 
-    free(lda->means);
-    free(lda->priors);
-    free(lda->coef);
-    free(lda->intercept);
-    free(lda->scalings);
-    free(lda->explained_variance_ratio);
-    free(lda->xbar);
-    free(lda);
+    nimcp_free(lda->means);
+    nimcp_free(lda->priors);
+    nimcp_free(lda->coef);
+    nimcp_free(lda->intercept);
+    nimcp_free(lda->scalings);
+    nimcp_free(lda->explained_variance_ratio);
+    nimcp_free(lda->xbar);
+    nimcp_free(lda);
 }
 
 nimcp_mv_result_t nimcp_lda_fit(
@@ -1774,7 +1775,7 @@ nimcp_mv_result_t nimcp_lda_fit(
     }
 
     // Count samples per class
-    uint32_t* class_counts = (uint32_t*)calloc(n_classes, sizeof(uint32_t));
+    uint32_t* class_counts = (uint32_t*)nimcp_calloc(n_classes, sizeof(uint32_t));
     if (!class_counts) return NIMCP_MV_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -1782,17 +1783,17 @@ nimcp_mv_result_t nimcp_lda_fit(
     }
 
     // Allocate
-    lda->means = (float*)calloc(n_classes * n_features, sizeof(float));
-    lda->priors = (float*)malloc(n_classes * sizeof(float));
-    lda->xbar = (float*)calloc(n_features, sizeof(float));
-    lda->scalings = (float*)malloc(lda->n_components * n_features * sizeof(float));
-    lda->coef = (float*)malloc(n_classes * n_features * sizeof(float));
-    lda->intercept = (float*)malloc(n_classes * sizeof(float));
-    lda->explained_variance_ratio = (float*)malloc(lda->n_components * sizeof(float));
+    lda->means = (float*)nimcp_calloc(n_classes * n_features, sizeof(float));
+    lda->priors = (float*)nimcp_malloc(n_classes * sizeof(float));
+    lda->xbar = (float*)nimcp_calloc(n_features, sizeof(float));
+    lda->scalings = (float*)nimcp_malloc(lda->n_components * n_features * sizeof(float));
+    lda->coef = (float*)nimcp_malloc(n_classes * n_features * sizeof(float));
+    lda->intercept = (float*)nimcp_malloc(n_classes * sizeof(float));
+    lda->explained_variance_ratio = (float*)nimcp_malloc(lda->n_components * sizeof(float));
 
     if (!lda->means || !lda->priors || !lda->xbar || !lda->scalings ||
         !lda->coef || !lda->intercept || !lda->explained_variance_ratio) {
-        free(class_counts);
+        nimcp_free(class_counts);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1823,9 +1824,9 @@ nimcp_mv_result_t nimcp_lda_fit(
     }
 
     // Within-class scatter matrix Sw
-    float* Sw = (float*)calloc(n_features * n_features, sizeof(float));
+    float* Sw = (float*)nimcp_calloc(n_features * n_features, sizeof(float));
     if (!Sw) {
-        free(class_counts);
+        nimcp_free(class_counts);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1859,9 +1860,9 @@ nimcp_mv_result_t nimcp_lda_fit(
     }
 
     // Between-class scatter matrix Sb
-    float* Sb = (float*)calloc(n_features * n_features, sizeof(float));
+    float* Sb = (float*)nimcp_calloc(n_features * n_features, sizeof(float));
     if (!Sb) {
-        free(class_counts); free(Sw);
+        nimcp_free(class_counts); nimcp_free(Sw);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1884,13 +1885,13 @@ nimcp_mv_result_t nimcp_lda_fit(
 
     // Solve generalized eigenvalue problem: Sb @ v = lambda @ Sw @ v
     // Using Sw^-1 @ Sb if Sw is invertible
-    float* Sw_inv_Sb = (float*)malloc(n_features * n_features * sizeof(float));
-    float* eigenvalues = (float*)malloc(n_features * sizeof(float));
-    float* eigenvectors = (float*)malloc(n_features * n_features * sizeof(float));
+    float* Sw_inv_Sb = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
+    float* eigenvalues = (float*)nimcp_malloc(n_features * sizeof(float));
+    float* eigenvectors = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
 
     if (!Sw_inv_Sb || !eigenvalues || !eigenvectors) {
-        free(class_counts); free(Sw); free(Sb);
-        free(Sw_inv_Sb); free(eigenvalues); free(eigenvectors);
+        nimcp_free(class_counts); nimcp_free(Sw); nimcp_free(Sb);
+        nimcp_free(Sw_inv_Sb); nimcp_free(eigenvalues); nimcp_free(eigenvectors);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -1898,11 +1899,11 @@ nimcp_mv_result_t nimcp_lda_fit(
     nimcp_mv_result_t res = nimcp_mv_solve(Sw, Sb, n_features, n_features, Sw_inv_Sb);
     if (res != NIMCP_MV_OK) {
         // Fall back to pseudo-inverse
-        float* Sw_pinv = (float*)malloc(n_features * n_features * sizeof(float));
+        float* Sw_pinv = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
         if (Sw_pinv) {
             nimcp_mv_pinv(Sw, n_features, n_features, Sw_pinv, NIMCP_MV_MIN_EIGENVALUE);
             matrix_multiply_simple(Sw_pinv, Sb, Sw_inv_Sb, n_features, n_features, n_features);
-            free(Sw_pinv);
+            nimcp_free(Sw_pinv);
         }
     }
 
@@ -1927,7 +1928,7 @@ nimcp_mv_result_t nimcp_lda_fit(
 
     // Compute classification coefficients
     // coef[c] = means[c] @ Sw_inv, intercept[c] = -0.5 * means[c] @ Sw_inv @ means[c] + log(prior[c])
-    float* Sw_inv = (float*)malloc(n_features * n_features * sizeof(float));
+    float* Sw_inv = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
     if (Sw_inv) {
         nimcp_mv_pinv(Sw, n_features, n_features, Sw_inv, NIMCP_MV_MIN_EIGENVALUE);
 
@@ -1948,11 +1949,11 @@ nimcp_mv_result_t nimcp_lda_fit(
             }
             lda->intercept[c] = -0.5f * dot + logf(lda->priors[c] + NIMCP_MV_EPSILON);
         }
-        free(Sw_inv);
+        nimcp_free(Sw_inv);
     }
 
-    free(class_counts); free(Sw); free(Sb);
-    free(Sw_inv_Sb); free(eigenvalues); free(eigenvectors);
+    nimcp_free(class_counts); nimcp_free(Sw); nimcp_free(Sb);
+    nimcp_free(Sw_inv_Sb); nimcp_free(eigenvalues); nimcp_free(eigenvectors);
 
     lda->is_fitted = true;
     return NIMCP_MV_OK;
@@ -2075,7 +2076,7 @@ nimcp_mv_result_t nimcp_lda_decision_function(
 //=============================================================================
 
 nimcp_qda_t* nimcp_qda_create(float reg_param) {
-    nimcp_qda_t* qda = (nimcp_qda_t*)calloc(1, sizeof(nimcp_qda_t));
+    nimcp_qda_t* qda = (nimcp_qda_t*)nimcp_calloc(1, sizeof(nimcp_qda_t));
     if (!qda) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate QDA context");
         return NULL;
@@ -2090,24 +2091,24 @@ nimcp_qda_t* nimcp_qda_create(float reg_param) {
 void nimcp_qda_destroy(nimcp_qda_t* qda) {
     if (!qda) return;
 
-    free(qda->means);
-    free(qda->priors);
-    free(qda->log_det);
+    nimcp_free(qda->means);
+    nimcp_free(qda->priors);
+    nimcp_free(qda->log_det);
 
     if (qda->covariances) {
         for (uint32_t c = 0; c < qda->n_classes; c++) {
-            free(qda->covariances[c]);
+            nimcp_free(qda->covariances[c]);
         }
-        free(qda->covariances);
+        nimcp_free(qda->covariances);
     }
     if (qda->covariance_inv) {
         for (uint32_t c = 0; c < qda->n_classes; c++) {
-            free(qda->covariance_inv[c]);
+            nimcp_free(qda->covariance_inv[c]);
         }
-        free(qda->covariance_inv);
+        nimcp_free(qda->covariance_inv);
     }
 
-    free(qda);
+    nimcp_free(qda);
 }
 
 nimcp_mv_result_t nimcp_qda_fit(
@@ -2133,7 +2134,7 @@ nimcp_mv_result_t nimcp_qda_fit(
     qda->n_classes = n_classes;
 
     // Count per class
-    uint32_t* class_counts = (uint32_t*)calloc(n_classes, sizeof(uint32_t));
+    uint32_t* class_counts = (uint32_t*)nimcp_calloc(n_classes, sizeof(uint32_t));
     if (!class_counts) return NIMCP_MV_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -2141,23 +2142,23 @@ nimcp_mv_result_t nimcp_qda_fit(
     }
 
     // Allocate
-    qda->means = (float*)calloc(n_classes * n_features, sizeof(float));
-    qda->priors = (float*)malloc(n_classes * sizeof(float));
-    qda->log_det = (float*)malloc(n_classes * sizeof(float));
-    qda->covariances = (float**)calloc(n_classes, sizeof(float*));
-    qda->covariance_inv = (float**)calloc(n_classes, sizeof(float*));
+    qda->means = (float*)nimcp_calloc(n_classes * n_features, sizeof(float));
+    qda->priors = (float*)nimcp_malloc(n_classes * sizeof(float));
+    qda->log_det = (float*)nimcp_malloc(n_classes * sizeof(float));
+    qda->covariances = (float**)nimcp_calloc(n_classes, sizeof(float*));
+    qda->covariance_inv = (float**)nimcp_calloc(n_classes, sizeof(float*));
 
     if (!qda->means || !qda->priors || !qda->log_det ||
         !qda->covariances || !qda->covariance_inv) {
-        free(class_counts);
+        nimcp_free(class_counts);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
     for (uint32_t c = 0; c < n_classes; c++) {
-        qda->covariances[c] = (float*)calloc(n_features * n_features, sizeof(float));
-        qda->covariance_inv[c] = (float*)malloc(n_features * n_features * sizeof(float));
+        qda->covariances[c] = (float*)nimcp_calloc(n_features * n_features, sizeof(float));
+        qda->covariance_inv[c] = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
         if (!qda->covariances[c] || !qda->covariance_inv[c]) {
-            free(class_counts);
+            nimcp_free(class_counts);
             return NIMCP_MV_ERROR_MEMORY;
         }
     }
@@ -2204,8 +2205,8 @@ nimcp_mv_result_t nimcp_qda_fit(
         }
 
         // Compute inverse and log determinant
-        float* eigenvalues = (float*)malloc(n_features * sizeof(float));
-        float* eigenvectors = (float*)malloc(n_features * n_features * sizeof(float));
+        float* eigenvalues = (float*)nimcp_malloc(n_features * sizeof(float));
+        float* eigenvectors = (float*)nimcp_malloc(n_features * n_features * sizeof(float));
 
         if (eigenvalues && eigenvectors) {
             nimcp_mv_eigh(qda->covariances[c], n_features, eigenvalues, eigenvectors);
@@ -2235,11 +2236,11 @@ nimcp_mv_result_t nimcp_qda_fit(
             }
         }
 
-        free(eigenvalues);
-        free(eigenvectors);
+        nimcp_free(eigenvalues);
+        nimcp_free(eigenvectors);
     }
 
-    free(class_counts);
+    nimcp_free(class_counts);
     qda->is_fitted = true;
     return NIMCP_MV_OK;
 }
@@ -2253,7 +2254,7 @@ nimcp_mv_result_t nimcp_qda_predict(
     if (!qda || !X || !y_pred) return NIMCP_MV_ERROR_NULL;
     if (!qda->is_fitted) return NIMCP_MV_ERROR_NOT_FIT;
 
-    float* diff = (float*)malloc(qda->n_features * sizeof(float));
+    float* diff = (float*)nimcp_malloc(qda->n_features * sizeof(float));
     if (!diff) return NIMCP_MV_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -2289,7 +2290,7 @@ nimcp_mv_result_t nimcp_qda_predict(
         y_pred[i] = best_class;
     }
 
-    free(diff);
+    nimcp_free(diff);
     return NIMCP_MV_OK;
 }
 
@@ -2302,7 +2303,7 @@ nimcp_mv_result_t nimcp_qda_predict_proba(
     if (!qda || !X || !proba) return NIMCP_MV_ERROR_NULL;
     if (!qda->is_fitted) return NIMCP_MV_ERROR_NOT_FIT;
 
-    float* diff = (float*)malloc(qda->n_features * sizeof(float));
+    float* diff = (float*)nimcp_malloc(qda->n_features * sizeof(float));
     if (!diff) return NIMCP_MV_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
@@ -2339,7 +2340,7 @@ nimcp_mv_result_t nimcp_qda_predict_proba(
         }
     }
 
-    free(diff);
+    nimcp_free(diff);
     return NIMCP_MV_OK;
 }
 
@@ -2350,7 +2351,7 @@ nimcp_mv_result_t nimcp_qda_predict_proba(
 nimcp_cca_t* nimcp_cca_create(uint32_t n_components, bool scale) {
     if (n_components == 0) return NULL;
 
-    nimcp_cca_t* cca = (nimcp_cca_t*)calloc(1, sizeof(nimcp_cca_t));
+    nimcp_cca_t* cca = (nimcp_cca_t*)nimcp_calloc(1, sizeof(nimcp_cca_t));
     if (!cca) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate CCA context");
         return NULL;
@@ -2367,16 +2368,16 @@ nimcp_cca_t* nimcp_cca_create(uint32_t n_components, bool scale) {
 void nimcp_cca_destroy(nimcp_cca_t* cca) {
     if (!cca) return;
 
-    free(cca->x_weights);
-    free(cca->y_weights);
-    free(cca->x_loadings);
-    free(cca->y_loadings);
-    free(cca->correlations);
-    free(cca->x_mean);
-    free(cca->y_mean);
-    free(cca->x_std);
-    free(cca->y_std);
-    free(cca);
+    nimcp_free(cca->x_weights);
+    nimcp_free(cca->y_weights);
+    nimcp_free(cca->x_loadings);
+    nimcp_free(cca->y_loadings);
+    nimcp_free(cca->correlations);
+    nimcp_free(cca->x_mean);
+    nimcp_free(cca->y_mean);
+    nimcp_free(cca->x_std);
+    nimcp_free(cca->y_std);
+    nimcp_free(cca);
 }
 
 nimcp_mv_result_t nimcp_cca_fit(
@@ -2404,11 +2405,11 @@ nimcp_mv_result_t nimcp_cca_fit(
     cca->n_features_y = n_features_y;
 
     // Allocate
-    cca->x_weights = (float*)malloc(n_features_x * cca->n_components * sizeof(float));
-    cca->y_weights = (float*)malloc(n_features_y * cca->n_components * sizeof(float));
-    cca->correlations = (float*)malloc(cca->n_components * sizeof(float));
-    cca->x_mean = (float*)malloc(n_features_x * sizeof(float));
-    cca->y_mean = (float*)malloc(n_features_y * sizeof(float));
+    cca->x_weights = (float*)nimcp_malloc(n_features_x * cca->n_components * sizeof(float));
+    cca->y_weights = (float*)nimcp_malloc(n_features_y * cca->n_components * sizeof(float));
+    cca->correlations = (float*)nimcp_malloc(cca->n_components * sizeof(float));
+    cca->x_mean = (float*)nimcp_malloc(n_features_x * sizeof(float));
+    cca->y_mean = (float*)nimcp_malloc(n_features_y * sizeof(float));
 
     if (!cca->x_weights || !cca->y_weights || !cca->correlations ||
         !cca->x_mean || !cca->y_mean) {
@@ -2416,16 +2417,16 @@ nimcp_mv_result_t nimcp_cca_fit(
     }
 
     if (cca->scale) {
-        cca->x_std = (float*)malloc(n_features_x * sizeof(float));
-        cca->y_std = (float*)malloc(n_features_y * sizeof(float));
+        cca->x_std = (float*)nimcp_malloc(n_features_x * sizeof(float));
+        cca->y_std = (float*)nimcp_malloc(n_features_y * sizeof(float));
     }
 
     // Center (and optionally scale) data
-    float* X_c = (float*)malloc(n_samples * n_features_x * sizeof(float));
-    float* Y_c = (float*)malloc(n_samples * n_features_y * sizeof(float));
+    float* X_c = (float*)nimcp_malloc(n_samples * n_features_x * sizeof(float));
+    float* Y_c = (float*)nimcp_malloc(n_samples * n_features_y * sizeof(float));
 
     if (!X_c || !Y_c) {
-        free(X_c); free(Y_c);
+        nimcp_free(X_c); nimcp_free(Y_c);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2438,12 +2439,12 @@ nimcp_mv_result_t nimcp_cca_fit(
     }
 
     // Compute covariance matrices
-    float* Cxx = (float*)calloc(n_features_x * n_features_x, sizeof(float));
-    float* Cyy = (float*)calloc(n_features_y * n_features_y, sizeof(float));
-    float* Cxy = (float*)calloc(n_features_x * n_features_y, sizeof(float));
+    float* Cxx = (float*)nimcp_calloc(n_features_x * n_features_x, sizeof(float));
+    float* Cyy = (float*)nimcp_calloc(n_features_y * n_features_y, sizeof(float));
+    float* Cxy = (float*)nimcp_calloc(n_features_x * n_features_y, sizeof(float));
 
     if (!Cxx || !Cyy || !Cxy) {
-        free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
+        nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2475,14 +2476,14 @@ nimcp_mv_result_t nimcp_cca_fit(
     }
 
     // Compute Cxx^{-1/2} and Cyy^{-1/2} via eigen decomposition
-    float* Cxx_eig = (float*)malloc(n_features_x * sizeof(float));
-    float* Cxx_vec = (float*)malloc(n_features_x * n_features_x * sizeof(float));
-    float* Cyy_eig = (float*)malloc(n_features_y * sizeof(float));
-    float* Cyy_vec = (float*)malloc(n_features_y * n_features_y * sizeof(float));
+    float* Cxx_eig = (float*)nimcp_malloc(n_features_x * sizeof(float));
+    float* Cxx_vec = (float*)nimcp_malloc(n_features_x * n_features_x * sizeof(float));
+    float* Cyy_eig = (float*)nimcp_malloc(n_features_y * sizeof(float));
+    float* Cyy_vec = (float*)nimcp_malloc(n_features_y * n_features_y * sizeof(float));
 
     if (!Cxx_eig || !Cxx_vec || !Cyy_eig || !Cyy_vec) {
-        free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
-        free(Cxx_eig); free(Cxx_vec); free(Cyy_eig); free(Cyy_vec);
+        nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
+        nimcp_free(Cxx_eig); nimcp_free(Cxx_vec); nimcp_free(Cyy_eig); nimcp_free(Cyy_vec);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2490,13 +2491,13 @@ nimcp_mv_result_t nimcp_cca_fit(
     nimcp_mv_eigh(Cyy, n_features_y, Cyy_eig, Cyy_vec);
 
     // Cxx^{-1/2} = V @ diag(1/sqrt(eigenvalues)) @ V^T
-    float* Cxx_inv_sqrt = (float*)calloc(n_features_x * n_features_x, sizeof(float));
-    float* Cyy_inv_sqrt = (float*)calloc(n_features_y * n_features_y, sizeof(float));
+    float* Cxx_inv_sqrt = (float*)nimcp_calloc(n_features_x * n_features_x, sizeof(float));
+    float* Cyy_inv_sqrt = (float*)nimcp_calloc(n_features_y * n_features_y, sizeof(float));
 
     if (!Cxx_inv_sqrt || !Cyy_inv_sqrt) {
-        free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
-        free(Cxx_eig); free(Cxx_vec); free(Cyy_eig); free(Cyy_vec);
-        free(Cxx_inv_sqrt); free(Cyy_inv_sqrt);
+        nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
+        nimcp_free(Cxx_eig); nimcp_free(Cxx_vec); nimcp_free(Cyy_eig); nimcp_free(Cyy_vec);
+        nimcp_free(Cxx_inv_sqrt); nimcp_free(Cyy_inv_sqrt);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2529,13 +2530,13 @@ nimcp_mv_result_t nimcp_cca_fit(
     }
 
     // M = Cxx^{-1/2} @ Cxy @ Cyy^{-1/2}
-    float* temp = (float*)malloc(n_features_x * n_features_y * sizeof(float));
-    float* M = (float*)malloc(n_features_x * n_features_y * sizeof(float));
+    float* temp = (float*)nimcp_malloc(n_features_x * n_features_y * sizeof(float));
+    float* M = (float*)nimcp_malloc(n_features_x * n_features_y * sizeof(float));
 
     if (!temp || !M) {
-        free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
-        free(Cxx_eig); free(Cxx_vec); free(Cyy_eig); free(Cyy_vec);
-        free(Cxx_inv_sqrt); free(Cyy_inv_sqrt); free(temp); free(M);
+        nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
+        nimcp_free(Cxx_eig); nimcp_free(Cxx_vec); nimcp_free(Cyy_eig); nimcp_free(Cyy_vec);
+        nimcp_free(Cxx_inv_sqrt); nimcp_free(Cyy_inv_sqrt); nimcp_free(temp); nimcp_free(M);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2547,15 +2548,15 @@ nimcp_mv_result_t nimcp_cca_fit(
 
     // SVD of M
     uint32_t min_dim = (n_features_x < n_features_y) ? n_features_x : n_features_y;
-    float* U = (float*)malloc(n_features_x * min_dim * sizeof(float));
-    float* S = (float*)malloc(min_dim * sizeof(float));
-    float* Vt = (float*)malloc(min_dim * n_features_y * sizeof(float));
+    float* U = (float*)nimcp_malloc(n_features_x * min_dim * sizeof(float));
+    float* S = (float*)nimcp_malloc(min_dim * sizeof(float));
+    float* Vt = (float*)nimcp_malloc(min_dim * n_features_y * sizeof(float));
 
     if (!U || !S || !Vt) {
-        free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
-        free(Cxx_eig); free(Cxx_vec); free(Cyy_eig); free(Cyy_vec);
-        free(Cxx_inv_sqrt); free(Cyy_inv_sqrt); free(temp); free(M);
-        free(U); free(S); free(Vt);
+        nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
+        nimcp_free(Cxx_eig); nimcp_free(Cxx_vec); nimcp_free(Cyy_eig); nimcp_free(Cyy_vec);
+        nimcp_free(Cxx_inv_sqrt); nimcp_free(Cyy_inv_sqrt); nimcp_free(temp); nimcp_free(M);
+        nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2591,10 +2592,10 @@ nimcp_mv_result_t nimcp_cca_fit(
     }
 
     // Cleanup
-    free(X_c); free(Y_c); free(Cxx); free(Cyy); free(Cxy);
-    free(Cxx_eig); free(Cxx_vec); free(Cyy_eig); free(Cyy_vec);
-    free(Cxx_inv_sqrt); free(Cyy_inv_sqrt); free(temp); free(M);
-    free(U); free(S); free(Vt);
+    nimcp_free(X_c); nimcp_free(Y_c); nimcp_free(Cxx); nimcp_free(Cyy); nimcp_free(Cxy);
+    nimcp_free(Cxx_eig); nimcp_free(Cxx_vec); nimcp_free(Cyy_eig); nimcp_free(Cyy_vec);
+    nimcp_free(Cxx_inv_sqrt); nimcp_free(Cyy_inv_sqrt); nimcp_free(temp); nimcp_free(M);
+    nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
 
     cca->is_fitted = true;
     return NIMCP_MV_OK;
@@ -2681,11 +2682,11 @@ nimcp_mv_result_t nimcp_cca_cross_loadings(
     if (!cca->is_fitted) return NIMCP_MV_ERROR_NOT_FIT;
 
     // Transform to canonical space
-    float* X_c = (float*)malloc(n_samples * cca->n_components * sizeof(float));
-    float* Y_c = (float*)malloc(n_samples * cca->n_components * sizeof(float));
+    float* X_c = (float*)nimcp_malloc(n_samples * cca->n_components * sizeof(float));
+    float* Y_c = (float*)nimcp_malloc(n_samples * cca->n_components * sizeof(float));
 
     if (!X_c || !Y_c) {
-        free(X_c); free(Y_c);
+        nimcp_free(X_c); nimcp_free(Y_c);
         return NIMCP_MV_ERROR_MEMORY;
     }
 
@@ -2765,6 +2766,6 @@ nimcp_mv_result_t nimcp_cca_cross_loadings(
         }
     }
 
-    free(X_c); free(Y_c);
+    nimcp_free(X_c); nimcp_free(Y_c);
     return NIMCP_MV_OK;
 }

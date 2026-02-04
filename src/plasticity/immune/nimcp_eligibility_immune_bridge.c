@@ -17,36 +17,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for eligibility_immune_bridge module */
-static nimcp_health_agent_t* g_eligibility_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for eligibility_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void eligibility_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_eligibility_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from eligibility_immune_bridge module */
-static inline void eligibility_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_eligibility_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_eligibility_immune_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_immune_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(eligibility_immune_bridge)
@@ -233,7 +209,7 @@ void eligibility_immune_bridge_destroy(eligibility_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -257,7 +233,7 @@ int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridg
     if (!bridge->enable_cytokine_trace_modulation) return 0;
     if (!bridge->immune_system || !bridge->eligibility_config) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     cytokine_trace_effects_t* effects = &bridge->cytokine_effects;
 
@@ -302,7 +278,7 @@ int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridg
     bridge->eligibility_config->learning_rate = bridge->baseline_learning_rate * lr_modifier;
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -318,7 +294,7 @@ int eligibility_immune_apply_inflammation_effects(eligibility_immune_bridge_t* b
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     inflammation_trace_state_t* state = &bridge->inflammation_state;
 
@@ -350,7 +326,7 @@ int eligibility_immune_apply_inflammation_effects(eligibility_immune_bridge_t* b
     state->burst_amplitude_reduction = clamp_f(inflammation_intensity * 0.6f, 0.0f, 0.8f);
 
     bridge->trace_shortenings++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -383,7 +359,7 @@ int eligibility_immune_restore_baseline(eligibility_immune_bridge_t* bridge) {
     }
     if (!bridge->eligibility_config) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Check if IL-10 is promoting recovery */
     float il10_recovery = bridge->cytokine_effects.il10_trace_restoration;
@@ -405,7 +381,7 @@ int eligibility_immune_restore_baseline(eligibility_immune_bridge_t* bridge) {
         );
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -427,7 +403,7 @@ int eligibility_immune_detect_learning_failure(
     }
     if (!bridge->enable_learning_failure_detection) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     learning_failure_stress_t* stress = &bridge->learning_stress;
 
@@ -460,7 +436,7 @@ int eligibility_immune_detect_learning_failure(
         bridge->learning_failure_triggers++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -479,7 +455,7 @@ int eligibility_immune_monitor_consolidation(
     }
     if (!bridge->enable_consolidation_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     learning_failure_stress_t* stress = &bridge->learning_stress;
 
@@ -506,7 +482,7 @@ int eligibility_immune_monitor_consolidation(
         bridge->consolidation_failures++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -521,13 +497,13 @@ int eligibility_immune_trigger_from_learning_stress(eligibility_immune_bridge_t*
     }
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     learning_failure_stress_t* stress = &bridge->learning_stress;
 
     /* Only trigger if stress detected */
     if (!stress->immune_triggered) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -559,7 +535,7 @@ int eligibility_immune_trigger_from_learning_stress(eligibility_immune_bridge_t*
     /* Reset trigger flag after presenting */
     stress->immune_triggered = false;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -609,9 +585,9 @@ int eligibility_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_trace_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -622,9 +598,9 @@ int eligibility_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_trace_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for pfc_adapter module */
-static nimcp_health_agent_t* g_pfc_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for pfc_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pfc_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pfc_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from pfc_adapter module */
-static inline void pfc_adapter_heartbeat(const char* operation, float progress) {
-    if (g_pfc_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pfc_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pfc_adapter)
 
 #define PFC_MAX_WM_SLOTS 16
 #define PFC_MAX_RULES 64
@@ -210,7 +187,7 @@ nimcp_pfc_config_t nimcp_pfc_adapter_default_config(void) {
 }
 
 nimcp_pfc_adapter_t nimcp_pfc_adapter_create(const nimcp_pfc_config_t* config) {
-    nimcp_pfc_adapter_t adapter = (nimcp_pfc_adapter_t)calloc(1, sizeof(struct nimcp_pfc_adapter_struct));
+    nimcp_pfc_adapter_t adapter = (nimcp_pfc_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_pfc_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate PFC adapter");
 
     adapter->config = config ? *config : nimcp_pfc_adapter_default_config();
@@ -235,7 +212,7 @@ nimcp_pfc_adapter_t nimcp_pfc_adapter_create(const nimcp_pfc_config_t* config) {
 void nimcp_pfc_adapter_destroy(nimcp_pfc_adapter_t adapter) {
     if (!adapter) return;
     if (adapter->is_initialized) pfc_shutdown(adapter);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_pfc_adapter_adapter_get_interface(nimcp_pfc_adapter_t adapter) {

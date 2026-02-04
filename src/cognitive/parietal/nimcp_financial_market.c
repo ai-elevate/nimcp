@@ -23,46 +23,48 @@
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 #include <stddef.h> /* for NULL */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for financial market module */
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_mkt_health_agent = NULL;
 
-/**
- * @brief Set global health agent for financial market heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void financial_market_module_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fin_mkt_health_agent = agent;
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
+
+static mesh_participant_id_t g_fin_mkt_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_mkt_mesh_registry = NULL;
+
+nimcp_error_t fin_mkt_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_mkt_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_mkt", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_mkt";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_mkt_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_mkt_mesh_registry = registry;
+    return err;
 }
 
-//=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
-//=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune, int source, const uint8_t* epitope, size_t epitope_len, uint32_t severity, uint32_t source_node, uint32_t* antigen_id);
+void fin_mkt_mesh_unregister(void) {
+    if (g_fin_mkt_mesh_registry && g_fin_mkt_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_mkt_mesh_registry, g_fin_mkt_mesh_id);
+        g_fin_mkt_mesh_id = 0;
+        g_fin_mkt_mesh_registry = NULL;
+    }
+}
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, const char* context);
 
-//=============================================================================
-// Bio-Async Integration (Change Set 4)
-//=============================================================================
-struct bio_async_context;
-typedef struct bio_async_context bio_async_context_t;
-struct bio_router_struct;
-typedef struct bio_router_struct* bio_router_t;
-
-//=============================================================================
-// KG Wiring Integration (Change Set 1)
-//=============================================================================
 struct kg_wiring;
 typedef struct kg_wiring kg_wiring_t;
 
@@ -371,7 +373,7 @@ financial_market_eng_t* financial_market_create_custom(const fin_market_config_t
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_market_create_custom: config is NULL");
         return NULL;
     }
-    financial_market_eng_t* mkt = (financial_market_eng_t*)calloc(1, sizeof(financial_market_eng_t));
+    financial_market_eng_t* mkt = (financial_market_eng_t*)nimcp_calloc(1, sizeof(financial_market_eng_t));
     if (!mkt) {
         set_error("financial_market_create_custom: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_create_custom: allocation failed");
@@ -398,7 +400,7 @@ financial_market_eng_t* financial_market_create_custom(const fin_market_config_t
 void financial_market_destroy(financial_market_eng_t* mkt) {
     if (!mkt) return;
     fin_mkt_heartbeat("financial_market_destroy", 1.0f);
-    free(mkt);
+    nimcp_free(mkt);
 }
 
 //=============================================================================
@@ -458,7 +460,7 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     for (uint32_t i = 0; i < p; i++) beta[i]  = 0.85f / (float)p;
 
     /* Conditional variance series */
-    float* sigma2 = (float*)malloc(length * sizeof(float));
+    float* sigma2 = (float*)nimcp_malloc(length * sizeof(float));
     if (!sigma2) {
         set_error("garch_fit: allocation failed for variance series");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_garch_fit: allocation failed for variance series");
@@ -591,7 +593,7 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     }
     out_result->current_variance = cv;
 
-    free(sigma2);
+    nimcp_free(sigma2);
     mkt->stats.garch_fits++;
     fin_mkt_heartbeat("garch_fit_done", 1.0f);
     market_heartbeat_instance(mkt, "garch_fit", 1.0f);  /* Phase 8: Change Set 2/3 */
@@ -746,11 +748,11 @@ int financial_market_compute_macd(const float* prices, uint32_t length,
     /* Compute fast and slow EMA */
     uint32_t ema_fast_len = length - fast + 1;
     uint32_t ema_slow_len = length - slow + 1;
-    float* ema_fast = (float*)malloc(ema_fast_len * sizeof(float));
-    float* ema_slow = (float*)malloc(ema_slow_len * sizeof(float));
+    float* ema_fast = (float*)nimcp_malloc(ema_fast_len * sizeof(float));
+    float* ema_slow = (float*)nimcp_malloc(ema_slow_len * sizeof(float));
     if (!ema_fast || !ema_slow) {
-        free(ema_fast);
-        free(ema_slow);
+        nimcp_free(ema_fast);
+        nimcp_free(ema_slow);
         set_error("compute_macd: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_compute_macd: allocation failed");
         return -1;
@@ -786,8 +788,8 @@ int financial_market_compute_macd(const float* prices, uint32_t length,
         }
     }
 
-    free(ema_fast);
-    free(ema_slow);
+    nimcp_free(ema_fast);
+    nimcp_free(ema_slow);
     return (int)macd_len;
 }
 
@@ -1608,11 +1610,11 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     if (initial_value < FIN_MKT_EPSILON) initial_value = 1.0f;
 
     /* Allocate terminal values array */
-    float* terminal_values = (float*)malloc(effective_paths * sizeof(float));
-    float* path_returns = (float*)malloc(effective_paths * sizeof(float));
+    float* terminal_values = (float*)nimcp_malloc(effective_paths * sizeof(float));
+    float* path_returns = (float*)nimcp_malloc(effective_paths * sizeof(float));
     if (!terminal_values || !path_returns) {
-        free(terminal_values);
-        free(path_returns);
+        nimcp_free(terminal_values);
+        nimcp_free(path_returns);
         set_error("monte_carlo: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_monte_carlo: allocation failed");
         return -1;
@@ -1687,8 +1689,8 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     /* Update rolling average volatility (exponential smoothing) */
     avg_volatility = 0.95f * avg_volatility + 0.05f * adj_vol;
 
-    free(terminal_values);
-    free(path_returns);
+    nimcp_free(terminal_values);
+    nimcp_free(path_returns);
 
     mkt->stats.monte_carlo_simulations++;
     fin_mkt_heartbeat("monte_carlo_done", 1.0f);

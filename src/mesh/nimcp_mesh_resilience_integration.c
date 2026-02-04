@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -240,6 +241,7 @@ nimcp_error_t mesh_resilience_register_agent(
     const char* module_name
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -258,6 +260,7 @@ nimcp_error_t mesh_resilience_register_agent(
     if (resilience->agent_count >= MESH_RESILIENCE_MAX_AGENTS) {
         nimcp_mutex_unlock(resilience->mutex);
         LOG_WARN("Resilience integration at max agent capacity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -306,6 +309,7 @@ nimcp_error_t mesh_resilience_unregister_agent(
     mesh_participant_id_t participant_id
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -314,6 +318,7 @@ nimcp_error_t mesh_resilience_unregister_agent(
     int idx = find_agent_by_id(resilience, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(resilience->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -342,6 +347,7 @@ nimcp_error_t mesh_resilience_get_agent(
     mesh_agent_registration_t* registration
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!registration) return NIMCP_ERROR_NULL_POINTER;
@@ -351,6 +357,7 @@ nimcp_error_t mesh_resilience_get_agent(
     int idx = find_agent_by_id(resilience, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(((mesh_resilience_integration_t*)resilience)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -371,6 +378,7 @@ nimcp_error_t mesh_resilience_heartbeat(
     uint8_t progress
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -419,6 +427,7 @@ nimcp_error_t mesh_resilience_update_metrics(
     const health_metrics_t* metrics
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!metrics) return NIMCP_ERROR_NULL_POINTER;
@@ -428,6 +437,7 @@ nimcp_error_t mesh_resilience_update_metrics(
     int idx = find_agent_by_id(resilience, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(resilience->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -556,6 +566,7 @@ nimcp_error_t mesh_resilience_aggregate_channel(
     mesh_channel_health_metrics_t* metrics
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!metrics) return NIMCP_ERROR_NULL_POINTER;
@@ -621,6 +632,7 @@ nimcp_error_t mesh_resilience_get_system_metrics(
     mesh_system_resilience_metrics_t* metrics
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!metrics) return NIMCP_ERROR_NULL_POINTER;
@@ -692,6 +704,7 @@ nimcp_error_t mesh_resilience_report_failure(
     const char* description
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -752,6 +765,7 @@ nimcp_error_t mesh_resilience_request_recovery(
     const mesh_recovery_action_t* action
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!action) return NIMCP_ERROR_NULL_POINTER;
@@ -838,6 +852,7 @@ nimcp_error_t mesh_resilience_get_failures(
     size_t* event_count
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!events || !event_count) return NIMCP_ERROR_NULL_POINTER;
@@ -865,6 +880,7 @@ nimcp_error_t mesh_resilience_route_to_coordinator(
     mesh_coordinator_pool_t* pool
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!pool) return NIMCP_ERROR_NULL_POINTER;
@@ -879,6 +895,7 @@ nimcp_error_t mesh_resilience_trigger_election(
     const char* reason
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -906,6 +923,7 @@ nimcp_error_t mesh_resilience_connect_gpu_recovery(
     gpu_recovery_context_t* gpu_recovery
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -921,10 +939,12 @@ nimcp_error_t mesh_resilience_trigger_gpu_recovery(
     const char* reason
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!resilience->gpu_recovery) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -950,6 +970,7 @@ nimcp_error_t mesh_resilience_connect_immune(
     brain_immune_system_t* immune
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -966,10 +987,12 @@ nimcp_error_t mesh_resilience_trigger_immune_response(
     mesh_failure_severity_t severity
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!resilience->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -997,6 +1020,7 @@ nimcp_error_t mesh_resilience_get_stats(
     mesh_resilience_stats_t* stats
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -1035,6 +1059,7 @@ nimcp_error_t mesh_resilience_reset_stats(
     mesh_resilience_integration_t* resilience
 ) {
     if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

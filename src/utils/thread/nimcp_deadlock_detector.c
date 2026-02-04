@@ -24,33 +24,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for deadlock_detector module */
-static nimcp_health_agent_t* g_deadlock_detector_health_agent = NULL;
-
-/**
- * @brief Set health agent for deadlock_detector heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void deadlock_detector_set_health_agent(nimcp_health_agent_t* agent) {
-    g_deadlock_detector_health_agent = agent;
-}
-
-/** @brief Send heartbeat from deadlock_detector module */
-static inline void deadlock_detector_heartbeat(const char* operation, float progress) {
-    if (g_deadlock_detector_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_deadlock_detector_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(deadlock_detector)
 
 //=============================================================================
 // Internal Data Structures
@@ -61,7 +38,7 @@ static deadlock_detector_config_t g_config;
 static deadlock_detector_stats_t g_stats = {0};
 static tracked_mutex_t* g_mutex_table[MAX_TRACKED_MUTEXES];
 static lock_dependency_t g_thread_deps[MAX_THREADS];
-static pthread_mutex_t g_detector_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_detector_mutex = NIMCP_MUTEX_INITIALIZER;
 static volatile bool g_initialized = false;  // volatile + mutex for thread safety
 static uint32_t g_next_order = 0;
 
@@ -70,11 +47,11 @@ static uint32_t g_next_order = 0;
 //=============================================================================
 
 static void lock_detector(void) {
-    pthread_mutex_lock(&g_detector_mutex);
+    nimcp_mutex_lock(&g_detector_mutex);
 }
 
 static void unlock_detector(void) {
-    pthread_mutex_unlock(&g_detector_mutex);
+    nimcp_mutex_unlock(&g_detector_mutex);
 }
 
 static uint64_t get_time_us(void) {
@@ -277,7 +254,7 @@ bool tracked_mutex_init(tracked_mutex_t* mutex, const char* name, uint32_t timeo
         }
 
     // Initialize underlying mutex
-    if (pthread_mutex_init(&mutex->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&mutex->mutex, NULL) != 0) {
         return false;
     }
 
@@ -324,7 +301,7 @@ void tracked_mutex_destroy(tracked_mutex_t* mutex) {
 
     unlock_detector();
 
-    pthread_mutex_destroy(&mutex->mutex);
+    nimcp_mutex_destroy(&mutex->mutex);
 }
 
 bool tracked_mutex_lock(tracked_mutex_t* mutex) {
@@ -343,7 +320,7 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
     bool is_initialized = __atomic_load_n(&g_initialized, __ATOMIC_ACQUIRE);
     if (!is_initialized) {
         // Fallback to standard lock when detector not initialized
-        pthread_mutex_lock(&mutex->mutex);
+        nimcp_mutex_lock(&mutex->mutex);
         return true;
     }
 
@@ -354,7 +331,7 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
 
     if (!detector_enabled) {
         // Fallback to standard lock when detector disabled
-        pthread_mutex_lock(&mutex->mutex);
+        nimcp_mutex_lock(&mutex->mutex);
         return true;
     }
 
@@ -406,7 +383,7 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
         }
     } else {
         // Blocking lock (no timeout)
-        pthread_mutex_lock(&mutex->mutex);
+        nimcp_mutex_lock(&mutex->mutex);
         acquired = true;
     }
 
@@ -457,7 +434,7 @@ bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
 
         }
 
-    int result = pthread_mutex_trylock(&mutex->mutex);
+    int result = nimcp_mutex_trylock(&mutex->mutex);
     if (result == 0) {
         // Acquired
         lock_detector();
@@ -502,7 +479,7 @@ void tracked_mutex_unlock(tracked_mutex_t* mutex) {
 
     unlock_detector();
 
-    pthread_mutex_unlock(&mutex->mutex);
+    nimcp_mutex_unlock(&mutex->mutex);
 }
 
 uint32_t deadlock_detector_check(void) {

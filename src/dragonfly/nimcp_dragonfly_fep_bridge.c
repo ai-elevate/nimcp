@@ -13,32 +13,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_fep_bridge module */
-static nimcp_health_agent_t* g_dragonfly_fep_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_fep_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_fep_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_fep_bridge module */
-static inline void dragonfly_fep_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_fep_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_fep_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_fep_bridge)
 
 #define LOG_MODULE "DRAGONFLY_FEP_BRIDGE"
 
@@ -221,13 +199,13 @@ dragonfly_fep_bridge_t* dragonfly_fep_bridge_create(
     void* fep_system,
     const dragonfly_fep_config_t* config
 ) {
-    dragonfly_fep_bridge_t* bridge = calloc(1, sizeof(dragonfly_fep_bridge_t));
+    dragonfly_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(dragonfly_fep_bridge_t));
     NIMCP_API_CHECK_ALLOC(bridge, "dragonfly_fep_bridge_create: failed to allocate bridge");
 
     if (config) {
         if (dragonfly_fep_bridge_validate_config(config) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_create: invalid config");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -259,7 +237,7 @@ dragonfly_fep_bridge_t* dragonfly_fep_bridge_create(
 void dragonfly_fep_bridge_destroy(dragonfly_fep_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_fep");
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dragonfly_fep_bridge_reset(dragonfly_fep_bridge_t* bridge) {

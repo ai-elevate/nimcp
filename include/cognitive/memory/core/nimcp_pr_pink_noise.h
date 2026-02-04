@@ -418,10 +418,10 @@ NIMCP_EXPORT bool pr_quat_pink_next(
  * EXAMPLE:
  * ```c
  * pr_quat_path_t path;
- * path.samples = malloc(100 * sizeof(pr_quat_sample_t));
+ * path.samples = nimcp_malloc(100 * sizeof(pr_quat_sample_t));
  * pr_quat_pink_path(state, &path, 100, 0.8f);
  * // Use path for gradual memory state evolution
- * free(path.samples);
+ * nimcp_free(path.samples);
  * ```
  */
 NIMCP_EXPORT bool pr_quat_pink_path(

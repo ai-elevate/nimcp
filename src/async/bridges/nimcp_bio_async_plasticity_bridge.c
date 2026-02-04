@@ -23,45 +23,12 @@
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
-
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for bio_async_plasticity_bridge module */
-static nimcp_health_agent_t* g_bio_async_plasticity_bridge_health_agent = NULL;
-
-void bio_async_plasticity_set_health_agent(void* agent) {
-    g_bio_async_plasticity_bridge_health_agent = (nimcp_health_agent_t*)agent;
-}
-
-/** @brief Send heartbeat from bio_async_plasticity_bridge module */
-static inline void bio_async_plasticity_heartbeat(const char* operation, float progress) {
-    if (g_bio_async_plasticity_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_bio_async_plasticity_bridge_health_agent,
-                                        operation, progress);
-    }
-}
-
-#define LOG_MODULE "BIO_ASYNC_PLASTICITY"
-
-/* ============================================================================
- * Constants
- * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 #define MODULE_NAME "bio_async_plasticity_bridge"
 
-/* ============================================================================
- * Forward Declarations
- * ============================================================================ */
 
-static void handle_incoming_spike_event(
-    bio_async_plasticity_bridge_t* bridge,
-    const void* payload,
-    size_t payload_size
-);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_async_plasticity_bridge)
 
 static void handle_incoming_batch_event(
     bio_async_plasticity_bridge_t* bridge,

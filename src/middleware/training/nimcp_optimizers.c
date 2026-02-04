@@ -35,35 +35,9 @@
 /* Module name for security registration and logging */
 #define OPTIMIZER_MODULE_NAME "nimcp_optimizer"
 #define LOG_MODULE "optimizers"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for optimizers module */
-static nimcp_health_agent_t* g_optimizers_health_agent = NULL;
-
-/**
- * @brief Set health agent for optimizers heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void optimizers_set_health_agent(nimcp_health_agent_t* agent) {
-    g_optimizers_health_agent = agent;
-}
-
-/** @brief Send heartbeat from optimizers module */
-static inline void optimizers_heartbeat(const char* operation, float progress) {
-    if (g_optimizers_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_optimizers_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(optimizers)
 
 /* ============================================================================
  * KG-Driven Wiring Infrastructure

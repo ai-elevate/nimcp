@@ -2531,3 +2531,23 @@ set_tests_properties(
 
 # Brain integration test - full system integration
 # Note: managed in unit/middleware/CMakeLists.txt
+
+# Thread Safety Audit Tests (P0-P3 fixes)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/thread/CMakeLists.txt")
+    message(STATUS "Adding utils thread unit tests...")
+    add_subdirectory(unit/utils/thread)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/thread_safety/CMakeLists.txt")
+    message(STATUS "Adding thread safety regression tests...")
+    add_subdirectory(regression/thread_safety)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/thread_safety/CMakeLists.txt")
+    message(STATUS "Adding thread safety integration tests...")
+    add_subdirectory(integration/thread_safety)
+endif()
+
+# Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

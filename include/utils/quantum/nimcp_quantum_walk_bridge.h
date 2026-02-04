@@ -153,6 +153,7 @@ void quantum_walk_bridge_reset_stats(quantum_walk_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct quantum_walk_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -179,7 +180,7 @@ quantum_walk_bridge_config_t quantum_walk_bridge_default_config(void) {
 quantum_walk_bridge_t* quantum_walk_bridge_create(
     const quantum_walk_bridge_config_t* config
 ) {
-    quantum_walk_bridge_t* bridge = calloc(1, sizeof(*bridge));
+    quantum_walk_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : quantum_walk_bridge_default_config();
@@ -191,7 +192,7 @@ void quantum_walk_bridge_destroy(quantum_walk_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->walker) trit_walker_graph_destroy(bridge->walker);
     if (bridge->adjacency) trit_matrix_destroy(bridge->adjacency);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool quantum_walk_bridge_is_enabled(const quantum_walk_bridge_t* bridge) {

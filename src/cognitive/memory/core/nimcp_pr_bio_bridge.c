@@ -23,34 +23,44 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_bio_bridge)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for pr_bio_bridge module */
-static nimcp_health_agent_t* g_pr_bio_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_bio_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_bio_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_bio_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_bio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_bio_bridge_health_agent = agent;
+nimcp_error_t pr_bio_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_bio_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_bio_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_bio_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_bio_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_bio_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_bio_bridge module */
-static inline void pr_bio_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_bio_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_bio_bridge_health_agent, operation, progress);
+void pr_bio_bridge_mesh_unregister(void) {
+    if (g_pr_bio_bridge_mesh_registry && g_pr_bio_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_bio_bridge_mesh_registry, g_pr_bio_bridge_mesh_id);
+        g_pr_bio_bridge_mesh_id = 0;
+        g_pr_bio_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_bio_bridge module (instance-level) */
 static inline void pr_bio_bridge_heartbeat_instance(
@@ -80,13 +90,14 @@ static inline void pr_bio_bridge_heartbeat_instance(
     #define PR_BIO_MUTEX_LOCK(m) EnterCriticalSection(&(m))
     #define PR_BIO_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
-    #include <pthread.h>
-#include "utils/logging/nimcp_logging.h"
-    typedef pthread_mutex_t pr_bio_mutex_t;
-    #define PR_BIO_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
-    #define PR_BIO_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
-    #define PR_BIO_MUTEX_LOCK(m) pthread_mutex_lock(&(m))
-    #define PR_BIO_MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+    #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+    typedef nimcp_mutex_t pr_bio_mutex_t;
+    #define PR_BIO_MUTEX_INIT(m) nimcp_mutex_init(&(m), NULL)
+    #define PR_BIO_MUTEX_DESTROY(m) nimcp_mutex_destroy(&(m))
+    #define PR_BIO_MUTEX_LOCK(m) nimcp_mutex_lock(&(m))
+    #define PR_BIO_MUTEX_UNLOCK(m) nimcp_mutex_unlock(&(m))
 #endif
 
 /* High-resolution timing */
@@ -308,7 +319,7 @@ static bool queue_push(pr_bio_bridge_t bridge, const pr_bio_queue_entry_t* entry
         if (new_cap > bridge->config.max_pending_messages) {
             new_cap = bridge->config.max_pending_messages;
         }
-        pr_bio_queue_entry_t* new_queue = (pr_bio_queue_entry_t*)realloc(
+        pr_bio_queue_entry_t* new_queue = (pr_bio_queue_entry_t*)nimcp_realloc(
             bridge->queue, new_cap * sizeof(pr_bio_queue_entry_t));
         if (!new_queue) {
             return false;
@@ -392,7 +403,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     }
 
     /* Allocate bridge structure */
-    pr_bio_bridge_t bridge = (pr_bio_bridge_t)calloc(1, sizeof(*bridge));
+    pr_bio_bridge_t bridge = (pr_bio_bridge_t)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         set_error("Failed to allocate bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -407,11 +418,11 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     if (bridge->queue_capacity > cfg.max_pending_messages) {
         bridge->queue_capacity = cfg.max_pending_messages;
     }
-    bridge->queue = (pr_bio_queue_entry_t*)calloc(
+    bridge->queue = (pr_bio_queue_entry_t*)nimcp_calloc(
         bridge->queue_capacity, sizeof(pr_bio_queue_entry_t));
     if (!bridge->queue) {
         set_error("Failed to allocate message queue");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->queue_size = 0;
@@ -421,12 +432,12 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     if (bridge->subscriber_capacity > cfg.max_subscribers) {
         bridge->subscriber_capacity = cfg.max_subscribers;
     }
-    bridge->subscribers = (pr_bio_subscriber_t*)calloc(
+    bridge->subscribers = (pr_bio_subscriber_t*)nimcp_calloc(
         bridge->subscriber_capacity, sizeof(pr_bio_subscriber_t));
     if (!bridge->subscribers) {
         set_error("Failed to allocate subscriber array");
-        free(bridge->queue);
-        free(bridge);
+        nimcp_free(bridge->queue);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->num_subscribers = 0;
@@ -485,14 +496,14 @@ NIMCP_EXPORT void pr_bio_bridge_destroy(pr_bio_bridge_t bridge) {
 
     /* Free arrays */
     if (bridge->queue) {
-        free(bridge->queue);
+        nimcp_free(bridge->queue);
     }
     if (bridge->subscribers) {
-        free(bridge->subscribers);
+        nimcp_free(bridge->subscribers);
     }
 
     /* Free bridge */
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 //=============================================================================
@@ -663,7 +674,7 @@ NIMCP_EXPORT size_t pr_bio_bridge_process_pending(pr_bio_bridge_t bridge) {
         size_t num_subs = bridge->num_subscribers;
         pr_bio_subscriber_t* subs_copy = NULL;
         if (num_subs > 0) {
-            subs_copy = (pr_bio_subscriber_t*)malloc(
+            subs_copy = (pr_bio_subscriber_t*)nimcp_malloc(
                 num_subs * sizeof(pr_bio_subscriber_t));
             if (subs_copy) {
                 memcpy(subs_copy, bridge->subscribers,
@@ -693,7 +704,7 @@ NIMCP_EXPORT size_t pr_bio_bridge_process_pending(pr_bio_bridge_t bridge) {
                     succeeded++;
                 }
             }
-            free(subs_copy);
+            nimcp_free(subs_copy);
         }
 
         uint64_t process_end = get_time_us();
@@ -790,7 +801,7 @@ NIMCP_EXPORT pr_bio_bridge_error_t pr_bio_bridge_subscribe_with_priority(
         if (new_cap > bridge->config.max_subscribers) {
             new_cap = bridge->config.max_subscribers;
         }
-        pr_bio_subscriber_t* new_subs = (pr_bio_subscriber_t*)realloc(
+        pr_bio_subscriber_t* new_subs = (pr_bio_subscriber_t*)nimcp_realloc(
             bridge->subscribers, new_cap * sizeof(pr_bio_subscriber_t));
         if (!new_subs) {
             PR_BIO_MUTEX_UNLOCK(bridge->subscriber_mutex);

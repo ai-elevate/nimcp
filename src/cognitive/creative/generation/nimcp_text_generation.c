@@ -25,33 +25,45 @@
 #include <stdio.h>
 
 #define LOG_MODULE "TEXT_GEN"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(text_generation)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for text_generation module */
-static nimcp_health_agent_t* g_text_generation_health_agent = NULL;
+static mesh_participant_id_t g_text_generation_mesh_id = 0;
+static mesh_participant_registry_t* g_text_generation_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for text_generation heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void text_generation_set_health_agent(nimcp_health_agent_t* agent) {
-    g_text_generation_health_agent = agent;
+nimcp_error_t text_generation_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_text_generation_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "text_generation", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "text_generation";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_text_generation_mesh_id);
+    if (err == NIMCP_SUCCESS) g_text_generation_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from text_generation module */
-static inline void text_generation_heartbeat(const char* operation, float progress) {
-    if (g_text_generation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_text_generation_health_agent, operation, progress);
+void text_generation_mesh_unregister(void) {
+    if (g_text_generation_mesh_registry && g_text_generation_mesh_id != 0) {
+        mesh_participant_unregister(g_text_generation_mesh_registry, g_text_generation_mesh_id);
+        g_text_generation_mesh_id = 0;
+        g_text_generation_mesh_registry = NULL;
     }
 }
+
 
 #define DEFAULT_MAX_TOKENS 2048
 #define DEFAULT_TEMPERATURE 0.8f

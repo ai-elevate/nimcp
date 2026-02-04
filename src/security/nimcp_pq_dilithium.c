@@ -42,32 +42,45 @@
 #include <sys/random.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for pq_dilithium module */
-static nimcp_health_agent_t* g_pq_dilithium_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pq_dilithium)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for pq_dilithium heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pq_dilithium_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pq_dilithium_health_agent = agent;
+static mesh_participant_id_t g_pq_dilithium_mesh_id = 0;
+static mesh_participant_registry_t* g_pq_dilithium_mesh_registry = NULL;
+
+nimcp_error_t pq_dilithium_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pq_dilithium_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pq_dilithium", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pq_dilithium";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pq_dilithium_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pq_dilithium_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pq_dilithium module */
-static inline void pq_dilithium_heartbeat(const char* operation, float progress) {
-    if (g_pq_dilithium_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pq_dilithium_health_agent, operation, progress);
+void pq_dilithium_mesh_unregister(void) {
+    if (g_pq_dilithium_mesh_registry && g_pq_dilithium_mesh_id != 0) {
+        mesh_participant_unregister(g_pq_dilithium_mesh_registry, g_pq_dilithium_mesh_id);
+        g_pq_dilithium_mesh_id = 0;
+        g_pq_dilithium_mesh_registry = NULL;
     }
 }
+
 
 #endif
 
@@ -233,13 +246,13 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     }
 
     /* Allocate key buffers */
-    uint8_t* public_key = (uint8_t*)malloc(public_key_len);
-    uint8_t* secret_key = (uint8_t*)malloc(secret_key_len);
+    uint8_t* public_key = (uint8_t*)nimcp_malloc(public_key_len);
+    uint8_t* secret_key = (uint8_t*)nimcp_malloc(secret_key_len);
 
     if (!public_key || !secret_key) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_dilithium_keygen: failed to allocate keys");
-        free(public_key);
-        free(secret_key);
+        nimcp_free(public_key);
+        nimcp_free(secret_key);
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -248,9 +261,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     err = secure_random_bytes(seed, sizeof(seed));
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         LOG_ERROR("nimcp_dilithium_keygen: Random generation failed");
         return err;
     }
@@ -265,9 +278,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     err = secure_random_bytes(public_key, public_key_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         return err;
     }
 
@@ -275,9 +288,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     err = secure_random_bytes(secret_key, secret_key_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
-        free(public_key);
+        nimcp_free(public_key);
         _local_secure_zero(secret_key, secret_key_len);
-        free(secret_key);
+        nimcp_free(secret_key);
         return err;
     }
 
@@ -489,13 +502,13 @@ void nimcp_dilithium_keypair_free(nimcp_dilithium_keypair_t* keypair) {
     /* Securely zero and free secret key */
     if (keypair->secret_key) {
         _local_secure_zero(keypair->secret_key, keypair->secret_key_len);
-        free(keypair->secret_key);
+        nimcp_free(keypair->secret_key);
         keypair->secret_key = NULL;
     }
 
     /* Free public key */
     if (keypair->public_key) {
-        free(keypair->public_key);
+        nimcp_free(keypair->public_key);
         keypair->public_key = NULL;
     }
 

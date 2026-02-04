@@ -19,36 +19,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for population_coding_immune_bridge module */
-static nimcp_health_agent_t* g_population_coding_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for population_coding_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void population_coding_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_population_coding_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from population_coding_immune_bridge module */
-static inline void population_coding_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_population_coding_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_population_coding_immune_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
@@ -274,7 +249,7 @@ void population_immune_bridge_destroy(population_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -300,7 +275,7 @@ int population_immune_apply_cytokine_effects(
     if (!bridge->enable_cytokine_noise_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get cytokine levels */
     float il1_level = get_cytokine_level(bridge->immune_system,
@@ -344,7 +319,7 @@ int population_immune_apply_cytokine_effects(
         1.0f + (pro_inflammatory * 0.5f); /* Up to 50% broadening */
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -363,7 +338,7 @@ int population_immune_apply_inflammation_effects(
     if (!bridge->enable_inflammation_tuning_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level =
@@ -407,7 +382,7 @@ int population_immune_apply_inflammation_effects(
     bridge->inflammation_state.vector_magnitude_reduction =
         bridge->inflammation_state.gain_reduction;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -495,7 +470,7 @@ int population_immune_detect_anomalies(
     }
     if (!bridge->enable_population_anomaly_detection) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update trigger state */
     bridge->immune_trigger.noise_level = noise;
@@ -523,7 +498,7 @@ int population_immune_detect_anomalies(
         bridge->anomaly_detections++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -541,7 +516,7 @@ int population_immune_trigger_from_anomaly(
     if (!bridge->immune_system) return -1;
     if (bridge->immune_trigger.threat_severity < 0.3f) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Create epitope from anomaly signature */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -575,7 +550,7 @@ int population_immune_trigger_from_anomaly(
                   severity);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -593,7 +568,7 @@ int population_immune_restoration_signal(
     if (!bridge->enable_precision_restoration) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Check if recovered */
     bool recovered = (bridge->health_metrics.overall_health > 0.9f) &&
@@ -618,7 +593,7 @@ int population_immune_restoration_signal(
                   "Population coding restored - releasing IL-10");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -638,13 +613,13 @@ int population_immune_bridge_update(
 
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Apply immune effects to population coding */
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     population_immune_apply_cytokine_effects(bridge);
     population_immune_apply_inflammation_effects(bridge);
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Update health metrics */
     bridge->health_metrics.noise = population_immune_compute_noise(bridge);
@@ -675,7 +650,7 @@ int population_immune_bridge_update(
     }
 
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Check for restoration */
     population_immune_restoration_signal(bridge);
@@ -693,9 +668,9 @@ int population_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(*effects));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -706,9 +681,9 @@ int population_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(*state));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -719,9 +694,9 @@ int population_immune_get_health_metrics(
 ) {
     if (!bridge || !metrics) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(metrics, &bridge->health_metrics, sizeof(*metrics));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -753,7 +728,7 @@ int population_immune_modulate_vector_decoding(
     if (!bridge || !rates || !noisy_rates_out) return -1;
     if (num_neurons == 0) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get noise and gain */
     float noise = population_immune_compute_noise(bridge);
@@ -766,7 +741,7 @@ int population_immune_modulate_vector_decoding(
         noisy_rates_out[i] = clamp_f(modulated, 0.0f, 100.0f); /* Max 100Hz */
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -780,7 +755,7 @@ int population_immune_modulate_synchrony(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Copy baseline */
     memcpy(modulated_synchrony_out, baseline_synchrony, sizeof(*baseline_synchrony));
@@ -800,7 +775,7 @@ int population_immune_modulate_synchrony(
     modulated_synchrony_out->peak_lag_ms =
         baseline_synchrony->peak_lag_ms * (1.0f + synchrony_reduction);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -814,7 +789,7 @@ int population_immune_modulate_sparse_code(
     if (!bridge || !baseline_code || !noisy_code_out) return -1;
     if (num_neurons == 0) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get reliability */
     float reliability = bridge->inflammation_state.sparse_code_reliability;
@@ -831,7 +806,7 @@ int population_immune_modulate_sparse_code(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 

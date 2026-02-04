@@ -10,6 +10,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -332,6 +333,7 @@ int vae_world_bridge_connect_vae(vae_world_bridge_t* bridge, vae_system_t* vae) 
         uint32_t lat_dim = bridge->config.modalities[m].latent_dim;
         bridge->modality_latents[m] = nimcp_calloc(lat_dim, sizeof(float));
         if (!bridge->modality_latents[m]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
             return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
         }
     }
@@ -350,6 +352,7 @@ int vae_world_bridge_connect_vae(vae_world_bridge_t* bridge, vae_system_t* vae) 
     bridge->fuse_buffer = nimcp_calloc(bridge->config.fused_latent_dim, sizeof(float));
 
     if (!bridge->encode_buffer || !bridge->predict_buffer || !bridge->fuse_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -409,11 +412,13 @@ int vae_world_encode_modality(vae_world_bridge_t* bridge,
                                vae_world_modality_result_t* result) {
     if (!bridge || !input || !result) return NIMCP_ERROR_VAE_WORLD_NULL;
     if (bridge->state != VAE_WORLD_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED;
     }
 
     uint32_t mod_idx = (uint32_t)modality;
     if (mod_idx >= VAE_WORLD_MAX_MODALITIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED;
     }
 
@@ -433,6 +438,7 @@ int vae_world_encode_modality(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -445,6 +451,7 @@ int vae_world_encode_modality(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED;
     }
 
@@ -462,6 +469,7 @@ int vae_world_encode_modality(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -503,6 +511,7 @@ int vae_world_encode_multimodal(vae_world_bridge_t* bridge,
                                  uint32_t num_modalities,
                                  vae_world_fusion_result_t* result) {
     if (!bridge || !inputs || !input_dims || !modalities || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NULL, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NULL;
     }
 
@@ -542,6 +551,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
                     vae_world_fusion_result_t* result) {
     if (!bridge || !result) return NIMCP_ERROR_VAE_WORLD_NULL;
     if (bridge->state != VAE_WORLD_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED;
     }
 
@@ -567,6 +577,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
 
     if (num_valid == 0) {
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_FUSE_FAILED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_FUSE_FAILED;
     }
 
@@ -584,6 +595,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             result->fused_latent = nimcp_calloc(fused_dim, sizeof(float));
             if (!result->fused_latent) {
                 bridge->state = VAE_WORLD_STATE_CONNECTED;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
                 return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
             }
 
@@ -602,6 +614,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
                                                       sizeof(float));
             if (!result->fused_latent || !result->attention_weights) {
                 bridge->state = VAE_WORLD_STATE_CONNECTED;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
                 return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
             }
 
@@ -638,6 +651,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             result->fused_latent = nimcp_calloc(fused_dim, sizeof(float));
             if (!result->fused_latent) {
                 bridge->state = VAE_WORLD_STATE_CONNECTED;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
                 return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
             }
 
@@ -647,6 +661,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             if (!temp_vars) {
                 nimcp_free(result->fused_latent);
                 bridge->state = VAE_WORLD_STATE_CONNECTED;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
                 return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
             }
 
@@ -677,6 +692,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             result->fused_latent = nimcp_calloc(fused_dim, sizeof(float));
             if (!result->fused_latent) {
                 bridge->state = VAE_WORLD_STATE_CONNECTED;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
                 return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
             }
 
@@ -803,6 +819,7 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
                                    vae_world_prediction_result_t* result) {
     if (!bridge || !latent || !result) return NIMCP_ERROR_VAE_WORLD_NULL;
     if (bridge->state != VAE_WORLD_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NOT_CONNECTED;
     }
 
@@ -821,6 +838,7 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
 
     if (!result->predicted_latents || !result->predicted_variances) {
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -829,6 +847,7 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
         result->predicted_variances[t] = nimcp_calloc(latent_dim, sizeof(float));
         if (!result->predicted_latents[t] || !result->predicted_variances[t]) {
             bridge->state = VAE_WORLD_STATE_CONNECTED;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
             return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
         }
     }
@@ -844,6 +863,7 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
         nimcp_free(current);
         nimcp_free(velocity);
         bridge->state = VAE_WORLD_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -916,6 +936,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
                               vae_world_entity_result_t* result) {
     if (!bridge || !observation || !result) return NIMCP_ERROR_VAE_WORLD_NULL;
     if (!bridge->config.enable_entity_tracking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_FUSE_FAILED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_FUSE_FAILED;
     }
 
@@ -933,6 +954,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
 
@@ -944,6 +966,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_ENCODE_FAILED;
     }
 
@@ -961,6 +984,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
     }
     result->num_entities = num_entities;
@@ -977,6 +1001,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
             nimcp_tensor_destroy(input_tensor);
             nimcp_tensor_destroy(mu_tensor);
             nimcp_tensor_destroy(log_var_tensor);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
             return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
         }
 
@@ -1031,6 +1056,7 @@ int vae_world_get_entity(const vae_world_bridge_t* bridge,
     if (!bridge || !entity) return NIMCP_ERROR_VAE_WORLD_NULL;
 
     if (entity_id >= bridge->num_entities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NULL, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NULL;
     }
 
@@ -1046,6 +1072,7 @@ int vae_world_predict_entity(vae_world_bridge_t* bridge,
     if (!bridge || !predicted_latent) return NIMCP_ERROR_VAE_WORLD_NULL;
 
     if (entity_id >= bridge->num_entities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NULL, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NULL;
     }
 

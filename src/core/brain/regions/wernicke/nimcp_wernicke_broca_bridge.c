@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(wernicke_broca_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for wernicke_broca_bridge module */
-static nimcp_health_agent_t* g_wernicke_broca_bridge_health_agent = NULL;
+static mesh_participant_id_t g_wernicke_broca_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_wernicke_broca_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for wernicke_broca_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void wernicke_broca_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_wernicke_broca_bridge_health_agent = agent;
+nimcp_error_t wernicke_broca_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_wernicke_broca_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "wernicke_broca_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "wernicke_broca_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_wernicke_broca_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_wernicke_broca_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from wernicke_broca_bridge module */
-static inline void wernicke_broca_bridge_heartbeat(const char* operation, float progress) {
-    if (g_wernicke_broca_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_wernicke_broca_bridge_health_agent, operation, progress);
+void wernicke_broca_bridge_mesh_unregister(void) {
+    if (g_wernicke_broca_bridge_mesh_registry && g_wernicke_broca_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_wernicke_broca_bridge_mesh_registry, g_wernicke_broca_bridge_mesh_id);
+        g_wernicke_broca_bridge_mesh_id = 0;
+        g_wernicke_broca_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "WERNICKE_BROCA_BRIDGE"
 
@@ -125,15 +139,15 @@ static void queue_destroy(wbb_queue_t* queue) {
         wbb_queue_node_t* next = node->next;
         /* Free payload buffers if present */
         if (node->message.type == WBB_MSG_COMPREHENSION) {
-            free(node->message.payload.comprehension.semantic_vector);
-            free(node->message.payload.comprehension.phonemes);
+            nimcp_free(node->message.payload.comprehension.semantic_vector);
+            nimcp_free(node->message.payload.comprehension.phonemes);
         } else if (node->message.type == WBB_MSG_EFFERENCE_COPY) {
-            free(node->message.payload.efference.planned_phonemes);
-            free(node->message.payload.efference.motor_plan);
+            nimcp_free(node->message.payload.efference.planned_phonemes);
+            nimcp_free(node->message.payload.efference.motor_plan);
         } else if (node->message.type == WBB_MSG_REHEARSAL) {
-            free(node->message.payload.rehearsal.phonemes);
+            nimcp_free(node->message.payload.rehearsal.phonemes);
         }
-        free(node);
+        nimcp_free(node);
         node = next;
     }
     queue->head = NULL;
@@ -146,7 +160,7 @@ static bool queue_enqueue(wbb_queue_t* queue, const wbb_message_t* message) {
         return false;  /* Queue full */
     }
 
-    wbb_queue_node_t* node = calloc(1, sizeof(wbb_queue_node_t));
+    wbb_queue_node_t* node = nimcp_calloc(1, sizeof(wbb_queue_node_t));
     if (!node) return false;
 
     node->message = *message;
@@ -177,7 +191,7 @@ static bool queue_dequeue(wbb_queue_t* queue, wbb_message_t* message) {
     }
     queue->count--;
 
-    free(node);
+    nimcp_free(node);
     return true;
 }
 
@@ -288,7 +302,7 @@ wernicke_broca_bridge_t* wbb_create(
         return NULL;
     }
 
-    wernicke_broca_bridge_t* bridge = calloc(1, sizeof(wernicke_broca_bridge_t));
+    wernicke_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_broca_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -313,8 +327,8 @@ wernicke_broca_bridge_t* wbb_create(
     queue_init(&bridge->to_wernicke_queue, bridge->config.buffer_size);
 
     /* Allocate working buffers */
-    bridge->semantic_buffer = calloc(bridge->config.semantic_dim, sizeof(float));
-    bridge->phoneme_buffer = calloc(bridge->config.phoneme_buffer_size, sizeof(uint8_t));
+    bridge->semantic_buffer = nimcp_calloc(bridge->config.semantic_dim, sizeof(float));
+    bridge->phoneme_buffer = nimcp_calloc(bridge->config.phoneme_buffer_size, sizeof(uint8_t));
 
     if (!bridge->semantic_buffer || !bridge->phoneme_buffer) {
         wbb_destroy(bridge);
@@ -338,22 +352,22 @@ void wbb_destroy(wernicke_broca_bridge_t* bridge) {
     queue_destroy(&bridge->to_wernicke_queue);
 
     /* Free buffers */
-    free(bridge->semantic_buffer);
-    free(bridge->phoneme_buffer);
+    nimcp_free(bridge->semantic_buffer);
+    nimcp_free(bridge->phoneme_buffer);
 
     /* Free last comprehension payload */
     if (bridge->has_last_comprehension) {
-        free(bridge->last_comprehension.semantic_vector);
-        free(bridge->last_comprehension.phonemes);
+        nimcp_free(bridge->last_comprehension.semantic_vector);
+        nimcp_free(bridge->last_comprehension.phonemes);
     }
 
     /* Free last efference payload */
     if (bridge->has_last_efference) {
-        free(bridge->last_efference.planned_phonemes);
-        free(bridge->last_efference.motor_plan);
+        nimcp_free(bridge->last_efference.planned_phonemes);
+        nimcp_free(bridge->last_efference.motor_plan);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int wbb_reset(wernicke_broca_bridge_t* bridge) {
@@ -367,14 +381,14 @@ int wbb_reset(wernicke_broca_bridge_t* bridge) {
 
     /* Clear last states */
     if (bridge->has_last_comprehension) {
-        free(bridge->last_comprehension.semantic_vector);
-        free(bridge->last_comprehension.phonemes);
+        nimcp_free(bridge->last_comprehension.semantic_vector);
+        nimcp_free(bridge->last_comprehension.phonemes);
         bridge->has_last_comprehension = false;
     }
 
     if (bridge->has_last_efference) {
-        free(bridge->last_efference.planned_phonemes);
-        free(bridge->last_efference.motor_plan);
+        nimcp_free(bridge->last_efference.planned_phonemes);
+        nimcp_free(bridge->last_efference.motor_plan);
         bridge->has_last_efference = false;
     }
 
@@ -447,7 +461,7 @@ int wbb_forward_comprehension(
     /* Deep copy semantic vector */
     if (comprehension->semantic_vector && comprehension->semantic_dim > 0) {
         message.payload.comprehension.semantic_vector =
-            malloc(comprehension->semantic_dim * sizeof(float));
+            nimcp_malloc(comprehension->semantic_dim * sizeof(float));
         if (message.payload.comprehension.semantic_vector) {
             memcpy(message.payload.comprehension.semantic_vector,
                    comprehension->semantic_vector,
@@ -458,7 +472,7 @@ int wbb_forward_comprehension(
     /* Deep copy phonemes */
     if (comprehension->phonemes && comprehension->num_phonemes > 0) {
         message.payload.comprehension.phonemes =
-            malloc(comprehension->num_phonemes);
+            nimcp_malloc(comprehension->num_phonemes);
         if (message.payload.comprehension.phonemes) {
             memcpy(message.payload.comprehension.phonemes,
                    comprehension->phonemes,
@@ -468,15 +482,15 @@ int wbb_forward_comprehension(
 
     /* Enqueue */
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
-        free(message.payload.comprehension.semantic_vector);
-        free(message.payload.comprehension.phonemes);
+        nimcp_free(message.payload.comprehension.semantic_vector);
+        nimcp_free(message.payload.comprehension.phonemes);
         return -1;
     }
 
     /* Store for monitoring */
     if (bridge->has_last_comprehension) {
-        free(bridge->last_comprehension.semantic_vector);
-        free(bridge->last_comprehension.phonemes);
+        nimcp_free(bridge->last_comprehension.semantic_vector);
+        nimcp_free(bridge->last_comprehension.phonemes);
     }
     bridge->last_comprehension = message.payload.comprehension;
     bridge->has_last_comprehension = true;
@@ -501,7 +515,7 @@ int wbb_request_repetition(
 
     /* Create comprehension with phonemes only */
     wbb_comprehension_t comp = {0};
-    comp.phonemes = (uint8_t*)malloc(num_phonemes);
+    comp.phonemes = (uint8_t*)nimcp_malloc(num_phonemes);
     if (!comp.phonemes) return -1;
     memcpy(comp.phonemes, phonemes, num_phonemes);
     comp.num_phonemes = num_phonemes;
@@ -516,7 +530,7 @@ int wbb_request_repetition(
     message.payload.comprehension = comp;
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
-        free(comp.phonemes);
+        nimcp_free(comp.phonemes);
         return -1;
     }
 
@@ -540,7 +554,7 @@ int wbb_send_response_intent(
 
     /* Create comprehension with semantic only */
     wbb_comprehension_t comp = {0};
-    comp.semantic_vector = malloc(semantic_dim * sizeof(float));
+    comp.semantic_vector = nimcp_malloc(semantic_dim * sizeof(float));
     if (!comp.semantic_vector) return -1;
     memcpy(comp.semantic_vector, semantic_vector, semantic_dim * sizeof(float));
     comp.semantic_dim = semantic_dim;
@@ -555,7 +569,7 @@ int wbb_send_response_intent(
     message.payload.comprehension = comp;
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
-        free(comp.semantic_vector);
+        nimcp_free(comp.semantic_vector);
         return -1;
     }
 
@@ -594,8 +608,8 @@ int wbb_receive_efference_copy(
 
     /* Store for monitoring */
     if (bridge->has_last_efference) {
-        free(bridge->last_efference.planned_phonemes);
-        free(bridge->last_efference.motor_plan);
+        nimcp_free(bridge->last_efference.planned_phonemes);
+        nimcp_free(bridge->last_efference.motor_plan);
     }
     bridge->last_efference = *efference;
     bridge->has_last_efference = true;
@@ -685,7 +699,7 @@ int wbb_send_error_signal(
         while (correction[corr_len] != 0 && corr_len < 32) corr_len++;
 
         if (corr_len > 0) {
-            message.payload.comprehension.phonemes = malloc(corr_len);
+            message.payload.comprehension.phonemes = nimcp_malloc(corr_len);
             if (message.payload.comprehension.phonemes) {
                 memcpy(message.payload.comprehension.phonemes, correction, corr_len);
                 message.payload.comprehension.num_phonemes = corr_len;
@@ -694,7 +708,7 @@ int wbb_send_error_signal(
     }
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
-        free(message.payload.comprehension.phonemes);
+        nimcp_free(message.payload.comprehension.phonemes);
         return -1;
     }
 
@@ -721,7 +735,7 @@ int wbb_request_rehearsal(
 
     /* Create rehearsal request */
     wbb_rehearsal_t rehearsal = {0};
-    rehearsal.phonemes = malloc(num_phonemes);
+    rehearsal.phonemes = nimcp_malloc(num_phonemes);
     if (!rehearsal.phonemes) return -1;
     memcpy(rehearsal.phonemes, phonemes, num_phonemes);
     rehearsal.num_phonemes = num_phonemes;
@@ -737,7 +751,7 @@ int wbb_request_rehearsal(
     message.payload.rehearsal = rehearsal;
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
-        free(rehearsal.phonemes);
+        nimcp_free(rehearsal.phonemes);
         return -1;
     }
 
@@ -768,7 +782,7 @@ int wbb_process_rehearsal(wernicke_broca_bridge_t* bridge) {
         message.payload.rehearsal.repetitions--;
         queue_enqueue(&bridge->to_broca_queue, &message);
     } else {
-        free(message.payload.rehearsal.phonemes);
+        nimcp_free(message.payload.rehearsal.phonemes);
     }
 
     bridge->stats.messages_received++;
@@ -802,10 +816,10 @@ int wbb_process_messages(
             if (message.type == WBB_MSG_COMPREHENSION ||
                 message.type == WBB_MSG_REPETITION_REQUEST ||
                 message.type == WBB_MSG_RESPONSE_INTENT) {
-                free(message.payload.comprehension.semantic_vector);
-                free(message.payload.comprehension.phonemes);
+                nimcp_free(message.payload.comprehension.semantic_vector);
+                nimcp_free(message.payload.comprehension.phonemes);
             } else if (message.type == WBB_MSG_REHEARSAL) {
-                free(message.payload.rehearsal.phonemes);
+                nimcp_free(message.payload.rehearsal.phonemes);
             }
 
             processed++;
@@ -820,10 +834,10 @@ int wbb_process_messages(
 
             /* Free payload */
             if (message.type == WBB_MSG_EFFERENCE_COPY) {
-                free(message.payload.efference.planned_phonemes);
-                free(message.payload.efference.motor_plan);
+                nimcp_free(message.payload.efference.planned_phonemes);
+                nimcp_free(message.payload.efference.motor_plan);
             } else if (message.type == WBB_MSG_REHEARSAL) {
-                free(message.payload.rehearsal.phonemes);
+                nimcp_free(message.payload.rehearsal.phonemes);
             }
 
             processed++;

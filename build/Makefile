@@ -1862,6 +1862,19 @@ unit_core_brain_test_kg_hierarchy/fast:
 .PHONY : unit_core_brain_test_kg_hierarchy/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_test_kg_wiring_completeness
+
+# Build rule for target.
+unit_core_brain_test_kg_wiring_completeness: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_kg_wiring_completeness
+.PHONY : unit_core_brain_test_kg_wiring_completeness
+
+# fast build rule for target.
+unit_core_brain_test_kg_wiring_completeness/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_kg_wiring_completeness.dir/build.make test/CMakeFiles/unit_core_brain_test_kg_wiring_completeness.dir/build
+.PHONY : unit_core_brain_test_kg_wiring_completeness/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_test_memory_tracking
 
 # Build rule for target.
@@ -3812,6 +3825,19 @@ unit_utils_test_kdtree/fast:
 .PHONY : unit_utils_test_kdtree/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_test_overflow_checks
+
+# Build rule for target.
+unit_utils_test_overflow_checks: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_overflow_checks
+.PHONY : unit_utils_test_overflow_checks
+
+# fast build rule for target.
+unit_utils_test_overflow_checks/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_overflow_checks.dir/build.make test/CMakeFiles/unit_utils_test_overflow_checks.dir/build
+.PHONY : unit_utils_test_overflow_checks/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_test_queue_utils
 
 # Build rule for target.
@@ -4083,123 +4109,6 @@ unit_utils_test_utils_vector: cmake_check_build_system
 unit_utils_test_utils_vector/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_utils_vector.dir/build.make test/CMakeFiles/unit_utils_test_utils_vector.dir/build
 .PHONY : unit_utils_test_utils_vector/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_test_platform_thread
-
-# Build rule for target.
-unit_utils_thread_test_platform_thread: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_test_platform_thread
-.PHONY : unit_utils_thread_test_platform_thread
-
-# fast build rule for target.
-unit_utils_thread_test_platform_thread/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_test_platform_thread.dir/build.make test/CMakeFiles/unit_utils_thread_test_platform_thread.dir/build
-.PHONY : unit_utils_thread_test_platform_thread/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_test_thread_safety
-
-# Build rule for target.
-unit_utils_thread_test_thread_safety: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_test_thread_safety
-.PHONY : unit_utils_thread_test_thread_safety
-
-# fast build rule for target.
-unit_utils_thread_test_thread_safety/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_test_thread_safety.dir/build.make test/CMakeFiles/unit_utils_thread_test_thread_safety.dir/build
-.PHONY : unit_utils_thread_test_thread_safety/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_atomic
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_atomic: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_atomic
-.PHONY : unit_utils_thread_unit_utils_thread_test_atomic
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_atomic/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_atomic.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_atomic.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_atomic/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_barrier
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_barrier: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_barrier
-.PHONY : unit_utils_thread_unit_utils_thread_test_barrier
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_barrier/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_barrier.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_barrier.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_barrier/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_condvar
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_condvar: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_condvar
-.PHONY : unit_utils_thread_unit_utils_thread_test_condvar
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_condvar/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_condvar.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_condvar.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_condvar/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_mutex_pool
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_mutex_pool: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_mutex_pool
-.PHONY : unit_utils_thread_unit_utils_thread_test_mutex_pool
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_mutex_pool/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_mutex_pool.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_mutex_pool.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_mutex_pool/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_rwlock
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_rwlock: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_rwlock
-.PHONY : unit_utils_thread_unit_utils_thread_test_rwlock
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_rwlock/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_rwlock.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_rwlock.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_rwlock/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_rwlock_extended
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_rwlock_extended: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_rwlock_extended
-.PHONY : unit_utils_thread_unit_utils_thread_test_rwlock_extended
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_rwlock_extended/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_rwlock_extended.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_rwlock_extended.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_rwlock_extended/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_thread_unit_utils_thread_test_semaphore
-
-# Build rule for target.
-unit_utils_thread_unit_utils_thread_test_semaphore: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_unit_utils_thread_test_semaphore
-.PHONY : unit_utils_thread_unit_utils_thread_test_semaphore
-
-# fast build rule for target.
-unit_utils_thread_unit_utils_thread_test_semaphore/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_semaphore.dir/build.make test/CMakeFiles/unit_utils_thread_unit_utils_thread_test_semaphore.dir/build
-.PHONY : unit_utils_thread_unit_utils_thread_test_semaphore/fast
 
 #=============================================================================
 # Target rules for targets named integration_api_test_api_cross_module
@@ -10505,6 +10414,19 @@ e2e_mesh_security: cmake_check_build_system
 e2e_mesh_security/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/security/CMakeFiles/e2e_mesh_security.dir/build.make test/e2e/security/CMakeFiles/e2e_mesh_security.dir/build
 .PHONY : e2e_mesh_security/fast
+
+#=============================================================================
+# Target rules for targets named e2e_security_test_bbb_immune_pipeline
+
+# Build rule for target.
+e2e_security_test_bbb_immune_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_security_test_bbb_immune_pipeline
+.PHONY : e2e_security_test_bbb_immune_pipeline
+
+# fast build rule for target.
+e2e_security_test_bbb_immune_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/security/CMakeFiles/e2e_security_test_bbb_immune_pipeline.dir/build.make test/e2e/security/CMakeFiles/e2e_security_test_bbb_immune_pipeline.dir/build
+.PHONY : e2e_security_test_bbb_immune_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_kg_wiring
@@ -23780,6 +23702,19 @@ unit_utils_memory_test_unified_memory/fast:
 .PHONY : unit_utils_memory_test_unified_memory/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_memory_test_nimcp_memory_wrapper
+
+# Build rule for target.
+unit_utils_memory_test_nimcp_memory_wrapper: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_memory_test_nimcp_memory_wrapper
+.PHONY : unit_utils_memory_test_nimcp_memory_wrapper
+
+# fast build rule for target.
+unit_utils_memory_test_nimcp_memory_wrapper/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_nimcp_memory_wrapper.dir/build.make test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_nimcp_memory_wrapper.dir/build
+.PHONY : unit_utils_memory_test_nimcp_memory_wrapper/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_memory_test_brain_pools_integration
 
 # Build rule for target.
@@ -27914,6 +27849,32 @@ unit_security_test_artifact_verify/fast:
 .PHONY : unit_security_test_artifact_verify/fast
 
 #=============================================================================
+# Target rules for targets named unit_security_test_bbb_api_validation
+
+# Build rule for target.
+unit_security_test_bbb_api_validation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_bbb_api_validation
+.PHONY : unit_security_test_bbb_api_validation
+
+# fast build rule for target.
+unit_security_test_bbb_api_validation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_bbb_api_validation.dir/build.make test/unit/security/CMakeFiles/unit_security_test_bbb_api_validation.dir/build
+.PHONY : unit_security_test_bbb_api_validation/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_error_codes
+
+# Build rule for target.
+unit_security_test_error_codes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_error_codes
+.PHONY : unit_security_test_error_codes
+
+# fast build rule for target.
+unit_security_test_error_codes/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_error_codes.dir/build.make test/unit/security/CMakeFiles/unit_security_test_error_codes.dir/build
+.PHONY : unit_security_test_error_codes/fast
+
+#=============================================================================
 # Target rules for targets named unit_security_immune_pattern_db
 
 # Build rule for target.
@@ -28486,6 +28447,19 @@ integration_security_test_bbb_immune/fast:
 .PHONY : integration_security_test_bbb_immune/fast
 
 #=============================================================================
+# Target rules for targets named integration_security_test_immune_error_routing
+
+# Build rule for target.
+integration_security_test_immune_error_routing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_immune_error_routing
+.PHONY : integration_security_test_immune_error_routing
+
+# fast build rule for target.
+integration_security_test_immune_error_routing/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_immune_error_routing.dir/build.make test/integration/security/CMakeFiles/integration_security_test_immune_error_routing.dir/build
+.PHONY : integration_security_test_immune_error_routing/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
 
 # Build rule for target.
@@ -28926,6 +28900,19 @@ regression_security_p0_fixes: cmake_check_build_system
 regression_security_p0_fixes/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_p0_fixes.dir/build.make test/regression/security/CMakeFiles/regression_security_p0_fixes.dir/build
 .PHONY : regression_security_p0_fixes/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_test_return_codes
+
+# Build rule for target.
+regression_security_test_return_codes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_test_return_codes
+.PHONY : regression_security_test_return_codes
+
+# fast build rule for target.
+regression_security_test_return_codes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_test_return_codes.dir/build.make test/regression/security/CMakeFiles/regression_security_test_return_codes.dir/build
+.PHONY : regression_security_test_return_codes/fast
 
 #=============================================================================
 # Target rules for targets named unit_language_orchestrator
@@ -37872,6 +37859,58 @@ test_genius_regression/fast:
 .PHONY : test_genius_regression/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_thread_test_nimcp_mutex_wrapper
+
+# Build rule for target.
+unit_utils_thread_test_nimcp_mutex_wrapper: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_thread_test_nimcp_mutex_wrapper
+.PHONY : unit_utils_thread_test_nimcp_mutex_wrapper
+
+# fast build rule for target.
+unit_utils_thread_test_nimcp_mutex_wrapper/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/thread/CMakeFiles/unit_utils_thread_test_nimcp_mutex_wrapper.dir/build.make test/unit/utils/thread/CMakeFiles/unit_utils_thread_test_nimcp_mutex_wrapper.dir/build
+.PHONY : unit_utils_thread_test_nimcp_mutex_wrapper/fast
+
+#=============================================================================
+# Target rules for targets named regression_thread_safety_test_thread_local_error_buffer
+
+# Build rule for target.
+regression_thread_safety_test_thread_local_error_buffer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_thread_safety_test_thread_local_error_buffer
+.PHONY : regression_thread_safety_test_thread_local_error_buffer
+
+# fast build rule for target.
+regression_thread_safety_test_thread_local_error_buffer/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/thread_safety/CMakeFiles/regression_thread_safety_test_thread_local_error_buffer.dir/build.make test/regression/thread_safety/CMakeFiles/regression_thread_safety_test_thread_local_error_buffer.dir/build
+.PHONY : regression_thread_safety_test_thread_local_error_buffer/fast
+
+#=============================================================================
+# Target rules for targets named regression_thread_safety_test_callback_wrapper_mutex
+
+# Build rule for target.
+regression_thread_safety_test_callback_wrapper_mutex: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_thread_safety_test_callback_wrapper_mutex
+.PHONY : regression_thread_safety_test_callback_wrapper_mutex
+
+# fast build rule for target.
+regression_thread_safety_test_callback_wrapper_mutex/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/thread_safety/CMakeFiles/regression_thread_safety_test_callback_wrapper_mutex.dir/build.make test/regression/thread_safety/CMakeFiles/regression_thread_safety_test_callback_wrapper_mutex.dir/build
+.PHONY : regression_thread_safety_test_callback_wrapper_mutex/fast
+
+#=============================================================================
+# Target rules for targets named integration_thread_safety_test_concurrent_module_init
+
+# Build rule for target.
+integration_thread_safety_test_concurrent_module_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_thread_safety_test_concurrent_module_init
+.PHONY : integration_thread_safety_test_concurrent_module_init
+
+# fast build rule for target.
+integration_thread_safety_test_concurrent_module_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/thread_safety/CMakeFiles/integration_thread_safety_test_concurrent_module_init.dir/build.make test/integration/thread_safety/CMakeFiles/integration_thread_safety_test_concurrent_module_init.dir/build
+.PHONY : integration_thread_safety_test_concurrent_module_init/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -38417,6 +38456,7 @@ help:
 	@echo "... e2e_security_pipeline"
 	@echo "... e2e_security_recovery"
 	@echo "... e2e_security_stack"
+	@echo "... e2e_security_test_bbb_immune_pipeline"
 	@echo "... e2e_snn_bridge_exception"
 	@echo "... e2e_statistics_test_information_theory_e2e"
 	@echo "... e2e_statistics_test_ml_statistics_e2e"
@@ -39065,6 +39105,7 @@ help:
 	@echo "... integration_security_test_game_theory"
 	@echo "... integration_security_test_hippocampus"
 	@echo "... integration_security_test_imagination"
+	@echo "... integration_security_test_immune_error_routing"
 	@echo "... integration_security_test_key_derivation"
 	@echo "... integration_security_test_knowledge_graph"
 	@echo "... integration_security_test_math_integration"
@@ -39102,6 +39143,7 @@ help:
 	@echo "... integration_test_kg_module_wiring"
 	@echo "... integration_thalamic"
 	@echo "... integration_thalamic_substrate_bridges"
+	@echo "... integration_thread_safety_test_concurrent_module_init"
 	@echo "... integration_training_dispatch"
 	@echo "... integration_training_exception"
 	@echo "... integration_training_symbolic_logic_hub"
@@ -39563,6 +39605,7 @@ help:
 	@echo "... regression_security_test_path_traversal"
 	@echo "... regression_security_test_pattern_db"
 	@echo "... regression_security_test_post_quantum"
+	@echo "... regression_security_test_return_codes"
 	@echo "... regression_security_test_security_consensus"
 	@echo "... regression_security_test_security_level"
 	@echo "... regression_security_test_shell_detector"
@@ -39590,6 +39633,8 @@ help:
 	@echo "... regression_thalamic_immune_bridge_test"
 	@echo "... regression_thalamic_router_test"
 	@echo "... regression_thalamus_test"
+	@echo "... regression_thread_safety_test_callback_wrapper_mutex"
+	@echo "... regression_thread_safety_test_thread_local_error_buffer"
 	@echo "... regression_training_dispatch"
 	@echo "... regression_training_symbolic_logic_hub"
 	@echo "... regression_training_test_cnn_backprop_regression"
@@ -40390,6 +40435,7 @@ help:
 	@echo "... unit_core_brain_test_cow_snapshot_enhanced"
 	@echo "... unit_core_brain_test_distributed_cow"
 	@echo "... unit_core_brain_test_kg_hierarchy"
+	@echo "... unit_core_brain_test_kg_wiring_completeness"
 	@echo "... unit_core_brain_test_memory_tracking"
 	@echo "... unit_core_brain_test_oscillations_immune_full_integration"
 	@echo "... unit_core_brain_test_pretrained_bio_async"
@@ -40944,6 +40990,7 @@ help:
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_artifact_verify"
 	@echo "... unit_security_test_bayesian_network"
+	@echo "... unit_security_test_bbb_api_validation"
 	@echo "... unit_security_test_bbb_immune_integration"
 	@echo "... unit_security_test_blood_brain_barrier"
 	@echo "... unit_security_test_capability_control"
@@ -40952,6 +40999,7 @@ help:
 	@echo "... unit_security_test_corrigibility"
 	@echo "... unit_security_test_emergency_halt"
 	@echo "... unit_security_test_encrypted_audit"
+	@echo "... unit_security_test_error_codes"
 	@echo "... unit_security_test_exception_handling"
 	@echo "... unit_security_test_fep_bridges"
 	@echo "... unit_security_test_graduated_autonomy"
@@ -41106,6 +41154,7 @@ help:
 	@echo "... unit_utils_memory_test_memory_alignment"
 	@echo "... unit_utils_memory_test_memory_leaks"
 	@echo "... unit_utils_memory_test_memory_pool"
+	@echo "... unit_utils_memory_test_nimcp_memory_wrapper"
 	@echo "... unit_utils_memory_test_page_cow"
 	@echo "... unit_utils_memory_test_page_cow_stress"
 	@echo "... unit_utils_memory_test_unified_memory"
@@ -41137,6 +41186,7 @@ help:
 	@echo "... unit_utils_ternary_test_ternary_core"
 	@echo "... unit_utils_test_api_consistency"
 	@echo "... unit_utils_test_kdtree"
+	@echo "... unit_utils_test_overflow_checks"
 	@echo "... unit_utils_test_queue_utils"
 	@echo "... unit_utils_test_string_safety"
 	@echo "... unit_utils_test_thread_utils"
@@ -41158,15 +41208,7 @@ help:
 	@echo "... unit_utils_test_utils_queue"
 	@echo "... unit_utils_test_utils_thread_pool"
 	@echo "... unit_utils_test_utils_vector"
-	@echo "... unit_utils_thread_test_platform_thread"
-	@echo "... unit_utils_thread_test_thread_safety"
-	@echo "... unit_utils_thread_unit_utils_thread_test_atomic"
-	@echo "... unit_utils_thread_unit_utils_thread_test_barrier"
-	@echo "... unit_utils_thread_unit_utils_thread_test_condvar"
-	@echo "... unit_utils_thread_unit_utils_thread_test_mutex_pool"
-	@echo "... unit_utils_thread_unit_utils_thread_test_rwlock"
-	@echo "... unit_utils_thread_unit_utils_thread_test_rwlock_extended"
-	@echo "... unit_utils_thread_unit_utils_thread_test_semaphore"
+	@echo "... unit_utils_thread_test_nimcp_mutex_wrapper"
 	@echo "... unit_utils_vcs_bio_async"
 	@echo "... unit_utils_vcs_integration"
 	@echo "... unit_vta_test_adapter"

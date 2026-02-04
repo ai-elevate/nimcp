@@ -19,34 +19,10 @@
 #include "utils/metrics/nimcp_metrics.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for metrics_py module */
-static nimcp_health_agent_t* g_metrics_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for metrics_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void metrics_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_metrics_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from metrics_py module */
-static inline void metrics_py_heartbeat(const char* operation, float progress) {
-    if (g_metrics_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_metrics_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metrics_py)
 
 //=============================================================================
 // MetricsCollector Type
@@ -276,7 +252,7 @@ static PyObject* MetricsCollector_export_tableau_csv(MetricsCollectorObject* sel
     success = nimcp_metrics_export_tableau_csv(self->collector, filename_copy);
     Py_END_ALLOW_THREADS
 
-    free(filename_copy);
+    nimcp_free(filename_copy);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export Tableau CSV");
@@ -308,7 +284,7 @@ static PyObject* MetricsCollector_export_powerbi_json(MetricsCollectorObject* se
     success = nimcp_metrics_export_powerbi_json(self->collector, filename_copy);
     Py_END_ALLOW_THREADS
 
-    free(filename_copy);
+    nimcp_free(filename_copy);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export PowerBI JSON");

@@ -15,33 +15,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for ethics_py module */
-static nimcp_health_agent_t* g_ethics_py_health_agent = NULL;
-
-/**
- * @brief Set health agent for ethics_py heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void ethics_py_set_health_agent(nimcp_health_agent_t* agent) {
-    g_ethics_py_health_agent = agent;
-}
-
-/** @brief Send heartbeat from ethics_py module */
-static inline void ethics_py_heartbeat(const char* operation, float progress) {
-    if (g_ethics_py_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_ethics_py_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ethics_py)
 
 /* ============================================================================
  * Ethics Type
@@ -108,7 +85,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
     }
 
     /* Convert to C array */
-    float* situation = (float*)malloc(sizeof(float) * (size_t)num_features);
+    float* situation = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (situation == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -117,7 +94,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
     for (Py_ssize_t i = 0; i < num_features; i++) {
         PyObject* item = PyList_GetItem(situation_list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
-            free(situation);
+            nimcp_free(situation);
             PyErr_SetString(PyExc_TypeError, "All situation values must be numbers");
             return NULL;
         }
@@ -131,7 +108,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
     status = nimcp_ethics_check(self->ethics, situation, (uint32_t)num_features, &score);
     Py_END_ALLOW_THREADS
 
-    free(situation);
+    nimcp_free(situation);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, "Ethics check failed");

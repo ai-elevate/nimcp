@@ -36,6 +36,7 @@ extern "C" {
 /* Include canonical error type definition */
 #ifndef NIMCP_ERROR_TYPE_DEFINED
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/memory/nimcp_memory.h"
 #endif
 
 /**
@@ -610,7 +611,7 @@ static inline const char* rcog_answer_status_name(rcog_answer_status_t status) {
  */
 static inline void rcog_query_result_free(rcog_query_result_t* result) {
     if (result && result->owns_data && result->data) {
-        free(result->data);
+        nimcp_free(result->data);
         result->data = NULL;
         result->owns_data = false;
     }

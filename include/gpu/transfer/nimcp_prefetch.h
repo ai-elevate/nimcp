@@ -75,6 +75,7 @@
 #include "common/nimcp_export.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/transfer/nimcp_async_transfer.h"
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -208,7 +209,7 @@ typedef struct nimcp_prefetch_manager {
 
     // Background thread
     pthread_t loader_thread;               /**< Background loader thread */
-    pthread_mutex_t mutex;                 /**< Synchronization mutex */
+    nimcp_mutex_t mutex;                 /**< Synchronization mutex */
     pthread_cond_t cond_producer;          /**< Producer condition (slot available) */
     pthread_cond_t cond_consumer;          /**< Consumer condition (batch ready) */
     bool thread_created;                   /**< Thread was created */

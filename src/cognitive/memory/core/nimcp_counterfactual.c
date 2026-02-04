@@ -29,31 +29,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(counterfactual)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for counterfactual module */
-static nimcp_health_agent_t* g_counterfactual_health_agent = NULL;
+static mesh_participant_id_t g_counterfactual_mesh_id = 0;
+static mesh_participant_registry_t* g_counterfactual_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for counterfactual heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void counterfactual_set_health_agent(nimcp_health_agent_t* agent) {
-    g_counterfactual_health_agent = agent;
+nimcp_error_t counterfactual_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_counterfactual_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "counterfactual", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "counterfactual";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_counterfactual_mesh_id);
+    if (err == NIMCP_SUCCESS) g_counterfactual_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from counterfactual module */
-static inline void counterfactual_heartbeat(const char* operation, float progress) {
-    if (g_counterfactual_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_counterfactual_health_agent, operation, progress);
+void counterfactual_mesh_unregister(void) {
+    if (g_counterfactual_mesh_registry && g_counterfactual_mesh_id != 0) {
+        mesh_participant_unregister(g_counterfactual_mesh_registry, g_counterfactual_mesh_id);
+        g_counterfactual_mesh_id = 0;
+        g_counterfactual_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from counterfactual module (instance-level) */
 static inline void counterfactual_heartbeat_instance(
@@ -484,7 +498,7 @@ counterfactual_system_t counterfactual_create(
 
     // Allocate system structure
     struct counterfactual_system_struct* system =
-        (struct counterfactual_system_struct*)calloc(1, sizeof(*system));
+        (struct counterfactual_system_struct*)nimcp_calloc(1, sizeof(*system));
     if (!system) {
         set_error("Failed to allocate counterfactual system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
@@ -499,10 +513,10 @@ counterfactual_system_t counterfactual_create(
 
     // Allocate causal matrix
     size_t matrix_size = cfg.causal_dim * cfg.causal_dim;
-    system->causal_matrix = (float*)calloc(matrix_size, sizeof(float));
+    system->causal_matrix = (float*)nimcp_calloc(matrix_size, sizeof(float));
     if (!system->causal_matrix) {
         set_error("Failed to allocate causal matrix");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
     system->causal_dim = cfg.causal_dim;
@@ -521,15 +535,15 @@ counterfactual_system_t counterfactual_create(
     // Allocate analysis cache
     if (cfg.max_analyses > 0) {
         system->analysis_cache =
-            (counterfactual_analysis_t**)calloc(cfg.max_analyses, sizeof(*system->analysis_cache));
+            (counterfactual_analysis_t**)nimcp_calloc(cfg.max_analyses, sizeof(*system->analysis_cache));
         system->cache_memory_ids =
-            (uint64_t*)calloc(cfg.max_analyses, sizeof(*system->cache_memory_ids));
+            (uint64_t*)nimcp_calloc(cfg.max_analyses, sizeof(*system->cache_memory_ids));
         if (!system->analysis_cache || !system->cache_memory_ids) {
             set_error("Failed to allocate analysis cache");
-            free(system->causal_matrix);
-            free(system->analysis_cache);
-            free(system->cache_memory_ids);
-            free(system);
+            nimcp_free(system->causal_matrix);
+            nimcp_free(system->analysis_cache);
+            nimcp_free(system->cache_memory_ids);
+            nimcp_free(system);
             return NULL;
         }
         system->cache_capacity = cfg.max_analyses;
@@ -560,15 +574,15 @@ void counterfactual_destroy(counterfactual_system_t system) {
 
             if (system->analysis_cache[i]) {
                 counterfactual_analysis_cleanup(system->analysis_cache[i]);
-                free(system->analysis_cache[i]);
+                nimcp_free(system->analysis_cache[i]);
             }
         }
-        free(system->analysis_cache);
+        nimcp_free(system->analysis_cache);
     }
 
-    free(system->cache_memory_ids);
-    free(system->causal_matrix);
-    free(system);
+    nimcp_free(system->cache_memory_ids);
+    nimcp_free(system->causal_matrix);
+    nimcp_free(system);
 }
 
 bool counterfactual_clear_cache(counterfactual_system_t system) {
@@ -591,7 +605,7 @@ bool counterfactual_clear_cache(counterfactual_system_t system) {
 
         if (system->analysis_cache[i]) {
             counterfactual_analysis_cleanup(system->analysis_cache[i]);
-            free(system->analysis_cache[i]);
+            nimcp_free(system->analysis_cache[i]);
             system->analysis_cache[i] = NULL;
         }
         system->cache_memory_ids[i] = 0;
@@ -1562,8 +1576,8 @@ bool counterfactual_analysis_init(
 
     // Allocate causes array
     if (max_causes > 0) {
-        analysis->causes = (prime_signature_t*)calloc(max_causes, sizeof(prime_signature_t));
-        analysis->causal_strengths = (float*)calloc(max_causes, sizeof(float));
+        analysis->causes = (prime_signature_t*)nimcp_calloc(max_causes, sizeof(prime_signature_t));
+        analysis->causal_strengths = (float*)nimcp_calloc(max_causes, sizeof(float));
         if (!analysis->causes || !analysis->causal_strengths) {
             set_error("Failed to allocate causes arrays");
             counterfactual_analysis_cleanup(analysis);
@@ -1574,7 +1588,7 @@ bool counterfactual_analysis_init(
 
     // Allocate counterfactuals array
     if (max_counterfactuals > 0) {
-        analysis->counterfactuals = (counterfactual_t*)calloc(max_counterfactuals,
+        analysis->counterfactuals = (counterfactual_t*)nimcp_calloc(max_counterfactuals,
                                                                sizeof(counterfactual_t));
         if (!analysis->counterfactuals) {
             set_error("Failed to allocate counterfactuals array");
@@ -1595,9 +1609,9 @@ void counterfactual_analysis_cleanup(counterfactual_analysis_t* analysis) {
     counterfactual_heartbeat("counterfactu_analysis_cleanup", 0.0f);
 
 
-    free(analysis->causes);
-    free(analysis->causal_strengths);
-    free(analysis->counterfactuals);
+    nimcp_free(analysis->causes);
+    nimcp_free(analysis->causal_strengths);
+    nimcp_free(analysis->counterfactuals);
 
     memset(analysis, 0, sizeof(*analysis));
 }

@@ -19,6 +19,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Error code compatibility aliases */
 
@@ -219,7 +221,7 @@ mesh_timing_level_config_t mesh_timing_default_level_config(mesh_timing_level_t 
 mesh_hierarchical_timing_t mesh_timing_create(
     const mesh_hierarchical_timing_config_t* config
 ) {
-    mesh_hierarchical_timing_t timing = (mesh_hierarchical_timing_t)calloc(
+    mesh_hierarchical_timing_t timing = (mesh_hierarchical_timing_t)nimcp_calloc(
         1, sizeof(struct mesh_hierarchical_timing_internal));
     if (!timing) return NULL;
 
@@ -246,7 +248,7 @@ mesh_hierarchical_timing_t mesh_timing_create(
 }
 
 void mesh_timing_destroy(mesh_hierarchical_timing_t timing) {
-    free(timing);
+    nimcp_free(timing);
 }
 
 /* ============================================================================
@@ -320,9 +322,11 @@ nimcp_error_t mesh_timing_generate_batch(
     size_t count
 ) {
     if (!timing || !intervals || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (level >= MESH_TIMING_NUM_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -403,6 +407,7 @@ nimcp_error_t mesh_timing_report_latency(
     float observed_ms
 ) {
     if (!timing || level >= MESH_TIMING_NUM_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!timing->enable_adaptation) {
@@ -472,6 +477,7 @@ nimcp_error_t mesh_timing_update_level_config(
     const mesh_timing_level_config_t* config
 ) {
     if (!timing || !config || level >= MESH_TIMING_NUM_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -532,6 +538,7 @@ nimcp_error_t mesh_timing_get_level_stats(
     mesh_timing_level_stats_t* stats
 ) {
     if (!timing || !stats || level >= MESH_TIMING_NUM_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -562,7 +569,7 @@ bool mesh_timing_validate_pink_noise(
     }
 
     /* Generate samples and check basic statistical properties */
-    float* samples = (float*)malloc(num_samples * sizeof(float));
+    float* samples = (float*)nimcp_malloc(num_samples * sizeof(float));
     if (!samples) return false;
 
     float sum = 0.0f;
@@ -578,7 +585,7 @@ bool mesh_timing_validate_pink_noise(
     float variance = (sum_sq / num_samples) - (mean * mean);
     float std = sqrtf(variance > 0 ? variance : 0);
 
-    free(samples);
+    nimcp_free(samples);
 
     /* Pink noise should have:
      * - Mean close to 0 (< 0.3)

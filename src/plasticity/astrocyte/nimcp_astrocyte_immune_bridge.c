@@ -18,36 +18,13 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for astrocyte_immune_bridge module */
-static nimcp_health_agent_t* g_astrocyte_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for astrocyte_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void astrocyte_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_astrocyte_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from astrocyte_immune_bridge module */
-static inline void astrocyte_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_astrocyte_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_astrocyte_immune_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_immune_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(astrocyte_immune_bridge)
@@ -153,14 +130,14 @@ astrocyte_immune_bridge_t* astrocyte_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("Astrocyte-immune bridge mutex allocation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Astrocyte-immune bridge mutex allocation failed");
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
+    nimcp_mutex_init((nimcp_mutex_t*)bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Astrocyte-immune bridge created successfully");
     return bridge;
@@ -176,7 +153,7 @@ void astrocyte_immune_bridge_destroy(astrocyte_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -196,7 +173,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "Immune system is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "astrocyte_immune_apply_cytokine_effects: immune_system is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     cytokine_astrocyte_effects_t* effects = &bridge->cytokine_effects;
 
@@ -245,7 +222,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge) {
         pro_inflammatory_factor - anti_inflammatory_factor, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -259,7 +236,7 @@ int astrocyte_immune_apply_inflammation_effects(
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "Immune system is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "astrocyte_immune_apply_inflammation_effects: immune_system is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     inflammation_astrocyte_state_t* state = &bridge->inflammation_state;
 
@@ -298,7 +275,7 @@ int astrocyte_immune_apply_inflammation_effects(
         state->a2_transition_progress = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -311,7 +288,7 @@ int astrocyte_immune_transition_reactive_state(
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_transition_reactive_state: bridge is NULL");
     if (!bridge->config.enable_reactive_state_control) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     astrocyte_reactive_state_t target_state =
         bridge->inflammation_state.target_state;
@@ -329,7 +306,7 @@ int astrocyte_immune_transition_reactive_state(
         bridge->reactive_state_transitions++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -343,7 +320,7 @@ int astrocyte_immune_detect_dysfunction(astrocyte_immune_bridge_t* bridge) {
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_detect_dysfunction: bridge is NULL");
     if (!bridge->config.enable_dysfunction_detection) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     astrocyte_dysfunction_state_t* state = &bridge->dysfunction_state;
 
@@ -391,7 +368,7 @@ int astrocyte_immune_detect_dysfunction(astrocyte_immune_bridge_t* bridge) {
     if (state->excitotoxicity_risk) severity += 0.3f;
     state->dysfunction_severity = clamp_f(severity, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -503,9 +480,9 @@ int astrocyte_immune_get_cytokine_effects(
     NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_get_cytokine_effects: effects is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_astrocyte_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -519,9 +496,9 @@ int astrocyte_immune_get_inflammation_state(
     NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_get_inflammation_state: state is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_astrocyte_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -535,9 +512,9 @@ int astrocyte_immune_get_dysfunction_state(
     NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_get_dysfunction_state: state is NULL");
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->dysfunction_state, sizeof(astrocyte_dysfunction_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

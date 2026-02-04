@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -409,6 +410,7 @@ int vae_training_step(vae_training_bridge_t* bridge,
 {
     if (!bridge || !input || !target || !result) return NIMCP_ERROR_VAE_TRAIN_NULL;
     if (bridge->state != VAE_TRAIN_STATE_READY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NOT_CONNECTED, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NOT_CONNECTED;
     }
 
@@ -485,6 +487,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_TRAIN_STATE_READY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NO_MEMORY, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NO_MEMORY;
     }
 
@@ -496,6 +499,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         bridge->state = VAE_TRAIN_STATE_READY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_FORWARD_FAIL, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_FORWARD_FAIL;
     }
 
@@ -511,6 +515,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         nimcp_tensor_destroy(log_var_tensor);
         vae_training_forward_result_free(result);
         bridge->state = VAE_TRAIN_STATE_READY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NO_MEMORY, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NO_MEMORY;
     }
 
@@ -570,6 +575,7 @@ int vae_training_compute_loss(vae_training_bridge_t* bridge,
                                vae_training_loss_result_t* result)
 {
     if (!bridge || !forward || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NULL, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NULL;
     }
 
@@ -675,6 +681,7 @@ int vae_training_backward(vae_training_bridge_t* bridge,
     if (result->has_nan) {
         bridge->stats.nan_gradient_count++;
         bridge->state = VAE_TRAIN_STATE_READY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NAN_GRADIENT, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NAN_GRADIENT;
     }
 
@@ -734,6 +741,7 @@ int vae_training_batch_step(vae_training_bridge_t* bridge,
                              vae_training_step_result_t* result)
 {
     if (!bridge || !inputs || !targets || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NULL, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NULL;
     }
 
@@ -780,6 +788,7 @@ int vae_training_sequence_step(vae_training_bridge_t* bridge,
                                 vae_training_step_result_t* result)
 {
     if (!bridge || !sequence || !targets || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NULL, "vae_training_bridge: error condition");
         return NIMCP_ERROR_VAE_TRAIN_NULL;
     }
 

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -132,13 +133,13 @@ static inline float safe_var(const float* x, uint32_t n) {
 static void fft_recursive(float* real, float* imag, uint32_t n, int sign) {
     if (n <= 1) return;
 
-    float* even_r = (float*)malloc(n/2 * sizeof(float));
-    float* even_i = (float*)malloc(n/2 * sizeof(float));
-    float* odd_r = (float*)malloc(n/2 * sizeof(float));
-    float* odd_i = (float*)malloc(n/2 * sizeof(float));
+    float* even_r = (float*)nimcp_malloc(n/2 * sizeof(float));
+    float* even_i = (float*)nimcp_malloc(n/2 * sizeof(float));
+    float* odd_r = (float*)nimcp_malloc(n/2 * sizeof(float));
+    float* odd_i = (float*)nimcp_malloc(n/2 * sizeof(float));
 
     if (!even_r || !even_i || !odd_r || !odd_i) {
-        free(even_r); free(even_i); free(odd_r); free(odd_i);
+        nimcp_free(even_r); nimcp_free(even_i); nimcp_free(odd_r); nimcp_free(odd_i);
         return;
     }
 
@@ -166,7 +167,7 @@ static void fft_recursive(float* real, float* imag, uint32_t n, int sign) {
         imag[k + n/2] = even_i[k] - t_i;
     }
 
-    free(even_r); free(even_i); free(odd_r); free(odd_i);
+    nimcp_free(even_r); nimcp_free(even_i); nimcp_free(odd_r); nimcp_free(odd_i);
 }
 
 static uint32_t next_power_of_2(uint32_t n) {
@@ -179,10 +180,10 @@ static nimcp_ts_result_t compute_fft_real(const float* x, uint32_t n, uint32_t n
                                           float* out_real, float* out_imag) {
     if (!x || !out_real || !out_imag) return NIMCP_TS_ERROR_NULL;
 
-    float* real = (float*)calloc(nfft, sizeof(float));
-    float* imag = (float*)calloc(nfft, sizeof(float));
+    float* real = (float*)nimcp_calloc(nfft, sizeof(float));
+    float* imag = (float*)nimcp_calloc(nfft, sizeof(float));
     if (!real || !imag) {
-        free(real); free(imag);
+        nimcp_free(real); nimcp_free(imag);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "FFT allocation failed");
         return NIMCP_TS_ERROR_MEMORY;
     }
@@ -194,8 +195,8 @@ static nimcp_ts_result_t compute_fft_real(const float* x, uint32_t n, uint32_t n
     memcpy(out_real, real, nfft * sizeof(float));
     memcpy(out_imag, imag, nfft * sizeof(float));
 
-    free(real);
-    free(imag);
+    nimcp_free(real);
+    nimcp_free(imag);
     return NIMCP_TS_OK;
 }
 
@@ -241,12 +242,12 @@ nimcp_ts_result_t nimcp_ts_acf(
 
     if (max_lag == 0 || max_lag >= n) max_lag = n - 1;
 
-    result->acf = (float*)malloc((max_lag + 1) * sizeof(float));
-    result->confidence_upper = (float*)malloc((max_lag + 1) * sizeof(float));
-    result->confidence_lower = (float*)malloc((max_lag + 1) * sizeof(float));
+    result->acf = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
+    result->confidence_upper = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
+    result->confidence_lower = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
 
     if (!result->acf || !result->confidence_upper || !result->confidence_lower) {
-        free(result->acf); free(result->confidence_upper); free(result->confidence_lower);
+        nimcp_free(result->acf); nimcp_free(result->confidence_upper); nimcp_free(result->confidence_lower);
         result->acf = result->confidence_upper = result->confidence_lower = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ACF allocation failed");
         return NIMCP_TS_ERROR_MEMORY;
@@ -304,12 +305,12 @@ nimcp_ts_result_t nimcp_ts_pacf(
     if (n < 2) return NIMCP_TS_ERROR_SIZE;
     if (max_lag == 0 || max_lag >= n) max_lag = n / 2;
 
-    result->pacf = (float*)malloc((max_lag + 1) * sizeof(float));
-    result->confidence_upper = (float*)malloc((max_lag + 1) * sizeof(float));
-    result->confidence_lower = (float*)malloc((max_lag + 1) * sizeof(float));
+    result->pacf = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
+    result->confidence_upper = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
+    result->confidence_lower = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
 
     if (!result->pacf || !result->confidence_upper || !result->confidence_lower) {
-        free(result->pacf); free(result->confidence_upper); free(result->confidence_lower);
+        nimcp_free(result->pacf); nimcp_free(result->confidence_upper); nimcp_free(result->confidence_lower);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PACF allocation failed");
         return NIMCP_TS_ERROR_MEMORY;
     }
@@ -318,9 +319,9 @@ nimcp_ts_result_t nimcp_ts_pacf(
     result->n = n;
     result->confidence_level = confidence_level;
 
-    float* acf = (float*)malloc((max_lag + 1) * sizeof(float));
+    float* acf = (float*)nimcp_malloc((max_lag + 1) * sizeof(float));
     if (!acf) {
-        free(result->pacf); free(result->confidence_upper); free(result->confidence_lower);
+        nimcp_free(result->pacf); nimcp_free(result->confidence_upper); nimcp_free(result->confidence_lower);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -331,10 +332,10 @@ nimcp_ts_result_t nimcp_ts_pacf(
     result->pacf[0] = 1.0f;
     if (max_lag >= 1) result->pacf[1] = acf[1];
 
-    float* phi = (float*)calloc(max_lag + 1, sizeof(float));
-    float* phi_new = (float*)calloc(max_lag + 1, sizeof(float));
+    float* phi = (float*)nimcp_calloc(max_lag + 1, sizeof(float));
+    float* phi_new = (float*)nimcp_calloc(max_lag + 1, sizeof(float));
     if (!phi || !phi_new) {
-        free(acf); free(phi); free(phi_new);
+        nimcp_free(acf); nimcp_free(phi); nimcp_free(phi_new);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -360,7 +361,7 @@ nimcp_ts_result_t nimcp_ts_pacf(
         }
     }
 
-    free(acf); free(phi); free(phi_new);
+    nimcp_free(acf); nimcp_free(phi); nimcp_free(phi_new);
 
     float z = nimcp_stats_quantile_standard_normal(0.5f + confidence_level / 2.0f);
     float ci = z / sqrtf((float)n);
@@ -476,13 +477,13 @@ nimcp_ts_result_t nimcp_ts_periodogram(
 
     uint32_t n_freqs = nfft / 2 + 1;
 
-    result->frequencies = (float*)malloc(n_freqs * sizeof(float));
-    result->power = (float*)malloc(n_freqs * sizeof(float));
+    result->frequencies = (float*)nimcp_malloc(n_freqs * sizeof(float));
+    result->power = (float*)nimcp_malloc(n_freqs * sizeof(float));
     result->confidence_lower = NULL;
     result->confidence_upper = NULL;
 
     if (!result->frequencies || !result->power) {
-        free(result->frequencies); free(result->power);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Periodogram alloc failed");
         return NIMCP_TS_ERROR_MEMORY;
     }
@@ -495,11 +496,11 @@ nimcp_ts_result_t nimcp_ts_periodogram(
         result->frequencies[i] = i * result->df;
     }
 
-    float* data = (float*)malloc(n * sizeof(float));
-    float* win = (float*)malloc(n * sizeof(float));
+    float* data = (float*)nimcp_malloc(n * sizeof(float));
+    float* win = (float*)nimcp_malloc(n * sizeof(float));
     if (!data || !win) {
-        free(data); free(win);
-        free(result->frequencies); free(result->power);
+        nimcp_free(data); nimcp_free(win);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -517,18 +518,18 @@ nimcp_ts_result_t nimcp_ts_periodogram(
         win_sum_sq += win[i] * win[i];
     }
 
-    float* fft_real_arr = (float*)calloc(nfft, sizeof(float));
-    float* fft_imag = (float*)calloc(nfft, sizeof(float));
+    float* fft_real_arr = (float*)nimcp_calloc(nfft, sizeof(float));
+    float* fft_imag = (float*)nimcp_calloc(nfft, sizeof(float));
     if (!fft_real_arr || !fft_imag) {
-        free(data); free(win); free(fft_real_arr); free(fft_imag);
-        free(result->frequencies); free(result->power);
+        nimcp_free(data); nimcp_free(win); nimcp_free(fft_real_arr); nimcp_free(fft_imag);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
     nimcp_ts_result_t fft_result = compute_fft_real(data, n, nfft, fft_real_arr, fft_imag);
     if (fft_result != NIMCP_TS_OK) {
-        free(data); free(win); free(fft_real_arr); free(fft_imag);
-        free(result->frequencies); free(result->power);
+        nimcp_free(data); nimcp_free(win); nimcp_free(fft_real_arr); nimcp_free(fft_imag);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return fft_result;
     }
 
@@ -543,7 +544,7 @@ nimcp_ts_result_t nimcp_ts_periodogram(
         result->total_power += (float)pwr;
     }
 
-    free(data); free(win); free(fft_real_arr); free(fft_imag);
+    nimcp_free(data); nimcp_free(win); nimcp_free(fft_real_arr); nimcp_free(fft_imag);
     return NIMCP_TS_OK;
 }
 
@@ -570,13 +571,13 @@ nimcp_ts_result_t nimcp_ts_welch_psd(
 
     uint32_t n_freqs = nfft / 2 + 1;
 
-    result->frequencies = (float*)malloc(n_freqs * sizeof(float));
-    result->power = (float*)calloc(n_freqs, sizeof(float));
+    result->frequencies = (float*)nimcp_malloc(n_freqs * sizeof(float));
+    result->power = (float*)nimcp_calloc(n_freqs, sizeof(float));
     result->confidence_lower = NULL;
     result->confidence_upper = NULL;
 
     if (!result->frequencies || !result->power) {
-        free(result->frequencies); free(result->power);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -588,9 +589,9 @@ nimcp_ts_result_t nimcp_ts_welch_psd(
         result->frequencies[i] = i * result->df;
     }
 
-    float* win = (float*)malloc(segment_length * sizeof(float));
+    float* win = (float*)nimcp_malloc(segment_length * sizeof(float));
     if (!win) {
-        free(result->frequencies); free(result->power);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return NIMCP_TS_ERROR_MEMORY;
     }
     nimcp_ts_window_function(segment_length, window, 0, win);
@@ -600,13 +601,13 @@ nimcp_ts_result_t nimcp_ts_welch_psd(
         win_sum_sq += win[i] * win[i];
     }
 
-    float* seg = (float*)malloc(segment_length * sizeof(float));
-    float* fft_r = (float*)calloc(nfft, sizeof(float));
-    float* fft_i = (float*)calloc(nfft, sizeof(float));
+    float* seg = (float*)nimcp_malloc(segment_length * sizeof(float));
+    float* fft_r = (float*)nimcp_calloc(nfft, sizeof(float));
+    float* fft_i = (float*)nimcp_calloc(nfft, sizeof(float));
 
     if (!seg || !fft_r || !fft_i) {
-        free(win); free(seg); free(fft_r); free(fft_i);
-        free(result->frequencies); free(result->power);
+        nimcp_free(win); nimcp_free(seg); nimcp_free(fft_r); nimcp_free(fft_i);
+        nimcp_free(result->frequencies); nimcp_free(result->power);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -641,7 +642,7 @@ nimcp_ts_result_t nimcp_ts_welch_psd(
         result->total_power += result->power[i];
     }
 
-    free(win); free(seg); free(fft_r); free(fft_i);
+    nimcp_free(win); nimcp_free(seg); nimcp_free(fft_r); nimcp_free(fft_i);
     return NIMCP_TS_OK;
 }
 
@@ -684,49 +685,49 @@ float nimcp_ts_spectral_entropy(
 
 void nimcp_psd_free(nimcp_psd_result_t* result) {
     if (result) {
-        free(result->frequencies);
-        free(result->power);
-        free(result->confidence_lower);
-        free(result->confidence_upper);
+        nimcp_free(result->frequencies);
+        nimcp_free(result->power);
+        nimcp_free(result->confidence_lower);
+        nimcp_free(result->confidence_upper);
         memset(result, 0, sizeof(nimcp_psd_result_t));
     }
 }
 
 void nimcp_coherence_free(nimcp_coherence_result_t* result) {
     if (result) {
-        free(result->frequencies);
-        free(result->coherence);
-        free(result->phase);
-        free(result->confidence);
+        nimcp_free(result->frequencies);
+        nimcp_free(result->coherence);
+        nimcp_free(result->phase);
+        nimcp_free(result->confidence);
         memset(result, 0, sizeof(nimcp_coherence_result_t));
     }
 }
 
 void nimcp_cross_spectrum_free(nimcp_cross_spectrum_result_t* result) {
     if (result) {
-        free(result->frequencies);
-        free(result->csd_real);
-        free(result->csd_imag);
-        free(result->magnitude);
-        free(result->phase);
+        nimcp_free(result->frequencies);
+        nimcp_free(result->csd_real);
+        nimcp_free(result->csd_imag);
+        nimcp_free(result->magnitude);
+        nimcp_free(result->phase);
         memset(result, 0, sizeof(nimcp_cross_spectrum_result_t));
     }
 }
 
 void nimcp_acf_free(nimcp_acf_result_t* result) {
     if (result) {
-        free(result->acf);
-        free(result->confidence_upper);
-        free(result->confidence_lower);
+        nimcp_free(result->acf);
+        nimcp_free(result->confidence_upper);
+        nimcp_free(result->confidence_lower);
         memset(result, 0, sizeof(nimcp_acf_result_t));
     }
 }
 
 void nimcp_pacf_free(nimcp_pacf_result_t* result) {
     if (result) {
-        free(result->pacf);
-        free(result->confidence_upper);
-        free(result->confidence_lower);
+        nimcp_free(result->pacf);
+        nimcp_free(result->confidence_upper);
+        nimcp_free(result->confidence_lower);
         memset(result, 0, sizeof(nimcp_pacf_result_t));
     }
 }
@@ -843,7 +844,7 @@ nimcp_ts_result_t nimcp_ts_difference(const float* x, uint32_t n, uint32_t d, fl
     if (!x || !out) return NIMCP_TS_ERROR_NULL;
     if (n <= d) return NIMCP_TS_ERROR_SIZE;
 
-    float* temp = (float*)malloc(n * sizeof(float));
+    float* temp = (float*)nimcp_malloc(n * sizeof(float));
     if (!temp) return NIMCP_TS_ERROR_MEMORY;
 
     memcpy(temp, x, n * sizeof(float));
@@ -856,7 +857,7 @@ nimcp_ts_result_t nimcp_ts_difference(const float* x, uint32_t n, uint32_t d, fl
     }
 
     memcpy(out, temp, (n - d) * sizeof(float));
-    free(temp);
+    nimcp_free(temp);
     return NIMCP_TS_OK;
 }
 
@@ -1027,10 +1028,10 @@ nimcp_ts_result_t nimcp_ts_cusum(
     if (threshold <= 0.0f) threshold = 5.0f * std;
     if (drift <= 0.0f) drift = 0.5f * std;
 
-    uint32_t* temp_locs = (uint32_t*)malloc(n * sizeof(uint32_t));
-    float* temp_stats = (float*)malloc(n * sizeof(float));
+    uint32_t* temp_locs = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    float* temp_stats = (float*)nimcp_malloc(n * sizeof(float));
     if (!temp_locs || !temp_stats) {
-        free(temp_locs); free(temp_stats);
+        nimcp_free(temp_locs); nimcp_free(temp_stats);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -1053,11 +1054,11 @@ nimcp_ts_result_t nimcp_ts_cusum(
     }
 
     if (n_detected > 0) {
-        result->locations = (uint32_t*)malloc(n_detected * sizeof(uint32_t));
-        result->statistics = (float*)malloc(n_detected * sizeof(float));
+        result->locations = (uint32_t*)nimcp_malloc(n_detected * sizeof(uint32_t));
+        result->statistics = (float*)nimcp_malloc(n_detected * sizeof(float));
         if (!result->locations || !result->statistics) {
-            free(temp_locs); free(temp_stats);
-            free(result->locations); free(result->statistics);
+            nimcp_free(temp_locs); nimcp_free(temp_stats);
+            nimcp_free(result->locations); nimcp_free(result->statistics);
             return NIMCP_TS_ERROR_MEMORY;
         }
         memcpy(result->locations, temp_locs, n_detected * sizeof(uint32_t));
@@ -1071,8 +1072,8 @@ nimcp_ts_result_t nimcp_ts_cusum(
     result->threshold = threshold;
     result->confidence = 0.95f;
 
-    free(temp_locs);
-    free(temp_stats);
+    nimcp_free(temp_locs);
+    nimcp_free(temp_stats);
     return NIMCP_TS_OK;
 }
 
@@ -1082,7 +1083,7 @@ nimcp_ts_result_t nimcp_ts_pettitt_test(
     if (!x || !result) return NIMCP_TS_ERROR_NULL;
     if (n < 5) return NIMCP_TS_ERROR_SIZE;
 
-    int32_t* U = (int32_t*)calloc(n, sizeof(int32_t));
+    int32_t* U = (int32_t*)nimcp_calloc(n, sizeof(int32_t));
     if (!U) return NIMCP_TS_ERROR_MEMORY;
 
     for (uint32_t t = 0; t < n - 1; t++) {
@@ -1107,11 +1108,11 @@ nimcp_ts_result_t nimcp_ts_pettitt_test(
         }
     }
 
-    result->locations = (uint32_t*)malloc(sizeof(uint32_t));
-    result->statistics = (float*)malloc(sizeof(float));
+    result->locations = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
+    result->statistics = (float*)nimcp_malloc(sizeof(float));
     if (!result->locations || !result->statistics) {
-        free(U);
-        free(result->locations); free(result->statistics);
+        nimcp_free(U);
+        nimcp_free(result->locations); nimcp_free(result->statistics);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -1124,14 +1125,14 @@ nimcp_ts_result_t nimcp_ts_pettitt_test(
     result->threshold = (float)p;
     result->confidence = 1.0f - (float)p;
 
-    free(U);
+    nimcp_free(U);
     return NIMCP_TS_OK;
 }
 
 void nimcp_changepoint_free(nimcp_changepoint_result_t* result) {
     if (result) {
-        free(result->locations);
-        free(result->statistics);
+        nimcp_free(result->locations);
+        nimcp_free(result->statistics);
         memset(result, 0, sizeof(nimcp_changepoint_result_t));
     }
 }
@@ -1149,7 +1150,7 @@ nimcp_ts_result_t nimcp_ts_granger_causality(
 
     uint32_t T = n - max_lag;
 
-    float* Y = (float*)malloc(T * sizeof(float));
+    float* Y = (float*)nimcp_malloc(T * sizeof(float));
     if (!Y) return NIMCP_TS_ERROR_MEMORY;
 
     for (uint32_t t = 0; t < T; t++) {
@@ -1182,7 +1183,7 @@ nimcp_ts_result_t nimcp_ts_granger_causality(
     result->p_value = 1.0f - nimcp_stats_cdf_f((float)F, (float)df_num, (float)df_denom);
     result->significant = (result->p_value < 0.05f);
 
-    free(Y);
+    nimcp_free(Y);
     return NIMCP_TS_OK;
 }
 
@@ -1232,7 +1233,7 @@ nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
         return NULL;
     }
 
-    nimcp_arima_model_t* model = (nimcp_arima_model_t*)calloc(1, sizeof(nimcp_arima_model_t));
+    nimcp_arima_model_t* model = (nimcp_arima_model_t*)nimcp_calloc(1, sizeof(nimcp_arima_model_t));
     if (!model) return NULL;
 
     model->p = p;
@@ -1240,18 +1241,18 @@ nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
     model->q = q;
 
     if (p > 0) {
-        model->ar_coefs = (float*)calloc(p, sizeof(float));
+        model->ar_coefs = (float*)nimcp_calloc(p, sizeof(float));
         if (!model->ar_coefs) {
-            free(model);
+            nimcp_free(model);
             return NULL;
         }
     }
 
     if (q > 0) {
-        model->ma_coefs = (float*)calloc(q, sizeof(float));
+        model->ma_coefs = (float*)nimcp_calloc(q, sizeof(float));
         if (!model->ma_coefs) {
-            free(model->ar_coefs);
-            free(model);
+            nimcp_free(model->ar_coefs);
+            nimcp_free(model);
             return NULL;
         }
     }
@@ -1261,9 +1262,9 @@ nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
 
 void nimcp_arima_destroy(nimcp_arima_model_t* model) {
     if (model) {
-        free(model->ar_coefs);
-        free(model->ma_coefs);
-        free(model);
+        nimcp_free(model->ar_coefs);
+        nimcp_free(model->ma_coefs);
+        nimcp_free(model);
     }
 }
 
@@ -1273,7 +1274,7 @@ nimcp_ts_result_t nimcp_arima_fit(
     if (!x || !model) return NIMCP_TS_ERROR_NULL;
     if (n < model->p + model->d + model->q + 10) return NIMCP_TS_ERROR_SIZE;
 
-    float* diff_x = (float*)malloc(n * sizeof(float));
+    float* diff_x = (float*)nimcp_malloc(n * sizeof(float));
     if (!diff_x) return NIMCP_TS_ERROR_MEMORY;
 
     memcpy(diff_x, x, n * sizeof(float));
@@ -1287,9 +1288,9 @@ nimcp_ts_result_t nimcp_arima_fit(
     }
 
     if (model->p > 0) {
-        float* r = (float*)malloc((model->p + 1) * sizeof(float));
+        float* r = (float*)nimcp_malloc((model->p + 1) * sizeof(float));
         if (!r) {
-            free(diff_x);
+            nimcp_free(diff_x);
             return NIMCP_TS_ERROR_MEMORY;
         }
 
@@ -1297,11 +1298,11 @@ nimcp_ts_result_t nimcp_arima_fit(
             r[i] = nimcp_ts_autocorrelation(diff_x, diff_n, i);
         }
 
-        float* phi = (float*)calloc(model->p, sizeof(float));
-        float* phi_new = (float*)calloc(model->p, sizeof(float));
+        float* phi = (float*)nimcp_calloc(model->p, sizeof(float));
+        float* phi_new = (float*)nimcp_calloc(model->p, sizeof(float));
 
         if (!phi || !phi_new) {
-            free(r); free(diff_x); free(phi); free(phi_new);
+            nimcp_free(r); nimcp_free(diff_x); nimcp_free(phi); nimcp_free(phi_new);
             return NIMCP_TS_ERROR_MEMORY;
         }
 
@@ -1329,7 +1330,7 @@ nimcp_ts_result_t nimcp_arima_fit(
 
         memcpy(model->ar_coefs, phi, model->p * sizeof(float));
 
-        free(r); free(phi); free(phi_new);
+        nimcp_free(r); nimcp_free(phi); nimcp_free(phi_new);
     }
 
     for (uint32_t i = 0; i < model->q; i++) {
@@ -1364,7 +1365,7 @@ nimcp_ts_result_t nimcp_arima_fit(
     model->bic = (float)(-2 * ll + k * log(count));
     model->aicc = model->aic + (float)(2.0 * k * (k + 1) / (count - k - 1));
 
-    free(diff_x);
+    nimcp_free(diff_x);
     return NIMCP_TS_OK;
 }
 
@@ -1376,7 +1377,7 @@ nimcp_ts_result_t nimcp_arima_predict(
     if (!model->fitted) return NIMCP_TS_ERROR_PARAMS;
     if (horizon == 0) return NIMCP_TS_ERROR_SIZE;
 
-    float* diff_x = (float*)malloc((n + horizon) * sizeof(float));
+    float* diff_x = (float*)nimcp_malloc((n + horizon) * sizeof(float));
     if (!diff_x) return NIMCP_TS_ERROR_MEMORY;
 
     memcpy(diff_x, x, n * sizeof(float));
@@ -1400,9 +1401,9 @@ nimcp_ts_result_t nimcp_arima_predict(
         diff_x[diff_n + h] = pred;
     }
 
-    float* integrated = (float*)malloc((n + horizon) * sizeof(float));
+    float* integrated = (float*)nimcp_malloc((n + horizon) * sizeof(float));
     if (!integrated) {
-        free(diff_x);
+        nimcp_free(diff_x);
         return NIMCP_TS_ERROR_MEMORY;
     }
 
@@ -1427,8 +1428,8 @@ nimcp_ts_result_t nimcp_arima_predict(
         }
     }
 
-    free(diff_x);
-    free(integrated);
+    nimcp_free(diff_x);
+    nimcp_free(integrated);
     return NIMCP_TS_OK;
 }
 
@@ -1450,18 +1451,18 @@ nimcp_ts_result_t nimcp_arima_aic_bic(
 //=============================================================================
 
 nimcp_kalman_state_t* nimcp_kalman_create(uint32_t state_dim, uint32_t obs_dim) {
-    nimcp_kalman_state_t* state = (nimcp_kalman_state_t*)calloc(1, sizeof(nimcp_kalman_state_t));
+    nimcp_kalman_state_t* state = (nimcp_kalman_state_t*)nimcp_calloc(1, sizeof(nimcp_kalman_state_t));
     if (!state) return NULL;
 
     state->state_dim = state_dim;
     state->obs_dim = obs_dim;
 
-    state->state = (float*)calloc(state_dim, sizeof(float));
-    state->covariance = (float*)calloc(state_dim * state_dim, sizeof(float));
-    state->F = (float*)calloc(state_dim * state_dim, sizeof(float));
-    state->H = (float*)calloc(obs_dim * state_dim, sizeof(float));
-    state->Q = (float*)calloc(state_dim * state_dim, sizeof(float));
-    state->R = (float*)calloc(obs_dim * obs_dim, sizeof(float));
+    state->state = (float*)nimcp_calloc(state_dim, sizeof(float));
+    state->covariance = (float*)nimcp_calloc(state_dim * state_dim, sizeof(float));
+    state->F = (float*)nimcp_calloc(state_dim * state_dim, sizeof(float));
+    state->H = (float*)nimcp_calloc(obs_dim * state_dim, sizeof(float));
+    state->Q = (float*)nimcp_calloc(state_dim * state_dim, sizeof(float));
+    state->R = (float*)nimcp_calloc(obs_dim * obs_dim, sizeof(float));
 
     if (!state->state || !state->covariance || !state->F || !state->H ||
         !state->Q || !state->R) {
@@ -1474,13 +1475,13 @@ nimcp_kalman_state_t* nimcp_kalman_create(uint32_t state_dim, uint32_t obs_dim) 
 
 void nimcp_kalman_free(nimcp_kalman_state_t* state) {
     if (state) {
-        free(state->state);
-        free(state->covariance);
-        free(state->F);
-        free(state->H);
-        free(state->Q);
-        free(state->R);
-        free(state);
+        nimcp_free(state->state);
+        nimcp_free(state->covariance);
+        nimcp_free(state->F);
+        nimcp_free(state->H);
+        nimcp_free(state->Q);
+        nimcp_free(state->R);
+        nimcp_free(state);
     }
 }
 
@@ -1532,7 +1533,7 @@ nimcp_ts_result_t nimcp_kalman_init_local_trend(
 }
 
 nimcp_hw_params_t* nimcp_hw_create(uint32_t period, bool additive) {
-    nimcp_hw_params_t* params = (nimcp_hw_params_t*)calloc(1, sizeof(nimcp_hw_params_t));
+    nimcp_hw_params_t* params = (nimcp_hw_params_t*)nimcp_calloc(1, sizeof(nimcp_hw_params_t));
     if (!params) return NULL;
 
     params->period = period;
@@ -1541,9 +1542,9 @@ nimcp_hw_params_t* nimcp_hw_create(uint32_t period, bool additive) {
     params->beta = 0.1f;
     params->gamma = 0.1f;
 
-    params->seasonal = (float*)calloc(period, sizeof(float));
+    params->seasonal = (float*)nimcp_calloc(period, sizeof(float));
     if (!params->seasonal) {
-        free(params);
+        nimcp_free(params);
         return NULL;
     }
 
@@ -1556,9 +1557,9 @@ nimcp_hw_params_t* nimcp_hw_create(uint32_t period, bool additive) {
 
 void nimcp_hw_free(nimcp_hw_params_t* params) {
     if (params) {
-        free(params->level);
-        free(params->trend);
-        free(params->seasonal);
-        free(params);
+        nimcp_free(params->level);
+        nimcp_free(params->trend);
+        nimcp_free(params->seasonal);
+        nimcp_free(params);
     }
 }

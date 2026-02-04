@@ -35,40 +35,50 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include <pthread.h>
-
 #include "utils/memory/nimcp_memory.h"
 #include <stddef.h>  /* for NULL */
+#include "utils/thread/nimcp_thread.h"
 // Try to use libsodium if available, otherwise use a simplified implementation
 #ifdef HAVE_LIBSODIUM
 #include <sodium.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(encrypted_audit)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for encrypted_audit module */
-static nimcp_health_agent_t* g_encrypted_audit_health_agent = NULL;
+static mesh_participant_id_t g_encrypted_audit_mesh_id = 0;
+static mesh_participant_registry_t* g_encrypted_audit_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for encrypted_audit heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void encrypted_audit_set_health_agent(nimcp_health_agent_t* agent) {
-    g_encrypted_audit_health_agent = agent;
+nimcp_error_t encrypted_audit_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_encrypted_audit_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "encrypted_audit", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "encrypted_audit";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_encrypted_audit_mesh_id);
+    if (err == NIMCP_SUCCESS) g_encrypted_audit_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from encrypted_audit module */
-static inline void encrypted_audit_heartbeat(const char* operation, float progress) {
-    if (g_encrypted_audit_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_encrypted_audit_health_agent, operation, progress);
+void encrypted_audit_mesh_unregister(void) {
+    if (g_encrypted_audit_mesh_registry && g_encrypted_audit_mesh_id != 0) {
+        mesh_participant_unregister(g_encrypted_audit_mesh_registry, g_encrypted_audit_mesh_id);
+        g_encrypted_audit_mesh_id = 0;
+        g_encrypted_audit_mesh_registry = NULL;
     }
 }
+
 
 #define USE_LIBSODIUM 1
 #else
@@ -148,7 +158,7 @@ struct nimcp_encrypted_audit_impl {
     nimcp_encrypted_audit_stats_t stats;
 
     // Synchronization
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 
     // Bio-async integration
     bio_module_context_t bio_ctx;
@@ -494,7 +504,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     audit->stats.current_key_version = 0;
 
     // Initialize synchronization
-    if (pthread_mutex_init(&audit->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&audit->lock, NULL) != 0) {
         secure_zero(audit->current_key->key, NIMCP_AUDIT_KEY_SIZE);
         nimcp_free(audit->current_key);
         nimcp_free(audit->buffer);
@@ -553,7 +563,7 @@ void nimcp_encrypted_audit_destroy(nimcp_encrypted_audit_t audit) {
         key = next;
     }
 
-    pthread_mutex_destroy(&audit->lock);
+    nimcp_mutex_destroy(&audit->lock);
 
     // Unlock memory if it was locked
     #ifdef __linux__
@@ -603,7 +613,7 @@ nimcp_error_t nimcp_encrypted_audit_log_timestamped(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     // Create plaintext entry
     nimcp_audit_entry_t entry;
@@ -631,7 +641,7 @@ nimcp_error_t nimcp_encrypted_audit_log_timestamped(
     nimcp_error_t err = encrypt_entry(audit, &entry, &encrypted, &encrypted_len);
     if (err != NIMCP_SUCCESS) {
         audit->stats.encryption_failures++;
-        pthread_mutex_unlock(&audit->lock);
+        nimcp_mutex_unlock(&audit->lock);
         return err;
     }
 
@@ -673,7 +683,7 @@ nimcp_error_t nimcp_encrypted_audit_log_timestamped(
         audit->stats.key_rotations++;
     }
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 
     // Send alert for critical events
     if (audit->bio_async_enabled && severity >= NIMCP_AUDIT_CRITICAL) {
@@ -717,7 +727,7 @@ nimcp_error_t nimcp_encrypted_audit_read(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     size_t count = 0;
     size_t read_idx = audit->read_index;
@@ -742,7 +752,7 @@ nimcp_error_t nimcp_encrypted_audit_read(
 
     *num_entries = count;
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -849,7 +859,7 @@ nimcp_error_t nimcp_encrypted_audit_rotate_key(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     // Move current key to history
     audit->current_key->next = audit->key_history;
@@ -858,7 +868,7 @@ nimcp_error_t nimcp_encrypted_audit_rotate_key(
     // Create new key
     audit->current_key = nimcp_calloc(1, sizeof(encryption_key_t));
     if (!audit->current_key) {
-        pthread_mutex_unlock(&audit->lock);
+        nimcp_mutex_unlock(&audit->lock);
         return NIMCP_NO_MEMORY;
     }
 
@@ -871,7 +881,7 @@ nimcp_error_t nimcp_encrypted_audit_rotate_key(
     audit->stats.key_rotations++;
     audit->stats.current_key_version = audit->current_key->version;
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -892,10 +902,10 @@ nimcp_error_t nimcp_encrypted_audit_set_rotation_policy(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
     audit->rotation_policy = policy;
     audit->rotation_threshold = threshold;
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -930,7 +940,7 @@ nimcp_error_t nimcp_encrypted_audit_export(
         return NIMCP_ERROR;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     // Prepare file header
     audit_file_header_t header;
@@ -947,7 +957,7 @@ nimcp_error_t nimcp_encrypted_audit_export(
 
     // Write header
     if (fwrite(&header, sizeof(header), 1, file) != 1) {
-        pthread_mutex_unlock(&audit->lock);
+        nimcp_mutex_unlock(&audit->lock);
         fclose(file);
         return NIMCP_ERROR;
     }
@@ -974,14 +984,14 @@ nimcp_error_t nimcp_encrypted_audit_export(
 
         if (fwrite(&total_size, sizeof(total_size), 1, file) != 1 ||
             fwrite(entry, total_size, 1, file) != 1) {
-            pthread_mutex_unlock(&audit->lock);
+            nimcp_mutex_unlock(&audit->lock);
             fclose(file);
             return NIMCP_ERROR;
         }
         entries_written++;
     }
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
     fclose(file);
 
     LOG_MODULE_INFO("encrypted_audit", "Exported %u entries to %s", entries_written, filepath);
@@ -1021,7 +1031,7 @@ nimcp_error_t nimcp_encrypted_audit_import(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     // Read entries
     uint32_t entries_imported = 0;
@@ -1045,7 +1055,7 @@ nimcp_error_t nimcp_encrypted_audit_import(
 
         slot->entry = nimcp_malloc(total_size);
         if (!slot->entry) {
-            pthread_mutex_unlock(&audit->lock);
+            nimcp_mutex_unlock(&audit->lock);
             fclose(file);
             return NIMCP_NO_MEMORY;
         }
@@ -1063,7 +1073,7 @@ nimcp_error_t nimcp_encrypted_audit_import(
         entries_imported++;
     }
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
     fclose(file);
 
     LOG_MODULE_INFO("encrypted_audit", "Imported %u entries from %s", entries_imported, filepath);
@@ -1155,7 +1165,7 @@ nimcp_error_t nimcp_encrypted_audit_get_stats(
         return NIMCP_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
     *stats = audit->stats;
 
     // Calculate memory usage
@@ -1167,7 +1177,7 @@ nimcp_error_t nimcp_encrypted_audit_get_stats(
         }
     }
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -1177,7 +1187,7 @@ void nimcp_encrypted_audit_reset_stats(nimcp_encrypted_audit_t audit) {
         return;
     }
 
-    pthread_mutex_lock(&audit->lock);
+    nimcp_mutex_lock(&audit->lock);
 
     // Reset statistics (keep structural data)
     audit->stats.encryption_failures = 0;
@@ -1186,7 +1196,7 @@ void nimcp_encrypted_audit_reset_stats(nimcp_encrypted_audit_t audit) {
     audit->stats.avg_encryption_time_us = 0.0F;
     audit->stats.avg_decryption_time_us = 0.0F;
 
-    pthread_mutex_unlock(&audit->lock);
+    nimcp_mutex_unlock(&audit->lock);
 }
 
 /* Use functions from nimcp_security_audit.c instead of local duplicates */

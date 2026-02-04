@@ -54,7 +54,7 @@
  * // Expansion
  * char* expanded = config_expand_env("${HOME}/config");
  * // -> "/home/user/config"
- * free(expanded);
+ * nimcp_free(expanded);
  *
  * // Nested keys
  * const char* host = config_get_nested_string("database.host", "localhost");
@@ -106,6 +106,7 @@ extern "C" {
 //=============================================================================
 
 #include "common/nimcp_export.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Constants
@@ -178,7 +179,7 @@ typedef enum {
  * char* expanded = config_expand_env("${HOME}/config");
  * if (expanded) {
  *     printf("Expanded: %s\n", expanded);
- *     free(expanded);
+ *     nimcp_free(expanded);
  * }
  * ```
  */
@@ -494,7 +495,7 @@ NIMCP_EXPORT void config_section_iterate(
  * ```c
  * char* parent = config_key_parent("database.pool.size");
  * // Returns: "database.pool"
- * free(parent);
+ * nimcp_free(parent);
  * ```
  */
 NIMCP_EXPORT char* config_key_parent(const char* path);
@@ -513,7 +514,7 @@ NIMCP_EXPORT char* config_key_parent(const char* path);
  * ```c
  * char* leaf = config_key_leaf("database.pool.size");
  * // Returns: "size"
- * free(leaf);
+ * nimcp_free(leaf);
  * ```
  */
 NIMCP_EXPORT char* config_key_leaf(const char* path);
@@ -565,7 +566,7 @@ NIMCP_EXPORT bool config_key_matches(const char* pattern, const char* key);
  * const char* parts[] = {"database", "pool", "size", NULL};
  * char* path = config_key_join(parts);
  * // Returns: "database.pool.size"
- * free(path);
+ * nimcp_free(path);
  * ```
  */
 NIMCP_EXPORT char* config_key_join(const char** components);

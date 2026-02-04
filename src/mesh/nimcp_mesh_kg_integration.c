@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -319,6 +320,7 @@ nimcp_error_t mesh_kg_integration_unregister_module(
     const char* module_name
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_name) return NIMCP_ERROR_NULL_POINTER;
@@ -328,6 +330,7 @@ nimcp_error_t mesh_kg_integration_unregister_module(
     int idx = find_mapping_by_name(integration, module_name);
     if (idx < 0) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -357,6 +360,7 @@ nimcp_error_t mesh_kg_integration_get_mapping(
     mesh_kg_module_mapping_t* mapping
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_name || !mapping) return NIMCP_ERROR_NULL_POINTER;
@@ -366,6 +370,7 @@ nimcp_error_t mesh_kg_integration_get_mapping(
     int idx = find_mapping_by_name(integration, module_name);
     if (idx < 0) {
         nimcp_mutex_unlock(((mesh_kg_integration_t*)integration)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -381,6 +386,7 @@ nimcp_error_t mesh_kg_integration_get_mapping_by_id(
     mesh_kg_module_mapping_t* mapping
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!mapping) return NIMCP_ERROR_NULL_POINTER;
@@ -390,6 +396,7 @@ nimcp_error_t mesh_kg_integration_get_mapping_by_id(
     int idx = find_mapping_by_id(integration, participant_id);
     if (idx < 0) {
         nimcp_mutex_unlock(((mesh_kg_integration_t*)integration)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -407,6 +414,7 @@ nimcp_error_t mesh_kg_integration_sync_kg_to_mesh(
     mesh_kg_integration_t* integration
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -486,6 +494,7 @@ nimcp_error_t mesh_kg_integration_sync_mesh_to_kg(
     mesh_kg_integration_t* integration
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -526,6 +535,7 @@ nimcp_error_t mesh_kg_integration_identify_hubs(
     size_t* hub_count
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!hubs || !hub_count) return NIMCP_ERROR_NULL_POINTER;
@@ -603,6 +613,7 @@ nimcp_error_t mesh_kg_integration_route_update(
     uint32_t update_type
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_name) return NIMCP_ERROR_NULL_POINTER;
@@ -612,6 +623,7 @@ nimcp_error_t mesh_kg_integration_route_update(
     int idx = find_mapping_by_name(integration, module_name);
     if (idx < 0) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -643,6 +655,7 @@ nimcp_error_t mesh_kg_integration_derive_endorsement_path(
     mesh_kg_endorsement_path_t* path
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_name || !path) return NIMCP_ERROR_NULL_POINTER;
@@ -655,6 +668,7 @@ nimcp_error_t mesh_kg_integration_derive_endorsement_path(
     int idx = find_mapping_by_name(integration, module_name);
     if (idx < 0) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -698,6 +712,7 @@ nimcp_error_t mesh_kg_integration_sync_endorsement_policies(
     mesh_kg_integration_t* integration
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -734,6 +749,7 @@ nimcp_error_t mesh_kg_integration_discover_kg_modules(
     size_t* module_count
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!modules || !module_count) return NIMCP_ERROR_NULL_POINTER;
@@ -761,6 +777,7 @@ nimcp_error_t mesh_kg_integration_discover_mesh_modules(
     size_t* module_count
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!modules || !module_count) return NIMCP_ERROR_NULL_POINTER;
@@ -778,9 +795,11 @@ nimcp_error_t mesh_kg_integration_find_by_type(
     size_t* module_count
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module_type || !modules || !module_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_kg_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -811,6 +830,7 @@ nimcp_error_t mesh_kg_integration_get_stats(
     mesh_kg_integration_stats_t* stats
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -826,6 +846,7 @@ nimcp_error_t mesh_kg_integration_reset_stats(
     mesh_kg_integration_t* integration
 ) {
     if (!integration || integration->magic != MESH_KG_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

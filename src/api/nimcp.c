@@ -13,35 +13,9 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "API"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for nimcp module */
-static nimcp_health_agent_t* g_nimcp_health_agent = NULL;
-
-/**
- * @brief Set health agent for nimcp heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void nimcp_set_health_agent(nimcp_health_agent_t* agent) {
-    g_nimcp_health_agent = agent;
-}
-
-/** @brief Send heartbeat from nimcp module */
-static inline void nimcp_heartbeat(const char* operation, float progress) {
-    if (g_nimcp_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_nimcp_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nimcp)
 
 /* Exception integration for API layer */
 static void api_set_error(const char* fmt, ...);
@@ -120,7 +94,7 @@ struct nimcp_brain_snapshot_handle {
 // Global State
 //=============================================================================
 
-static char g_last_error[256] = "No error";
+static _Thread_local char g_last_error[256] = "No error";
 static nimcp_atomic_bool_t g_initialized = {0};  // Thread-safe initialized flag
 static nimcp_atomic_bool_t g_init_in_progress = {0};  // Guard against concurrent init
 static nimcp_status_t g_init_result = NIMCP_OK;  // Result of init
@@ -276,6 +250,7 @@ void nimcp_shutdown(void) {
 
     // Shutdown exception system (before memory cleanup to avoid dangling references)
     LOG_DEBUG("Shutting down exception system");
+    bbb_helpers_shutdown();
     nimcp_exception_system_shutdown();
 
     // Cleanup memory tracking (last)
@@ -1652,6 +1627,7 @@ nimcp_status_t nimcp_knowledge_query(
 //=============================================================================
 
 #include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
+#include "security/nimcp_bbb_helpers.h"
 
 /**
  * @brief Enable or disable complex oscillation features
@@ -2891,6 +2867,7 @@ nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain) {
 #define MAX_CALLBACK_WRAPPERS 256
 static callback_wrapper_t* g_callback_wrappers[MAX_CALLBACK_WRAPPERS] = {0};
 static uint32_t g_next_wrapper_id = 0;
+static nimcp_mutex_t g_callback_wrappers_mutex = NIMCP_MUTEX_INITIALIZER;
 
 uint32_t nimcp_brain_register_callback(
     nimcp_brain_t brain,
@@ -2933,13 +2910,15 @@ uint32_t nimcp_brain_register_callback(
     wrapper->public_callback = callback;
     wrapper->user_data = user_data;
 
-    // Store wrapper for cleanup
+    // Store wrapper for cleanup (thread-safe)
+    nimcp_mutex_lock(&g_callback_wrappers_mutex);
     uint32_t wrapper_idx = g_next_wrapper_id % MAX_CALLBACK_WRAPPERS;
     if (g_callback_wrappers[wrapper_idx]) {
         nimcp_free(g_callback_wrappers[wrapper_idx]);
     }
     g_callback_wrappers[wrapper_idx] = wrapper;
     g_next_wrapper_id++;
+    nimcp_mutex_unlock(&g_callback_wrappers_mutex);
 
     // Map public event type to internal event type
     tcb_event_type_t internal_event;

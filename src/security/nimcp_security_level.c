@@ -18,35 +18,47 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for security_level module */
-static nimcp_health_agent_t* g_security_level_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_level)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for security_level heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_level_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_level_health_agent = agent;
+static mesh_participant_id_t g_security_level_mesh_id = 0;
+static mesh_participant_registry_t* g_security_level_mesh_registry = NULL;
+
+nimcp_error_t security_level_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_level_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_level", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_level";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_level_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_level_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_level module */
-static inline void security_level_heartbeat(const char* operation, float progress) {
-    if (g_security_level_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_level_health_agent, operation, progress);
+void security_level_mesh_unregister(void) {
+    if (g_security_level_mesh_registry && g_security_level_mesh_id != 0) {
+        mesh_participant_unregister(g_security_level_mesh_registry, g_security_level_mesh_id);
+        g_security_level_mesh_id = 0;
+        g_security_level_mesh_registry = NULL;
     }
 }
 
@@ -87,7 +99,7 @@ struct nimcp_security_state {
     bio_module_context_t bio_ctx;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 
     void* user_data;
 };
@@ -277,7 +289,7 @@ static int security_level_wiring_handler_callback(
 }
 
 nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_config_t* config) {
-    nimcp_security_state_t state = calloc(1, sizeof(struct nimcp_security_state));
+    nimcp_security_state_t state = nimcp_calloc(1, sizeof(struct nimcp_security_state));
     if (!state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate state");
         return NULL;
@@ -303,28 +315,28 @@ nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_co
     }
 
     /* Allocate component hash table */
-    state->component_table = calloc(state->component_table_size, sizeof(nimcp_component_level_t*));
+    state->component_table = nimcp_calloc(state->component_table_size, sizeof(nimcp_component_level_t*));
     if (!state->component_table) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate component table");
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
     /* Allocate audit trail */
-    state->audit_trail = calloc(state->audit_size, sizeof(nimcp_security_audit_entry_t));
+    state->audit_trail = nimcp_calloc(state->audit_size, sizeof(nimcp_security_audit_entry_t));
     if (!state->audit_trail) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate audit trail");
-        free(state->component_table);
-        free(state);
+        nimcp_free(state->component_table);
+        nimcp_free(state);
         return NULL;
     }
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&state->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&state->mutex, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_security_state_create: failed to init mutex");
-        free(state->audit_trail);
-        free(state->component_table);
-        free(state);
+        nimcp_free(state->audit_trail);
+        nimcp_free(state->component_table);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -377,7 +389,7 @@ void nimcp_security_state_destroy(nimcp_security_state_t state) {
         return;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     /* Unregister from bio-async */
     if (state->bio_ctx) {
@@ -390,17 +402,17 @@ void nimcp_security_state_destroy(nimcp_security_state_t state) {
             nimcp_component_level_t* comp = state->component_table[i];
             while (comp) {
                 nimcp_component_level_t* next = comp->next;
-                free(comp);
+                nimcp_free(comp);
                 comp = next;
             }
         }
-        free(state->component_table);
+        nimcp_free(state->component_table);
     }
 
     /* Zero and free audit trail (contains sensitive data) */
     if (state->audit_trail) {
         memset(state->audit_trail, 0, state->audit_size * sizeof(nimcp_security_audit_entry_t));
-        free(state->audit_trail);
+        nimcp_free(state->audit_trail);
     }
 
     LOG_INFO("Security state destroyed: final level=%s, upgrades=%lu, overrides=%lu",
@@ -410,10 +422,10 @@ void nimcp_security_state_destroy(nimcp_security_state_t state) {
 
     state->magic = 0;
 
-    pthread_mutex_unlock(&state->mutex);
-    pthread_mutex_destroy(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
+    nimcp_mutex_destroy(&state->mutex);
 
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_error_t nimcp_security_set_level(
@@ -429,7 +441,7 @@ nimcp_error_t nimcp_security_set_level(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     nimcp_security_level_t old_level = state->global_level;
 
@@ -437,7 +449,7 @@ nimcp_error_t nimcp_security_set_level(
     if (state->is_locked) {
         LOG_WARN("Attempt to change locked security level");
         state->level_downgrades_blocked++;
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -446,13 +458,13 @@ nimcp_error_t nimcp_security_set_level(
         LOG_WARN("Attempt to downgrade security level: %s -> %s",
                  level_names[state->global_level], level_names[level]);
         state->level_downgrades_blocked++;
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
     /* No change needed */
     if (level == state->global_level) {
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_SUCCESS;
     }
 
@@ -469,7 +481,7 @@ nimcp_error_t nimcp_security_set_level(
     /* Send notification */
     send_level_change_notification(state, old_level, level, NULL);
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -479,9 +491,9 @@ nimcp_security_level_t nimcp_security_get_level(nimcp_security_state_t state) {
         return NIMCP_SECURITY_LEVEL_MINIMAL;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
     nimcp_security_level_t level = state->global_level;
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return level;
 }
@@ -491,10 +503,10 @@ nimcp_error_t nimcp_security_lock_level(nimcp_security_state_t state) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     if (state->is_locked) {
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_SUCCESS;  /* Already locked */
     }
 
@@ -506,7 +518,7 @@ nimcp_error_t nimcp_security_lock_level(nimcp_security_state_t state) {
     add_audit_entry(state, state->global_level, state->global_level,
                    NULL, "Security level locked", NULL, false);
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -516,9 +528,9 @@ bool nimcp_security_is_locked(nimcp_security_state_t state) {
         return false;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
     bool locked = state->is_locked;
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return locked;
 }
@@ -536,13 +548,13 @@ nimcp_error_t nimcp_security_set_component_level(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     /* Component level cannot be lower than global level */
     if (level < state->global_level) {
         LOG_WARN("Component level cannot be lower than global: %s < %s",
                  level_names[level], level_names[state->global_level]);
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
@@ -558,7 +570,7 @@ nimcp_error_t nimcp_security_set_component_level(
                 LOG_WARN("Cannot downgrade component level: %s %s -> %s",
                          component, level_names[comp->level], level_names[level]);
                 state->level_downgrades_blocked++;
-                pthread_mutex_unlock(&state->mutex);
+                nimcp_mutex_unlock(&state->mutex);
                 return NIMCP_ERROR_PERMISSION_DENIED;
             }
 
@@ -573,7 +585,7 @@ nimcp_error_t nimcp_security_set_component_level(
                            "Component level upgrade", NULL, false);
             send_level_change_notification(state, old_level, level, component);
 
-            pthread_mutex_unlock(&state->mutex);
+            nimcp_mutex_unlock(&state->mutex);
             return NIMCP_SUCCESS;
         }
         prev = comp;
@@ -581,10 +593,10 @@ nimcp_error_t nimcp_security_set_component_level(
     }
 
     /* Create new component entry */
-    comp = calloc(1, sizeof(nimcp_component_level_t));
+    comp = nimcp_calloc(1, sizeof(nimcp_component_level_t));
     if (!comp) {
         LOG_ERROR("Failed to allocate component entry");
-        pthread_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -608,7 +620,7 @@ nimcp_error_t nimcp_security_set_component_level(
                    "Component level set", NULL, false);
     send_level_change_notification(state, state->global_level, level, component);
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -621,7 +633,7 @@ nimcp_security_level_t nimcp_security_get_component_level(
         return NIMCP_SECURITY_LEVEL_MINIMAL;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     /* Look up component */
     size_t hash = hash_component_name(component, state->component_table_size);
@@ -630,7 +642,7 @@ nimcp_security_level_t nimcp_security_get_component_level(
     while (comp) {
         if (strcmp(comp->name, component) == 0) {
             nimcp_security_level_t level = comp->level;
-            pthread_mutex_unlock(&state->mutex);
+            nimcp_mutex_unlock(&state->mutex);
             return level;
         }
         comp = comp->next;
@@ -638,7 +650,7 @@ nimcp_security_level_t nimcp_security_get_component_level(
 
     /* Component not found - inherit global level */
     nimcp_security_level_t level = state->global_level;
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return level;
 }
@@ -657,7 +669,7 @@ nimcp_error_t nimcp_security_emergency_override(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     /* Validate authorization token if provided */
     if (authorization_token) {
@@ -667,7 +679,7 @@ nimcp_error_t nimcp_security_emergency_override(
          */
         if (strlen(authorization_token) < 16) {
             LOG_ERROR("Invalid authorization token for emergency override");
-            pthread_mutex_unlock(&state->mutex);
+            nimcp_mutex_unlock(&state->mutex);
             return NIMCP_ERROR_PERMISSION_DENIED;
         }
     }
@@ -688,7 +700,7 @@ nimcp_error_t nimcp_security_emergency_override(
     /* Send notification */
     send_level_change_notification(state, old_level, level, NULL);
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -705,14 +717,14 @@ bool nimcp_security_feature_enabled(
         return false;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     nimcp_security_level_t level = state->global_level;
     bool enabled = feature_table[level][feature];
 
     state->feature_queries++;
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return enabled;
 }
@@ -727,7 +739,7 @@ nimcp_error_t nimcp_security_get_audit_trail(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     size_t count = state->audit_count < max_entries ? state->audit_count : max_entries;
 
@@ -742,7 +754,7 @@ nimcp_error_t nimcp_security_get_audit_trail(
 
     *count_out = count;
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -755,7 +767,7 @@ nimcp_error_t nimcp_security_level_get_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     stats->level_upgrades = state->level_upgrades;
     stats->level_downgrades_blocked = state->level_downgrades_blocked;
@@ -767,7 +779,7 @@ nimcp_error_t nimcp_security_level_get_stats(
     stats->component_count = state->component_count;
     stats->audit_entry_count = state->audit_count;
 
-    pthread_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return NIMCP_SUCCESS;
 }

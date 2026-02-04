@@ -26,6 +26,7 @@
 #include "nimcp_ternary_storage.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +70,7 @@ typedef struct {
  * @return Pointer to vector, or NULL on failure
  */
 static inline trit_vector_t* trit_vector_create(size_t length, ternary_pack_mode_t pack_mode) {
-    trit_vector_t* vec = (trit_vector_t*)malloc(sizeof(trit_vector_t));
+    trit_vector_t* vec = (trit_vector_t*)nimcp_malloc(sizeof(trit_vector_t));
     if (!vec) return NULL;
 
     vec->magic = TERNARY_MAGIC;
@@ -82,15 +83,15 @@ static inline trit_vector_t* trit_vector_create(size_t length, ternary_pack_mode
     vec->packed_bytes = bytes;
 
     if (pack_mode == TERNARY_PACK_NONE) {
-        vec->data.unpacked = (trit_t*)calloc(length, sizeof(trit_t));
+        vec->data.unpacked = (trit_t*)nimcp_calloc(length, sizeof(trit_t));
         if (!vec->data.unpacked) {
-            free(vec);
+            nimcp_free(vec);
             return NULL;
         }
     } else {
-        vec->data.packed = (uint8_t*)calloc(bytes, 1);
+        vec->data.packed = (uint8_t*)nimcp_calloc(bytes, 1);
         if (!vec->data.packed) {
-            free(vec);
+            nimcp_free(vec);
             return NULL;
         }
     }
@@ -139,14 +140,14 @@ static inline void trit_vector_destroy(trit_vector_t* vec) {
 
     if (vec->owns_data) {
         if (vec->pack_mode == TERNARY_PACK_NONE) {
-            free(vec->data.unpacked);
+            nimcp_free(vec->data.unpacked);
         } else {
-            free(vec->data.packed);
+            nimcp_free(vec->data.packed);
         }
     }
 
     vec->magic = 0;
-    free(vec);
+    nimcp_free(vec);
 }
 
 /**

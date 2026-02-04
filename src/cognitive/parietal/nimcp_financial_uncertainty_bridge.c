@@ -18,51 +18,48 @@
 #include <string.h>
 #include <math.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_uncertainty_health_agent = NULL;
 
-/**
- * @brief Set global health agent for financial uncertainty bridge
- * @param agent Health agent (NULL to disable)
- */
-void financial_uncertainty_bridge_set_health_agent_global(void* agent) {
-    g_fin_uncertainty_health_agent = (nimcp_health_agent_t*)agent;
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
+
+static mesh_participant_id_t g_fin_uncertainty_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_uncertainty_mesh_registry = NULL;
+
+nimcp_error_t fin_uncertainty_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_uncertainty_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_uncertainty", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_uncertainty";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_uncertainty_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_uncertainty_mesh_registry = registry;
+    return err;
 }
 
-//=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
-//=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune,
-                                            const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune,
-                                         int source, const uint8_t* epitope,
-                                         size_t epitope_len, uint32_t severity,
-                                         uint32_t source_node, uint32_t* antigen_id);
-
-static brain_immune_system_t* g_fin_uncertainty_bridge_immune = NULL;
-static bbb_system_t g_fin_uncertainty_bridge_bbb = NULL;
-
-void financial_uncertainty_bridge_set_global_immune(brain_immune_system_t* immune) {
-    g_fin_uncertainty_bridge_immune = immune;
+void fin_uncertainty_mesh_unregister(void) {
+    if (g_fin_uncertainty_mesh_registry && g_fin_uncertainty_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_uncertainty_mesh_registry, g_fin_uncertainty_mesh_id);
+        g_fin_uncertainty_mesh_id = 0;
+        g_fin_uncertainty_mesh_registry = NULL;
+    }
 }
 
-void financial_uncertainty_bridge_set_global_bbb(bbb_system_t bbb) {
-    g_fin_uncertainty_bridge_bbb = bbb;
-}
 
-//=============================================================================
-// KG Wiring Integration (Change Set 1)
 //=============================================================================
 struct kg_wiring;
 typedef struct kg_wiring kg_wiring_t;
@@ -288,7 +285,7 @@ financial_uncertainty_bridge_t* financial_uncertainty_bridge_create(
     fin_uncertainty_heartbeat("create", 0.0f);
 
     financial_uncertainty_bridge_t* bridge =
-        (financial_uncertainty_bridge_t*)malloc(sizeof(financial_uncertainty_bridge_t));
+        (financial_uncertainty_bridge_t*)nimcp_malloc(sizeof(financial_uncertainty_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_uncertainty_bridge_t");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -320,7 +317,7 @@ void financial_uncertainty_bridge_destroy(financial_uncertainty_bridge_t* bridge
     if (!bridge) return;
     fin_uncertainty_heartbeat("destroy", 0.0f);
 
-    free(bridge);
+    nimcp_free(bridge);
     fin_uncertainty_heartbeat("destroy", 1.0f);
 }
 
@@ -688,11 +685,11 @@ int financial_uncertainty_bridge_decompose_ensemble(
     uint32_t N = ensemble->num_samples;     /* Samples per member */
 
     /* Compute mean prediction for each ensemble member */
-    float* member_means = (float*)calloc(M, sizeof(float));
-    float* member_vars = (float*)calloc(M, sizeof(float));
+    float* member_means = (float*)nimcp_calloc(M, sizeof(float));
+    float* member_vars = (float*)nimcp_calloc(M, sizeof(float));
     if (!member_means || !member_vars) {
-        if (member_means) free(member_means);
-        if (member_vars) free(member_vars);
+        if (member_means) nimcp_free(member_means);
+        if (member_vars) nimcp_free(member_vars);
         set_error("Memory allocation failed");
         bridge->operational_state = FIN_UNCERTAINTY_STATE_ERROR;
         return FIN_UNCERTAINTY_ERR_NO_MEMORY;
@@ -733,8 +730,8 @@ int financial_uncertainty_bridge_decompose_ensemble(
     /* Epistemic: Var(E[Y|X]) - variance of model means */
     float epistemic_var = nimcp_stats_variance(member_means, M);
 
-    free(member_means);
-    free(member_vars);
+    nimcp_free(member_means);
+    nimcp_free(member_vars);
 
     /* Health modulation */
     float health_mod = 1.0f
@@ -1166,14 +1163,14 @@ fin_prediction_t* financial_uncertainty_prediction_create(uint32_t count) {
         return NULL;
     }
 
-    fin_prediction_t* pred = (fin_prediction_t*)malloc(sizeof(fin_prediction_t));
+    fin_prediction_t* pred = (fin_prediction_t*)nimcp_malloc(sizeof(fin_prediction_t));
     if (!pred) return NULL;
 
     memset(pred, 0, sizeof(*pred));
     pred->count = count;
 
-    pred->values = (float*)calloc(count, sizeof(float));
-    pred->confidences = (float*)calloc(count, sizeof(float));
+    pred->values = (float*)nimcp_calloc(count, sizeof(float));
+    pred->confidences = (float*)nimcp_calloc(count, sizeof(float));
 
     if (!pred->values || !pred->confidences) {
         financial_uncertainty_prediction_destroy(pred);
@@ -1191,26 +1188,26 @@ fin_prediction_t* financial_uncertainty_prediction_create(uint32_t count) {
 void financial_uncertainty_prediction_destroy(fin_prediction_t* prediction) {
     if (!prediction) return;
 
-    if (prediction->values) free(prediction->values);
-    if (prediction->confidences) free(prediction->confidences);
-    free(prediction);
+    if (prediction->values) nimcp_free(prediction->values);
+    if (prediction->confidences) nimcp_free(prediction->confidences);
+    nimcp_free(prediction);
 }
 
 fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
     uint32_t max_recommendations)
 {
     fin_uncertainty_analysis_t* analysis =
-        (fin_uncertainty_analysis_t*)malloc(sizeof(fin_uncertainty_analysis_t));
+        (fin_uncertainty_analysis_t*)nimcp_malloc(sizeof(fin_uncertainty_analysis_t));
     if (!analysis) return NULL;
 
     memset(analysis, 0, sizeof(*analysis));
 
     if (max_recommendations > 0) {
         analysis->recommendations =
-            (fin_info_recommendation_t*)calloc(max_recommendations,
+            (fin_info_recommendation_t*)nimcp_calloc(max_recommendations,
                                                 sizeof(fin_info_recommendation_t));
         if (!analysis->recommendations) {
-            free(analysis);
+            nimcp_free(analysis);
             return NULL;
         }
         analysis->num_recommendations = max_recommendations;
@@ -1222,8 +1219,8 @@ fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
 void financial_uncertainty_analysis_destroy(fin_uncertainty_analysis_t* analysis) {
     if (!analysis) return;
 
-    if (analysis->recommendations) free(analysis->recommendations);
-    free(analysis);
+    if (analysis->recommendations) nimcp_free(analysis->recommendations);
+    nimcp_free(analysis);
 }
 
 void financial_uncertainty_analysis_free_recommendations(
@@ -1231,7 +1228,7 @@ void financial_uncertainty_analysis_free_recommendations(
 {
     if (!analysis) return;
     if (analysis->recommendations) {
-        free(analysis->recommendations);
+        nimcp_free(analysis->recommendations);
         analysis->recommendations = NULL;
     }
     analysis->num_recommendations = 0;

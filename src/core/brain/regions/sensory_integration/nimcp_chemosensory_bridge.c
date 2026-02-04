@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(chemosensory_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for chemosensory_bridge module */
-static nimcp_health_agent_t* g_chemosensory_bridge_health_agent = NULL;
+static mesh_participant_id_t g_chemosensory_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_chemosensory_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for chemosensory_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void chemosensory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_chemosensory_bridge_health_agent = agent;
+nimcp_error_t chemosensory_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_chemosensory_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "chemosensory_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "chemosensory_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_chemosensory_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_chemosensory_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from chemosensory_bridge module */
-static inline void chemosensory_bridge_heartbeat(const char* operation, float progress) {
-    if (g_chemosensory_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_chemosensory_bridge_health_agent, operation, progress);
+void chemosensory_bridge_mesh_unregister(void) {
+    if (g_chemosensory_bridge_mesh_registry && g_chemosensory_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_chemosensory_bridge_mesh_registry, g_chemosensory_bridge_mesh_id);
+        g_chemosensory_bridge_mesh_id = 0;
+        g_chemosensory_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "CHEMOSENSORY_BRIDGE"
 
@@ -104,7 +118,7 @@ int chemosensory_default_config(chemosensory_config_t* config) {
 }
 
 chemosensory_bridge_t* chemosensory_bridge_create(const chemosensory_config_t* config) {
-    chemosensory_bridge_t* bridge = (chemosensory_bridge_t*)calloc(1, sizeof(chemosensory_bridge_t));
+    chemosensory_bridge_t* bridge = (chemosensory_bridge_t*)nimcp_calloc(1, sizeof(chemosensory_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -119,7 +133,7 @@ chemosensory_bridge_t* chemosensory_bridge_create(const chemosensory_config_t* c
         chemosensory_default_config(&bridge->config);
     }
 
-    bridge->current_flavor.flavor_profile = (float*)calloc(bridge->config.flavor_dim, sizeof(float));
+    bridge->current_flavor.flavor_profile = (float*)nimcp_calloc(bridge->config.flavor_dim, sizeof(float));
     bridge->current_flavor.profile_dim = bridge->config.flavor_dim;
 
     bridge->is_connected = false;
@@ -132,8 +146,8 @@ chemosensory_bridge_t* chemosensory_bridge_create(const chemosensory_config_t* c
 void chemosensory_bridge_destroy(chemosensory_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "chemosensory");
-    free(bridge->current_flavor.flavor_profile);
-    free(bridge);
+    nimcp_free(bridge->current_flavor.flavor_profile);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================
@@ -177,7 +191,7 @@ int chemosensory_bind_flavor(chemosensory_bridge_t* bridge, const odor_perceptio
 
     /* Initialize flavor */
     if (!flavor->flavor_profile) {
-        flavor->flavor_profile = (float*)calloc(bridge->config.flavor_dim, sizeof(float));
+        flavor->flavor_profile = (float*)nimcp_calloc(bridge->config.flavor_dim, sizeof(float));
         if (!flavor->flavor_profile) return -1;
     }
     flavor->profile_dim = bridge->config.flavor_dim;
@@ -229,7 +243,7 @@ int chemosensory_bind_flavor(chemosensory_bridge_t* bridge, const odor_perceptio
 
     /* Copy to bridge state */
     memcpy(&bridge->current_flavor, flavor, sizeof(chemosensory_flavor_t));
-    bridge->current_flavor.flavor_profile = (float*)calloc(flavor->profile_dim, sizeof(float));
+    bridge->current_flavor.flavor_profile = (float*)nimcp_calloc(flavor->profile_dim, sizeof(float));
     memcpy(bridge->current_flavor.flavor_profile, flavor->flavor_profile, flavor->profile_dim * sizeof(float));
 
     bridge->status = CHEMOSENSORY_STATUS_IDLE;
@@ -258,7 +272,7 @@ int chemosensory_get_current_flavor(chemosensory_bridge_t* bridge, chemosensory_
 
     /* Need to copy the profile separately */
     if (bridge->current_flavor.flavor_profile) {
-        flavor->flavor_profile = (float*)calloc(bridge->current_flavor.profile_dim, sizeof(float));
+        flavor->flavor_profile = (float*)nimcp_calloc(bridge->current_flavor.profile_dim, sizeof(float));
         if (flavor->flavor_profile) {
             memcpy(flavor->flavor_profile, bridge->current_flavor.flavor_profile,
                    bridge->current_flavor.profile_dim * sizeof(float));
@@ -485,14 +499,14 @@ void chemosensory_print_summary(const chemosensory_bridge_t* bridge) {
 
 void chemosensory_flavor_free(chemosensory_flavor_t* flavor) {
     if (!flavor) return;
-    free(flavor->flavor_profile);
+    nimcp_free(flavor->flavor_profile);
     flavor->flavor_profile = NULL;
 }
 
 void chemosensory_prediction_free(chemosensory_prediction_t* prediction) {
     if (!prediction) return;
-    free(prediction->predicted_taste);
-    free(prediction->predicted_smell);
+    nimcp_free(prediction->predicted_taste);
+    nimcp_free(prediction->predicted_smell);
     prediction->predicted_taste = NULL;
     prediction->predicted_smell = NULL;
 }

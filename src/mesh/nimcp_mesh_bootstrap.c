@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -1306,6 +1307,7 @@ nimcp_error_t mesh_bootstrap_update(
     uint64_t delta_ms
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     return mesh_integration_update(bootstrap->integration, delta_ms);
@@ -1321,6 +1323,7 @@ nimcp_error_t mesh_bootstrap_gossip_all(
     size_t rounds
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1357,6 +1360,7 @@ nimcp_error_t mesh_bootstrap_get_stats(
     mesh_bootstrap_stats_t* stats
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
@@ -1425,6 +1429,7 @@ nimcp_error_t mesh_bootstrap_register_brain(
     hemispheric_brain_t* brain
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!brain) return NIMCP_ERROR_NULL_POINTER;
@@ -1443,6 +1448,7 @@ nimcp_error_t mesh_bootstrap_register_thalamus(
     thalamus_t* thalamus
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!thalamus) return NIMCP_ERROR_NULL_POINTER;
@@ -1459,6 +1465,7 @@ nimcp_error_t mesh_bootstrap_register_bbb(
     blood_brain_barrier_t* bbb
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!bbb) return NIMCP_ERROR_NULL_POINTER;
@@ -1478,6 +1485,7 @@ nimcp_error_t mesh_bootstrap_register_immune(
     brain_immune_system_t* immune
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!immune) return NIMCP_ERROR_NULL_POINTER;
@@ -1511,6 +1519,7 @@ nimcp_error_t mesh_bootstrap_register_amygdala(
     amygdala_t* amygdala
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!amygdala) return NIMCP_ERROR_NULL_POINTER;
@@ -1527,6 +1536,7 @@ nimcp_error_t mesh_bootstrap_register_hippocampus(
     hippocampus_t* hippocampus
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!hippocampus) return NIMCP_ERROR_NULL_POINTER;
@@ -1543,6 +1553,7 @@ nimcp_error_t mesh_bootstrap_register_fep(
     fep_orchestrator_t* fep
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!fep) return NIMCP_ERROR_NULL_POINTER;
@@ -1562,6 +1573,7 @@ nimcp_error_t mesh_bootstrap_register_bio_router(
     bio_router_t* router
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!router) return NIMCP_ERROR_NULL_POINTER;
@@ -1580,6 +1592,7 @@ nimcp_error_t mesh_bootstrap_register_gpu_recovery(
     gpu_recovery_context_t* gpu_recovery
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!gpu_recovery) return NIMCP_ERROR_NULL_POINTER;
@@ -1599,6 +1612,7 @@ nimcp_error_t mesh_bootstrap_register_plasticity(
     plasticity_coordinator_t* plasticity
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!plasticity) return NIMCP_ERROR_NULL_POINTER;
@@ -1618,6 +1632,7 @@ nimcp_error_t mesh_bootstrap_register_gossip(
     gossip_beliefs_context_t* gossip
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
@@ -1636,6 +1651,7 @@ nimcp_error_t mesh_bootstrap_register_swarm(
     swarm_consensus_t* swarm
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!swarm) return NIMCP_ERROR_NULL_POINTER;
@@ -1666,12 +1682,15 @@ nimcp_error_t mesh_bootstrap_register_receptive_field(
     const mesh_receptive_field_t* field
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bootstrap->pattern_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bootstrap: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -1687,12 +1706,15 @@ nimcp_error_t mesh_bootstrap_route_by_pattern(
     size_t* count_out
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx || !endorsers || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bootstrap->pattern_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bootstrap: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -1706,9 +1728,11 @@ nimcp_error_t mesh_bootstrap_apply_neuromodulation(
     float level
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!bootstrap->pattern_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bootstrap: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -1725,12 +1749,15 @@ nimcp_error_t mesh_bootstrap_learn_routing_outcome(
     float reward_signal
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx || !endorsers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bootstrap->pattern_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bootstrap: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -1776,12 +1803,15 @@ nimcp_error_t mesh_bootstrap_register_module(
     const mesh_module_descriptor_t* descriptor
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!descriptor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bootstrap->module_registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bootstrap: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 

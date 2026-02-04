@@ -46,6 +46,7 @@
 #include "utils/ternary/nimcp_ternary.h"
 #include <math.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -221,7 +222,7 @@ static inline quantum_semantic_t quantum_semantic_create(
     if (!config || max_concepts == 0) return NULL;
 
     quantum_semantic_ctx_t* ctx = (quantum_semantic_ctx_t*)
-        calloc(1, sizeof(quantum_semantic_ctx_t));
+        nimcp_calloc(1, sizeof(quantum_semantic_ctx_t));
     if (!ctx) return NULL;
 
     ctx->magic = QUANTUM_SEMANTIC_MAGIC;
@@ -231,7 +232,7 @@ static inline quantum_semantic_t quantum_semantic_create(
     /* Create Ising model for concept relevance */
     ctx->concept_ising = trit_ising_create(max_concepts, 0.1);
     if (!ctx->concept_ising) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -241,7 +242,7 @@ static inline quantum_semantic_t quantum_semantic_create(
         max_concepts, uniform_bias, uniform_bias, uniform_bias);
     if (!ctx->concept_walker) {
         trit_ising_destroy(ctx->concept_ising);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -251,20 +252,20 @@ static inline quantum_semantic_t quantum_semantic_create(
     if (!ctx->relevance_vector) {
         trit_walker_1d_destroy(ctx->concept_walker);
         trit_ising_destroy(ctx->concept_ising);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     /* Allocate workspace buffers */
-    ctx->similarity_buffer = (float*)calloc(max_concepts, sizeof(float));
-    ctx->activation_buffer = (float*)calloc(max_concepts, sizeof(float));
+    ctx->similarity_buffer = (float*)nimcp_calloc(max_concepts, sizeof(float));
+    ctx->activation_buffer = (float*)nimcp_calloc(max_concepts, sizeof(float));
     if (!ctx->similarity_buffer || !ctx->activation_buffer) {
         trit_vector_destroy(ctx->relevance_vector);
         trit_walker_1d_destroy(ctx->concept_walker);
         trit_ising_destroy(ctx->concept_ising);
-        free(ctx->similarity_buffer);
-        free(ctx->activation_buffer);
-        free(ctx);
+        nimcp_free(ctx->similarity_buffer);
+        nimcp_free(ctx->activation_buffer);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -284,11 +285,11 @@ static inline void quantum_semantic_destroy(quantum_semantic_t ctx) {
     trit_walker_1d_destroy(ctx->concept_walker);
     trit_vector_destroy(ctx->relevance_vector);
     if (ctx->feature_index) trit_matrix_destroy(ctx->feature_index);
-    free(ctx->similarity_buffer);
-    free(ctx->activation_buffer);
+    nimcp_free(ctx->similarity_buffer);
+    nimcp_free(ctx->activation_buffer);
 
     ctx->magic = 0;
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 //=============================================================================
@@ -548,17 +549,17 @@ static inline int quantum_semantic_grover_search(
 
     /* Collect results */
     uint32_t max_results = ctx->config.max_results;
-    result->concept_ids = (uint64_t*)calloc(max_results, sizeof(uint64_t));
-    result->similarities = (float*)calloc(max_results, sizeof(float));
-    result->activations = (float*)calloc(max_results, sizeof(float));
-    result->relevance = (trit_t*)calloc(max_results, sizeof(trit_t));
+    result->concept_ids = (uint64_t*)nimcp_calloc(max_results, sizeof(uint64_t));
+    result->similarities = (float*)nimcp_calloc(max_results, sizeof(float));
+    result->activations = (float*)nimcp_calloc(max_results, sizeof(float));
+    result->relevance = (trit_t*)nimcp_calloc(max_results, sizeof(trit_t));
 
     if (!result->concept_ids || !result->similarities ||
         !result->activations || !result->relevance) {
-        free(result->concept_ids);
-        free(result->similarities);
-        free(result->activations);
-        free(result->relevance);
+        nimcp_free(result->concept_ids);
+        nimcp_free(result->similarities);
+        nimcp_free(result->activations);
+        nimcp_free(result->relevance);
         return -3;
     }
 
@@ -677,17 +678,17 @@ static inline int quantum_semantic_walk_activate(
 
     /* Collect results above threshold */
     uint32_t max_results = ctx->config.max_results;
-    result->concept_ids = (uint64_t*)calloc(max_results, sizeof(uint64_t));
-    result->similarities = (float*)calloc(max_results, sizeof(float));
-    result->activations = (float*)calloc(max_results, sizeof(float));
-    result->relevance = (trit_t*)calloc(max_results, sizeof(trit_t));
+    result->concept_ids = (uint64_t*)nimcp_calloc(max_results, sizeof(uint64_t));
+    result->similarities = (float*)nimcp_calloc(max_results, sizeof(float));
+    result->activations = (float*)nimcp_calloc(max_results, sizeof(float));
+    result->relevance = (trit_t*)nimcp_calloc(max_results, sizeof(trit_t));
 
     if (!result->concept_ids || !result->similarities ||
         !result->activations || !result->relevance) {
-        free(result->concept_ids);
-        free(result->similarities);
-        free(result->activations);
-        free(result->relevance);
+        nimcp_free(result->concept_ids);
+        nimcp_free(result->similarities);
+        nimcp_free(result->activations);
+        nimcp_free(result->relevance);
         return -4;
     }
 
@@ -823,10 +824,10 @@ static inline int quantum_semantic_query(
  */
 static inline void quantum_semantic_free_result(quantum_semantic_result_t* result) {
     if (!result) return;
-    free(result->concept_ids);
-    free(result->similarities);
-    free(result->activations);
-    free(result->relevance);
+    nimcp_free(result->concept_ids);
+    nimcp_free(result->similarities);
+    nimcp_free(result->activations);
+    nimcp_free(result->relevance);
     result->concept_ids = NULL;
     result->similarities = NULL;
     result->activations = NULL;

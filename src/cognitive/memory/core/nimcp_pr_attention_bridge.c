@@ -30,31 +30,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_attention_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_attention_bridge module */
-static nimcp_health_agent_t* g_pr_attention_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_attention_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_attention_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_attention_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_attention_bridge_health_agent = agent;
+nimcp_error_t pr_attention_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_attention_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_attention_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_attention_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_attention_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_attention_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_attention_bridge module */
-static inline void pr_attention_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_attention_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_attention_bridge_health_agent, operation, progress);
+void pr_attention_bridge_mesh_unregister(void) {
+    if (g_pr_attention_bridge_mesh_registry && g_pr_attention_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_attention_bridge_mesh_registry, g_pr_attention_bridge_mesh_id);
+        g_pr_attention_bridge_mesh_id = 0;
+        g_pr_attention_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_attention_bridge module (instance-level) */
 static inline void pr_attention_bridge_heartbeat_instance(
@@ -116,7 +130,7 @@ static uint64_t get_current_time_ms(void) {
  */
 static float* allocate_attention_map(size_t width, size_t height, size_t depth) {
     size_t total = width * height * depth;
-    float* map = (float*)calloc(total, sizeof(float));
+    float* map = (float*)nimcp_calloc(total, sizeof(float));
     return map;
 }
 
@@ -136,14 +150,14 @@ static pr_attn_error_t init_ior_state(
     ior->strength = strength;
 
     size_t total = width * height;
-    ior->ior_map = (float*)calloc(total, sizeof(float));
+    ior->ior_map = (float*)nimcp_calloc(total, sizeof(float));
     if (!ior->ior_map) {
         return PR_ATTN_ERROR_NO_MEMORY;
     }
 
-    ior->last_attended_ms = (uint64_t*)calloc(total, sizeof(uint64_t));
+    ior->last_attended_ms = (uint64_t*)nimcp_calloc(total, sizeof(uint64_t));
     if (!ior->last_attended_ms) {
-        free(ior->ior_map);
+        nimcp_free(ior->ior_map);
         ior->ior_map = NULL;
         return PR_ATTN_ERROR_NO_MEMORY;
     }
@@ -156,11 +170,11 @@ static pr_attn_error_t init_ior_state(
  */
 static void free_ior_state(pr_attn_ior_state_t* ior) {
     if (ior->ior_map) {
-        free(ior->ior_map);
+        nimcp_free(ior->ior_map);
         ior->ior_map = NULL;
     }
     if (ior->last_attended_ms) {
-        free(ior->last_attended_ms);
+        nimcp_free(ior->last_attended_ms);
         ior->last_attended_ms = NULL;
     }
 }
@@ -347,7 +361,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     }
 
     // Allocate bridge structure
-    pr_attention_bridge_t* bridge = (pr_attention_bridge_t*)calloc(1, sizeof(pr_attention_bridge_t));
+    pr_attention_bridge_t* bridge = (pr_attention_bridge_t*)nimcp_calloc(1, sizeof(pr_attention_bridge_t));
     if (!bridge) {
         set_last_error("Failed to allocate bridge structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -366,7 +380,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         cfg.spatial_width, cfg.spatial_height, cfg.temporal_depth);
     if (!bridge->unified_attention_map) {
         set_last_error("Failed to allocate unified attention map");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -374,8 +388,8 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         cfg.spatial_width, cfg.spatial_height, cfg.temporal_depth);
     if (!bridge->bottom_up_map) {
         set_last_error("Failed to allocate bottom-up map");
-        free(bridge->unified_attention_map);
-        free(bridge);
+        nimcp_free(bridge->unified_attention_map);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -383,21 +397,21 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         cfg.spatial_width, cfg.spatial_height, cfg.temporal_depth);
     if (!bridge->top_down_map) {
         set_last_error("Failed to allocate top-down map");
-        free(bridge->bottom_up_map);
-        free(bridge->unified_attention_map);
-        free(bridge);
+        nimcp_free(bridge->bottom_up_map);
+        nimcp_free(bridge->unified_attention_map);
+        nimcp_free(bridge);
         return NULL;
     }
 
     // Allocate memory attention array
-    bridge->attended_memories = (pr_attn_memory_entry_t*)calloc(
+    bridge->attended_memories = (pr_attn_memory_entry_t*)nimcp_calloc(
         cfg.max_attended_memories, sizeof(pr_attn_memory_entry_t));
     if (!bridge->attended_memories) {
         set_last_error("Failed to allocate memory attention array");
-        free(bridge->top_down_map);
-        free(bridge->bottom_up_map);
-        free(bridge->unified_attention_map);
-        free(bridge);
+        nimcp_free(bridge->top_down_map);
+        nimcp_free(bridge->bottom_up_map);
+        nimcp_free(bridge->unified_attention_map);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->num_attended = 0;
@@ -414,11 +428,11 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         );
         if (err != PR_ATTN_SUCCESS) {
             set_last_error("Failed to initialize IOR state");
-            free(bridge->attended_memories);
-            free(bridge->top_down_map);
-            free(bridge->bottom_up_map);
-            free(bridge->unified_attention_map);
-            free(bridge);
+            nimcp_free(bridge->attended_memories);
+            nimcp_free(bridge->top_down_map);
+            nimcp_free(bridge->bottom_up_map);
+            nimcp_free(bridge->unified_attention_map);
+            nimcp_free(bridge);
             return NULL;
         }
     }
@@ -461,25 +475,25 @@ void pr_attention_bridge_destroy(pr_attention_bridge_t* bridge) {
 
 
     if (bridge->unified_attention_map) {
-        free(bridge->unified_attention_map);
+        nimcp_free(bridge->unified_attention_map);
     }
     if (bridge->bottom_up_map) {
-        free(bridge->bottom_up_map);
+        nimcp_free(bridge->bottom_up_map);
     }
     if (bridge->top_down_map) {
-        free(bridge->top_down_map);
+        nimcp_free(bridge->top_down_map);
     }
 
     // Free memory attention array
     if (bridge->attended_memories) {
-        free(bridge->attended_memories);
+        nimcp_free(bridge->attended_memories);
     }
 
     // Free IOR state
     free_ior_state(&bridge->ior_state);
 
     // Free bridge structure
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 pr_attn_error_t pr_attention_bridge_reset(pr_attention_bridge_t* bridge) {

@@ -215,6 +215,7 @@ void thalamic_quantum_reset_stats(thalamic_quantum_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 /**
  * @brief Internal bridge structure
@@ -249,7 +250,7 @@ thalamic_quantum_bridge_t* thalamic_quantum_bridge_create(
     const thalamic_quantum_config_t* config
 ) {
     thalamic_quantum_bridge_t* bridge = (thalamic_quantum_bridge_t*)
-        calloc(1, sizeof(thalamic_quantum_bridge_t));
+        nimcp_calloc(1, sizeof(thalamic_quantum_bridge_t));
     if (!bridge) return NULL;
 
     /* Use defaults if no config provided */
@@ -277,9 +278,9 @@ thalamic_quantum_bridge_t* thalamic_quantum_bridge_create(
     /* Bridge can still work with classical fallback */
 
     /* Allocate workspace buffers */
-    bridge->query_buffer = (float*)calloc(head_dim, sizeof(float));
-    bridge->key_buffer = (float*)calloc(bridge->config.max_destinations * head_dim, sizeof(float));
-    bridge->attention_scores = (float*)calloc(bridge->config.max_destinations, sizeof(float));
+    bridge->query_buffer = (float*)nimcp_calloc(head_dim, sizeof(float));
+    bridge->key_buffer = (float*)nimcp_calloc(bridge->config.max_destinations * head_dim, sizeof(float));
+    bridge->attention_scores = (float*)nimcp_calloc(bridge->config.max_destinations, sizeof(float));
 
     if (!bridge->query_buffer || !bridge->key_buffer || !bridge->attention_scores) {
         thalamic_quantum_bridge_destroy(bridge);
@@ -299,10 +300,10 @@ void thalamic_quantum_bridge_destroy(thalamic_quantum_bridge_t* bridge) {
         quantum_attention_destroy(bridge->quantum_attn);
     }
 
-    free(bridge->query_buffer);
-    free(bridge->key_buffer);
-    free(bridge->attention_scores);
-    free(bridge);
+    nimcp_free(bridge->query_buffer);
+    nimcp_free(bridge->key_buffer);
+    nimcp_free(bridge->attention_scores);
+    nimcp_free(bridge);
 }
 
 bool thalamic_quantum_bridge_is_enabled(const thalamic_quantum_bridge_t* bridge) {
@@ -380,14 +381,14 @@ int thalamic_quantum_route(
     quantum_attention_get_stats(bridge->quantum_attn, &q_stats);
 
     /* Get sparse attention pairs */
-    uint32_t* query_indices = (uint32_t*)calloc(num_dests, sizeof(uint32_t));
-    uint32_t* key_indices = (uint32_t*)calloc(num_dests, sizeof(uint32_t));
-    float* attention_values = (float*)calloc(num_dests, sizeof(float));
+    uint32_t* query_indices = (uint32_t*)nimcp_calloc(num_dests, sizeof(uint32_t));
+    uint32_t* key_indices = (uint32_t*)nimcp_calloc(num_dests, sizeof(uint32_t));
+    float* attention_values = (float*)nimcp_calloc(num_dests, sizeof(float));
 
     if (!query_indices || !key_indices || !attention_values) {
-        free(query_indices);
-        free(key_indices);
-        free(attention_values);
+        nimcp_free(query_indices);
+        nimcp_free(key_indices);
+        nimcp_free(attention_values);
         return -3;
     }
 
@@ -414,9 +415,9 @@ int thalamic_quantum_route(
         }
     }
 
-    free(query_indices);
-    free(key_indices);
-    free(attention_values);
+    nimcp_free(query_indices);
+    nimcp_free(key_indices);
+    nimcp_free(attention_values);
 
     /* Update statistics */
     bridge->stats.quantum_routes++;

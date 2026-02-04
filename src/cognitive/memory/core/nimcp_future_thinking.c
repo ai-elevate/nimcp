@@ -26,31 +26,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(future_thinking)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for future_thinking module */
-static nimcp_health_agent_t* g_future_thinking_health_agent = NULL;
+static mesh_participant_id_t g_future_thinking_mesh_id = 0;
+static mesh_participant_registry_t* g_future_thinking_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for future_thinking heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void future_thinking_set_health_agent(nimcp_health_agent_t* agent) {
-    g_future_thinking_health_agent = agent;
+nimcp_error_t future_thinking_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_future_thinking_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "future_thinking", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "future_thinking";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_future_thinking_mesh_id);
+    if (err == NIMCP_SUCCESS) g_future_thinking_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from future_thinking module */
-static inline void future_thinking_heartbeat(const char* operation, float progress) {
-    if (g_future_thinking_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_future_thinking_health_agent, operation, progress);
+void future_thinking_mesh_unregister(void) {
+    if (g_future_thinking_mesh_registry && g_future_thinking_mesh_id != 0) {
+        mesh_participant_unregister(g_future_thinking_mesh_registry, g_future_thinking_mesh_id);
+        g_future_thinking_mesh_id = 0;
+        g_future_thinking_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from future_thinking module (instance-level) */
 static inline void future_thinking_heartbeat_instance(
@@ -298,7 +312,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         cfg = future_thinking_config_default();
     }
 
-    future_thinking_t ft = calloc(1, sizeof(struct future_thinking_struct));
+    future_thinking_t ft = nimcp_calloc(1, sizeof(struct future_thinking_struct));
     if (!ft) {
         set_error("Failed to allocate future thinking system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ft");
@@ -311,36 +325,36 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
     ft->node_manager = node_manager;
 
     // Allocate event storage
-    ft->events = calloc(cfg.max_events, sizeof(future_event_t));
+    ft->events = nimcp_calloc(cfg.max_events, sizeof(future_event_t));
     if (!ft->events) {
         set_error("Failed to allocate event storage");
-        free(ft);
+        nimcp_free(ft);
         return NULL;
     }
     ft->events_capacity = cfg.max_events;
     ft->next_event_id = 1;
 
     // Allocate goal storage
-    ft->goals = calloc(cfg.max_goals, sizeof(future_goal_t));
+    ft->goals = nimcp_calloc(cfg.max_goals, sizeof(future_goal_t));
     if (!ft->goals) {
         set_error("Failed to allocate goal storage");
-        free(ft->events);
-        free(ft);
+        nimcp_free(ft->events);
+        nimcp_free(ft);
         return NULL;
     }
     ft->goals_capacity = cfg.max_goals;
     ft->next_goal_id = 1;
 
     // Allocate fragment pool
-    ft->fragment_pool = calloc(cfg.fragment_pool_size, sizeof(uint64_t));
-    ft->fragment_weights = calloc(cfg.fragment_pool_size, sizeof(float));
+    ft->fragment_pool = nimcp_calloc(cfg.fragment_pool_size, sizeof(uint64_t));
+    ft->fragment_weights = nimcp_calloc(cfg.fragment_pool_size, sizeof(float));
     if (!ft->fragment_pool || !ft->fragment_weights) {
         set_error("Failed to allocate fragment pool");
-        free(ft->goals);
-        free(ft->events);
-        free(ft->fragment_pool);
-        free(ft->fragment_weights);
-        free(ft);
+        nimcp_free(ft->goals);
+        nimcp_free(ft->events);
+        nimcp_free(ft->fragment_pool);
+        nimcp_free(ft->fragment_weights);
+        nimcp_free(ft);
         return NULL;
     }
     ft->pool_size = cfg.fragment_pool_size;
@@ -368,7 +382,7 @@ NIMCP_EXPORT void future_thinking_destroy(future_thinking_t ft) {
 
         future_event_cleanup(&ft->events[i]);
     }
-    free(ft->events);
+    nimcp_free(ft->events);
 
     // Clean up goals
     for (size_t i = 0; i < ft->num_goals; i++) {
@@ -380,13 +394,13 @@ NIMCP_EXPORT void future_thinking_destroy(future_thinking_t ft) {
 
         future_goal_cleanup(&ft->goals[i]);
     }
-    free(ft->goals);
+    nimcp_free(ft->goals);
 
     // Clean up fragment pool
-    free(ft->fragment_pool);
-    free(ft->fragment_weights);
+    nimcp_free(ft->fragment_pool);
+    nimcp_free(ft->fragment_weights);
 
-    free(ft);
+    nimcp_free(ft);
 }
 
 NIMCP_EXPORT future_error_t future_thinking_reset(future_thinking_t ft) {
@@ -531,11 +545,11 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     memset(combined_signature, 0, sizeof(prime_signature_t));
 
     // Collect quaternions for blending
-    nimcp_quaternion_t* quats = malloc(num_fragments * sizeof(nimcp_quaternion_t));
-    float* blend_weights = malloc(num_fragments * sizeof(float));
+    nimcp_quaternion_t* quats = nimcp_malloc(num_fragments * sizeof(nimcp_quaternion_t));
+    float* blend_weights = nimcp_malloc(num_fragments * sizeof(float));
     if (!quats || !blend_weights) {
-        free(quats);
-        free(blend_weights);
+        nimcp_free(quats);
+        nimcp_free(blend_weights);
         set_error("Failed to allocate blend arrays");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -608,8 +622,8 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     combined_signature->hash = prime_sig_hash(combined_signature);
     prime_sig_recount_factors(combined_signature);
 
-    free(quats);
-    free(blend_weights);
+    nimcp_free(quats);
+    nimcp_free(blend_weights);
 
     return FUTURE_SUCCESS;
 }
@@ -672,9 +686,9 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
 
     // Blend emotional tone from elements
     if (scene_out->num_elements > 0) {
-        nimcp_quaternion_t* element_states = malloc(scene_out->num_elements *
+        nimcp_quaternion_t* element_states = nimcp_malloc(scene_out->num_elements *
                                                      sizeof(nimcp_quaternion_t));
-        float* element_weights = malloc(scene_out->num_elements * sizeof(float));
+        float* element_weights = nimcp_malloc(scene_out->num_elements * sizeof(float));
 
         if (element_states && element_weights) {
             for (size_t i = 0; i < scene_out->num_elements; i++) {
@@ -690,12 +704,12 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
             scene_out->emotional_tone = quat_blend_memories(element_states,
                                                             element_weights,
                                                             scene_out->num_elements);
-            free(element_states);
-            free(element_weights);
+            nimcp_free(element_states);
+            nimcp_free(element_weights);
         } else {
             scene_out->emotional_tone = quat_identity();
-            free(element_states);
-            free(element_weights);
+            nimcp_free(element_states);
+            nimcp_free(element_weights);
         }
     }
 
@@ -1124,14 +1138,14 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     }
 
     // Sample memory fragments
-    uint64_t* fragments = malloc(ft->config.sample_count * sizeof(uint64_t));
-    float* weights = malloc(ft->config.sample_count * sizeof(float));
+    uint64_t* fragments = nimcp_malloc(ft->config.sample_count * sizeof(uint64_t));
+    float* weights = nimcp_malloc(ft->config.sample_count * sizeof(float));
     size_t num_fragments = 0;
 
     if (!fragments || !weights) {
         prime_sig_destroy(context_sig);
-        free(fragments);
-        free(weights);
+        nimcp_free(fragments);
+        nimcp_free(weights);
         ft->status = FUTURE_SIM_FAILED;
         set_error("Failed to allocate fragment arrays");
         return FUTURE_ERROR_NO_MEMORY;
@@ -1157,8 +1171,8 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
                                             &combined_sig, &combined_state);
     if (err != FUTURE_SUCCESS) {
         prime_sig_destroy(context_sig);
-        free(fragments);
-        free(weights);
+        nimcp_free(fragments);
+        nimcp_free(weights);
         ft->status = FUTURE_SIM_FAILED;
         return err;
     }
@@ -1166,11 +1180,11 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     ft->status = FUTURE_SIM_CONSTRUCTING;
 
     // Create scene elements from fragments
-    scene_element_t* elements = malloc(num_fragments * sizeof(scene_element_t));
+    scene_element_t* elements = nimcp_malloc(num_fragments * sizeof(scene_element_t));
     if (!elements) {
         prime_sig_destroy(context_sig);
-        free(fragments);
-        free(weights);
+        nimcp_free(fragments);
+        nimcp_free(weights);
         ft->status = FUTURE_SIM_FAILED;
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1192,12 +1206,12 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
 
     // Construct scene
     err = future_thinking_construct_scene(ft, elements, num_fragments, &event_out->scene);
-    free(elements);
+    nimcp_free(elements);
 
     if (err != FUTURE_SUCCESS) {
         prime_sig_destroy(context_sig);
-        free(fragments);
-        free(weights);
+        nimcp_free(fragments);
+        nimcp_free(weights);
         ft->status = FUTURE_SIM_FAILED;
         return err;
     }
@@ -1257,8 +1271,8 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
 
     // Clean up
     prime_sig_destroy(context_sig);
-    free(fragments);
-    free(weights);
+    nimcp_free(fragments);
+    nimcp_free(weights);
 
     // Update statistics
     uint64_t elapsed = get_current_time_ms() - start_time;
@@ -1736,12 +1750,12 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
 
     // Find events relevant to this goal
     size_t relevant_count = 0;
-    uint64_t* relevant_events = malloc(ft->num_events * sizeof(uint64_t));
-    float* relevances = malloc(ft->num_events * sizeof(float));
+    uint64_t* relevant_events = nimcp_malloc(ft->num_events * sizeof(uint64_t));
+    float* relevances = nimcp_malloc(ft->num_events * sizeof(float));
 
     if (!relevant_events || !relevances) {
-        free(relevant_events);
-        free(relevances);
+        nimcp_free(relevant_events);
+        nimcp_free(relevances);
         set_error("Failed to allocate path arrays");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1769,10 +1783,10 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     // Simplified: just use first max_steps relevant events
     size_t path_length = relevant_count < max_steps ? relevant_count : max_steps;
 
-    result_out->step_event_ids = malloc(path_length * sizeof(uint64_t));
+    result_out->step_event_ids = nimcp_malloc(path_length * sizeof(uint64_t));
     if (!result_out->step_event_ids) {
-        free(relevant_events);
-        free(relevances);
+        nimcp_free(relevant_events);
+        nimcp_free(relevances);
         set_error("Failed to allocate path result");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1812,16 +1826,16 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     result_out->num_alternatives = 0;
     result_out->alternative_values = NULL;
 
-    free(relevant_events);
-    free(relevances);
+    nimcp_free(relevant_events);
+    nimcp_free(relevances);
 
     return FUTURE_SUCCESS;
 }
 
 NIMCP_EXPORT void future_thinking_free_path_result(path_optimization_result_t* result) {
     if (result) {
-        free(result->step_event_ids);
-        free(result->alternative_values);
+        nimcp_free(result->step_event_ids);
+        nimcp_free(result->alternative_values);
         result->step_event_ids = NULL;
         result->alternative_values = NULL;
         result->num_steps = 0;
@@ -2113,7 +2127,7 @@ NIMCP_EXPORT future_error_t future_scene_init(
 
     memset(scene, 0, sizeof(future_scene_t));
 
-    scene->elements = calloc(max_elements, sizeof(scene_element_t));
+    scene->elements = nimcp_calloc(max_elements, sizeof(scene_element_t));
     if (!scene->elements) {
         set_error("Failed to allocate scene elements");
         return FUTURE_ERROR_NO_MEMORY;
@@ -2127,7 +2141,7 @@ NIMCP_EXPORT future_error_t future_scene_init(
 
 NIMCP_EXPORT void future_scene_free(future_scene_t* scene) {
     if (scene) {
-        free(scene->elements);
+        nimcp_free(scene->elements);
         scene->elements = NULL;
         scene->num_elements = 0;
         scene->max_elements = 0;
@@ -2214,7 +2228,7 @@ NIMCP_EXPORT future_error_t future_goal_init(future_goal_t* goal) {
 
 NIMCP_EXPORT void future_goal_cleanup(future_goal_t* goal) {
     if (goal) {
-        free(goal->associated_events);
+        nimcp_free(goal->associated_events);
         goal->associated_events = NULL;
         goal->num_associated_events = 0;
     }

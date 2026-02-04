@@ -19,33 +19,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for neuromod_nucleus_adapter module */
-static nimcp_health_agent_t* g_neuromod_nucleus_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for neuromod_nucleus_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neuromod_nucleus_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neuromod_nucleus_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neuromod_nucleus_adapter module */
-static inline void neuromod_nucleus_adapter_heartbeat(const char* operation, float progress) {
-    if (g_neuromod_nucleus_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neuromod_nucleus_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_nucleus_adapter)
 
 //=============================================================================
 // Internal Structure
@@ -359,7 +336,7 @@ nimcp_nucleus_adapter_config_t nimcp_nucleus_adapter_default_config(nucleus_type
 nimcp_nucleus_adapter_t nimcp_nucleus_adapter_create(
     const nimcp_nucleus_adapter_config_t* config
 ) {
-    nimcp_nucleus_adapter_t adapter = (nimcp_nucleus_adapter_t)calloc(
+    nimcp_nucleus_adapter_t adapter = (nimcp_nucleus_adapter_t)nimcp_calloc(
         1, sizeof(struct nimcp_nucleus_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate neuromod nucleus adapter");
 
@@ -384,7 +361,7 @@ void nimcp_nucleus_adapter_destroy(nimcp_nucleus_adapter_t adapter) {
         nucleus_shutdown(adapter);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_nucleus_adapter_get_interface(

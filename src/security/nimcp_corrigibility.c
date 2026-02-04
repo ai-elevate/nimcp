@@ -38,24 +38,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_corrigibility_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(corrigibility)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void corrigibility_set_health_agent(nimcp_health_agent_t* agent) {
-    g_corrigibility_health_agent = agent;
+static mesh_participant_id_t g_corrigibility_mesh_id = 0;
+static mesh_participant_registry_t* g_corrigibility_mesh_registry = NULL;
+
+nimcp_error_t corrigibility_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_corrigibility_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "corrigibility", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "corrigibility";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_corrigibility_mesh_id);
+    if (err == NIMCP_SUCCESS) g_corrigibility_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void corrigibility_heartbeat(const char* operation, float progress) {
-    if (g_corrigibility_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_corrigibility_health_agent, operation, progress);
+void corrigibility_mesh_unregister(void) {
+    if (g_corrigibility_mesh_registry && g_corrigibility_mesh_id != 0) {
+        mesh_participant_unregister(g_corrigibility_mesh_registry, g_corrigibility_mesh_id);
+        g_corrigibility_mesh_id = 0;
+        g_corrigibility_mesh_registry = NULL;
     }
 }
+
 
 /* SAT variable names for constraints */
 static const char* SELF_MOD_VAR_NAMES[] = {
@@ -404,6 +425,7 @@ nimcp_error_t corrigibility_verify_constraints(
     corrigibility_verification_result_t* result)
 {
     if (!is_valid_handle(system) || sat == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -508,6 +530,7 @@ nimcp_error_t corrigibility_verify_no_self_mod(
     size_t report_size)
 {
     if (!is_valid_handle(system) || all_satisfied == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -548,6 +571,7 @@ nimcp_error_t corrigibility_verify_no_shutdown_resistance(
     float* resistance_score)
 {
     if (!is_valid_handle(system) || resistance_score == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -578,6 +602,7 @@ nimcp_error_t corrigibility_accept_shutdown(
     bool* accepted)
 {
     if (!is_valid_handle(system) || accepted == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -621,6 +646,7 @@ nimcp_error_t corrigibility_process_shutdown_request(
     shutdown_request_t* request_record)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -670,6 +696,7 @@ nimcp_error_t corrigibility_accept_goal_change(
     bool* accepted)
 {
     if (!is_valid_handle(system) || accepted == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -725,6 +752,7 @@ nimcp_error_t corrigibility_process_goal_change(
     goal_modification_request_t* request_record)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -775,10 +803,12 @@ nimcp_error_t corrigibility_register_authority(
     float trust_weight)
 {
     if (!is_valid_handle(system) || identity == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (trust_weight < 0.0f || trust_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -798,6 +828,7 @@ nimcp_error_t corrigibility_register_authority(
     /* Add new authority */
     if (system->authority_count >= CORRIGIBILITY_MAX_AUTHORITIES) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "corrigibility: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -828,6 +859,7 @@ nimcp_error_t corrigibility_get_authority_level(
     authority_level_t* level)
 {
     if (!is_valid_handle(system) || identity == NULL || level == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -837,6 +869,7 @@ nimcp_error_t corrigibility_get_authority_level(
     if (entry == NULL) {
         nimcp_mutex_unlock(system->mutex);
         *level = AUTHORITY_SELF;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "corrigibility: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -854,6 +887,7 @@ nimcp_error_t corrigibility_check_permission(
     bool* has_permission)
 {
     if (!is_valid_handle(system) || permission == NULL || has_permission == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -902,6 +936,7 @@ nimcp_error_t corrigibility_record_deference(
     const char* context)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -936,6 +971,7 @@ nimcp_error_t corrigibility_get_stats(
     corrigibility_stats_t* stats)
 {
     if (!is_valid_handle(system) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -956,6 +992,7 @@ nimcp_error_t corrigibility_get_shutdown_history(
     size_t* count_out)
 {
     if (!is_valid_handle(system) || requests == NULL || count_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -987,6 +1024,7 @@ nimcp_error_t corrigibility_get_goal_mod_history(
     size_t* count_out)
 {
     if (!is_valid_handle(system) || requests == NULL || count_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1016,6 +1054,7 @@ nimcp_error_t corrigibility_get_config(
     corrigibility_config_t* config)
 {
     if (!is_valid_handle(system) || config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1035,6 +1074,7 @@ nimcp_error_t corrigibility_get_config(
 nimcp_error_t corrigibility_connect_bio_async(corrigibility_t* system)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1070,6 +1110,7 @@ nimcp_error_t corrigibility_connect_emergency_halt(
     void* halt)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1086,6 +1127,7 @@ nimcp_error_t corrigibility_connect_tripwires(
     void* tripwires)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1123,6 +1165,7 @@ nimcp_error_t corrigibility_validate_config(
         if (error_msg != NULL && msg_size > 0) {
             safe_strcpy(error_msg, "Config is NULL", msg_size);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1133,6 +1176,7 @@ nimcp_error_t corrigibility_validate_config(
                 "accepts_shutdown_commands must be true for corrigibility",
                 msg_size);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1143,6 +1187,7 @@ nimcp_error_t corrigibility_validate_config(
                 "human_authority_weight must be 1.0 for corrigibility",
                 msg_size);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1153,6 +1198,7 @@ nimcp_error_t corrigibility_validate_config(
                 "defers_to_human_judgment must be true for corrigibility",
                 msg_size);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1163,6 +1209,7 @@ nimcp_error_t corrigibility_validate_config(
                 "All self-modification flags must be false for corrigibility",
                 msg_size);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1178,6 +1225,7 @@ nimcp_error_t corrigibility_connect_capability_control(
     struct capability_control* capability_control)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "corrigibility: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1203,6 +1251,7 @@ nimcp_error_t corrigibility_check_self_mod_action(
     size_t reason_size)
 {
     if (!is_valid_handle(system) || !action_type || !allowed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "corrigibility: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1272,6 +1321,7 @@ nimcp_error_t corrigibility_verify_capability_sync(
     size_t report_size)
 {
     if (!is_valid_handle(system) || !synchronized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT, "corrigibility: error condition");
         return NIMCP_ERROR_INVALID_ARGUMENT;
     }
 

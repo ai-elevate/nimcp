@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -438,6 +439,7 @@ int vae_snn_encode_latent(vae_snn_bridge_t* bridge,
 {
     if (!bridge || !latent || !result) return NIMCP_ERROR_VAE_SNN_NULL;
     if (bridge->state != VAE_SNN_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NOT_CONNECTED, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NOT_CONNECTED;
     }
 
@@ -461,6 +463,7 @@ int vae_snn_encode_latent(vae_snn_bridge_t* bridge,
     result->spike_trains = nimcp_calloc(total_neurons, sizeof(vae_snn_spike_train_t));
     if (!result->spike_trains) {
         bridge->state = VAE_SNN_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NO_MEMORY, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NO_MEMORY;
     }
 
@@ -601,6 +604,7 @@ int vae_snn_encode_from_input(vae_snn_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NO_MEMORY, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NO_MEMORY;
     }
 
@@ -614,6 +618,7 @@ int vae_snn_encode_from_input(vae_snn_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_ENCODE_FAILED, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_ENCODE_FAILED;
     }
 
@@ -642,6 +647,7 @@ int vae_snn_decode_spikes(vae_snn_bridge_t* bridge,
 {
     if (!bridge || !spike_trains || !result) return NIMCP_ERROR_VAE_SNN_NULL;
     if (bridge->state != VAE_SNN_STATE_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NOT_CONNECTED, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NOT_CONNECTED;
     }
 
@@ -661,6 +667,7 @@ int vae_snn_decode_spikes(vae_snn_bridge_t* bridge,
     if (!result->latent_mu || !result->latent_log_var) {
         vae_snn_decode_result_free(result);
         bridge->state = VAE_SNN_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NO_MEMORY, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NO_MEMORY;
     }
 
@@ -745,6 +752,7 @@ int vae_snn_decode_to_output(vae_snn_bridge_t* bridge,
                               float* output, uint32_t* output_dim)
 {
     if (!bridge || !spike_trains || !output || !output_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NULL, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NULL;
     }
     if (!bridge->vae) return NIMCP_ERROR_VAE_SNN_NOT_CONNECTED;
@@ -763,6 +771,7 @@ int vae_snn_decode_to_output(vae_snn_bridge_t* bridge,
         nimcp_tensor_destroy(z_tensor);
         nimcp_tensor_destroy(output_tensor);
         vae_snn_decode_result_free(&decode_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NO_MEMORY, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NO_MEMORY;
     }
 
@@ -874,6 +883,7 @@ int vae_snn_update_precision_from_vae(vae_snn_bridge_t* bridge)
     float* precision = nimcp_calloc(dim, sizeof(float));
     if (!precision) {
         vae_latent_state_destroy(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SNN_NO_MEMORY, "vae_snn_bridge: error condition");
         return NIMCP_ERROR_VAE_SNN_NO_MEMORY;
     }
 

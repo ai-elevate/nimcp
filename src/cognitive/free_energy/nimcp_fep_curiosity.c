@@ -19,46 +19,53 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_curiosity_instance)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for fep_curiosity module */
-static nimcp_health_agent_t* g_fep_curiosity_health_agent = NULL;
+static mesh_participant_id_t g_fep_curiosity_instance_mesh_id = 0;
+static mesh_participant_registry_t* g_fep_curiosity_mesh_registry = NULL;
 
-/** Instance-level health agent for fep_curiosity (non-bridge fallback) */
-static nimcp_health_agent_t* g_fep_curiosity_instance_health_agent = NULL;
-
-/**
- * @brief Set health agent for fep_curiosity heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void fep_curiosity_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fep_curiosity_health_agent = agent;
+nimcp_error_t fep_curiosity_instance_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fep_curiosity_instance_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fep_curiosity_instance", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fep_curiosity_instance";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fep_curiosity_instance_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fep_curiosity_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from fep_curiosity module */
-static inline void fep_curiosity_heartbeat(const char* operation, float progress) {
-    if (g_fep_curiosity_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_curiosity_health_agent, operation, progress);
+void fep_curiosity_instance_mesh_unregister(void) {
+    if (g_fep_curiosity_mesh_registry && g_fep_curiosity_instance_mesh_id != 0) {
+        mesh_participant_unregister(g_fep_curiosity_mesh_registry, g_fep_curiosity_instance_mesh_id);
+        g_fep_curiosity_instance_mesh_id = 0;
+        g_fep_curiosity_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from fep_curiosity module (instance-level) */
 static inline void fep_curiosity_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_fep_curiosity_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_curiosity_health_agent, operation, progress);
+    if (g_fep_curiosity_instance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_curiosity_instance_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_fep_curiosity_health_agent) {
+    if (instance_agent && instance_agent != g_fep_curiosity_instance_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -135,7 +142,7 @@ static float compute_entropy(const float* probs, size_t n) {
 
     /* Phase 8: Heartbeat at operation start */
     if (n > 256) {
-        fep_curiosity_heartbeat("fep_curiosit_entropy", 0.5f);
+        fep_curiosity_instance_heartbeat("fep_curiosit_entropy", 0.5f);
     }
 
     /* nimcp_stats_entropy returns bits; convert to nats for compatibility */
@@ -148,7 +155,7 @@ static uint32_t hash_state(const float* state, size_t dim) {
     for (size_t i = 0; i < dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && dim > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)dim);
         }
 
@@ -166,7 +173,7 @@ void fep_curiosity_default_config(fep_curiosity_config_t* config) {
     if (!config) return;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_default_config", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_default_config", 0.0f);
 
 
     config->type = CURIOSITY_EPISTEMIC;
@@ -180,7 +187,7 @@ void fep_curiosity_default_config(fep_curiosity_config_t* config) {
 
 fep_curiosity_system_t* fep_curiosity_create(const fep_curiosity_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_create", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_create", 0.0f);
 
 
     fep_curiosity_system_t* sys = (fep_curiosity_system_t*)nimcp_calloc(
@@ -222,7 +229,7 @@ void fep_curiosity_destroy(fep_curiosity_system_t* sys) {
     if (!sys) return;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_destroy", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_destroy", 0.0f);
 
 
     if (sys->bio_async_enabled) {
@@ -234,7 +241,7 @@ void fep_curiosity_destroy(fep_curiosity_system_t* sys) {
         for (size_t i = 0; i < sys->memory_count; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && sys->memory_count > 256) {
-                fep_curiosity_heartbeat("fep_curiosit_loop",
+                fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                                  (float)(i + 1) / (float)sys->memory_count);
             }
 
@@ -263,7 +270,7 @@ int fep_curiosity_reset(fep_curiosity_system_t* sys) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_reset", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_reset", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -277,7 +284,7 @@ int fep_curiosity_reset(fep_curiosity_system_t* sys) {
         for (size_t i = 0; i < sys->memory_count; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && sys->memory_count > 256) {
-                fep_curiosity_heartbeat("fep_curiosit_loop",
+                fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                                  (float)(i + 1) / (float)sys->memory_count);
             }
 
@@ -306,7 +313,7 @@ float fep_compute_epistemic_value(
 
     /* Compute expected information gain under policy */
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_fep_compute_epistemi", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_fep_compute_epistemi", 0.0f);
 
 
     float epistemic_value = 0.0f;
@@ -329,7 +336,7 @@ float fep_compute_information_gain(
     if (!sys || !fep || !observation || dim == 0) return 0.0f;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_fep_compute_informat", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_fep_compute_informat", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -342,7 +349,7 @@ float fep_compute_information_gain(
     for (size_t i = 0; i < dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && dim > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)dim);
         }
 
@@ -372,7 +379,7 @@ float fep_compute_empowerment(
     /* Empowerment = I[a, s'|s] = mutual information between actions and future states */
     /* Simplified estimation */
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_fep_compute_empowerm", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_fep_compute_empowerm", 0.0f);
 
 
     float empowerment = 0.5f;  /* Baseline empowerment */
@@ -382,7 +389,7 @@ float fep_compute_empowerment(
     for (size_t i = 0; i < dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && dim > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)dim);
         }
 
@@ -407,7 +414,7 @@ float fep_compute_novelty(
     if (!sys || !state || dim == 0) return 0.0f;  /* NULL = no novelty */
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_fep_compute_novelty", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_fep_compute_novelty", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -420,7 +427,7 @@ float fep_compute_novelty(
     for (size_t i = 0; i < sys->memory_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->memory_count > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)sys->memory_count);
         }
 
@@ -459,7 +466,7 @@ int fep_curiosity_modulate_efe(
     /* G'(π) = G(π) - α·EpistemicValue - β·Empowerment - γ·Novelty */
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_modulate_efe", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_modulate_efe", 0.0f);
 
 
     float curiosity_bonus = 0.0f;
@@ -485,7 +492,7 @@ int fep_curiosity_select_action(
     *action = 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_select_action", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_select_action", 0.0f);
 
 
     return 0;
@@ -503,7 +510,7 @@ int fep_curiosity_record_observation(
     if (!sys || !observation || dim == 0) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_record_observation", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_record_observation", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -515,7 +522,7 @@ int fep_curiosity_record_observation(
     for (size_t i = 0; i < sys->memory_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->memory_count > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)sys->memory_count);
         }
 
@@ -546,7 +553,7 @@ int fep_curiosity_record_observation(
     for (size_t i = 0; i < sys->memory_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->memory_count > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
+            fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                              (float)(i + 1) / (float)sys->memory_count);
         }
 
@@ -579,7 +586,7 @@ int fep_curiosity_get_state(
 
     *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_get_state", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_get_state", 0.0f);
 
 
     return 0;
@@ -593,7 +600,7 @@ int fep_curiosity_get_stats(
 
     *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_get_stats", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_get_stats", 0.0f);
 
 
     if (sys->stats.observations_processed > 0) {
@@ -614,7 +621,7 @@ int fep_curiosity_connect(
     if (!curiosity || !fep) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_connect", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_connect", 0.0f);
 
 
     curiosity->fep_system = fep;
@@ -632,7 +639,7 @@ int fep_curiosity_disconnect(fep_curiosity_system_t* curiosity) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_disconnect", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_disconnect", 0.0f);
 
 
     curiosity->fep_system = NULL;
@@ -654,7 +661,7 @@ int fep_curiosity_connect_bio_async(fep_curiosity_system_t* sys) {
     if (sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_connect_bio_async", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_connect_bio_async", 0.0f);
 
 
     bio_module_info_t info = {
@@ -683,7 +690,7 @@ int fep_curiosity_disconnect_bio_async(fep_curiosity_system_t* sys) {
     if (!sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_disconnect_bio_async", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_disconnect_bio_async", 0.0f);
 
 
     if (sys->bio_ctx) {
@@ -697,7 +704,7 @@ int fep_curiosity_disconnect_bio_async(fep_curiosity_system_t* sys) {
 bool fep_curiosity_is_bio_async_connected(const fep_curiosity_system_t* sys) {
     if (!sys) return false;
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_is_bio_async_connect", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_is_bio_async_connect", 0.0f);
 
 
     return sys->bio_async_enabled;
@@ -728,7 +735,7 @@ float fep_curiosity_compute_epistemic(
     size_t dim
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_compute_epistemic", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_compute_epistemic", 0.0f);
 
 
     return fep_compute_epistemic_value(sys, fep, NULL);
@@ -740,7 +747,7 @@ float fep_curiosity_compute_novelty(
     size_t dim
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_compute_novelty", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_compute_novelty", 0.0f);
 
 
     return fep_compute_novelty(sys, state, dim);
@@ -753,7 +760,7 @@ float fep_curiosity_compute_empowerment(
     size_t dim
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_compute_empowerment", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_compute_empowerment", 0.0f);
 
 
     return fep_compute_empowerment(sys, fep, state, dim);
@@ -765,7 +772,7 @@ int fep_curiosity_add_to_memory(
     size_t dim
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_add_to_memory", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_add_to_memory", 0.0f);
 
 
     return fep_curiosity_record_observation(sys, state, dim);
@@ -773,7 +780,7 @@ int fep_curiosity_add_to_memory(
 
 int fep_curiosity_clear_memory(fep_curiosity_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_clear_memory", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_clear_memory", 0.0f);
 
 
     return fep_curiosity_reset(sys);
@@ -790,7 +797,7 @@ int fep_curiosity_update(fep_curiosity_system_t* sys, uint64_t delta_ms) {
 
     /* Update exploration drive based on recent novelty */
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_update", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_update", 0.0f);
 
 
     float decay = expf(-(float)delta_ms / 10000.0f);
@@ -809,7 +816,7 @@ int fep_curiosity_compute_total(
     if (!sys || !state || !result) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_compute_total", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_compute_total", 0.0f);
 
 
     result->epistemic_value = fep_curiosity_compute_epistemic(sys, fep, state, dim);
@@ -831,7 +838,7 @@ int fep_curiosity_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_curiosity_heartbeat("fep_curiosit_query_self_knowledge", 0.0f);
+    fep_curiosity_instance_heartbeat("fep_curiosit_query_self_knowledge", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Curiosity");
@@ -839,7 +846,7 @@ int fep_curiosity_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                fep_curiosity_heartbeat("fep_curiosit_loop",
+                fep_curiosity_instance_heartbeat("fep_curiosit_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 

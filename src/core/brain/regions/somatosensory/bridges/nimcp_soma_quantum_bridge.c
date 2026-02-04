@@ -27,31 +27,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(soma_quantum_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for soma_quantum_bridge module */
-static nimcp_health_agent_t* g_soma_quantum_bridge_health_agent = NULL;
+static mesh_participant_id_t g_soma_quantum_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_soma_quantum_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for soma_quantum_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void soma_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_soma_quantum_bridge_health_agent = agent;
+nimcp_error_t soma_quantum_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_soma_quantum_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "soma_quantum_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "soma_quantum_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_soma_quantum_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_soma_quantum_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from soma_quantum_bridge module */
-static inline void soma_quantum_bridge_heartbeat(const char* operation, float progress) {
-    if (g_soma_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_soma_quantum_bridge_health_agent, operation, progress);
+void soma_quantum_bridge_mesh_unregister(void) {
+    if (g_soma_quantum_bridge_mesh_registry && g_soma_quantum_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_soma_quantum_bridge_mesh_registry, g_soma_quantum_bridge_mesh_id);
+        g_soma_quantum_bridge_mesh_id = 0;
+        g_soma_quantum_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "SOMA_QUANTUM_BRIDGE"
 
@@ -113,7 +127,7 @@ int soma_quantum_default_config(soma_quantum_config_t* config) {
 }
 
 soma_quantum_bridge_t* soma_quantum_bridge_create(const soma_quantum_config_t* config) {
-    soma_quantum_bridge_t* bridge = (soma_quantum_bridge_t*)calloc(1, sizeof(soma_quantum_bridge_t));
+    soma_quantum_bridge_t* bridge = (soma_quantum_bridge_t*)nimcp_calloc(1, sizeof(soma_quantum_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -138,7 +152,7 @@ soma_quantum_bridge_t* soma_quantum_bridge_create(const soma_quantum_config_t* c
 void soma_quantum_bridge_destroy(soma_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "soma_quantum");
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================
@@ -186,7 +200,7 @@ int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
     /* Allocate result */
-    result->optimal_thresholds = (float*)calloc(spec->num_thresholds, sizeof(float));
+    result->optimal_thresholds = (float*)nimcp_calloc(spec->num_thresholds, sizeof(float));
     if (!result->optimal_thresholds) {
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
         return -1;
@@ -277,11 +291,11 @@ int soma_quantum_search_body_map(soma_quantum_bridge_t* bridge,
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
     /* Allocate results */
-    result->visited_regions = (uint32_t*)calloc(spec->map_dim, sizeof(uint32_t));
-    result->region_probabilities = (float*)calloc(spec->map_dim, sizeof(float));
+    result->visited_regions = (uint32_t*)nimcp_calloc(spec->map_dim, sizeof(uint32_t));
+    result->region_probabilities = (float*)nimcp_calloc(spec->map_dim, sizeof(float));
     if (!result->visited_regions || !result->region_probabilities) {
-        free(result->visited_regions);
-        free(result->region_probabilities);
+        nimcp_free(result->visited_regions);
+        nimcp_free(result->region_probabilities);
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
         return -1;
     }
@@ -371,7 +385,7 @@ int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
-    result->solution_vector = (float*)calloc(spec->num_regions, sizeof(float));
+    result->solution_vector = (float*)nimcp_calloc(spec->num_regions, sizeof(float));
     if (!result->solution_vector) {
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
         return -1;
@@ -509,21 +523,21 @@ int soma_quantum_mcts_evaluate(soma_quantum_bridge_t* bridge,
 
 void soma_qmc_result_free(soma_qmc_result_t* result) {
     if (!result) return;
-    free(result->optimal_thresholds);
+    nimcp_free(result->optimal_thresholds);
     result->optimal_thresholds = NULL;
 }
 
 void soma_quantum_walk_result_free(soma_quantum_walk_result_t* result) {
     if (!result) return;
-    free(result->visited_regions);
-    free(result->region_probabilities);
+    nimcp_free(result->visited_regions);
+    nimcp_free(result->region_probabilities);
     result->visited_regions = NULL;
     result->region_probabilities = NULL;
 }
 
 void soma_quantum_anneal_result_free(soma_quantum_anneal_result_t* result) {
     if (!result) return;
-    free(result->solution_vector);
+    nimcp_free(result->solution_vector);
     result->solution_vector = NULL;
 }
 

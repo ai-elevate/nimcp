@@ -13,32 +13,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_cnn_bridge module */
-static nimcp_health_agent_t* g_dragonfly_cnn_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_cnn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_cnn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_cnn_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_cnn_bridge module */
-static inline void dragonfly_cnn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_cnn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_cnn_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_cnn_bridge)
 
 #define LOG_MODULE "DRAGONFLY_CNN_BRIDGE"
 
@@ -123,7 +101,7 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
     void* cnn_trainer,
     const dragonfly_cnn_config_t* config
 ) {
-    dragonfly_cnn_bridge_t* bridge = calloc(1, sizeof(*bridge));
+    dragonfly_cnn_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_cnn_bridge_create: failed to allocate bridge");
@@ -135,7 +113,7 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
         if (dragonfly_cnn_bridge_validate_config(config) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "dragonfly_cnn_bridge_create: invalid configuration");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -152,11 +130,11 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
 
     /* Allocate feature buffer */
     bridge->feature_buffer_size = DRAGONFLY_CNN_FEATURE_DIM;
-    bridge->feature_buffer = calloc(bridge->feature_buffer_size, sizeof(float));
+    bridge->feature_buffer = nimcp_calloc(bridge->feature_buffer_size, sizeof(float));
     if (!bridge->feature_buffer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_cnn_bridge_create: failed to allocate feature buffer");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -174,11 +152,11 @@ void dragonfly_cnn_bridge_destroy(dragonfly_cnn_bridge_t* bridge) {
 
     /* Free frame data in motion history */
     for (uint32_t i = 0; i < bridge->motion_history.num_frames; i++) {
-        free(bridge->motion_history.frames[i].data);
+        nimcp_free(bridge->motion_history.frames[i].data);
     }
 
-    free(bridge->feature_buffer);
-    free(bridge);
+    nimcp_free(bridge->feature_buffer);
+    nimcp_free(bridge);
 }
 
 int dragonfly_cnn_bridge_reset(dragonfly_cnn_bridge_t* bridge) {
@@ -186,7 +164,7 @@ int dragonfly_cnn_bridge_reset(dragonfly_cnn_bridge_t* bridge) {
 
     /* Free frame data */
     for (uint32_t i = 0; i < bridge->motion_history.num_frames; i++) {
-        free(bridge->motion_history.frames[i].data);
+        nimcp_free(bridge->motion_history.frames[i].data);
         bridge->motion_history.frames[i].data = NULL;
     }
     bridge->motion_history.num_frames = 0;
@@ -210,7 +188,7 @@ int dragonfly_cnn_add_frame(
 
     /* Shift frames if at capacity */
     if (bridge->motion_history.num_frames >= bridge->motion_history.max_frames) {
-        free(bridge->motion_history.frames[0].data);
+        nimcp_free(bridge->motion_history.frames[0].data);
         memmove(&bridge->motion_history.frames[0],
                 &bridge->motion_history.frames[1],
                 (bridge->motion_history.max_frames - 1) * sizeof(dragonfly_cnn_frame_t));
@@ -221,7 +199,7 @@ int dragonfly_cnn_add_frame(
     uint32_t idx = bridge->motion_history.num_frames;
     uint32_t size = frame->width * frame->height * frame->channels;
 
-    bridge->motion_history.frames[idx].data = malloc(size * sizeof(float));
+    bridge->motion_history.frames[idx].data = nimcp_malloc(size * sizeof(float));
     if (!bridge->motion_history.frames[idx].data) return -1;
 
     memcpy(bridge->motion_history.frames[idx].data, frame->data, size * sizeof(float));

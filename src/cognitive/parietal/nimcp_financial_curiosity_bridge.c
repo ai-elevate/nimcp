@@ -22,51 +22,48 @@
 #include <math.h>
 #include <stdarg.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_curiosity_health_agent = NULL;
 
-/**
- * @brief Set global health agent for financial curiosity bridge
- * @param agent Health agent (NULL to disable)
- */
-void financial_curiosity_bridge_set_health_agent_global(void* agent) {
-    g_fin_curiosity_health_agent = (nimcp_health_agent_t*)agent;
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
+
+static mesh_participant_id_t g_fin_curiosity_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_curiosity_mesh_registry = NULL;
+
+nimcp_error_t fin_curiosity_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_curiosity_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_curiosity", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_curiosity";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_curiosity_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_curiosity_mesh_registry = registry;
+    return err;
 }
 
-//=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
-//=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune,
-                                            const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune,
-                                         int source, const uint8_t* epitope,
-                                         size_t epitope_len, uint32_t severity,
-                                         uint32_t source_node, uint32_t* antigen_id);
-
-static brain_immune_system_t* g_fin_curiosity_bridge_immune = NULL;
-static bbb_system_t g_fin_curiosity_bridge_bbb = NULL;
-
-void financial_curiosity_bridge_set_global_immune(brain_immune_system_t* immune) {
-    g_fin_curiosity_bridge_immune = immune;
+void fin_curiosity_mesh_unregister(void) {
+    if (g_fin_curiosity_mesh_registry && g_fin_curiosity_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_curiosity_mesh_registry, g_fin_curiosity_mesh_id);
+        g_fin_curiosity_mesh_id = 0;
+        g_fin_curiosity_mesh_registry = NULL;
+    }
 }
 
-void financial_curiosity_bridge_set_global_bbb(bbb_system_t bbb) {
-    g_fin_curiosity_bridge_bbb = bbb;
-}
 
-//=============================================================================
-// KG Wiring Integration (Change Set 1)
 //=============================================================================
 struct kg_wiring;
 typedef struct kg_wiring kg_wiring_t;
@@ -346,7 +343,7 @@ financial_curiosity_bridge_t* financial_curiosity_bridge_create(
     fin_curiosity_heartbeat("create", 0.0f);
 
     financial_curiosity_bridge_t* bridge =
-        (financial_curiosity_bridge_t*)malloc(sizeof(financial_curiosity_bridge_t));
+        (financial_curiosity_bridge_t*)nimcp_malloc(sizeof(financial_curiosity_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_curiosity_bridge_t");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -362,13 +359,13 @@ financial_curiosity_bridge_t* financial_curiosity_bridge_create(
     }
 
     /* Allocate tracking arrays */
-    bridge->hypothesis_counts = (uint32_t*)calloc(FIN_HYPOTHESIS_COUNT, sizeof(uint32_t));
-    bridge->hypothesis_success_rates = (float*)calloc(FIN_HYPOTHESIS_COUNT, sizeof(float));
+    bridge->hypothesis_counts = (uint32_t*)nimcp_calloc(FIN_HYPOTHESIS_COUNT, sizeof(uint32_t));
+    bridge->hypothesis_success_rates = (float*)nimcp_calloc(FIN_HYPOTHESIS_COUNT, sizeof(float));
     if (!bridge->hypothesis_counts || !bridge->hypothesis_success_rates) {
         set_error("Failed to allocate tracking arrays");
-        if (bridge->hypothesis_counts) free(bridge->hypothesis_counts);
-        if (bridge->hypothesis_success_rates) free(bridge->hypothesis_success_rates);
-        free(bridge);
+        if (bridge->hypothesis_counts) nimcp_free(bridge->hypothesis_counts);
+        if (bridge->hypothesis_success_rates) nimcp_free(bridge->hypothesis_success_rates);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -398,9 +395,9 @@ void financial_curiosity_bridge_destroy(financial_curiosity_bridge_t* bridge) {
     if (!bridge) return;
     fin_curiosity_heartbeat("destroy", 0.0f);
 
-    if (bridge->hypothesis_counts) free(bridge->hypothesis_counts);
-    if (bridge->hypothesis_success_rates) free(bridge->hypothesis_success_rates);
-    free(bridge);
+    if (bridge->hypothesis_counts) nimcp_free(bridge->hypothesis_counts);
+    if (bridge->hypothesis_success_rates) nimcp_free(bridge->hypothesis_success_rates);
+    nimcp_free(bridge);
 
     fin_curiosity_heartbeat("destroy", 1.0f);
 }
@@ -1052,7 +1049,7 @@ int financial_curiosity_bridge_select_exploration(
         case FIN_SELECTION_SOFTMAX: {
             /* Softmax/Boltzmann selection */
             float temperature = bridge->config.temperature * (2.0f - health_mod);
-            float* probs = (float*)malloc(num_candidates * sizeof(float));
+            float* probs = (float*)nimcp_malloc(num_candidates * sizeof(float));
             if (!probs) {
                 bridge->operational_state = FIN_CURIOSITY_STATE_ERROR;
                 return FIN_CURIOSITY_ERR_NO_MEMORY;
@@ -1090,7 +1087,7 @@ int financial_curiosity_bridge_select_exploration(
             snprintf(selection->rationale, sizeof(selection->rationale),
                      "Softmax: prob=%.3f, temp=%.2f", probs[selected_idx], temperature);
 
-            free(probs);
+            nimcp_free(probs);
             break;
         }
 
@@ -1330,14 +1327,14 @@ fin_market_state_t* financial_curiosity_market_state_create(uint32_t num_assets)
         return NULL;
     }
 
-    fin_market_state_t* state = (fin_market_state_t*)malloc(sizeof(fin_market_state_t));
+    fin_market_state_t* state = (fin_market_state_t*)nimcp_malloc(sizeof(fin_market_state_t));
     if (!state) return NULL;
 
     memset(state, 0, sizeof(*state));
     state->num_assets = num_assets;
 
-    state->prices = (float*)calloc(num_assets, sizeof(float));
-    state->volumes = (float*)calloc(num_assets, sizeof(float));
+    state->prices = (float*)nimcp_calloc(num_assets, sizeof(float));
+    state->volumes = (float*)nimcp_calloc(num_assets, sizeof(float));
 
     if (!state->prices || !state->volumes) {
         financial_curiosity_market_state_destroy(state);
@@ -1349,9 +1346,9 @@ fin_market_state_t* financial_curiosity_market_state_create(uint32_t num_assets)
 
 void financial_curiosity_market_state_destroy(fin_market_state_t* state) {
     if (!state) return;
-    if (state->prices) free(state->prices);
-    if (state->volumes) free(state->volumes);
-    free(state);
+    if (state->prices) nimcp_free(state->prices);
+    if (state->volumes) nimcp_free(state->volumes);
+    nimcp_free(state);
 }
 
 fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidates) {
@@ -1359,16 +1356,16 @@ fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidat
         return NULL;
     }
 
-    fin_hypothesis_result_t* result = (fin_hypothesis_result_t*)malloc(sizeof(fin_hypothesis_result_t));
+    fin_hypothesis_result_t* result = (fin_hypothesis_result_t*)nimcp_malloc(sizeof(fin_hypothesis_result_t));
     if (!result) return NULL;
 
     memset(result, 0, sizeof(*result));
     result->max_candidates = max_candidates;
 
-    result->candidates = (fin_extended_candidate_t*)calloc(max_candidates,
+    result->candidates = (fin_extended_candidate_t*)nimcp_calloc(max_candidates,
                                                             sizeof(fin_extended_candidate_t));
     if (!result->candidates) {
-        free(result);
+        nimcp_free(result);
         return NULL;
     }
 
@@ -1377,8 +1374,8 @@ fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidat
 
 void financial_curiosity_result_destroy(fin_hypothesis_result_t* result) {
     if (!result) return;
-    if (result->candidates) free(result->candidates);
-    free(result);
+    if (result->candidates) nimcp_free(result->candidates);
+    nimcp_free(result);
 }
 
 int financial_curiosity_bridge_compute_information_gain(

@@ -46,40 +46,16 @@
 #include <stdio.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // Module Constants
 //=============================================================================
 
 #define LOG_MODULE "hot_inject"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for hot_inject module */
-static nimcp_health_agent_t* g_hot_inject_health_agent = NULL;
-
-/**
- * @brief Set health agent for hot_inject heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void hot_inject_set_health_agent(nimcp_health_agent_t* agent) {
-    g_hot_inject_health_agent = agent;
-}
-
-/** @brief Send heartbeat from hot_inject module */
-static inline void hot_inject_heartbeat(const char* operation, float progress) {
-    if (g_hot_inject_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hot_inject_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hot_inject)
 
 /** @brief Maximum registered threads for barrier */
 #define HOT_INJECT_MAX_THREADS 256
@@ -108,7 +84,7 @@ struct hot_injector {
     // Thread synchronization
     hot_inject_thread_t threads[HOT_INJECT_MAX_THREADS]; /**< Registered threads */
     uint32_t thread_count;                     /**< Number of registered threads */
-    pthread_mutex_t thread_mutex;              /**< Protects thread array */
+    nimcp_mutex_t thread_mutex;              /**< Protects thread array */
 
     // Barrier for thread synchronization
     pthread_barrier_t barrier;                 /**< Synchronization barrier */
@@ -117,7 +93,7 @@ struct hot_injector {
     volatile bool swap_in_progress;            /**< Flag during swap */
 
     // Main lock
-    pthread_mutex_t lock;                      /**< Protects injector state */
+    nimcp_mutex_t lock;                      /**< Protects injector state */
 
     // Validation
     hot_inject_validate_fn validator;          /**< Validation callback */
@@ -193,16 +169,16 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     injector->dispatch = dispatch_table;
 
     // Initialize main lock
-    if (pthread_mutex_init(&injector->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&injector->lock, NULL) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize lock");
         nimcp_free(injector);
         return NULL;
     }
 
     // Initialize thread mutex
-    if (pthread_mutex_init(&injector->thread_mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&injector->thread_mutex, NULL) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize thread mutex");
-        pthread_mutex_destroy(&injector->lock);
+        nimcp_mutex_destroy(&injector->lock);
         nimcp_free(injector);
         return NULL;
     }
@@ -212,8 +188,8 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     injector->patches = nimcp_calloc(injector->patch_capacity, sizeof(injected_patch_t));
     if (!injector->patches) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate patch array");
-        pthread_mutex_destroy(&injector->thread_mutex);
-        pthread_mutex_destroy(&injector->lock);
+        nimcp_mutex_destroy(&injector->thread_mutex);
+        nimcp_mutex_destroy(&injector->lock);
         nimcp_free(injector);
         return NULL;
     }
@@ -280,8 +256,8 @@ NIMCP_EXPORT void hot_injector_destroy(hot_injector_t injector)
     }
 
     // Destroy mutexes
-    pthread_mutex_destroy(&injector->thread_mutex);
-    pthread_mutex_destroy(&injector->lock);
+    nimcp_mutex_destroy(&injector->thread_mutex);
+    nimcp_mutex_destroy(&injector->lock);
 
     // Invalidate magic
     injector->magic = 0;
@@ -316,11 +292,11 @@ NIMCP_EXPORT int hot_inject_patch(
     void* new_fn = NULL;
     void* old_fn = NULL;
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     // Check capacity
     if (injector->patch_count >= HOT_INJECT_MAX_PATCHES) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         LOG_MODULE_ERROR(LOG_MODULE, "Maximum patches reached");
         return HOT_INJECT_ERR_FULL;
     }
@@ -329,7 +305,7 @@ NIMCP_EXPORT int hot_inject_patch(
     if (injector->patch_count >= injector->patch_capacity) {
         err = grow_patches(injector);
         if (err != HOT_INJECT_OK) {
-            pthread_mutex_unlock(&injector->lock);
+            nimcp_mutex_unlock(&injector->lock);
             return err;
         }
     }
@@ -345,7 +321,7 @@ NIMCP_EXPORT int hot_inject_patch(
     patch->state = INJECT_STATE_PENDING;
     patch->inject_time = get_time_ms();
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     if (injector->config.verbose) {
         LOG_MODULE_INFO(LOG_MODULE, "Starting injection: %s -> %s", so_path, fn_name);
@@ -414,10 +390,10 @@ NIMCP_EXPORT int hot_inject_patch(
     // Success
     patch->state = INJECT_STATE_ACTIVE;
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
     injector->patch_count++;
     injector->total_patches++;
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     // Copy result if requested
     if (result) {
@@ -505,11 +481,11 @@ NIMCP_EXPORT int hot_inject_pause_threads(hot_injector_t injector)
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->thread_mutex);
+    nimcp_mutex_lock(&injector->thread_mutex);
 
     // If no threads registered, no need to pause
     if (injector->thread_count == 0) {
-        pthread_mutex_unlock(&injector->thread_mutex);
+        nimcp_mutex_unlock(&injector->thread_mutex);
         if (injector->config.verbose) {
             LOG_MODULE_DEBUG(LOG_MODULE, "No threads to pause");
         }
@@ -519,7 +495,7 @@ NIMCP_EXPORT int hot_inject_pause_threads(hot_injector_t injector)
     // Reinitialize barrier with current thread count + 1 (for injector)
     int err = reinit_barrier(injector);
     if (err != HOT_INJECT_OK) {
-        pthread_mutex_unlock(&injector->thread_mutex);
+        nimcp_mutex_unlock(&injector->thread_mutex);
         return err;
     }
 
@@ -527,7 +503,7 @@ NIMCP_EXPORT int hot_inject_pause_threads(hot_injector_t injector)
     __atomic_store_n(&injector->pause_requested, true, __ATOMIC_SEQ_CST);
     __atomic_store_n(&injector->swap_in_progress, true, __ATOMIC_SEQ_CST);
 
-    pthread_mutex_unlock(&injector->thread_mutex);
+    nimcp_mutex_unlock(&injector->thread_mutex);
 
     // Wait at barrier for all threads
     if (injector->config.verbose) {
@@ -600,12 +576,12 @@ NIMCP_EXPORT int hot_inject_resume_threads(hot_injector_t injector)
     __atomic_store_n(&injector->pause_requested, false, __ATOMIC_SEQ_CST);
 
     // If no threads registered, nothing to resume
-    pthread_mutex_lock(&injector->thread_mutex);
+    nimcp_mutex_lock(&injector->thread_mutex);
     if (injector->thread_count == 0 || !injector->barrier_initialized) {
-        pthread_mutex_unlock(&injector->thread_mutex);
+        nimcp_mutex_unlock(&injector->thread_mutex);
         return HOT_INJECT_OK;
     }
-    pthread_mutex_unlock(&injector->thread_mutex);
+    nimcp_mutex_unlock(&injector->thread_mutex);
 
     // Wait at barrier to release all threads
     int result = pthread_barrier_wait(&injector->barrier);
@@ -637,19 +613,19 @@ NIMCP_EXPORT int hot_inject_rollback(hot_injector_t injector, uint64_t patch_id)
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     // Find patch
     injected_patch_t* patch = find_patch_by_id(injector, patch_id);
     if (!patch) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         LOG_MODULE_ERROR(LOG_MODULE, "Patch %lu not found", patch_id);
         return HOT_INJECT_ERR_NOT_FOUND;
     }
 
     // Check state
     if (patch->state != INJECT_STATE_ACTIVE) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         LOG_MODULE_WARN(LOG_MODULE, "Patch %lu not active, cannot rollback", patch_id);
         return HOT_INJECT_ERR_INVALID_STATE;
     }
@@ -657,7 +633,7 @@ NIMCP_EXPORT int hot_inject_rollback(hot_injector_t injector, uint64_t patch_id)
     const char* fn_name = patch->function_name;
     void* old_fn = patch->old_function;
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     if (injector->config.verbose) {
         LOG_MODULE_INFO(LOG_MODULE, "Rolling back patch %lu for %s", patch_id, fn_name);
@@ -686,10 +662,10 @@ NIMCP_EXPORT int hot_inject_rollback(hot_injector_t injector, uint64_t patch_id)
     }
 
     // Update patch state
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
     patch->state = INJECT_STATE_ROLLED_BACK;
     injector->total_rollbacks++;
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     LOG_MODULE_INFO(LOG_MODULE, "Rolled back patch %lu", patch_id);
 
@@ -708,12 +684,12 @@ NIMCP_EXPORT int hot_inject_unload(hot_injector_t injector, uint64_t patch_id)
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     // Find patch
     injected_patch_t* patch = find_patch_by_id(injector, patch_id);
     if (!patch) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         LOG_MODULE_ERROR(LOG_MODULE, "Patch %lu not found for unload", patch_id);
         return HOT_INJECT_ERR_NOT_FOUND;
     }
@@ -737,7 +713,7 @@ NIMCP_EXPORT int hot_inject_unload(hot_injector_t injector, uint64_t patch_id)
         LOG_MODULE_INFO(LOG_MODULE, "Unloaded patch %lu (apoptosis)", patch_id);
     }
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     return HOT_INJECT_OK;
 }
@@ -761,17 +737,17 @@ NIMCP_EXPORT int hot_inject_get_patch(
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     injected_patch_t* patch = find_patch_by_id(injector, patch_id);
     if (!patch) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         return HOT_INJECT_ERR_NOT_FOUND;
     }
 
     *patch_out = *patch;
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     return HOT_INJECT_OK;
 }
@@ -788,12 +764,12 @@ NIMCP_EXPORT int hot_inject_record_crash(hot_injector_t injector, const char* fn
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     // Find active patch for this function
     injected_patch_t* patch = find_patch_by_function(injector, fn_name);
     if (!patch || patch->state != INJECT_STATE_ACTIVE) {
-        pthread_mutex_unlock(&injector->lock);
+        nimcp_mutex_unlock(&injector->lock);
         // Still record crash with dispatch table
         fn_dispatch_record_crash(injector->dispatch, fn_name);
         return HOT_INJECT_OK;
@@ -807,7 +783,7 @@ NIMCP_EXPORT int hot_inject_record_crash(hot_injector_t injector, const char* fn
     uint64_t crash_count = patch->crashes_since_inject;
     uint32_t threshold = injector->config.crash_threshold;
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     LOG_MODULE_WARN(LOG_MODULE, "Recorded crash for %s (patch %lu, count: %lu)",
                     fn_name, patch_id, crash_count);
@@ -840,7 +816,7 @@ NIMCP_EXPORT uint32_t hot_inject_list_active(
         return 0;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < injector->patch_count && count < max; i++) {
@@ -849,7 +825,7 @@ NIMCP_EXPORT uint32_t hot_inject_list_active(
         }
     }
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     return count;
 }
@@ -872,20 +848,20 @@ NIMCP_EXPORT int hot_inject_register_thread(hot_injector_t injector)
 
     pthread_t self = pthread_self();
 
-    pthread_mutex_lock(&injector->thread_mutex);
+    nimcp_mutex_lock(&injector->thread_mutex);
 
     // Check if already registered
     for (uint32_t i = 0; i < injector->thread_count; i++) {
         if (pthread_equal(injector->threads[i].thread_id, self)) {
             injector->threads[i].active = true;
-            pthread_mutex_unlock(&injector->thread_mutex);
+            nimcp_mutex_unlock(&injector->thread_mutex);
             return HOT_INJECT_OK;
         }
     }
 
     // Check capacity
     if (injector->thread_count >= HOT_INJECT_MAX_THREADS) {
-        pthread_mutex_unlock(&injector->thread_mutex);
+        nimcp_mutex_unlock(&injector->thread_mutex);
         LOG_MODULE_ERROR(LOG_MODULE, "Maximum threads registered");
         return HOT_INJECT_ERR_FULL;
     }
@@ -902,7 +878,7 @@ NIMCP_EXPORT int hot_inject_register_thread(hot_injector_t injector)
                          (unsigned)idx, injector->thread_count);
     }
 
-    pthread_mutex_unlock(&injector->thread_mutex);
+    nimcp_mutex_unlock(&injector->thread_mutex);
 
     return HOT_INJECT_OK;
 }
@@ -921,7 +897,7 @@ NIMCP_EXPORT int hot_inject_unregister_thread(hot_injector_t injector)
 
     pthread_t self = pthread_self();
 
-    pthread_mutex_lock(&injector->thread_mutex);
+    nimcp_mutex_lock(&injector->thread_mutex);
 
     // Find thread
     for (uint32_t i = 0; i < injector->thread_count; i++) {
@@ -933,12 +909,12 @@ NIMCP_EXPORT int hot_inject_unregister_thread(hot_injector_t injector)
                 LOG_MODULE_DEBUG(LOG_MODULE, "Unregistered thread %u", (unsigned)i);
             }
 
-            pthread_mutex_unlock(&injector->thread_mutex);
+            nimcp_mutex_unlock(&injector->thread_mutex);
             return HOT_INJECT_OK;
         }
     }
 
-    pthread_mutex_unlock(&injector->thread_mutex);
+    nimcp_mutex_unlock(&injector->thread_mutex);
 
     // Not found - not an error
     return HOT_INJECT_OK;
@@ -997,10 +973,10 @@ NIMCP_EXPORT void hot_inject_set_validator(
         return;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
     injector->validator = validate;
     injector->validator_data = user_data;
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 }
 
 //=============================================================================
@@ -1092,7 +1068,7 @@ NIMCP_EXPORT int hot_inject_get_stats(
         return HOT_INJECT_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&injector->lock);
+    nimcp_mutex_lock(&injector->lock);
 
     if (total_patches) {
         *total_patches = injector->total_patches;
@@ -1116,7 +1092,7 @@ NIMCP_EXPORT int hot_inject_get_stats(
         *total_crashes = injector->total_crashes;
     }
 
-    pthread_mutex_unlock(&injector->lock);
+    nimcp_mutex_unlock(&injector->lock);
 
     return HOT_INJECT_OK;
 }

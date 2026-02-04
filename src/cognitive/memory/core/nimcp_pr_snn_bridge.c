@@ -28,31 +28,44 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include <stdio.h>   /* for printf */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_snn_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_snn_bridge module */
-static nimcp_health_agent_t* g_pr_snn_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_snn_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_snn_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_snn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_snn_bridge_health_agent = agent;
+nimcp_error_t pr_snn_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_snn_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_snn_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_snn_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_snn_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_snn_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_snn_bridge module */
-static inline void pr_snn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_snn_bridge_health_agent, operation, progress);
+void pr_snn_bridge_mesh_unregister(void) {
+    if (g_pr_snn_bridge_mesh_registry && g_pr_snn_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_snn_bridge_mesh_registry, g_pr_snn_bridge_mesh_id);
+        g_pr_snn_bridge_mesh_id = 0;
+        g_pr_snn_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_snn_bridge module (instance-level) */
 static inline void pr_snn_bridge_heartbeat_instance(
@@ -82,13 +95,14 @@ static inline void pr_snn_bridge_heartbeat_instance(
     #define PR_MUTEX_LOCK(m) EnterCriticalSection(&(m))
     #define PR_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
-    #include <pthread.h>
-#include "utils/logging/nimcp_logging.h"
-    typedef pthread_mutex_t pr_mutex_internal_t;
-    #define PR_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
-    #define PR_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
-    #define PR_MUTEX_LOCK(m) pthread_mutex_lock(&(m))
-    #define PR_MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+    #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+    typedef nimcp_mutex_t pr_mutex_internal_t;
+    #define PR_MUTEX_INIT(m) nimcp_mutex_init(&(m), NULL)
+    #define PR_MUTEX_DESTROY(m) nimcp_mutex_destroy(&(m))
+    #define PR_MUTEX_LOCK(m) nimcp_mutex_lock(&(m))
+    #define PR_MUTEX_UNLOCK(m) nimcp_mutex_unlock(&(m))
 #endif
 
 /* High-resolution timing */
@@ -362,7 +376,7 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     }
 
     /* Allocate bridge */
-    pr_snn_bridge_t bridge = (pr_snn_bridge_t)calloc(1, sizeof(struct pr_snn_bridge_struct));
+    pr_snn_bridge_t bridge = (pr_snn_bridge_t)nimcp_calloc(1, sizeof(struct pr_snn_bridge_struct));
     if (!bridge) {
         set_error("Memory allocation failed");
         return NULL;
@@ -375,10 +389,10 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     /* Allocate working buffers */
     bridge->buffer_capacity = cfg.population_size;
 
-    bridge->rate_buffer = (float*)calloc(bridge->buffer_capacity, sizeof(float));
-    bridge->latency_buffer = (float*)calloc(bridge->buffer_capacity, sizeof(float));
-    bridge->active_mask = (uint8_t*)calloc(bridge->buffer_capacity, sizeof(uint8_t));
-    bridge->isi_buffer = (float*)calloc(PR_SNN_MAX_SPIKES_PER_PATTERN, sizeof(float));
+    bridge->rate_buffer = (float*)nimcp_calloc(bridge->buffer_capacity, sizeof(float));
+    bridge->latency_buffer = (float*)nimcp_calloc(bridge->buffer_capacity, sizeof(float));
+    bridge->active_mask = (uint8_t*)nimcp_calloc(bridge->buffer_capacity, sizeof(uint8_t));
+    bridge->isi_buffer = (float*)nimcp_calloc(PR_SNN_MAX_SPIKES_PER_PATTERN, sizeof(float));
 
     if (!bridge->rate_buffer || !bridge->latency_buffer ||
         !bridge->active_mask || !bridge->isi_buffer) {
@@ -409,10 +423,10 @@ NIMCP_EXPORT void pr_snn_bridge_destroy(pr_snn_bridge_t bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_snn");
 
     /* Free buffers */
-    free(bridge->rate_buffer);
-    free(bridge->latency_buffer);
-    free(bridge->active_mask);
-    free(bridge->isi_buffer);
+    nimcp_free(bridge->rate_buffer);
+    nimcp_free(bridge->latency_buffer);
+    nimcp_free(bridge->active_mask);
+    nimcp_free(bridge->isi_buffer);
 
     /* Destroy mutex */
     if (bridge->mutex_initialized) {
@@ -420,7 +434,7 @@ NIMCP_EXPORT void pr_snn_bridge_destroy(pr_snn_bridge_t bridge) {
     }
 
     /* Free bridge */
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 NIMCP_EXPORT pr_snn_error_t pr_snn_bridge_reset(pr_snn_bridge_t bridge) {
@@ -504,14 +518,14 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_create_with_capacity(
         capacity = PR_SNN_MAX_SPIKES_PER_PATTERN;
     }
 
-    pr_spike_pattern_t* pattern = (pr_spike_pattern_t*)calloc(1, sizeof(pr_spike_pattern_t));
+    pr_spike_pattern_t* pattern = (pr_spike_pattern_t*)nimcp_calloc(1, sizeof(pr_spike_pattern_t));
     if (!pattern) {
         set_error("Pattern allocation failed");
         return NULL;
     }
 
-    pattern->spike_times = (float*)calloc(capacity, sizeof(float));
-    pattern->neuron_ids = (uint32_t*)calloc(capacity, sizeof(uint32_t));
+    pattern->spike_times = (float*)nimcp_calloc(capacity, sizeof(float));
+    pattern->neuron_ids = (uint32_t*)nimcp_calloc(capacity, sizeof(uint32_t));
 
     if (!pattern->spike_times || !pattern->neuron_ids) {
         set_error("Pattern buffer allocation failed");
@@ -529,9 +543,9 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_create_with_capacity(
 
 NIMCP_EXPORT void pr_spike_pattern_destroy(pr_spike_pattern_t* pattern) {
     if (!pattern) return;
-    free(pattern->spike_times);
-    free(pattern->neuron_ids);
-    free(pattern);
+    nimcp_free(pattern->spike_times);
+    nimcp_free(pattern->neuron_ids);
+    nimcp_free(pattern);
 }
 
 NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_copy(const pr_spike_pattern_t* pattern) {
@@ -583,8 +597,8 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_add_spike(
             return PR_SNN_ERROR_PATTERN_FULL;
         }
 
-        float* new_times = (float*)realloc(pattern->spike_times, new_capacity * sizeof(float));
-        uint32_t* new_ids = (uint32_t*)realloc(pattern->neuron_ids, new_capacity * sizeof(uint32_t));
+        float* new_times = (float*)nimcp_realloc(pattern->spike_times, new_capacity * sizeof(float));
+        uint32_t* new_ids = (uint32_t*)nimcp_realloc(pattern->neuron_ids, new_capacity * sizeof(uint32_t));
 
         if (!new_times || !new_ids) {
             return PR_SNN_ERROR_NO_MEMORY;
@@ -673,7 +687,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
     if (pattern->num_spikes <= 1) return PR_SNN_SUCCESS;
 
     /* Create temporary array for sorting */
-    spike_entry_t* entries = (spike_entry_t*)malloc(pattern->num_spikes * sizeof(spike_entry_t));
+    spike_entry_t* entries = (spike_entry_t*)nimcp_malloc(pattern->num_spikes * sizeof(spike_entry_t));
     if (!entries) return PR_SNN_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
@@ -700,7 +714,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
         pattern->neuron_ids[i] = entries[i].neuron_id;
     }
 
-    free(entries);
+    nimcp_free(entries);
     return PR_SNN_SUCCESS;
 }
 
@@ -1723,7 +1737,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
     }
 
     /* Collect ISIs */
-    float* isis = (float*)malloc(pattern->num_spikes * sizeof(float));
+    float* isis = (float*)nimcp_malloc(pattern->num_spikes * sizeof(float));
     if (!isis) return PR_SNN_ERROR_NO_MEMORY;
 
     size_t isi_count = 0;
@@ -1758,7 +1772,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
     }
 
     if (isi_count == 0) {
-        free(isis);
+        nimcp_free(isis);
         return PR_SNN_SUCCESS;
     }
 
@@ -1797,7 +1811,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
     stats->cv_isi = (stats->mean_isi_ms > 0.0f) ?
                     stats->std_isi_ms / stats->mean_isi_ms : 0.0f;
 
-    free(isis);
+    nimcp_free(isis);
     return PR_SNN_SUCCESS;
 }
 
@@ -2511,7 +2525,7 @@ NIMCP_EXPORT pr_snn_component_patterns_t* pr_snn_component_patterns_create(
     float duration_ms)
 {
     pr_snn_component_patterns_t* patterns =
-        (pr_snn_component_patterns_t*)calloc(1, sizeof(pr_snn_component_patterns_t));
+        (pr_snn_component_patterns_t*)nimcp_calloc(1, sizeof(pr_snn_component_patterns_t));
     if (!patterns) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns is NULL");
@@ -2544,7 +2558,7 @@ NIMCP_EXPORT void pr_snn_component_patterns_destroy(pr_snn_component_patterns_t*
     pr_spike_pattern_destroy(patterns->z_pattern);
     pr_spike_pattern_destroy(patterns->combined);
 
-    free(patterns);
+    nimcp_free(patterns);
 }
 
 NIMCP_EXPORT uint64_t pr_snn_current_time_us(void) {

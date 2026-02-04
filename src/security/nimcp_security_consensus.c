@@ -23,32 +23,41 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_consensus)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for security_consensus module */
-static nimcp_health_agent_t* g_security_consensus_health_agent = NULL;
+static mesh_participant_id_t g_security_consensus_mesh_id = 0;
+static mesh_participant_registry_t* g_security_consensus_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for security_consensus heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_consensus_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_consensus_health_agent = agent;
+nimcp_error_t security_consensus_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_consensus_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_consensus", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_consensus";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_consensus_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_consensus_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_consensus module */
-static inline void security_consensus_heartbeat(const char* operation, float progress) {
-    if (g_security_consensus_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_consensus_health_agent, operation, progress);
+void security_consensus_mesh_unregister(void) {
+    if (g_security_consensus_mesh_registry && g_security_consensus_mesh_id != 0) {
+        mesh_participant_unregister(g_security_consensus_mesh_registry, g_security_consensus_mesh_id);
+        g_security_consensus_mesh_id = 0;
+        g_security_consensus_mesh_registry = NULL;
     }
 }
 
@@ -143,7 +152,7 @@ struct nimcp_security_consensus {
     bio_module_context_t bio_ctx;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
     pthread_t timer_thread;
     bool running;
 

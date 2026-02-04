@@ -19,6 +19,7 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -204,7 +205,7 @@ nimcp_mcmc_sampler_t* nimcp_mcmc_create(uint32_t n_params, const nimcp_mcmc_conf
     if (n_params == 0 || n_params > NIMCP_MCMC_MAX_PARAMS) return NULL;
     if (!config) return NULL;
 
-    nimcp_mcmc_sampler_t* mcmc = (nimcp_mcmc_sampler_t*)calloc(1, sizeof(nimcp_mcmc_sampler_t));
+    nimcp_mcmc_sampler_t* mcmc = (nimcp_mcmc_sampler_t*)nimcp_calloc(1, sizeof(nimcp_mcmc_sampler_t));
     if (!mcmc) return NULL;
 
     uint32_t n_chains = config->n_chains > 0 ? config->n_chains : 1;
@@ -213,13 +214,13 @@ nimcp_mcmc_sampler_t* nimcp_mcmc_create(uint32_t n_params, const nimcp_mcmc_conf
     uint32_t n_samples = config->n_samples > 0 ? config->n_samples : 1000;
 
     size_t sample_size = (size_t)n_chains * n_samples * n_params;
-    mcmc->samples = (double*)calloc(sample_size, sizeof(double));
-    mcmc->log_posterior = (double*)calloc((size_t)n_chains * n_samples, sizeof(double));
+    mcmc->samples = (double*)nimcp_calloc(sample_size, sizeof(double));
+    mcmc->log_posterior = (double*)nimcp_calloc((size_t)n_chains * n_samples, sizeof(double));
 
     if (!mcmc->samples || !mcmc->log_posterior) {
-        free(mcmc->samples);
-        free(mcmc->log_posterior);
-        free(mcmc);
+        nimcp_free(mcmc->samples);
+        nimcp_free(mcmc->log_posterior);
+        nimcp_free(mcmc);
         return NULL;
     }
 
@@ -238,10 +239,10 @@ nimcp_mcmc_sampler_t* nimcp_mcmc_create(uint32_t n_params, const nimcp_mcmc_conf
 
 void nimcp_mcmc_destroy(nimcp_mcmc_sampler_t* mcmc) {
     if (!mcmc) return;
-    free(mcmc->samples);
-    free(mcmc->log_posterior);
+    nimcp_free(mcmc->samples);
+    nimcp_free(mcmc->log_posterior);
     nimcp_mcmc_diagnostics_free(&mcmc->diag);
-    free(mcmc);
+    nimcp_free(mcmc);
 }
 
 //=============================================================================
@@ -266,7 +267,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
     uint32_t n_thin = mcmc->config.n_thin > 0 ? mcmc->config.n_thin : 1;
     uint32_t total_iterations = n_burnin + n_samples * n_thin;
 
-    double* proposal_sd = (double*)malloc(n_params * sizeof(double));
+    double* proposal_sd = (double*)nimcp_malloc(n_params * sizeof(double));
     if (!proposal_sd) return NIMCP_BAYES_ERROR_MEMORY;
 
     if (mcmc->config.proposal_sd) {
@@ -278,12 +279,12 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
         }
     }
 
-    double* current = (double*)malloc((size_t)n_chains * n_params * sizeof(double));
-    double* proposed = (double*)malloc(n_params * sizeof(double));
-    double* current_lp = (double*)malloc(n_chains * sizeof(double));
+    double* current = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
+    double* proposed = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* current_lp = (double*)nimcp_malloc(n_chains * sizeof(double));
 
     if (!current || !proposed || !current_lp) {
-        free(proposal_sd); free(current); free(proposed); free(current_lp);
+        nimcp_free(proposal_sd); nimcp_free(current); nimcp_free(proposed); nimcp_free(current_lp);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
@@ -294,7 +295,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
         current_lp[c] = log_posterior(&current[c * n_params], n_params, data);
     }
 
-    uint32_t* n_accepted = (uint32_t*)calloc(n_chains, sizeof(uint32_t));
+    uint32_t* n_accepted = (uint32_t*)nimcp_calloc(n_chains, sizeof(uint32_t));
     double target_accept = mcmc->config.target_accept > 0 ? mcmc->config.target_accept : 0.234;
 
     uint32_t sample_idx = 0;
@@ -347,11 +348,11 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
     }
     mcmc->diag.mean_accept_prob = total_accepted / (n_chains * n_samples * n_thin);
 
-    free(proposal_sd);
-    free(current);
-    free(proposed);
-    free(current_lp);
-    free(n_accepted);
+    nimcp_free(proposal_sd);
+    nimcp_free(current);
+    nimcp_free(proposed);
+    nimcp_free(current_lp);
+    nimcp_free(n_accepted);
 
     return NIMCP_BAYES_OK;
 }
@@ -375,7 +376,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_gibbs(
     uint32_t n_thin = mcmc->config.n_thin > 0 ? mcmc->config.n_thin : 1;
     uint32_t total_iterations = n_burnin + n_samples * n_thin;
 
-    double* current = (double*)malloc((size_t)n_chains * n_params * sizeof(double));
+    double* current = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
     if (!current) return NIMCP_BAYES_ERROR_MEMORY;
 
     for (uint32_t c = 0; c < n_chains; c++) {
@@ -409,7 +410,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_gibbs(
     mcmc->fitted = true;
     mcmc->diag.mean_accept_prob = 1.0;
 
-    free(current);
+    nimcp_free(current);
     return NIMCP_BAYES_OK;
 }
 
@@ -426,7 +427,7 @@ static void leapfrog(
     nimcp_log_posterior_grad_fn grad_fn,
     void* data
 ) {
-    double* grad = (double*)malloc(n_params * sizeof(double));
+    double* grad = (double*)nimcp_malloc(n_params * sizeof(double));
 
     grad_fn(q, n_params, data, grad);
     for (uint32_t j = 0; j < n_params; j++) {
@@ -442,7 +443,7 @@ static void leapfrog(
         p[j] += 0.5 * step_size * grad[j];
     }
 
-    free(grad);
+    nimcp_free(grad);
 }
 
 static double hamiltonian(
@@ -488,12 +489,12 @@ nimcp_bayes_adv_result_t nimcp_mcmc_hamiltonian(
         step_size = 0.1 / sqrt((double)n_params);
     }
 
-    double* current_q = (double*)malloc((size_t)n_chains * n_params * sizeof(double));
-    double* proposed_q = (double*)malloc(n_params * sizeof(double));
-    double* p = (double*)malloc(n_params * sizeof(double));
+    double* current_q = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
+    double* proposed_q = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* p = (double*)nimcp_malloc(n_params * sizeof(double));
 
     if (!current_q || !proposed_q || !p) {
-        free(current_q); free(proposed_q); free(p);
+        nimcp_free(current_q); nimcp_free(proposed_q); nimcp_free(p);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
@@ -566,9 +567,9 @@ nimcp_bayes_adv_result_t nimcp_mcmc_hamiltonian(
     mcmc->diag.mean_stepsize = step_size;
     mcmc->diag.mean_accept_prob = (double)n_accepted / (n_chains * (n_samples * n_thin));
 
-    free(current_q);
-    free(proposed_q);
-    free(p);
+    nimcp_free(current_q);
+    nimcp_free(proposed_q);
+    nimcp_free(p);
 
     return n_divergent > n_samples / 10 ? NIMCP_BAYES_ERROR_DIVERGENCE : NIMCP_BAYES_OK;
 }
@@ -618,17 +619,17 @@ nimcp_bayes_adv_result_t nimcp_mcmc_nuts(
         step_size = 0.1 / sqrt((double)n_params);
     }
 
-    double* current_q = (double*)malloc((size_t)n_chains * n_params * sizeof(double));
-    double* theta_minus = (double*)malloc(n_params * sizeof(double));
-    double* theta_plus = (double*)malloc(n_params * sizeof(double));
-    double* r_minus = (double*)malloc(n_params * sizeof(double));
-    double* r_plus = (double*)malloc(n_params * sizeof(double));
-    double* theta_prime = (double*)malloc(n_params * sizeof(double));
-    double* r_init = (double*)malloc(n_params * sizeof(double));
+    double* current_q = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
+    double* theta_minus = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* theta_plus = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* r_minus = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* r_plus = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* theta_prime = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* r_init = (double*)nimcp_malloc(n_params * sizeof(double));
 
     if (!current_q || !theta_minus || !theta_plus || !r_minus || !r_plus || !theta_prime || !r_init) {
-        free(current_q); free(theta_minus); free(theta_plus);
-        free(r_minus); free(r_plus); free(theta_prime); free(r_init);
+        nimcp_free(current_q); nimcp_free(theta_minus); nimcp_free(theta_plus);
+        nimcp_free(r_minus); nimcp_free(r_plus); nimcp_free(theta_prime); nimcp_free(r_init);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
@@ -683,12 +684,12 @@ nimcp_bayes_adv_result_t nimcp_mcmc_nuts(
                     theta_end[j] += eps_dir * r_end[j];
                 }
 
-                double* grad = (double*)malloc(n_params * sizeof(double));
+                double* grad = (double*)nimcp_malloc(n_params * sizeof(double));
                 grad_log_posterior(theta_end, n_params, data, grad);
                 for (uint32_t j = 0; j < n_params; j++) {
                     r_end[j] += 0.5 * eps_dir * grad[j];
                 }
-                free(grad);
+                nimcp_free(grad);
 
                 double joint_new = log_posterior(theta_end, n_params, data);
                 for (uint32_t j = 0; j < n_params; j++) {
@@ -758,13 +759,13 @@ nimcp_bayes_adv_result_t nimcp_mcmc_nuts(
     mcmc->diag.n_max_treedepth = n_max_depth;
     mcmc->diag.mean_accept_prob = sum_accept / total_iterations;
 
-    free(current_q);
-    free(theta_minus);
-    free(theta_plus);
-    free(r_minus);
-    free(r_plus);
-    free(theta_prime);
-    free(r_init);
+    nimcp_free(current_q);
+    nimcp_free(theta_minus);
+    nimcp_free(theta_plus);
+    nimcp_free(r_minus);
+    nimcp_free(r_plus);
+    nimcp_free(theta_prime);
+    nimcp_free(r_init);
 
     return n_divergent > n_samples / 10 ? NIMCP_BAYES_ERROR_DIVERGENCE : NIMCP_BAYES_OK;
 }
@@ -815,7 +816,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_get_samples(
             if ((uint32_t)param_idx >= n_params) return NIMCP_BAYES_ERROR_PARAMS;
 
             *n_samples = n_samp;
-            *samples = (double*)malloc(n_samp * sizeof(double));
+            *samples = (double*)nimcp_malloc(n_samp * sizeof(double));
             if (!*samples) return NIMCP_BAYES_ERROR_MEMORY;
 
             for (uint32_t i = 0; i < n_samp; i++) {
@@ -824,7 +825,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_get_samples(
             }
         } else {
             *n_samples = n_samp * n_params;
-            *samples = (double*)malloc(n_samp * n_params * sizeof(double));
+            *samples = (double*)nimcp_malloc(n_samp * n_params * sizeof(double));
             if (!*samples) return NIMCP_BAYES_ERROR_MEMORY;
 
             memcpy(*samples, &mcmc->samples[(size_t)chain * n_samp * n_params],
@@ -836,7 +837,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_get_samples(
         if (param_idx >= 0) {
             if ((uint32_t)param_idx >= n_params) return NIMCP_BAYES_ERROR_PARAMS;
 
-            *samples = (double*)malloc(*n_samples * sizeof(double));
+            *samples = (double*)nimcp_malloc(*n_samples * sizeof(double));
             if (!*samples) return NIMCP_BAYES_ERROR_MEMORY;
 
             for (uint32_t c = 0; c < n_chains; c++) {
@@ -847,7 +848,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_get_samples(
             }
         } else {
             *n_samples = n_chains * n_samp * n_params;
-            *samples = (double*)malloc(*n_samples * sizeof(double));
+            *samples = (double*)nimcp_malloc(*n_samples * sizeof(double));
             if (!*samples) return NIMCP_BAYES_ERROR_MEMORY;
 
             memcpy(*samples, mcmc->samples, *n_samples * sizeof(double));
@@ -860,8 +861,8 @@ nimcp_bayes_adv_result_t nimcp_mcmc_get_samples(
 static double compute_rhat(const double* samples, uint32_t n_chains, uint32_t n_samples) {
     if (n_chains < 2) return 1.0;
 
-    double* chain_means = (double*)malloc(n_chains * sizeof(double));
-    double* chain_vars = (double*)malloc(n_chains * sizeof(double));
+    double* chain_means = (double*)nimcp_malloc(n_chains * sizeof(double));
+    double* chain_vars = (double*)nimcp_malloc(n_chains * sizeof(double));
 
     for (uint32_t c = 0; c < n_chains; c++) {
         double sum = 0.0, sum_sq = 0.0;
@@ -897,8 +898,8 @@ static double compute_rhat(const double* samples, uint32_t n_chains, uint32_t n_
 
     double rhat = sqrt(var_est / W);
 
-    free(chain_means);
-    free(chain_vars);
+    nimcp_free(chain_means);
+    nimcp_free(chain_vars);
 
     return rhat;
 }
@@ -954,10 +955,10 @@ nimcp_bayes_adv_result_t nimcp_mcmc_diagnostics(
     uint32_t n_chains = mcmc->n_chains;
     uint32_t n_samples = mcmc->n_samples;
 
-    diagnostics->rhat = (double*)calloc(n_params, sizeof(double));
-    diagnostics->ess_bulk = (double*)calloc(n_params, sizeof(double));
-    diagnostics->ess_tail = (double*)calloc(n_params, sizeof(double));
-    diagnostics->mcse = (double*)calloc(n_params, sizeof(double));
+    diagnostics->rhat = (double*)nimcp_calloc(n_params, sizeof(double));
+    diagnostics->ess_bulk = (double*)nimcp_calloc(n_params, sizeof(double));
+    diagnostics->ess_tail = (double*)nimcp_calloc(n_params, sizeof(double));
+    diagnostics->mcse = (double*)nimcp_calloc(n_params, sizeof(double));
 
     if (!diagnostics->rhat || !diagnostics->ess_bulk || !diagnostics->ess_tail || !diagnostics->mcse) {
         nimcp_mcmc_diagnostics_free(diagnostics);
@@ -969,7 +970,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_diagnostics(
     diagnostics->n_samples = n_samples;
     diagnostics->converged = true;
 
-    double* param_samples = (double*)malloc((size_t)n_chains * n_samples * sizeof(double));
+    double* param_samples = (double*)nimcp_malloc((size_t)n_chains * n_samples * sizeof(double));
 
     for (uint32_t p = 0; p < n_params; p++) {
         for (uint32_t c = 0; c < n_chains; c++) {
@@ -1007,7 +1008,7 @@ nimcp_bayes_adv_result_t nimcp_mcmc_diagnostics(
     diagnostics->mean_accept_prob = mcmc->diag.mean_accept_prob;
     diagnostics->mean_stepsize = mcmc->diag.mean_stepsize;
 
-    free(param_samples);
+    nimcp_free(param_samples);
 
     return NIMCP_BAYES_OK;
 }
@@ -1062,16 +1063,16 @@ nimcp_bayes_adv_result_t nimcp_mcmc_summary(
         *ci_upper = samples[idx];
     }
 
-    free(samples);
+    nimcp_free(samples);
     return NIMCP_BAYES_OK;
 }
 
 void nimcp_mcmc_diagnostics_free(nimcp_mcmc_diagnostics_t* diag) {
     if (!diag) return;
-    free(diag->rhat);
-    free(diag->ess_bulk);
-    free(diag->ess_tail);
-    free(diag->mcse);
+    nimcp_free(diag->rhat);
+    nimcp_free(diag->ess_bulk);
+    nimcp_free(diag->ess_tail);
+    nimcp_free(diag->mcse);
     diag->rhat = NULL;
     diag->ess_bulk = NULL;
     diag->ess_tail = NULL;
@@ -1100,16 +1101,16 @@ nimcp_vi_config_t nimcp_vi_default_config(nimcp_vi_family_t family) {
 nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t* config) {
     if (n_params == 0 || !config) return NULL;
 
-    nimcp_vi_optimizer_t* vi = (nimcp_vi_optimizer_t*)calloc(1, sizeof(nimcp_vi_optimizer_t));
+    nimcp_vi_optimizer_t* vi = (nimcp_vi_optimizer_t*)nimcp_calloc(1, sizeof(nimcp_vi_optimizer_t));
     if (!vi) return NULL;
 
-    vi->mean = (double*)calloc(n_params, sizeof(double));
-    vi->variance = (double*)malloc(n_params * sizeof(double));
+    vi->mean = (double*)nimcp_calloc(n_params, sizeof(double));
+    vi->variance = (double*)nimcp_malloc(n_params * sizeof(double));
 
     if (!vi->mean || !vi->variance) {
-        free(vi->mean);
-        free(vi->variance);
-        free(vi);
+        nimcp_free(vi->mean);
+        nimcp_free(vi->variance);
+        nimcp_free(vi);
         return NULL;
     }
 
@@ -1118,11 +1119,11 @@ nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t
     }
 
     if (config->family == NIMCP_VI_FULL_RANK) {
-        vi->covariance = (double*)calloc((size_t)n_params * n_params, sizeof(double));
+        vi->covariance = (double*)nimcp_calloc((size_t)n_params * n_params, sizeof(double));
         if (!vi->covariance) {
-            free(vi->mean);
-            free(vi->variance);
-            free(vi);
+            nimcp_free(vi->mean);
+            nimcp_free(vi->variance);
+            nimcp_free(vi);
             return NULL;
         }
         for (uint32_t i = 0; i < n_params; i++) {
@@ -1130,7 +1131,7 @@ nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t
         }
     }
 
-    vi->elbo_history = (double*)malloc(config->max_iterations * sizeof(double));
+    vi->elbo_history = (double*)nimcp_malloc(config->max_iterations * sizeof(double));
 
     vi->n_params = n_params;
     vi->config = *config;
@@ -1141,12 +1142,12 @@ nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t
 
 void nimcp_vi_destroy(nimcp_vi_optimizer_t* vi) {
     if (!vi) return;
-    free(vi->mean);
-    free(vi->variance);
-    free(vi->covariance);
-    free(vi->low_rank_factors);
-    free(vi->elbo_history);
-    free(vi);
+    nimcp_free(vi->mean);
+    nimcp_free(vi->variance);
+    nimcp_free(vi->covariance);
+    nimcp_free(vi->low_rank_factors);
+    nimcp_free(vi->elbo_history);
+    nimcp_free(vi);
 }
 
 nimcp_bayes_adv_result_t nimcp_vi_fit(
@@ -1168,14 +1169,14 @@ nimcp_bayes_adv_result_t nimcp_vi_fit(
 
     memcpy(vi->mean, initial_mean, n_params * sizeof(double));
 
-    double* sample = (double*)malloc(n_params * sizeof(double));
-    double* grad_mean = (double*)calloc(n_params, sizeof(double));
-    double* grad_log_var = (double*)calloc(n_params, sizeof(double));
-    double* log_var = (double*)malloc(n_params * sizeof(double));
-    double* grad_lp = (double*)malloc(n_params * sizeof(double));
+    double* sample = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* grad_mean = (double*)nimcp_calloc(n_params, sizeof(double));
+    double* grad_log_var = (double*)nimcp_calloc(n_params, sizeof(double));
+    double* log_var = (double*)nimcp_malloc(n_params * sizeof(double));
+    double* grad_lp = (double*)nimcp_malloc(n_params * sizeof(double));
 
     if (!sample || !grad_mean || !grad_log_var || !log_var || !grad_lp) {
-        free(sample); free(grad_mean); free(grad_log_var); free(log_var); free(grad_lp);
+        nimcp_free(sample); nimcp_free(grad_mean); nimcp_free(grad_log_var); nimcp_free(log_var); nimcp_free(grad_lp);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
@@ -1185,10 +1186,10 @@ nimcp_bayes_adv_result_t nimcp_vi_fit(
 
     double prev_elbo = -INFINITY;
 
-    double* m_mean = (double*)calloc(n_params, sizeof(double));
-    double* v_mean = (double*)calloc(n_params, sizeof(double));
-    double* m_var = (double*)calloc(n_params, sizeof(double));
-    double* v_var = (double*)calloc(n_params, sizeof(double));
+    double* m_mean = (double*)nimcp_calloc(n_params, sizeof(double));
+    double* v_mean = (double*)nimcp_calloc(n_params, sizeof(double));
+    double* m_var = (double*)nimcp_calloc(n_params, sizeof(double));
+    double* v_var = (double*)nimcp_calloc(n_params, sizeof(double));
     double beta1 = 0.9, beta2 = 0.999, eps = 1e-8;
 
     for (uint32_t iter = 0; iter < max_iter; iter++) {
@@ -1197,7 +1198,7 @@ nimcp_bayes_adv_result_t nimcp_vi_fit(
         double elbo = 0.0;
 
         for (uint32_t s = 0; s < n_mc; s++) {
-            double* epsilon_store = (double*)malloc(n_params * sizeof(double));
+            double* epsilon_store = (double*)nimcp_malloc(n_params * sizeof(double));
 
             for (uint32_t j = 0; j < n_params; j++) {
                 double epsilon = rand_normal();
@@ -1216,7 +1217,7 @@ nimcp_bayes_adv_result_t nimcp_vi_fit(
                 grad_log_var[j] += 0.5 * vi->variance[j] * grad_lp[j] * epsilon_store[j];
             }
 
-            free(epsilon_store);
+            nimcp_free(epsilon_store);
         }
 
         for (uint32_t j = 0; j < n_params; j++) {
@@ -1262,15 +1263,15 @@ nimcp_bayes_adv_result_t nimcp_vi_fit(
         vi->fitted = true;
     }
 
-    free(sample);
-    free(grad_mean);
-    free(grad_log_var);
-    free(log_var);
-    free(grad_lp);
-    free(m_mean);
-    free(v_mean);
-    free(m_var);
-    free(v_var);
+    nimcp_free(sample);
+    nimcp_free(grad_mean);
+    nimcp_free(grad_log_var);
+    nimcp_free(log_var);
+    nimcp_free(grad_lp);
+    nimcp_free(m_mean);
+    nimcp_free(v_mean);
+    nimcp_free(m_var);
+    nimcp_free(v_var);
 
     return NIMCP_BAYES_OK;
 }
@@ -1358,16 +1359,16 @@ nimcp_bayes_adv_result_t nimcp_waic(
     uint32_t n_params = mcmc->n_params;
     uint32_t n_samples = mcmc->n_samples * mcmc->n_chains;
 
-    double* lppd = (double*)calloc(n_obs, sizeof(double));
-    double* var_ll = (double*)calloc(n_obs, sizeof(double));
+    double* lppd = (double*)nimcp_calloc(n_obs, sizeof(double));
+    double* var_ll = (double*)nimcp_calloc(n_obs, sizeof(double));
 
     if (!lppd || !var_ll) {
-        free(lppd);
-        free(var_ll);
+        nimcp_free(lppd);
+        nimcp_free(var_ll);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
-    double* log_lik_samples = (double*)malloc(n_samples * sizeof(double));
+    double* log_lik_samples = (double*)nimcp_malloc(n_samples * sizeof(double));
 
     for (uint32_t i = 0; i < n_obs; i++) {
         for (uint32_t s = 0; s < n_samples; s++) {
@@ -1412,9 +1413,9 @@ nimcp_bayes_adv_result_t nimcp_waic(
         *se = sqrt(n_obs * sum_sq / (n_obs - 1));
     }
 
-    free(lppd);
-    free(var_ll);
-    free(log_lik_samples);
+    nimcp_free(lppd);
+    nimcp_free(var_ll);
+    nimcp_free(log_lik_samples);
 
     return NIMCP_BAYES_OK;
 }
@@ -1438,12 +1439,12 @@ nimcp_bayes_adv_result_t nimcp_loo_cv(
     uint32_t n_params = mcmc->n_params;
     uint32_t n_samples = mcmc->n_samples * mcmc->n_chains;
 
-    double* elpd_loo = (double*)calloc(n_obs, sizeof(double));
-    double* log_lik_samples = (double*)malloc(n_samples * sizeof(double));
+    double* elpd_loo = (double*)nimcp_calloc(n_obs, sizeof(double));
+    double* log_lik_samples = (double*)nimcp_malloc(n_samples * sizeof(double));
 
     if (!elpd_loo || !log_lik_samples) {
-        free(elpd_loo);
-        free(log_lik_samples);
+        nimcp_free(elpd_loo);
+        nimcp_free(log_lik_samples);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
@@ -1456,7 +1457,7 @@ nimcp_bayes_adv_result_t nimcp_loo_cv(
             log_lik_samples[s] = log_likelihood_fn(params, n_params, i, y, data);
         }
 
-        double* log_ratios = (double*)malloc(n_samples * sizeof(double));
+        double* log_ratios = (double*)nimcp_malloc(n_samples * sizeof(double));
         for (uint32_t s = 0; s < n_samples; s++) {
             log_ratios[s] = -log_lik_samples[s];
         }
@@ -1494,7 +1495,7 @@ nimcp_bayes_adv_result_t nimcp_loo_cv(
             k_pareto[i] = sqrt(var_log_ratio) / 2.0;
         }
 
-        free(log_ratios);
+        nimcp_free(log_ratios);
     }
 
     *loo_cv = sum_elpd;
@@ -1519,8 +1520,8 @@ nimcp_bayes_adv_result_t nimcp_loo_cv(
         *se = sqrt(n_obs * sum_sq / (n_obs - 1));
     }
 
-    free(elpd_loo);
-    free(log_lik_samples);
+    nimcp_free(elpd_loo);
+    nimcp_free(log_lik_samples);
 
     return NIMCP_BAYES_OK;
 }
@@ -1542,7 +1543,7 @@ nimcp_bayes_adv_result_t nimcp_dic(
     uint32_t n_params = mcmc->n_params;
     uint32_t n_samples = mcmc->n_samples * mcmc->n_chains;
 
-    double* theta_bar = (double*)calloc(n_params, sizeof(double));
+    double* theta_bar = (double*)nimcp_calloc(n_params, sizeof(double));
     if (!theta_bar) return NIMCP_BAYES_ERROR_MEMORY;
 
     for (uint32_t s = 0; s < n_samples; s++) {
@@ -1567,7 +1568,7 @@ nimcp_bayes_adv_result_t nimcp_dic(
 
     *dic = D_bar + 2.0 * (*p_dic);
 
-    free(theta_bar);
+    nimcp_free(theta_bar);
 
     return NIMCP_BAYES_OK;
 }
@@ -1590,17 +1591,17 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_fit(
     if (!X || !y || !model) return NIMCP_BAYES_ERROR_NULL;
     if (n < p) return NIMCP_BAYES_ERROR_SIZE;
 
-    model->beta_mean = (double*)calloc(p, sizeof(double));
-    model->beta_cov = (double*)calloc((size_t)p * p, sizeof(double));
+    model->beta_mean = (double*)nimcp_calloc(p, sizeof(double));
+    model->beta_cov = (double*)nimcp_calloc((size_t)p * p, sizeof(double));
     if (!model->beta_mean || !model->beta_cov) {
-        free(model->beta_mean);
-        free(model->beta_cov);
+        nimcp_free(model->beta_mean);
+        nimcp_free(model->beta_cov);
         return NIMCP_BAYES_ERROR_MEMORY;
     }
     model->n_predictors = p;
 
-    double* XtX = (double*)calloc((size_t)p * p, sizeof(double));
-    double* Xty = (double*)calloc(p, sizeof(double));
+    double* XtX = (double*)nimcp_calloc((size_t)p * p, sizeof(double));
+    double* Xty = (double*)nimcp_calloc(p, sizeof(double));
 
     for (uint32_t i = 0; i < n; i++) {
         for (uint32_t j = 0; j < p; j++) {
@@ -1631,7 +1632,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_fit(
         }
     }
 
-    double* XtX_inv = (double*)malloc((size_t)p * p * sizeof(double));
+    double* XtX_inv = (double*)nimcp_malloc((size_t)p * p * sizeof(double));
     memcpy(XtX_inv, XtX, (size_t)p * p * sizeof(double));
 
     for (uint32_t i = 0; i < p; i++) {
@@ -1642,7 +1643,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_fit(
             }
             if (i == j) {
                 if (sum <= 0) {
-                    free(XtX); free(Xty); free(XtX_inv);
+                    nimcp_free(XtX); nimcp_free(Xty); nimcp_free(XtX_inv);
                     return NIMCP_BAYES_ERROR_CONVERGE;
                 }
                 XtX_inv[i * p + i] = sqrt(sum);
@@ -1652,7 +1653,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_fit(
         }
     }
 
-    double* z = (double*)malloc(p * sizeof(double));
+    double* z = (double*)nimcp_malloc(p * sizeof(double));
     for (uint32_t i = 0; i < p; i++) {
         double sum = Xty[i];
         for (uint32_t j = 0; j < i; j++) {
@@ -1717,10 +1718,10 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_fit(
 
     model->fitted = true;
 
-    free(XtX);
-    free(Xty);
-    free(XtX_inv);
-    free(z);
+    nimcp_free(XtX);
+    nimcp_free(Xty);
+    nimcp_free(XtX_inv);
+    nimcp_free(z);
 
     return NIMCP_BAYES_OK;
 }
@@ -1767,10 +1768,10 @@ nimcp_bayes_adv_result_t nimcp_bayes_linreg_predict(
 
 void nimcp_bayes_linreg_free(nimcp_bayes_linreg_t* model) {
     if (!model) return;
-    free(model->beta_mean);
-    free(model->beta_cov);
-    free(model->beta_samples);
-    free(model->sigma_samples);
+    nimcp_free(model->beta_mean);
+    nimcp_free(model->beta_cov);
+    nimcp_free(model->beta_samples);
+    nimcp_free(model->sigma_samples);
     model->beta_mean = NULL;
     model->beta_cov = NULL;
     model->fitted = false;
@@ -1862,8 +1863,8 @@ nimcp_bayes_adv_result_t nimcp_bayes_logreg_fit(
     if (!X || !y || !model) return NIMCP_BAYES_ERROR_NULL;
     if (n < p) return NIMCP_BAYES_ERROR_SIZE;
 
-    model->beta_mean = (double*)calloc(p, sizeof(double));
-    model->beta_cov = (double*)calloc((size_t)p * p, sizeof(double));
+    model->beta_mean = (double*)nimcp_calloc(p, sizeof(double));
+    model->beta_cov = (double*)nimcp_calloc((size_t)p * p, sizeof(double));
     if (!model->beta_mean || !model->beta_cov) {
         nimcp_bayes_logreg_free(model);
         return NIMCP_BAYES_ERROR_MEMORY;
@@ -1885,7 +1886,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_logreg_fit(
         return NIMCP_BAYES_ERROR_MEMORY;
     }
 
-    double* initial = (double*)calloc(p, sizeof(double));
+    double* initial = (double*)nimcp_calloc(p, sizeof(double));
 
     nimcp_bayes_adv_result_t result;
     if (config.algorithm == NIMCP_MCMC_NUTS) {
@@ -1899,7 +1900,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_logreg_fit(
                                                  initial, &logreg_data);
     }
 
-    free(initial);
+    nimcp_free(initial);
 
     if (result != NIMCP_BAYES_OK) {
         nimcp_bayes_logreg_free(model);
@@ -1954,7 +1955,7 @@ nimcp_bayes_adv_result_t nimcp_bayes_logreg_predict(
     uint32_t p = model->n_predictors;
     uint32_t n_samples = model->n_samples;
 
-    double* probs = (double*)malloc(n_samples * sizeof(double));
+    double* probs = (double*)nimcp_malloc(n_samples * sizeof(double));
     if (!probs) return NIMCP_BAYES_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_new; i++) {
@@ -1991,15 +1992,15 @@ nimcp_bayes_adv_result_t nimcp_bayes_logreg_predict(
         }
     }
 
-    free(probs);
+    nimcp_free(probs);
     return NIMCP_BAYES_OK;
 }
 
 void nimcp_bayes_logreg_free(nimcp_bayes_logreg_t* model) {
     if (!model) return;
-    free(model->beta_mean);
-    free(model->beta_cov);
-    free(model->beta_samples);
+    nimcp_free(model->beta_mean);
+    nimcp_free(model->beta_cov);
+    nimcp_free(model->beta_samples);
     nimcp_mcmc_destroy(model->sampler);
     model->beta_mean = NULL;
     model->beta_cov = NULL;
@@ -2014,12 +2015,12 @@ void nimcp_bayes_logreg_free(nimcp_bayes_logreg_t* model) {
 nimcp_hier_model_t* nimcp_hier_create(uint32_t n_levels) {
     if (n_levels == 0 || n_levels > NIMCP_HIER_MAX_LEVELS) return NULL;
 
-    nimcp_hier_model_t* hier = (nimcp_hier_model_t*)calloc(1, sizeof(nimcp_hier_model_t));
+    nimcp_hier_model_t* hier = (nimcp_hier_model_t*)nimcp_calloc(1, sizeof(nimcp_hier_model_t));
     if (!hier) return NULL;
 
-    hier->levels = (nimcp_hier_level_t*)calloc(n_levels, sizeof(nimcp_hier_level_t));
+    hier->levels = (nimcp_hier_level_t*)nimcp_calloc(n_levels, sizeof(nimcp_hier_level_t));
     if (!hier->levels) {
-        free(hier);
+        nimcp_free(hier);
         return NULL;
     }
 
@@ -2034,19 +2035,19 @@ void nimcp_hier_destroy(nimcp_hier_model_t* hier) {
 
     if (hier->levels) {
         for (uint32_t i = 0; i < hier->n_levels; i++) {
-            free(hier->levels[i].name);
-            free(hier->levels[i].parent_idx);
-            free(hier->levels[i].prior_mean);
-            free(hier->levels[i].prior_precision);
+            nimcp_free(hier->levels[i].name);
+            nimcp_free(hier->levels[i].parent_idx);
+            nimcp_free(hier->levels[i].prior_mean);
+            nimcp_free(hier->levels[i].prior_precision);
         }
-        free(hier->levels);
+        nimcp_free(hier->levels);
     }
 
-    free(hier->hyperparams);
-    free(hier->random_effects);
-    free(hier->variance_components);
+    nimcp_free(hier->hyperparams);
+    nimcp_free(hier->random_effects);
+    nimcp_free(hier->variance_components);
     nimcp_mcmc_destroy(hier->sampler);
-    free(hier);
+    nimcp_free(hier);
 }
 
 nimcp_bayes_adv_result_t nimcp_hier_define_level(
@@ -2068,21 +2069,21 @@ nimcp_bayes_adv_result_t nimcp_hier_define_level(
     level->estimate_hyperparams = spec->estimate_hyperparams;
 
     if (spec->parent_idx && spec->n_units > 0) {
-        level->parent_idx = (uint32_t*)malloc(spec->n_units * sizeof(uint32_t));
+        level->parent_idx = (uint32_t*)nimcp_malloc(spec->n_units * sizeof(uint32_t));
         if (level->parent_idx) {
             memcpy(level->parent_idx, spec->parent_idx, spec->n_units * sizeof(uint32_t));
         }
     }
 
     if (spec->prior_mean && spec->n_params > 0) {
-        level->prior_mean = (double*)malloc(spec->n_params * sizeof(double));
+        level->prior_mean = (double*)nimcp_malloc(spec->n_params * sizeof(double));
         if (level->prior_mean) {
             memcpy(level->prior_mean, spec->prior_mean, spec->n_params * sizeof(double));
         }
     }
 
     if (spec->prior_precision && spec->n_params > 0) {
-        level->prior_precision = (double*)malloc((size_t)spec->n_params * spec->n_params * sizeof(double));
+        level->prior_precision = (double*)nimcp_malloc((size_t)spec->n_params * spec->n_params * sizeof(double));
         if (level->prior_precision) {
             memcpy(level->prior_precision, spec->prior_precision,
                    (size_t)spec->n_params * spec->n_params * sizeof(double));

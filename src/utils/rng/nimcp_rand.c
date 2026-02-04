@@ -32,33 +32,10 @@
 #define LOG_MODULE_NAME "rand"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for rand module */
-static nimcp_health_agent_t* g_rand_health_agent = NULL;
-
-/**
- * @brief Set health agent for rand heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void rand_set_health_agent(nimcp_health_agent_t* agent) {
-    g_rand_health_agent = agent;
-}
-
-/** @brief Send heartbeat from rand module */
-static inline void rand_heartbeat(const char* operation, float progress) {
-    if (g_rand_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_rand_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(rand)
 
 /*=============================================================================
  * CONSTANTS
@@ -710,14 +687,14 @@ nimcp_rand_ctx_t* nimcp_rand_ctx_create_with_backend(
     /*
      * BUG FIX: Use malloc consistently for context allocation.
      * Previous code tried UMM allocation but didn't track the handle,
-     * causing double-free when nimcp_rand_ctx_destroy() called free()
+     * causing double-free when nimcp_rand_ctx_destroy() called nimcp_free()
      * on UMM-allocated memory.
      *
      * Note: If UMM context allocation is needed in the future, we need to
      * add a unified_mem_handle_t field to nimcp_rand_ctx and use
      * unified_mem_free(handle) in destroy.
      */
-    nimcp_rand_ctx_t* ctx = (nimcp_rand_ctx_t*)malloc(sizeof(nimcp_rand_ctx_t));
+    nimcp_rand_ctx_t* ctx = (nimcp_rand_ctx_t*)nimcp_malloc(sizeof(nimcp_rand_ctx_t));
     if (!ctx) {
         LOG_MODULE_ERROR(LOG_MODULE_NAME, "Failed to allocate context");
         return NULL;
@@ -778,7 +755,7 @@ void nimcp_rand_ctx_destroy(nimcp_rand_ctx_t* ctx)
     ctx->magic = 0;
 
     /* Context is always allocated via malloc (see nimcp_rand_ctx_create_with_backend) */
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 nimcp_rand_ctx_t* nimcp_rand_ctx_clone(const nimcp_rand_ctx_t* ctx)
@@ -794,7 +771,7 @@ nimcp_rand_ctx_t* nimcp_rand_ctx_clone(const nimcp_rand_ctx_t* ctx)
         return NULL;
     }
 
-    nimcp_rand_ctx_t* clone = (nimcp_rand_ctx_t*)malloc(sizeof(nimcp_rand_ctx_t));
+    nimcp_rand_ctx_t* clone = (nimcp_rand_ctx_t*)nimcp_malloc(sizeof(nimcp_rand_ctx_t));
     if (!clone) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
 
@@ -1029,7 +1006,7 @@ void nimcp_rand_shuffle(void* array, size_t n, size_t element_size)
     }
 
     uint8_t* arr = (uint8_t*)array;
-    uint8_t* temp = (uint8_t*)malloc(element_size);
+    uint8_t* temp = (uint8_t*)nimcp_malloc(element_size);
     if (!temp) {
         return;
     }
@@ -1044,7 +1021,7 @@ void nimcp_rand_shuffle(void* array, size_t n, size_t element_size)
         memcpy(arr + j * element_size, temp, element_size);
     }
 
-    free(temp);
+    nimcp_free(temp);
 }
 
 uint32_t nimcp_rand_choice(const float* weights, uint32_t n)
@@ -1094,7 +1071,7 @@ nimcp_rand_result_t nimcp_rand_sample(uint32_t n, uint32_t k, uint32_t* out)
     /* Floyd's algorithm for sampling k from n */
     if (k <= n / 2) {
         /* Selection sampling */
-        uint32_t* indices = (uint32_t*)malloc(n * sizeof(uint32_t));
+        uint32_t* indices = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
         if (!indices) {
             return NIMCP_RAND_ERROR_MEMORY;
         }
@@ -1112,10 +1089,10 @@ nimcp_rand_result_t nimcp_rand_sample(uint32_t n, uint32_t k, uint32_t* out)
             out[i] = indices[i];
         }
 
-        free(indices);
+        nimcp_free(indices);
     } else {
         /* For k close to n, use rejection sampling */
-        bool* selected = (bool*)calloc(n, sizeof(bool));
+        bool* selected = (bool*)nimcp_calloc(n, sizeof(bool));
         if (!selected) {
             return NIMCP_RAND_ERROR_MEMORY;
         }
@@ -1129,7 +1106,7 @@ nimcp_rand_result_t nimcp_rand_sample(uint32_t n, uint32_t k, uint32_t* out)
             }
         }
 
-        free(selected);
+        nimcp_free(selected);
     }
 
     return NIMCP_RAND_OK;
@@ -1167,7 +1144,7 @@ nimcp_rand_result_t nimcp_rand_quantum_sample(
 
         /* For each sample, draw from probability distribution */
         /* Build cumulative distribution */
-        float* cumulative = (float*)malloc(n * sizeof(float));
+        float* cumulative = (float*)nimcp_malloc(n * sizeof(float));
         if (!cumulative) {
             return NIMCP_RAND_ERROR_MEMORY;
         }
@@ -1179,10 +1156,10 @@ nimcp_rand_result_t nimcp_rand_quantum_sample(
             samples[i] = qmc_binary_sample(cumulative, n, target);
         }
 
-        free(cumulative);
+        nimcp_free(cumulative);
     } else {
         /* Fallback to classical sampling */
-        float* cumulative = (float*)malloc(n * sizeof(float));
+        float* cumulative = (float*)nimcp_malloc(n * sizeof(float));
         if (!cumulative) {
             return NIMCP_RAND_ERROR_MEMORY;
         }
@@ -1217,7 +1194,7 @@ nimcp_rand_result_t nimcp_rand_quantum_sample(
             samples[i] = lo < n ? lo : n - 1;
         }
 
-        free(cumulative);
+        nimcp_free(cumulative);
     }
 
     return NIMCP_RAND_OK;
@@ -1267,12 +1244,12 @@ nimcp_rand_result_t nimcp_rand_amcs(
     }
 
     /* Classical Metropolis-Hastings fallback */
-    float* current = (float*)malloc(dim * sizeof(float));
-    float* proposal = (float*)malloc(dim * sizeof(float));
+    float* current = (float*)nimcp_malloc(dim * sizeof(float));
+    float* proposal = (float*)nimcp_malloc(dim * sizeof(float));
 
     if (!current || !proposal) {
-        free(current);
-        free(proposal);
+        nimcp_free(current);
+        nimcp_free(proposal);
         return NIMCP_RAND_ERROR_MEMORY;
     }
 
@@ -1316,8 +1293,8 @@ nimcp_rand_result_t nimcp_rand_amcs(
         }
     }
 
-    free(current);
-    free(proposal);
+    nimcp_free(current);
+    nimcp_free(proposal);
 
     return NIMCP_RAND_OK;
 }
@@ -1343,7 +1320,7 @@ nimcp_rand_result_t nimcp_rand_qmcts(
     /* Simple MCTS implementation */
     /* For now, just use random sampling with best-so-far tracking */
 
-    void* current = malloc(state_size);
+    void* current = nimcp_malloc(state_size);
     if (!current) {
         return NIMCP_RAND_ERROR_MEMORY;
     }
@@ -1372,7 +1349,7 @@ nimcp_rand_result_t nimcp_rand_qmcts(
         }
     }
 
-    free(current);
+    nimcp_free(current);
 
     LOG_MODULE_DEBUG(LOG_MODULE_NAME, "QMCTS completed with best_score=%f", best_score);
 

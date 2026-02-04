@@ -40,6 +40,7 @@
 
 #include "utils/ternary/nimcp_ternary.h"
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,7 +132,7 @@ static inline trit_walker_1d_t* trit_walker_1d_create(
 ) {
     if (n_positions == 0) return NULL;
 
-    trit_walker_1d_t* walker = (trit_walker_1d_t*)calloc(1, sizeof(trit_walker_1d_t));
+    trit_walker_1d_t* walker = (trit_walker_1d_t*)nimcp_calloc(1, sizeof(trit_walker_1d_t));
     if (!walker) return NULL;
 
     walker->magic = TRIT_WALK_MAGIC;
@@ -148,18 +149,18 @@ static inline trit_walker_1d_t* trit_walker_1d_create(
     walker->coins = trit_vector_create_filled(n_positions, TRIT_COIN_STAY,
                                                TERNARY_PACK_BASE243);
     if (!walker->coins) {
-        free(walker);
+        nimcp_free(walker);
         return NULL;
     }
 
     /* Allocate amplitudes and phases */
-    walker->amplitudes = (float*)calloc(n_positions, sizeof(float));
-    walker->phases = (float*)calloc(n_positions, sizeof(float));
+    walker->amplitudes = (float*)nimcp_calloc(n_positions, sizeof(float));
+    walker->phases = (float*)nimcp_calloc(n_positions, sizeof(float));
     if (!walker->amplitudes || !walker->phases) {
         trit_vector_destroy(walker->coins);
-        free(walker->amplitudes);
-        free(walker->phases);
-        free(walker);
+        nimcp_free(walker->amplitudes);
+        nimcp_free(walker->phases);
+        nimcp_free(walker);
         return NULL;
     }
 
@@ -177,10 +178,10 @@ static inline trit_walker_1d_t* trit_walker_1d_create(
 static inline void trit_walker_1d_destroy(trit_walker_1d_t* walker) {
     if (!walker) return;
     if (walker->coins) trit_vector_destroy(walker->coins);
-    free(walker->amplitudes);
-    free(walker->phases);
+    nimcp_free(walker->amplitudes);
+    nimcp_free(walker->phases);
     walker->magic = 0;
-    free(walker);
+    nimcp_free(walker);
 }
 
 //=============================================================================
@@ -265,11 +266,11 @@ static inline void trit_walker_1d_shift(trit_walker_1d_t* walker) {
     uint32_t n = walker->n_positions;
 
     /* Temporary storage for new amplitudes */
-    float* new_amps = (float*)calloc(n, sizeof(float));
-    trit_t* new_coins = (trit_t*)calloc(n, sizeof(trit_t));
+    float* new_amps = (float*)nimcp_calloc(n, sizeof(float));
+    trit_t* new_coins = (trit_t*)nimcp_calloc(n, sizeof(trit_t));
     if (!new_amps || !new_coins) {
-        free(new_amps);
-        free(new_coins);
+        nimcp_free(new_amps);
+        nimcp_free(new_coins);
         return;
     }
 
@@ -297,8 +298,8 @@ static inline void trit_walker_1d_shift(trit_walker_1d_t* walker) {
         trit_vector_set(walker->coins, i, new_coins[i]);
     }
 
-    free(new_amps);
-    free(new_coins);
+    nimcp_free(new_amps);
+    nimcp_free(new_coins);
 }
 
 /**
@@ -438,7 +439,7 @@ static inline trit_walker_graph_t* trit_walker_graph_create(
     if (!adjacency || adjacency->magic != TERNARY_MAGIC) return NULL;
     if (adjacency->rows != adjacency->cols) return NULL;  /* Must be square */
 
-    trit_walker_graph_t* walker = (trit_walker_graph_t*)calloc(1, sizeof(trit_walker_graph_t));
+    trit_walker_graph_t* walker = (trit_walker_graph_t*)nimcp_calloc(1, sizeof(trit_walker_graph_t));
     if (!walker) return NULL;
 
     walker->magic = TRIT_WALK_MAGIC;
@@ -471,15 +472,15 @@ static inline trit_walker_graph_t* trit_walker_graph_create(
         if (v != TRIT_UNKNOWN) n_edges++;
     }
 
-    walker->row_ptr = (uint32_t*)calloc(walker->n_nodes + 1, sizeof(uint32_t));
-    walker->col_idx = (uint32_t*)calloc(n_edges, sizeof(uint32_t));
-    walker->edge_weights = (float*)calloc(n_edges, sizeof(float));
+    walker->row_ptr = (uint32_t*)nimcp_calloc(walker->n_nodes + 1, sizeof(uint32_t));
+    walker->col_idx = (uint32_t*)nimcp_calloc(n_edges, sizeof(uint32_t));
+    walker->edge_weights = (float*)nimcp_calloc(n_edges, sizeof(float));
 
     if (!walker->row_ptr || !walker->col_idx || !walker->edge_weights) {
-        free(walker->row_ptr);
-        free(walker->col_idx);
-        free(walker->edge_weights);
-        free(walker);
+        nimcp_free(walker->row_ptr);
+        nimcp_free(walker->col_idx);
+        nimcp_free(walker->edge_weights);
+        nimcp_free(walker);
         return NULL;
     }
 
@@ -502,21 +503,21 @@ static inline trit_walker_graph_t* trit_walker_graph_create(
     walker->coins = trit_matrix_create(walker->n_nodes, walker->max_degree,
                                         TERNARY_PACK_NONE);
     if (!walker->coins) {
-        free(walker->row_ptr);
-        free(walker->col_idx);
-        free(walker->edge_weights);
-        free(walker);
+        nimcp_free(walker->row_ptr);
+        nimcp_free(walker->col_idx);
+        nimcp_free(walker->edge_weights);
+        nimcp_free(walker);
         return NULL;
     }
 
     /* Allocate amplitudes */
-    walker->amplitudes = (float*)calloc(walker->n_nodes, sizeof(float));
+    walker->amplitudes = (float*)nimcp_calloc(walker->n_nodes, sizeof(float));
     if (!walker->amplitudes) {
         trit_matrix_destroy(walker->coins);
-        free(walker->row_ptr);
-        free(walker->col_idx);
-        free(walker->edge_weights);
-        free(walker);
+        nimcp_free(walker->row_ptr);
+        nimcp_free(walker->col_idx);
+        nimcp_free(walker->edge_weights);
+        nimcp_free(walker);
         return NULL;
     }
 
@@ -531,12 +532,12 @@ static inline void trit_walker_graph_destroy(trit_walker_graph_t* walker) {
     if (walker->magic != TRIT_WALK_MAGIC) return;
 
     if (walker->coins) trit_matrix_destroy(walker->coins);
-    free(walker->amplitudes);
-    free(walker->row_ptr);
-    free(walker->col_idx);
-    free(walker->edge_weights);
+    nimcp_free(walker->amplitudes);
+    nimcp_free(walker->row_ptr);
+    nimcp_free(walker->col_idx);
+    nimcp_free(walker->edge_weights);
     walker->magic = 0;
-    free(walker);
+    nimcp_free(walker);
 }
 
 /**
@@ -578,7 +579,7 @@ static inline void trit_walker_graph_step(trit_walker_graph_t* walker) {
     uint32_t n = walker->n_nodes;
 
     /* Temporary storage for new amplitudes */
-    float* new_amps = (float*)calloc(n, sizeof(float));
+    float* new_amps = (float*)nimcp_calloc(n, sizeof(float));
     if (!new_amps) return;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -603,7 +604,7 @@ static inline void trit_walker_graph_step(trit_walker_graph_t* walker) {
 
     /* Copy back */
     memcpy(walker->amplitudes, new_amps, n * sizeof(float));
-    free(new_amps);
+    nimcp_free(new_amps);
 
     /* Normalize */
     float norm_sq = 0.0f;

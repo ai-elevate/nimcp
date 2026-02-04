@@ -42,6 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -235,8 +236,8 @@ typedef struct {
 /**
  * @brief Use-after-free check template
  *
- * BEFORE: free(ptr); ... ptr->member;
- * AFTER:  free(ptr); ptr = NULL; ... if (ptr != NULL) ptr->member;
+ * BEFORE: nimcp_free(ptr); ... ptr->member;
+ * AFTER:  nimcp_free(ptr); ptr = NULL; ... if (ptr != NULL) ptr->member;
  */
 #define HEAL_PATTERN_UAF_FREE_AFTER   "nimcp_free(${ptr});\n${ptr} = NULL;"
 #define HEAL_PATTERN_UAF_USE_BEFORE   "${ptr}->${member}"
@@ -255,8 +256,8 @@ typedef struct {
 /**
  * @brief Double-free protection template
  *
- * BEFORE: free(ptr);
- * AFTER:  if (ptr != NULL) { free(ptr); ptr = NULL; }
+ * BEFORE: nimcp_free(ptr);
+ * AFTER:  if (ptr != NULL) { nimcp_free(ptr); ptr = NULL; }
  */
 #define HEAL_PATTERN_DOUBLE_FREE_BEFORE "nimcp_free(${ptr})"
 #define HEAL_PATTERN_DOUBLE_FREE_AFTER  \

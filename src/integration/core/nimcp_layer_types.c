@@ -19,33 +19,10 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for layer_types module */
-static nimcp_health_agent_t* g_layer_types_health_agent = NULL;
-
-/**
- * @brief Set health agent for layer_types heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void layer_types_set_health_agent(nimcp_health_agent_t* agent) {
-    g_layer_types_health_agent = agent;
-}
-
-/** @brief Send heartbeat from layer_types module */
-static inline void layer_types_heartbeat(const char* operation, float progress) {
-    if (g_layer_types_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_layer_types_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(layer_types)
 
 //=============================================================================
 // Layer Name Strings
@@ -195,7 +172,7 @@ nimcp_layer_msg_t* nimcp_layer_msg_create(
     void* payload,
     uint32_t payload_size
 ) {
-    nimcp_layer_msg_t* msg = (nimcp_layer_msg_t*)calloc(1, sizeof(nimcp_layer_msg_t));
+    nimcp_layer_msg_t* msg = (nimcp_layer_msg_t*)nimcp_calloc(1, sizeof(nimcp_layer_msg_t));
     NIMCP_API_CHECK_ALLOC(msg, "Failed to allocate layer message");
 
     msg->header.msg_type = msg_type;
@@ -210,9 +187,9 @@ nimcp_layer_msg_t* nimcp_layer_msg_create(
     msg->header.payload_size = payload_size;
 
     if (payload && payload_size > 0) {
-        msg->payload = malloc(payload_size);
+        msg->payload = nimcp_malloc(payload_size);
         if (!msg->payload) {
-            free(msg);
+            nimcp_free(msg);
             return NULL;
         }
         memcpy(msg->payload, payload, payload_size);
@@ -229,15 +206,15 @@ void nimcp_layer_msg_destroy(nimcp_layer_msg_t* msg) {
     if (!msg) return;
 
     if (msg->payload_owned && msg->payload) {
-        free(msg->payload);
+        nimcp_free(msg->payload);
     }
-    free(msg);
+    nimcp_free(msg);
 }
 
 nimcp_layer_msg_t* nimcp_layer_msg_clone(const nimcp_layer_msg_t* msg) {
     NIMCP_API_CHECK_NULL_RET_NULL(msg, "Source message is NULL in clone");
 
-    nimcp_layer_msg_t* clone = (nimcp_layer_msg_t*)calloc(1, sizeof(nimcp_layer_msg_t));
+    nimcp_layer_msg_t* clone = (nimcp_layer_msg_t*)nimcp_calloc(1, sizeof(nimcp_layer_msg_t));
     NIMCP_API_CHECK_ALLOC(clone, "Failed to allocate cloned layer message");
 
     /* Copy header */
@@ -247,9 +224,9 @@ nimcp_layer_msg_t* nimcp_layer_msg_clone(const nimcp_layer_msg_t* msg) {
 
     /* Clone payload if present */
     if (msg->payload && msg->header.payload_size > 0) {
-        clone->payload = malloc(msg->header.payload_size);
+        clone->payload = nimcp_malloc(msg->header.payload_size);
         if (!clone->payload) {
-            free(clone);
+            nimcp_free(clone);
             return NULL;
         }
         memcpy(clone->payload, msg->payload, msg->header.payload_size);

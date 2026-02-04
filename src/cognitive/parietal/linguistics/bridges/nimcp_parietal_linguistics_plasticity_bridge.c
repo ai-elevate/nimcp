@@ -7,6 +7,7 @@
 
 #include "cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_plasticity_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

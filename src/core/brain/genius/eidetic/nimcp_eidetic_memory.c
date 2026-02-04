@@ -12,6 +12,7 @@
 
 #include "core/brain/genius/eidetic/nimcp_eidetic_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

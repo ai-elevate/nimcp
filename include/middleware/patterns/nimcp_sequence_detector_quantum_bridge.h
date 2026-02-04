@@ -127,6 +127,7 @@ void sequence_quantum_reset_stats(sequence_quantum_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct sequence_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -151,7 +152,7 @@ sequence_quantum_config_t sequence_quantum_default_config(void) {
 sequence_quantum_bridge_t* sequence_quantum_bridge_create(
     const sequence_quantum_config_t* config
 ) {
-    sequence_quantum_bridge_t* bridge = (sequence_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    sequence_quantum_bridge_t* bridge = (sequence_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : sequence_quantum_default_config();
@@ -163,7 +164,7 @@ sequence_quantum_bridge_t* sequence_quantum_bridge_create(
 
     bridge->matcher = qseq_matcher_create(&qconfig);
     if (!bridge->matcher) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -173,7 +174,7 @@ sequence_quantum_bridge_t* sequence_quantum_bridge_create(
 void sequence_quantum_bridge_destroy(sequence_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->matcher) qseq_matcher_destroy(bridge->matcher);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int sequence_quantum_bridge_connect(

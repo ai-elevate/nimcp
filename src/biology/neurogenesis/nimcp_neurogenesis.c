@@ -21,33 +21,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for neurogenesis module */
-static nimcp_health_agent_t* g_neurogenesis_health_agent = NULL;
-
-/**
- * @brief Set health agent for neurogenesis heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neurogenesis_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neurogenesis_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neurogenesis module */
-static inline void neurogenesis_heartbeat(const char* operation, float progress) {
-    if (g_neurogenesis_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neurogenesis_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neurogenesis)
 
 //=============================================================================
 // Internal Structures
@@ -271,7 +248,7 @@ nimcp_neurogenesis_config_t nimcp_neurogenesis_default_config(void) {
 //=============================================================================
 
 nimcp_neurogenesis_t nimcp_neurogenesis_create(const nimcp_neurogenesis_config_t* config) {
-    nimcp_neurogenesis_t ng = (nimcp_neurogenesis_t)calloc(1, sizeof(struct nimcp_neurogenesis_struct));
+    nimcp_neurogenesis_t ng = (nimcp_neurogenesis_t)nimcp_calloc(1, sizeof(struct nimcp_neurogenesis_struct));
     if (!ng) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_neurogenesis_struct), "Neurogenesis allocation failed");
         return NULL;
@@ -281,20 +258,20 @@ nimcp_neurogenesis_t nimcp_neurogenesis_create(const nimcp_neurogenesis_config_t
 
     /* Allocate niches */
     ng->max_niches = ng->config.max_niches;
-    ng->niches = (niche_t*)calloc(ng->max_niches, sizeof(niche_t));
+    ng->niches = (niche_t*)nimcp_calloc(ng->max_niches, sizeof(niche_t));
     if (!ng->niches) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ng->max_niches * sizeof(niche_t), "Niche array allocation failed");
-        free(ng);
+        nimcp_free(ng);
         return NULL;
     }
 
     /* Allocate pending neurons */
     ng->max_pending = ng->config.max_pending_neurons;
-    ng->pending_neurons = (pending_neuron_t*)calloc(ng->max_pending, sizeof(pending_neuron_t));
+    ng->pending_neurons = (pending_neuron_t*)nimcp_calloc(ng->max_pending, sizeof(pending_neuron_t));
     if (!ng->pending_neurons) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ng->max_pending * sizeof(pending_neuron_t), "Pending neurons allocation failed");
-        free(ng->niches);
-        free(ng);
+        nimcp_free(ng->niches);
+        nimcp_free(ng);
         return NULL;
     }
 
@@ -317,12 +294,12 @@ void nimcp_neurogenesis_destroy(nimcp_neurogenesis_t ng) {
 
     /* Free niche stem cells */
     for (uint32_t i = 0; i < ng->num_niches; i++) {
-        free(ng->niches[i].stem_cells);
+        nimcp_free(ng->niches[i].stem_cells);
     }
 
-    free(ng->pending_neurons);
-    free(ng->niches);
-    free(ng);
+    nimcp_free(ng->pending_neurons);
+    nimcp_free(ng->niches);
+    nimcp_free(ng);
 }
 
 nimcp_neurogenesis_error_t nimcp_neurogenesis_init(
@@ -531,7 +508,7 @@ nimcp_neurogenesis_error_t nimcp_neurogenesis_create_niche(
 
     niche->config = *config;
     niche->max_stem_cells = ng->config.max_stem_cells_per_niche;
-    niche->stem_cells = (stem_cell_t*)calloc(niche->max_stem_cells, sizeof(stem_cell_t));
+    niche->stem_cells = (stem_cell_t*)nimcp_calloc(niche->max_stem_cells, sizeof(stem_cell_t));
     if (!niche->stem_cells) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, niche->max_stem_cells * sizeof(stem_cell_t), "Stem cells array allocation failed for niche");
         return NEUROGENESIS_ERR_NO_MEMORY;

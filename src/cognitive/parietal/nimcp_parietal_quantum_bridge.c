@@ -19,26 +19,44 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(parietal_quantum_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for parietal_quantum_bridge module */
-static nimcp_health_agent_t* g_parietal_quantum_bridge_health_agent = NULL;
+static mesh_participant_id_t g_parietal_quantum_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_parietal_quantum_bridge_mesh_registry = NULL;
 
-/* Note: parietal_quantum_bridge_set_health_agent is defined in
- * core/brain/regions/parietal/nimcp_parietal_quantum_bridge.c */
+static nimcp_error_t parietal_quantum_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_parietal_quantum_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "parietal_quantum_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "parietal_quantum_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_parietal_quantum_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_parietal_quantum_bridge_mesh_registry = registry;
+    return err;
+}
 
-/** @brief Send heartbeat from parietal_quantum_bridge module */
-static inline void parietal_quantum_bridge_heartbeat(const char* operation, float progress) {
-    if (g_parietal_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parietal_quantum_bridge_health_agent, operation, progress);
+static void parietal_quantum_bridge_mesh_unregister(void) {
+    if (g_parietal_quantum_bridge_mesh_registry && g_parietal_quantum_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_parietal_quantum_bridge_mesh_registry, g_parietal_quantum_bridge_mesh_id);
+        g_parietal_quantum_bridge_mesh_id = 0;
+        g_parietal_quantum_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from parietal_quantum_bridge module (instance-level) */
 static inline void parietal_quantum_bridge_heartbeat_instance(
@@ -241,8 +259,8 @@ void parietal_quantum_free_opt_result(parietal_opt_result_t* result) {
 
 
     if (result) {
-        free(result->optimal_variables);
-        free(result->constraint_values);
+        nimcp_free(result->optimal_variables);
+        nimcp_free(result->constraint_values);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -294,7 +312,7 @@ void parietal_quantum_free_linear_result(parietal_linear_result_t* result) {
 
 
     if (result) {
-        free(result->x);
+        nimcp_free(result->x);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -345,8 +363,8 @@ void parietal_quantum_free_vqe_result(parietal_vqe_result_t* result) {
 
 
     if (result) {
-        free(result->ground_state);
-        free(result->excited_energies);
+        nimcp_free(result->ground_state);
+        nimcp_free(result->excited_energies);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -399,8 +417,8 @@ void parietal_quantum_free_walk_result(parietal_walk_result_t* result) {
 
 
     if (result) {
-        free(result->node_probabilities);
-        free(result->path);
+        nimcp_free(result->node_probabilities);
+        nimcp_free(result->path);
         memset(result, 0, sizeof(*result));
     }
 }

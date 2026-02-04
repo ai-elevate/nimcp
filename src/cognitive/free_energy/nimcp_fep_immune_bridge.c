@@ -20,46 +20,53 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_immune_bridge_instance)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for fep_immune_bridge module */
-static nimcp_health_agent_t* g_fep_immune_bridge_health_agent = NULL;
+static mesh_participant_id_t g_fep_immune_bridge_instance_mesh_id = 0;
+static mesh_participant_registry_t* g_fep_immune_bridge_mesh_registry = NULL;
 
-/** Instance-level health agent for fep_immune_bridge (opaque struct fallback) */
-static nimcp_health_agent_t* g_fep_immune_bridge_instance_health_agent = NULL;
-
-/**
- * @brief Set health agent for fep_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void fep_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fep_immune_bridge_health_agent = agent;
+nimcp_error_t fep_immune_bridge_instance_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fep_immune_bridge_instance_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fep_immune_bridge_instance", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fep_immune_bridge_instance";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fep_immune_bridge_instance_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fep_immune_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from fep_immune_bridge module */
-static inline void fep_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_fep_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_immune_bridge_health_agent, operation, progress);
+void fep_immune_bridge_instance_mesh_unregister(void) {
+    if (g_fep_immune_bridge_mesh_registry && g_fep_immune_bridge_instance_mesh_id != 0) {
+        mesh_participant_unregister(g_fep_immune_bridge_mesh_registry, g_fep_immune_bridge_instance_mesh_id);
+        g_fep_immune_bridge_instance_mesh_id = 0;
+        g_fep_immune_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from fep_immune_bridge module (instance-level) */
 static inline void fep_immune_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_fep_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_immune_bridge_health_agent, operation, progress);
+    if (g_fep_immune_bridge_instance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_immune_bridge_instance_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_fep_immune_bridge_health_agent) {
+    if (instance_agent && instance_agent != g_fep_immune_bridge_instance_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -119,7 +126,7 @@ int fep_immune_bridge_default_config(fep_immune_config_t* config) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_default_config", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_default_config", 0.0f);
 
 
     config->prediction_error_threshold = FEP_IMMUNE_PE_THRESHOLD_MEDIUM;
@@ -141,7 +148,7 @@ int fep_immune_bridge_default_config(fep_immune_config_t* config) {
 
 fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_create", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_create", 0.0f);
 
 
     fep_immune_bridge_t* bridge = (fep_immune_bridge_t*)nimcp_calloc(
@@ -189,7 +196,7 @@ void fep_immune_bridge_destroy(fep_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_destroy", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_destroy", 0.0f);
 
 
     if (bridge->base.bio_async_enabled) {
@@ -222,7 +229,7 @@ int fep_immune_bridge_connect_fep(
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_connect_fep", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_connect_fep", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -240,7 +247,7 @@ int fep_immune_bridge_connect_immune(
     if (!bridge || !immune) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_connect_immune", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_connect_immune", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -261,7 +268,7 @@ int fep_immune_bridge_disconnect(fep_immune_bridge_t* bridge) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_disconnect", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_disconnect", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -290,7 +297,7 @@ int fep_immune_report_prediction_failure(
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_report_pr", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_report_pr", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -334,7 +341,7 @@ int fep_immune_report_model_violation(
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_report_mo", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_report_mo", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -363,7 +370,7 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
     if (!bridge->config.enable_immune_memory_transfer) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_transfer_", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_transfer_", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -382,7 +389,7 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
             for (size_t i = 0; i < pattern_len; i++) {
                 /* Phase 8: Loop progress heartbeat */
                 if ((i & 0xFF) == 0 && pattern_len > 256) {
-                    fep_immune_bridge_heartbeat("fep_immune_b_loop",
+                    fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                                      (float)(i + 1) / (float)pattern_len);
                 }
 
@@ -409,7 +416,7 @@ int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
     if (!bridge->config.enable_convergence_il10) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_convergen", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_convergen", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -435,7 +442,7 @@ int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_apply_inf", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_apply_inf", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -466,7 +473,7 @@ int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
     for (uint32_t l = 0; l < fep->num_levels; l++) {
         /* Phase 8: Loop progress heartbeat */
         if ((l & 0xFF) == 0 && fep->num_levels > 256) {
-            fep_immune_bridge_heartbeat("fep_immune_b_loop",
+            fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                              (float)(l + 1) / (float)fep->num_levels);
         }
 
@@ -475,7 +482,7 @@ int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
         for (uint32_t i = 0; i < lvl->errors.dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && lvl->errors.dim > 256) {
-                fep_immune_bridge_heartbeat("fep_immune_b_loop",
+                fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                                  (float)(i + 1) / (float)lvl->errors.dim);
             }
 
@@ -509,7 +516,7 @@ int fep_immune_get_precision_modifier(
     if (!bridge || !modifier) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_get_preci", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_preci", 0.0f);
 
 
     float base = get_inflammation_precision_factor(bridge->state.inflammation_level);
@@ -533,7 +540,7 @@ int fep_immune_get_learning_modifier(
     if (!bridge || !modifier) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_get_learn", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_learn", 0.0f);
 
 
     float base = get_inflammation_lr_factor(bridge->state.inflammation_level);
@@ -559,7 +566,7 @@ int fep_immune_update_cytokine_effects(fep_immune_bridge_t* bridge) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_update_cy", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_update_cy", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -629,7 +636,7 @@ int fep_immune_bridge_update(
     }
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_update", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_update", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -697,7 +704,7 @@ int fep_immune_bridge_update(
         for (uint32_t l = 0; l < fep->num_levels; l++) {
             /* Phase 8: Loop progress heartbeat */
             if ((l & 0xFF) == 0 && fep->num_levels > 256) {
-                fep_immune_bridge_heartbeat("fep_immune_b_loop",
+                fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                                  (float)(l + 1) / (float)fep->num_levels);
             }
 
@@ -718,7 +725,7 @@ int fep_immune_bridge_update(
         for (uint32_t l = 0; l < fep->num_levels; l++) {
             /* Phase 8: Loop progress heartbeat */
             if ((l & 0xFF) == 0 && fep->num_levels > 256) {
-                fep_immune_bridge_heartbeat("fep_immune_b_loop",
+                fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                                  (float)(l + 1) / (float)fep->num_levels);
             }
 
@@ -797,7 +804,7 @@ int fep_immune_bridge_get_state(
     if (!bridge || !state) return -1;
     *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_get_state", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_get_state", 0.0f);
 
 
     return 0;
@@ -810,7 +817,7 @@ int fep_immune_bridge_get_stats(
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_get_stats", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_get_stats", 0.0f);
 
 
     return 0;
@@ -818,7 +825,7 @@ int fep_immune_bridge_get_stats(
 
 bool fep_immune_is_sickness_active(const fep_immune_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_is_sickne", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_is_sickne", 0.0f);
 
 
     return bridge && bridge->state.sickness_behavior_active;
@@ -828,7 +835,7 @@ brain_inflammation_level_t fep_immune_get_inflammation_level(
     const fep_immune_bridge_t* bridge
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_fep_immune_get_infla", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_infla", 0.0f);
 
 
     return bridge ? bridge->state.inflammation_level : INFLAMMATION_NONE;
@@ -849,7 +856,7 @@ int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_connect_bio_async", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_connect_bio_async", 0.0f);
 
 
     bio_module_info_t info = {
@@ -880,7 +887,7 @@ int fep_immune_bridge_disconnect_bio_async(fep_immune_bridge_t* bridge) {
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_disconnect_bio_async", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_disconnect_bio_async", 0.0f);
 
 
     if (bridge->base.bio_ctx) {
@@ -895,7 +902,7 @@ bool fep_immune_bridge_is_bio_async_connected(
     const fep_immune_bridge_t* bridge
 ) {
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_is_bio_async_connect", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_is_bio_async_connect", 0.0f);
 
 
     return bridge && bridge->base.bio_async_enabled;
@@ -913,7 +920,7 @@ bool fep_immune_bridge_is_bio_async_connected(
 int fep_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
     /* Phase 8: Heartbeat at operation start */
-    fep_immune_bridge_heartbeat("fep_immune_b_query_self_knowledge", 0.0f);
+    fep_immune_bridge_instance_heartbeat("fep_immune_b_query_self_knowledge", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Immune_Bridge");
@@ -921,7 +928,7 @@ int fep_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                fep_immune_bridge_heartbeat("fep_immune_b_loop",
+                fep_immune_bridge_instance_heartbeat("fep_immune_b_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 

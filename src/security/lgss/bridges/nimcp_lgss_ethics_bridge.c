@@ -23,32 +23,45 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_ethics_bridge module */
-static nimcp_health_agent_t* g_lgss_ethics_bridge_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_ethics_bridge)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_ethics_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_ethics_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_ethics_bridge_health_agent = agent;
+static mesh_participant_id_t g_lgss_ethics_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_ethics_bridge_mesh_registry = NULL;
+
+nimcp_error_t lgss_ethics_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_ethics_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_ethics_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_ethics_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_ethics_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_ethics_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_ethics_bridge module */
-static inline void lgss_ethics_bridge_heartbeat(const char* operation, float progress) {
-    if (g_lgss_ethics_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_ethics_bridge_health_agent, operation, progress);
+void lgss_ethics_bridge_mesh_unregister(void) {
+    if (g_lgss_ethics_bridge_mesh_registry && g_lgss_ethics_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_ethics_bridge_mesh_registry, g_lgss_ethics_bridge_mesh_id);
+        g_lgss_ethics_bridge_mesh_id = 0;
+        g_lgss_ethics_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "LGSS_ETHICS_BRIDGE"
 
@@ -103,7 +116,7 @@ int lgss_ethics_bridge_config_init(lgss_ethics_bridge_config_t* config)
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(config, 0, sizeof(lgss_ethics_bridge_config_t));
@@ -140,7 +153,7 @@ lgss_ethics_bridge_t* lgss_ethics_bridge_create(
         config = &default_config;
     }
 
-    bridge = calloc(1, sizeof(lgss_ethics_bridge_t));
+    bridge = nimcp_calloc(1, sizeof(lgss_ethics_bridge_t));
     if (!bridge) {
         ETHICS_BRIDGE_LOG_ERROR("Failed to allocate ethics bridge");
         return NULL;
@@ -180,7 +193,7 @@ void lgss_ethics_bridge_destroy(lgss_ethics_bridge_t* bridge)
     ETHICS_BRIDGE_LOG_INFO("Ethics bridge destroyed");
 
     bridge->magic = 0;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int lgss_ethics_bridge_set_ethics(
@@ -188,7 +201,7 @@ int lgss_ethics_bridge_set_ethics(
     struct ethics_engine* ethics)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     bridge->ethics = ethics;
@@ -205,7 +218,7 @@ int lgss_ethics_bridge_set_directives(
     struct core_directives* directives)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     bridge->directives = directives;
@@ -226,12 +239,12 @@ int lgss_ethics_bridge_evaluate(
     lgss_ethics_evaluation_t* result)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!context || !result) {
         ETHICS_BRIDGE_LOG_ERROR("NULL context or result");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Initialize result */
@@ -356,11 +369,11 @@ int lgss_ethics_bridge_check_lgss_only(
     lgss_ethics_evaluation_t* result)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!context || !result) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Temporarily disable ethics */
@@ -381,11 +394,11 @@ int lgss_ethics_bridge_check_ethics_only(
     lgss_ethics_evaluation_t* result)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!context || !result) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     ETHICS_BRIDGE_LOG_WARN("Bypassing LGSS safety layer (for testing only)");
@@ -411,7 +424,7 @@ int lgss_ethics_bridge_set_lgss_enabled(
     bool enabled)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!enabled) {
@@ -438,7 +451,7 @@ int lgss_ethics_bridge_set_ethics_enabled(
     bool enabled)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     bridge->ethics_enabled = enabled;
@@ -465,7 +478,7 @@ int lgss_ethics_bridge_get_stats(
     lgss_ethics_bridge_stats_t* stats)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memcpy(stats, &bridge->stats, sizeof(lgss_ethics_bridge_stats_t));
@@ -475,7 +488,7 @@ int lgss_ethics_bridge_get_stats(
 int lgss_ethics_bridge_reset_stats(lgss_ethics_bridge_t* bridge)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(&bridge->stats, 0, sizeof(lgss_ethics_bridge_stats_t));
@@ -519,7 +532,7 @@ int lgss_ethics_format_evaluation(
     size_t buffer_size)
 {
     if (!eval || !buffer || buffer_size == 0) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return snprintf(buffer, buffer_size,

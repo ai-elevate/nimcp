@@ -25,24 +25,45 @@
  * ============================================================================ */
 
 /* Forward declaration for health agent */
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
-/* Global health agent handle */
-static nimcp_health_agent_t* g_safety_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(safety)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/* Health agent setter - called from brain init */
-void safety_verification_set_health_agent(nimcp_health_agent_t* agent) {
-    g_safety_health_agent = agent;
+static mesh_participant_id_t g_safety_mesh_id = 0;
+static mesh_participant_registry_t* g_safety_mesh_registry = NULL;
+
+nimcp_error_t safety_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_safety_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "safety", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "safety";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_safety_mesh_id);
+    if (err == NIMCP_SUCCESS) g_safety_mesh_registry = registry;
+    return err;
 }
 
-/* Heartbeat helper - call during long-running operations */
-static inline void safety_heartbeat(const char* operation, float progress) {
-    if (g_safety_health_agent) {
-        extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t*, const char*, float);
-        nimcp_health_agent_heartbeat_ex(g_safety_health_agent, operation, progress);
+void safety_mesh_unregister(void) {
+    if (g_safety_mesh_registry && g_safety_mesh_id != 0) {
+        mesh_participant_unregister(g_safety_mesh_registry, g_safety_mesh_id);
+        g_safety_mesh_id = 0;
+        g_safety_mesh_registry = NULL;
     }
 }
+
 
 struct safety_verification {
     uint32_t magic;

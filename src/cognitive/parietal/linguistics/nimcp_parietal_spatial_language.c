@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * INTERNAL CONSTANTS
@@ -474,7 +475,7 @@ spatial_language_t* spatial_language_create(void) {
 }
 
 spatial_language_t* spatial_language_create_custom(const spatial_language_config_t* config) {
-    spatial_language_t* sl = (spatial_language_t*)calloc(1, sizeof(spatial_language_t));
+    spatial_language_t* sl = (spatial_language_t*)nimcp_calloc(1, sizeof(spatial_language_t));
     if (!sl) {
         set_last_error("Failed to allocate spatial language processor");
         NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "spatial_language_create: allocation failed");
@@ -511,7 +512,7 @@ spatial_language_t* spatial_language_create_custom(const spatial_language_config
 
 void spatial_language_destroy(spatial_language_t* sl) {
     if (sl) {
-        free(sl);
+        nimcp_free(sl);
     }
 }
 

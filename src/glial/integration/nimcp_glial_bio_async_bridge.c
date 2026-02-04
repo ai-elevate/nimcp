@@ -16,32 +16,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for glial_bio_async_bridge module */
-static nimcp_health_agent_t* g_glial_bio_async_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for glial_bio_async_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void glial_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_glial_bio_async_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from glial_bio_async_bridge module */
-static inline void glial_bio_async_bridge_heartbeat(const char* operation, float progress) {
-    if (g_glial_bio_async_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_glial_bio_async_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(glial_bio_async_bridge)
 
 #define LOG_MODULE "GLIAL_BIO_ASYNC_BRIDGE"
 
@@ -129,7 +107,7 @@ int glial_bio_async_default_config(glial_bio_async_config_t* config) {
 glial_bio_async_bridge_t* glial_bio_async_bridge_create(
     const glial_bio_async_config_t* config
 ) {
-    glial_bio_async_bridge_t* bridge = calloc(1, sizeof(glial_bio_async_bridge_t));
+    glial_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(glial_bio_async_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -145,11 +123,11 @@ glial_bio_async_bridge_t* glial_bio_async_bridge_create(
     }
 
     bridge->subscription_capacity = bridge->config.max_subscriptions;
-    bridge->subscriptions = calloc(
+    bridge->subscriptions = nimcp_calloc(
         bridge->subscription_capacity, sizeof(glial_bio_subscription_t)
     );
     if (!bridge->subscriptions) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -166,8 +144,8 @@ void glial_bio_async_bridge_destroy(glial_bio_async_bridge_t* bridge) {
         glial_bio_async_disconnect(bridge);
     }
 
-    free(bridge->subscriptions);
-    free(bridge);
+    nimcp_free(bridge->subscriptions);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================

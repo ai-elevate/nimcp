@@ -26,31 +26,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_audio_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for pr_audio_bridge module */
-static nimcp_health_agent_t* g_pr_audio_bridge_health_agent = NULL;
+static mesh_participant_id_t g_pr_audio_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_pr_audio_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for pr_audio_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void pr_audio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pr_audio_bridge_health_agent = agent;
+nimcp_error_t pr_audio_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_pr_audio_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "pr_audio_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "pr_audio_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pr_audio_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_pr_audio_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from pr_audio_bridge module */
-static inline void pr_audio_bridge_heartbeat(const char* operation, float progress) {
-    if (g_pr_audio_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pr_audio_bridge_health_agent, operation, progress);
+void pr_audio_bridge_mesh_unregister(void) {
+    if (g_pr_audio_bridge_mesh_registry && g_pr_audio_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_pr_audio_bridge_mesh_registry, g_pr_audio_bridge_mesh_id);
+        g_pr_audio_bridge_mesh_id = 0;
+        g_pr_audio_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from pr_audio_bridge module (instance-level) */
 static inline void pr_audio_bridge_heartbeat_instance(
@@ -265,7 +279,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     }
 
     /* Allocate bridge structure */
-    pr_audio_bridge_t* bridge = (pr_audio_bridge_t*)calloc(1, sizeof(pr_audio_bridge_t));
+    pr_audio_bridge_t* bridge = (pr_audio_bridge_t*)nimcp_calloc(1, sizeof(pr_audio_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
@@ -284,19 +298,19 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     /* Allocate MFCC history buffer */
     bridge->mfcc_history_len = effective_config.mfcc_history_len;
     size_t mfcc_buffer_size = bridge->mfcc_history_len * bridge->num_mfcc * sizeof(float);
-    bridge->mfcc_history = (float*)calloc(1, mfcc_buffer_size);
+    bridge->mfcc_history = (float*)nimcp_calloc(1, mfcc_buffer_size);
     if (!bridge->mfcc_history) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->mfcc_history_pos = 0;
 
     /* Allocate onset history buffer */
     bridge->onset_history_len = effective_config.onset_history_len;
-    bridge->onset_history = (float*)calloc(bridge->onset_history_len, sizeof(float));
+    bridge->onset_history = (float*)nimcp_calloc(bridge->onset_history_len, sizeof(float));
     if (!bridge->onset_history) {
-        free(bridge->mfcc_history);
-        free(bridge);
+        nimcp_free(bridge->mfcc_history);
+        nimcp_free(bridge);
         return NULL;
     }
     bridge->onset_history_pos = 0;
@@ -305,9 +319,9 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     /* Allocate current signature */
     bridge->current_signature = prime_sig_create();
     if (!bridge->current_signature) {
-        free(bridge->onset_history);
-        free(bridge->mfcc_history);
-        free(bridge);
+        nimcp_free(bridge->onset_history);
+        nimcp_free(bridge->mfcc_history);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -355,12 +369,12 @@ NIMCP_EXPORT void pr_audio_bridge_destroy(pr_audio_bridge_t* bridge) {
 
     /* Free history buffers */
     if (bridge->mfcc_history) {
-        free(bridge->mfcc_history);
+        nimcp_free(bridge->mfcc_history);
         bridge->mfcc_history = NULL;
     }
 
     if (bridge->onset_history) {
-        free(bridge->onset_history);
+        nimcp_free(bridge->onset_history);
         bridge->onset_history = NULL;
     }
 
@@ -372,7 +386,7 @@ NIMCP_EXPORT void pr_audio_bridge_destroy(pr_audio_bridge_t* bridge) {
 
     bridge->initialized = false;
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_reset(pr_audio_bridge_t* bridge) {

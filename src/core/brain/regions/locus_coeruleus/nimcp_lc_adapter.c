@@ -12,29 +12,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lc_adapter)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for lc_adapter module */
-static nimcp_health_agent_t* g_lc_adapter_health_agent = NULL;
+static mesh_participant_id_t g_lc_adapter_mesh_id = 0;
+static mesh_participant_registry_t* g_lc_adapter_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for lc_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lc_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lc_adapter_health_agent = agent;
+nimcp_error_t lc_adapter_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lc_adapter_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lc_adapter", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lc_adapter";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lc_adapter_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lc_adapter_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lc_adapter module */
-static inline void lc_adapter_heartbeat(const char* operation, float progress) {
-    if (g_lc_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lc_adapter_health_agent, operation, progress);
+void lc_adapter_mesh_unregister(void) {
+    if (g_lc_adapter_mesh_registry && g_lc_adapter_mesh_id != 0) {
+        mesh_participant_unregister(g_lc_adapter_mesh_registry, g_lc_adapter_mesh_id);
+        g_lc_adapter_mesh_id = 0;
+        g_lc_adapter_mesh_registry = NULL;
     }
 }
 
@@ -172,7 +185,7 @@ nimcp_lc_adapter_config_t nimcp_lc_adapter_default_config(void) {
 }
 
 nimcp_lc_adapter_t nimcp_lc_adapter_create(const nimcp_lc_adapter_config_t* config) {
-    nimcp_lc_adapter_t adapter = (nimcp_lc_adapter_t)calloc(1, sizeof(struct nimcp_lc_adapter_struct));
+    nimcp_lc_adapter_t adapter = (nimcp_lc_adapter_t)nimcp_calloc(1, sizeof(struct nimcp_lc_adapter_struct));
     if (!adapter) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
 
@@ -189,7 +202,7 @@ nimcp_lc_adapter_t nimcp_lc_adapter_create(const nimcp_lc_adapter_config_t* conf
     /* Initialize LC system */
     nimcp_lc_error_t err = nimcp_lc_init(&adapter->lc, &adapter->config.lc_config);
     if (err != LC_OK) {
-        free(adapter);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -241,7 +254,7 @@ void nimcp_lc_adapter_destroy(nimcp_lc_adapter_t adapter) {
     /* Shutdown LC system */
     nimcp_lc_shutdown(&adapter->lc);
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 int nimcp_lc_adapter_connect_brain(nimcp_lc_adapter_t adapter, nimcp_brain_t* brain) {

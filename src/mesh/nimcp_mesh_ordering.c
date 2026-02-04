@@ -10,6 +10,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -122,6 +123,7 @@ static bool is_log_up_to_date(const raft_state_t* raft,
 
 nimcp_error_t mesh_ordering_default_config(mesh_ordering_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -147,7 +149,7 @@ mesh_ordering_service_t* mesh_ordering_create(
     const mesh_ordering_config_t* config,
     mesh_coordinator_pool_t* orderer_pool
 ) {
-    mesh_ordering_service_t* service = calloc(1, sizeof(mesh_ordering_service_t));
+    mesh_ordering_service_t* service = nimcp_calloc(1, sizeof(mesh_ordering_service_t));
     if (!service) {
         return NULL;
     }
@@ -177,32 +179,32 @@ mesh_ordering_service_t* mesh_ordering_create(
 
     /* Allocate Raft log */
     service->raft.log_capacity = 1024;
-    service->raft.log = calloc(service->raft.log_capacity, sizeof(raft_log_entry_t));
+    service->raft.log = nimcp_calloc(service->raft.log_capacity, sizeof(raft_log_entry_t));
     if (!service->raft.log) {
-        free(service->name);
-        free(service);
+        nimcp_free(service->name);
+        nimcp_free(service);
         return NULL;
     }
 
     /* Allocate batch assembly */
-    service->current_batch = calloc(1, sizeof(tx_batch_assembly_t));
+    service->current_batch = nimcp_calloc(1, sizeof(tx_batch_assembly_t));
     if (!service->current_batch) {
-        free(service->raft.log);
-        free(service->name);
-        free(service);
+        nimcp_free(service->raft.log);
+        nimcp_free(service->name);
+        nimcp_free(service);
         return NULL;
     }
     service->current_batch->capacity = service->config.batch_size;
-    service->current_batch->tx_ids = calloc(service->current_batch->capacity, sizeof(mesh_tx_id_t));
-    service->current_batch->transactions = calloc(service->current_batch->capacity, sizeof(mesh_transaction_t*));
+    service->current_batch->tx_ids = nimcp_calloc(service->current_batch->capacity, sizeof(mesh_tx_id_t));
+    service->current_batch->transactions = nimcp_calloc(service->current_batch->capacity, sizeof(mesh_transaction_t*));
 
     /* Allocate blocks array */
     service->block_capacity = 1024;
-    service->blocks = calloc(service->block_capacity, sizeof(mesh_ordered_block_t*));
+    service->blocks = nimcp_calloc(service->block_capacity, sizeof(mesh_ordered_block_t*));
 
     /* Allocate channels array */
     service->channel_capacity = MESH_MAX_CHANNELS;
-    service->channels = calloc(service->channel_capacity, sizeof(mesh_channel_id_t));
+    service->channels = nimcp_calloc(service->channel_capacity, sizeof(mesh_channel_id_t));
 
     /* Copy channels from config */
     if (config && config->channels && config->channel_count > 0) {
@@ -236,40 +238,40 @@ void mesh_ordering_destroy(mesh_ordering_service_t* service) {
     pending_tx_t* pending = service->pending_head;
     while (pending) {
         pending_tx_t* next = pending->next;
-        free(pending);
+        nimcp_free(pending);
         pending = next;
     }
 
     /* Free batch assembly */
     if (service->current_batch) {
-        free(service->current_batch->tx_ids);
-        free(service->current_batch->transactions);
-        free(service->current_batch);
+        nimcp_free(service->current_batch->tx_ids);
+        nimcp_free(service->current_batch->transactions);
+        nimcp_free(service->current_batch);
     }
 
     /* Free Raft log */
     if (service->raft.log) {
         for (size_t i = 0; i < service->raft.log_size; i++) {
-            free(service->raft.log[i].tx_ids);
+            nimcp_free(service->raft.log[i].tx_ids);
         }
-        free(service->raft.log);
+        nimcp_free(service->raft.log);
     }
-    free(service->raft.next_index);
-    free(service->raft.match_index);
+    nimcp_free(service->raft.next_index);
+    nimcp_free(service->raft.match_index);
 
     /* Free blocks */
     if (service->blocks) {
         for (size_t i = 0; i < service->block_count; i++) {
             mesh_ordered_block_destroy(service->blocks[i]);
         }
-        free(service->blocks);
+        nimcp_free(service->blocks);
     }
 
     /* Free channels */
-    free(service->channels);
+    nimcp_free(service->channels);
 
-    free(service->name);
-    free(service);
+    nimcp_free(service->name);
+    nimcp_free(service);
 }
 
 const char* mesh_ordering_get_name(const mesh_ordering_service_t* service) {
@@ -285,11 +287,13 @@ nimcp_error_t mesh_ordering_submit(
     mesh_transaction_t* tx
 ) {
     if (!service || !tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (service->pending_count >= service->config.max_pending) {
         service->stats.queue_full_rejections++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_QUEUE_FULL, "mesh_ordering: error condition");
         return NIMCP_ERROR_QUEUE_FULL;
     }
 
@@ -302,8 +306,9 @@ nimcp_error_t mesh_ordering_submit(
     }
 
     /* Create pending entry */
-    pending_tx_t* pending = calloc(1, sizeof(pending_tx_t));
+    pending_tx_t* pending = nimcp_calloc(1, sizeof(pending_tx_t));
     if (!pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -331,6 +336,7 @@ nimcp_error_t mesh_ordering_submit_batch(
     mesh_tx_batch_t* batch
 ) {
     if (!service || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -373,10 +379,12 @@ size_t mesh_ordering_get_pending_count(const mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!service->current_batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_ordering: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -402,7 +410,7 @@ nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
         service->current_batch->count++;
 
         service->stats.transactions_batched++;
-        free(pending);
+        nimcp_free(pending);
     }
 
     return NIMCP_SUCCESS;
@@ -410,6 +418,7 @@ nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -419,6 +428,7 @@ nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
 
     /* Only leader can sequence */
     if (service->raft.role != RAFT_ROLE_LEADER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering: error condition");
         return NIMCP_ERROR_NOT_LEADER;
     }
 
@@ -442,7 +452,7 @@ nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
 
     /* Copy transaction IDs */
     entry.tx_count = service->current_batch->count;
-    entry.tx_ids = calloc(entry.tx_count, sizeof(mesh_tx_id_t));
+    entry.tx_ids = nimcp_calloc(entry.tx_count, sizeof(mesh_tx_id_t));
     if (entry.tx_ids) {
         memcpy(entry.tx_ids, service->current_batch->tx_ids,
                entry.tx_count * sizeof(mesh_tx_id_t));
@@ -467,7 +477,7 @@ mesh_ordered_block_t* mesh_ordering_create_block(
         return NULL;
     }
 
-    mesh_ordered_block_t* block = calloc(1, sizeof(mesh_ordered_block_t));
+    mesh_ordered_block_t* block = nimcp_calloc(1, sizeof(mesh_ordered_block_t));
     if (!block) {
         return NULL;
     }
@@ -479,7 +489,7 @@ mesh_ordered_block_t* mesh_ordering_create_block(
 
     /* Copy transaction IDs */
     block->tx_count = service->current_batch->count;
-    block->tx_ids = calloc(block->tx_count, sizeof(mesh_tx_id_t));
+    block->tx_ids = nimcp_calloc(block->tx_count, sizeof(mesh_tx_id_t));
     if (block->tx_ids) {
         memcpy(block->tx_ids, service->current_batch->tx_ids,
                block->tx_count * sizeof(mesh_tx_id_t));
@@ -550,6 +560,7 @@ uint64_t mesh_ordering_get_sequence(const mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_start_election(mesh_ordering_service_t* service) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -593,6 +604,7 @@ nimcp_error_t mesh_ordering_handle_vote_request(
     bool* vote_granted
 ) {
     if (!service || !vote_granted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -628,6 +640,7 @@ nimcp_error_t mesh_ordering_handle_vote_response(
     bool vote_granted
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -677,6 +690,7 @@ nimcp_error_t mesh_ordering_handle_append_entries(
     bool* success
 ) {
     if (!service || !success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -730,10 +744,12 @@ nimcp_error_t mesh_ordering_handle_append_entries(
 
 nimcp_error_t mesh_ordering_send_heartbeat(mesh_ordering_service_t* service) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (service->raft.role != RAFT_ROLE_LEADER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering: error condition");
         return NIMCP_ERROR_NOT_LEADER;
     }
 
@@ -784,6 +800,7 @@ nimcp_error_t mesh_ordering_log_append(
     const raft_log_entry_t* entry
 ) {
     if (!service || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -793,6 +810,7 @@ nimcp_error_t mesh_ordering_log_append(
         raft_log_entry_t* new_log = nimcp_realloc(service->raft.log,
             new_capacity * sizeof(raft_log_entry_t));
         if (!new_log) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         service->raft.log = new_log;
@@ -806,7 +824,7 @@ nimcp_error_t mesh_ordering_log_append(
 
     /* Copy tx_ids if present */
     if (entry->tx_ids && entry->tx_count > 0) {
-        new_entry->tx_ids = calloc(entry->tx_count, sizeof(mesh_tx_id_t));
+        new_entry->tx_ids = nimcp_calloc(entry->tx_count, sizeof(mesh_tx_id_t));
         if (new_entry->tx_ids) {
             memcpy(new_entry->tx_ids, entry->tx_ids,
                    entry->tx_count * sizeof(mesh_tx_id_t));
@@ -852,6 +870,7 @@ nimcp_error_t mesh_ordering_log_truncate(
     uint64_t index
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -861,7 +880,7 @@ nimcp_error_t mesh_ordering_log_truncate(
 
     /* Free truncated entries */
     for (size_t i = index + 1; i < service->raft.log_size; i++) {
-        free(service->raft.log[i].tx_ids);
+        nimcp_free(service->raft.log[i].tx_ids);
     }
 
     service->raft.log_size = index + 1;
@@ -873,16 +892,18 @@ nimcp_error_t mesh_ordering_log_compact(
     uint64_t up_to_index
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (up_to_index >= service->raft.log_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Free compacted entries */
     for (size_t i = 0; i <= up_to_index; i++) {
-        free(service->raft.log[i].tx_ids);
+        nimcp_free(service->raft.log[i].tx_ids);
     }
 
     /* Shift remaining entries */
@@ -906,6 +927,7 @@ nimcp_error_t mesh_ordering_add_channel(
     mesh_channel_id_t channel
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -917,6 +939,7 @@ nimcp_error_t mesh_ordering_add_channel(
     }
 
     if (service->channel_count >= service->channel_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_ordering: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -929,6 +952,7 @@ nimcp_error_t mesh_ordering_remove_channel(
     mesh_channel_id_t channel
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -943,6 +967,7 @@ nimcp_error_t mesh_ordering_remove_channel(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_ordering: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -972,6 +997,7 @@ nimcp_error_t mesh_ordering_update(
     uint64_t delta_ms
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1031,6 +1057,7 @@ nimcp_error_t mesh_ordering_get_stats(
     mesh_ordering_stats_t* stats
 ) {
     if (!service || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1080,12 +1107,13 @@ void mesh_ordered_block_destroy(mesh_ordered_block_t* block) {
         return;
     }
 
-    free(block->tx_ids);
-    free(block);
+    nimcp_free(block->tx_ids);
+    nimcp_free(block);
 }
 
 nimcp_error_t mesh_ordered_block_compute_hash(mesh_ordered_block_t* block) {
     if (!block) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

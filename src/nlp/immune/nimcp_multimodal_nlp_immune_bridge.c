@@ -15,37 +15,13 @@
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for multimodal_nlp_immune_bridge module */
-static nimcp_health_agent_t* g_multimodal_nlp_immune_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for multimodal_nlp_immune_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void multimodal_nlp_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_multimodal_nlp_immune_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from multimodal_nlp_immune_bridge module */
-static inline void multimodal_nlp_immune_bridge_heartbeat(const char* operation, float progress) {
-    if (g_multimodal_nlp_immune_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_multimodal_nlp_immune_bridge_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_nlp_immune_bridge)
 
 /* ============================================================================
  * Internal Helpers
@@ -130,9 +106,9 @@ multimodal_nlp_immune_bridge_t* multimodal_nlp_immune_bridge_create(
     bridge->audio_cortex = audio_cortex;
     bridge->last_update_time = get_time_ms();
 
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (mutex) {
-        pthread_mutex_init(mutex, NULL);
+        nimcp_mutex_init(mutex, NULL);
         bridge->base.mutex = mutex;
     }
 
@@ -148,8 +124,8 @@ void multimodal_nlp_immune_bridge_destroy(multimodal_nlp_immune_bridge_t* bridge
     }
 
     if (bridge->base.mutex) {
-        pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
-        pthread_mutex_destroy(mutex);
+        nimcp_mutex_t* mutex = (nimcp_mutex_t*)bridge->base.mutex;
+        nimcp_mutex_destroy(mutex);
         nimcp_free(mutex);
     }
 
@@ -374,8 +350,8 @@ int multimodal_nlp_immune_bridge_update(
         return -1;
     }
 
-    pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
-    if (mutex) pthread_mutex_lock(mutex);
+    nimcp_mutex_t* mutex = (nimcp_mutex_t*)bridge->base.mutex;
+    if (mutex) nimcp_mutex_lock(mutex);
 
     if (bridge->inflammation_state.current_level != INFLAMMATION_NONE) {
         bridge->inflammation_state.inflammation_duration_sec += (float)delta_ms / 1000.0f;
@@ -395,7 +371,7 @@ int multimodal_nlp_immune_bridge_update(
     bridge->total_updates++;
     bridge->last_update_time = get_time_ms();
 
-    if (mutex) pthread_mutex_unlock(mutex);
+    if (mutex) nimcp_mutex_unlock(mutex);
     return 0;
 }
 

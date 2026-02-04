@@ -29,34 +29,44 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(imagination_engine)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for imagination_engine module */
-static nimcp_health_agent_t* g_imagination_engine_health_agent = NULL;
+static mesh_participant_id_t g_imagination_engine_mesh_id = 0;
+static mesh_participant_registry_t* g_imagination_engine_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for imagination_engine heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void imagination_engine_set_health_agent(nimcp_health_agent_t* agent) {
-    g_imagination_engine_health_agent = agent;
+nimcp_error_t imagination_engine_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_imagination_engine_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "imagination_engine", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "imagination_engine";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_imagination_engine_mesh_id);
+    if (err == NIMCP_SUCCESS) g_imagination_engine_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from imagination_engine module */
-static inline void imagination_engine_heartbeat(const char* operation, float progress) {
-    if (g_imagination_engine_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_imagination_engine_health_agent, operation, progress);
+void imagination_engine_mesh_unregister(void) {
+    if (g_imagination_engine_mesh_registry && g_imagination_engine_mesh_id != 0) {
+        mesh_participant_unregister(g_imagination_engine_mesh_registry, g_imagination_engine_mesh_id);
+        g_imagination_engine_mesh_id = 0;
+        g_imagination_engine_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from imagination_engine module (instance-level) */
 static inline void imagination_engine_heartbeat_instance(
@@ -373,7 +383,7 @@ imagination_engine_t* imagination_engine_create(
     }
 
     /* Allocate engine */
-    imagination_engine_t* engine = (imagination_engine_t*)calloc(
+    imagination_engine_t* engine = (imagination_engine_t*)nimcp_calloc(
         1, sizeof(imagination_engine_t));
     if (!engine) {
 
@@ -462,8 +472,8 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
                 if (scenario->semantic_buffer) nimcp_tensor_destroy(scenario->semantic_buffer);
                 if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
                 if (scenario->elements) nimcp_darray_destroy(scenario->elements);
-                if (scenario->active_goal) free(scenario->active_goal);
-                free(scenario);
+                if (scenario->active_goal) nimcp_free(scenario->active_goal);
+                nimcp_free(scenario);
             }
         }
         nimcp_darray_destroy(engine->active_scenarios);
@@ -479,7 +489,7 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
         nimcp_mutex_free(engine->mutex);
     }
 
-    free(engine);
+    nimcp_free(engine);
 }
 
 int imagination_engine_reset(imagination_engine_t* engine) {
@@ -515,8 +525,8 @@ int imagination_engine_reset(imagination_engine_t* engine) {
                 if (scenario->semantic_buffer) nimcp_tensor_destroy(scenario->semantic_buffer);
                 if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
                 if (scenario->elements) nimcp_darray_destroy(scenario->elements);
-                if (scenario->active_goal) free(scenario->active_goal);
-                free(scenario);
+                if (scenario->active_goal) nimcp_free(scenario->active_goal);
+                nimcp_free(scenario);
             }
         }
         nimcp_darray_clear(engine->active_scenarios);
@@ -1140,7 +1150,7 @@ imagination_scenario_t* imagination_begin_scenario(
     }
 
     /* Create scenario structure */
-    imagination_scenario_t* scenario = (imagination_scenario_t*)calloc(
+    imagination_scenario_t* scenario = (imagination_scenario_t*)nimcp_calloc(
         1, sizeof(imagination_scenario_t));
     if (!scenario) {
         imagination_workspace_release_scenario(engine->workspace, slot_id);
@@ -1191,7 +1201,7 @@ imagination_scenario_t* imagination_begin_scenario(
 
     /* Copy goal if provided */
     if (goal) {
-        scenario->active_goal = (imagination_goal_t*)malloc(sizeof(imagination_goal_t));
+        scenario->active_goal = (imagination_goal_t*)nimcp_malloc(sizeof(imagination_goal_t));
         if (!scenario->active_goal) goto error;
         memcpy(scenario->active_goal, goal, sizeof(imagination_goal_t));
         /* Deep copy tensors if needed */
@@ -1228,8 +1238,8 @@ error:
     if (scenario->latent_previous) nimcp_tensor_destroy(scenario->latent_previous);
     if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
     if (scenario->elements) nimcp_darray_destroy(scenario->elements);
-    if (scenario->active_goal) free(scenario->active_goal);
-    free(scenario);
+    if (scenario->active_goal) nimcp_free(scenario->active_goal);
+    nimcp_free(scenario);
     imagination_workspace_release_scenario(engine->workspace, slot_id);
     nimcp_mutex_unlock(engine->mutex);
     return NULL;
@@ -1435,8 +1445,8 @@ int imagination_end_scenario(
             if (elem_ptr && *elem_ptr) {
                 imagination_element_t* elem = *elem_ptr;
                 if (elem->features) nimcp_tensor_destroy(elem->features);
-                if (elem->position) free(elem->position);
-                free(elem);
+                if (elem->position) nimcp_free(elem->position);
+                nimcp_free(elem);
             }
         }
         nimcp_darray_destroy(scenario->elements);
@@ -1449,10 +1459,10 @@ int imagination_end_scenario(
             nimcp_tensor_destroy(scenario->active_goal->constraints);
         if (scenario->active_goal->avoid)
             nimcp_tensor_destroy(scenario->active_goal->avoid);
-        free(scenario->active_goal);
+        nimcp_free(scenario->active_goal);
     }
 
-    free(scenario);
+    nimcp_free(scenario);
 
     nimcp_mutex_unlock(engine->mutex);
 
@@ -1689,7 +1699,7 @@ uint64_t imagination_inject_element(
     nimcp_mutex_lock(engine->mutex);
 
     /* Create element copy */
-    imagination_element_t* elem = (imagination_element_t*)malloc(
+    imagination_element_t* elem = (imagination_element_t*)nimcp_malloc(
         sizeof(imagination_element_t));
     if (!elem) {
         nimcp_mutex_unlock(engine->mutex);
@@ -1703,7 +1713,7 @@ uint64_t imagination_inject_element(
     elem->features = element->features ? nimcp_tensor_clone(element->features) : NULL;
 
     if (element->position && element->position_dim > 0) {
-        elem->position = (float*)malloc(element->position_dim * sizeof(float));
+        elem->position = (float*)nimcp_malloc(element->position_dim * sizeof(float));
         if (elem->position) {
             memcpy(elem->position, element->position,
                    element->position_dim * sizeof(float));
@@ -1772,8 +1782,8 @@ int imagination_remove_element(
 
             /* Free element */
             if (elem->features) nimcp_tensor_destroy(elem->features);
-            if (elem->position) free(elem->position);
-            free(elem);
+            if (elem->position) nimcp_free(elem->position);
+            nimcp_free(elem);
 
             nimcp_darray_remove_at(scenario->elements, i, NULL);
             found = true;

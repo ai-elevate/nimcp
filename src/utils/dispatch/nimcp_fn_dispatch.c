@@ -47,6 +47,7 @@
     #include <dlfcn.h>
     #include <link.h>
     #include <elf.h>
+#include "utils/thread/nimcp_thread.h"
 #endif
 
 //=============================================================================
@@ -54,34 +55,9 @@
 //=============================================================================
 
 #define LOG_MODULE "fn_dispatch"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for fn_dispatch module */
-static nimcp_health_agent_t* g_fn_dispatch_health_agent = NULL;
-
-/**
- * @brief Set health agent for fn_dispatch heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void fn_dispatch_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fn_dispatch_health_agent = agent;
-}
-
-/** @brief Send heartbeat from fn_dispatch module */
-static inline void fn_dispatch_heartbeat(const char* operation, float progress) {
-    if (g_fn_dispatch_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fn_dispatch_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fn_dispatch)
 
 //=============================================================================
 // Internal Helper Declarations
@@ -99,7 +75,7 @@ static void destroy_entry(fn_dispatch_entry_t* entry);
 
 static fn_dispatch_table_t* g_dispatch_table = NULL;
 static pthread_once_t g_dispatch_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t g_dispatch_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_dispatch_mutex = NIMCP_MUTEX_INITIALIZER;
 
 static void init_global_dispatch(void)
 {
@@ -126,7 +102,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
     }
 
     // Initialize table mutex
-    if (pthread_mutex_init(&table->table_lock, NULL) != 0) {
+    if (nimcp_mutex_init(&table->table_lock, NULL) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize table mutex");
         nimcp_free(table);
         return NULL;
@@ -137,7 +113,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
     table->entries = nimcp_calloc(table->capacity, sizeof(fn_dispatch_entry_t));
     if (!table->entries) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate entries array");
-        pthread_mutex_destroy(&table->table_lock);
+        nimcp_mutex_destroy(&table->table_lock);
         nimcp_free(table);
         return NULL;
     }
@@ -170,7 +146,7 @@ NIMCP_EXPORT void fn_dispatch_destroy(fn_dispatch_table_t* table)
     }
 
     // Destroy table mutex
-    pthread_mutex_destroy(&table->table_lock);
+    nimcp_mutex_destroy(&table->table_lock);
 
     // Invalidate magic before freeing
     table->magic = 0;
@@ -304,10 +280,10 @@ NIMCP_EXPORT int fn_dispatch_auto_register(fn_dispatch_table_t* table)
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     if (table->auto_registered) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         LOG_MODULE_DEBUG(LOG_MODULE, "Auto-registration already completed");
         return FN_DISPATCH_OK;
     }
@@ -326,7 +302,7 @@ NIMCP_EXPORT int fn_dispatch_auto_register(fn_dispatch_table_t* table)
     int result = parse_self_symbols(table);
 
     table->auto_registered = true;
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     LOG_MODULE_INFO(LOG_MODULE, "Auto-registration complete: %u functions registered",
                     table->count);
@@ -335,7 +311,7 @@ NIMCP_EXPORT int fn_dispatch_auto_register(fn_dispatch_table_t* table)
            ? FN_DISPATCH_ERR_PARSE : FN_DISPATCH_OK;
 #else
     table->auto_registered = true;
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     LOG_MODULE_WARN(LOG_MODULE, "Auto-registration not supported on this platform");
     return FN_DISPATCH_ERR_DLOPEN;
@@ -359,11 +335,11 @@ NIMCP_EXPORT int fn_dispatch_register(fn_dispatch_table_t* table,
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     // Check if already registered
     if (find_entry(table, name) != NULL) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         LOG_MODULE_WARN(LOG_MODULE, "Function already registered: %s", name);
         return FN_DISPATCH_ERR_ALREADY_EXISTS;
     }
@@ -372,7 +348,7 @@ NIMCP_EXPORT int fn_dispatch_register(fn_dispatch_table_t* table,
     if (table->count >= table->capacity) {
         int result = grow_table(table);
         if (result != FN_DISPATCH_OK) {
-            pthread_mutex_unlock(&table->table_lock);
+            nimcp_mutex_unlock(&table->table_lock);
             return result;
         }
     }
@@ -381,12 +357,12 @@ NIMCP_EXPORT int fn_dispatch_register(fn_dispatch_table_t* table,
     fn_dispatch_entry_t* entry = &table->entries[table->count];
     int result = init_entry(entry, name, fn_ptr);
     if (result != FN_DISPATCH_OK) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return result;
     }
 
     table->count++;
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Registered function: %s", name);
     return FN_DISPATCH_OK;
@@ -406,11 +382,11 @@ NIMCP_EXPORT void* fn_dispatch_get(fn_dispatch_table_t* table, const char* name)
         return NULL;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
 
         return NULL;
@@ -418,7 +394,7 @@ NIMCP_EXPORT void* fn_dispatch_get(fn_dispatch_table_t* table, const char* name)
 
     // Acquire read lock on entry
     pthread_rwlock_rdlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     // Check quarantine status
     if (entry->quarantined) {
@@ -443,9 +419,9 @@ NIMCP_EXPORT const fn_dispatch_entry_t* fn_dispatch_get_entry(fn_dispatch_table_
         return NULL;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
     fn_dispatch_entry_t* entry = find_entry(table, name);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     return entry;
 }
@@ -467,17 +443,17 @@ NIMCP_EXPORT int fn_dispatch_swap(fn_dispatch_table_t* table,
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     // Acquire write lock on entry
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     // Store old pointer for caller
     void* old_ptr = entry->current_ptr;
@@ -519,17 +495,17 @@ NIMCP_EXPORT int fn_dispatch_rollback(fn_dispatch_table_t* table,
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     // Acquire write lock on entry
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     // Special case: versions == 0 means rollback to original
     if (versions == 0) {
@@ -575,16 +551,16 @@ NIMCP_EXPORT int fn_dispatch_quarantine(fn_dispatch_table_t* table, const char* 
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     entry->quarantined = true;
 
@@ -604,16 +580,16 @@ NIMCP_EXPORT int fn_dispatch_unquarantine(fn_dispatch_table_t* table, const char
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     entry->quarantined = false;
     entry->crash_count = 0;  // Reset crash count on unquarantine
@@ -638,16 +614,16 @@ NIMCP_EXPORT int fn_dispatch_record_crash(fn_dispatch_table_t* table, const char
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     entry->crash_count++;
 
@@ -675,18 +651,18 @@ NIMCP_EXPORT int fn_dispatch_record_call(fn_dispatch_table_t* table, const char*
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     // Use atomic increment for call count (lock-free path)
     __atomic_add_fetch(&entry->call_count, 1, __ATOMIC_RELAXED);
 
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
     return FN_DISPATCH_OK;
 }
 
@@ -702,16 +678,16 @@ NIMCP_EXPORT int fn_dispatch_clear_history(fn_dispatch_table_t* table,
         return FN_DISPATCH_ERR_INVALID_STATE;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
-        pthread_mutex_unlock(&table->table_lock);
+        nimcp_mutex_unlock(&table->table_lock);
         return FN_DISPATCH_ERR_NOT_FOUND;
     }
 
     pthread_rwlock_wrlock(&entry->lock);
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     if (keep_versions >= entry->patch_count) {
         // Nothing to clear
@@ -748,7 +724,7 @@ NIMCP_EXPORT int fn_dispatch_get_stats(fn_dispatch_table_t* table,
 
     memset(stats, 0, sizeof(fn_dispatch_stats_t));
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     stats->total_entries = table->count;
 
@@ -767,7 +743,7 @@ NIMCP_EXPORT int fn_dispatch_get_stats(fn_dispatch_table_t* table,
         pthread_rwlock_unlock(&entry->lock);
     }
 
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     return FN_DISPATCH_OK;
 }
@@ -826,7 +802,7 @@ NIMCP_EXPORT uint32_t fn_dispatch_foreach(fn_dispatch_table_t* table,
         return 0;
     }
 
-    pthread_mutex_lock(&table->table_lock);
+    nimcp_mutex_lock(&table->table_lock);
 
     uint32_t count = table->count;
     for (uint32_t i = 0; i < count; i++) {
@@ -837,7 +813,7 @@ NIMCP_EXPORT uint32_t fn_dispatch_foreach(fn_dispatch_table_t* table,
         pthread_rwlock_unlock(&entry->lock);
     }
 
-    pthread_mutex_unlock(&table->table_lock);
+    nimcp_mutex_unlock(&table->table_lock);
 
     return count;
 }
@@ -854,7 +830,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_global(void)
 
 NIMCP_EXPORT void fn_dispatch_global_destroy(void)
 {
-    pthread_mutex_lock(&g_dispatch_mutex);
+    nimcp_mutex_lock(&g_dispatch_mutex);
 
     if (g_dispatch_table) {
         fn_dispatch_destroy(g_dispatch_table);
@@ -864,7 +840,7 @@ NIMCP_EXPORT void fn_dispatch_global_destroy(void)
     // Reset pthread_once (platform-specific, may need reinit)
     g_dispatch_once = (pthread_once_t)PTHREAD_ONCE_INIT;
 
-    pthread_mutex_unlock(&g_dispatch_mutex);
+    nimcp_mutex_unlock(&g_dispatch_mutex);
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Global dispatch table destroyed");
 }

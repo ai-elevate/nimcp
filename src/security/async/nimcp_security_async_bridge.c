@@ -22,32 +22,41 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_async_bridge)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for security_async_bridge module */
-static nimcp_health_agent_t* g_security_async_bridge_health_agent = NULL;
+static mesh_participant_id_t g_security_async_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_security_async_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for security_async_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_async_bridge_health_agent = agent;
+nimcp_error_t security_async_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_async_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_async_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_async_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_async_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_async_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_async_bridge module */
-static inline void security_async_bridge_heartbeat(const char* operation, float progress) {
-    if (g_security_async_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_async_bridge_health_agent, operation, progress);
+void security_async_bridge_mesh_unregister(void) {
+    if (g_security_async_bridge_mesh_registry && g_security_async_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_security_async_bridge_mesh_registry, g_security_async_bridge_mesh_id);
+        g_security_async_bridge_mesh_id = 0;
+        g_security_async_bridge_mesh_registry = NULL;
     }
 }
 
@@ -88,7 +97,7 @@ static void update_latency_stats(security_async_bridge_t* bridge,
 
 int security_async_default_config(security_async_config_t* config) {
     if (!config) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(config, 0, sizeof(security_async_config_t));
@@ -243,11 +252,11 @@ int security_async_connect_bbb(
     bbb_system_t bbb_system
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bbb_system) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL BBB system");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -266,11 +275,11 @@ int security_async_connect_anomaly_detector(
     nimcp_anomaly_detector_t detector
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!detector) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL anomaly detector");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -289,11 +298,11 @@ int security_async_connect_pattern_db(
     nimcp_pattern_db_t pattern_db
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!pattern_db) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL pattern database");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -312,11 +321,11 @@ int security_async_connect_policy_engine(
     nimcp_policy_engine_t policy_engine
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!policy_engine) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL policy engine");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -335,11 +344,11 @@ int security_async_connect_rate_limiter(
     nimcp_rate_limiter_t rate_limiter
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!rate_limiter) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL rate limiter");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -358,11 +367,11 @@ int security_async_connect_bio_router(
     bio_router_t router
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!router) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL bio-router");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -382,11 +391,11 @@ int security_async_connect_event_bus(
     void* event_bus
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!event_bus) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL event bus");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -406,7 +415,7 @@ int security_async_connect_event_bus(
 
 int security_async_connect_bio_async(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -416,7 +425,7 @@ int security_async_connect_bio_async(security_async_bridge_t* bridge) {
     /* Check if bio-async is initialized */
     if (!nimcp_bio_async_is_initialized()) {
         NIMCP_LOGGING_WARN("Bio-async not initialized, cannot connect");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Use bridge_base function for registration */
@@ -432,7 +441,7 @@ int security_async_connect_bio_async(security_async_bridge_t* bridge) {
 
 int security_async_disconnect_bio_async(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->base.bio_async_enabled) {
@@ -468,7 +477,7 @@ int security_async_broadcast_threat(
     const uint8_t* threat_hash
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Check threshold */
@@ -541,7 +550,7 @@ int security_async_publish_event(
     const security_async_event_t* event
 ) {
     if (!bridge || !event) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     uint64_t start_time = get_current_time_us();
@@ -614,7 +623,7 @@ int security_async_announce_policy_change(
     const char* description
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_policy_announcements) {
@@ -681,7 +690,7 @@ int security_async_broadcast_bbb_alert(
     const bbb_threat_report_t* report
 ) {
     if (!bridge || !report) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_bbb_alerts) {
@@ -745,7 +754,7 @@ int security_async_broadcast_rate_limit(
     uint32_t violation_count
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     if (!bridge->config.enable_rate_limit_events) {
@@ -812,7 +821,7 @@ int security_async_broadcast_pattern_update(
     bool is_new
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_pattern_sync) {
@@ -879,7 +888,7 @@ int security_async_receive_threat_report(
     float confidence
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -957,7 +966,7 @@ int security_async_receive_pattern_update(
     const nimcp_pattern_entry_t* entry
 ) {
     if (!bridge || !entry) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -984,7 +993,7 @@ int security_async_request_threat_intel(
     const uint8_t* threat_hash
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_distributed_intel) {
@@ -993,7 +1002,7 @@ int security_async_request_threat_intel(
 
     if (!bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("Cannot request threat intel: bio-async not connected");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1037,7 +1046,7 @@ int security_async_share_threat_intel(
     uint32_t max_entries
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_distributed_intel) {
@@ -1046,7 +1055,7 @@ int security_async_share_threat_intel(
 
     if (!bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("Cannot share threat intel: bio-async not connected");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1080,7 +1089,7 @@ int security_async_share_threat_intel(
 
 int security_async_update_security_effects(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1133,7 +1142,7 @@ int security_async_update_security_effects(security_async_bridge_t* bridge) {
 
 int security_async_update_async_effects(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1174,7 +1183,7 @@ int security_async_bridge_update(
     uint64_t delta_ms
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     (void)delta_ms;  /* Currently unused */
@@ -1240,7 +1249,7 @@ int security_async_get_security_effects(
     security_async_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1255,7 +1264,7 @@ int security_async_get_async_effects(
     async_security_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1270,7 +1279,7 @@ int security_async_get_state(
     security_async_state_t* state
 ) {
     if (!bridge || !state) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1285,7 +1294,7 @@ int security_async_get_stats(
     security_async_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1297,7 +1306,7 @@ int security_async_get_stats(
 
 int security_async_reset_stats(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1326,7 +1335,7 @@ int security_async_cache_threat_intel(
     const threat_intel_entry_t* entry
 ) {
     if (!bridge || !entry) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1347,7 +1356,7 @@ int security_async_cache_threat_intel(
     if (bridge->intel_cache.count >= bridge->intel_cache.capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Threat intel cache full");
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     memcpy(&bridge->intel_cache.entries[bridge->intel_cache.count],
@@ -1391,7 +1400,7 @@ bool security_async_lookup_threat_intel(
 
 int security_async_clear_threat_intel(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1413,7 +1422,7 @@ int security_async_get_intel_stats(
     uint32_t* confirmed
 ) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1442,7 +1451,7 @@ int security_async_get_intel_stats(
 
 int security_async_enter_emergency_mode(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1478,7 +1487,7 @@ int security_async_enter_emergency_mode(security_async_bridge_t* bridge) {
 
 int security_async_exit_emergency_mode(security_async_bridge_t* bridge) {
     if (!bridge) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1532,7 +1541,7 @@ static int queue_event(security_async_bridge_t* bridge,
     if (next_tail == bridge->event_queue_head) {
         /* Queue full */
         bridge->stats.queue_overflows++;
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     memcpy(&bridge->event_queue[bridge->event_queue_tail],
@@ -1551,14 +1560,14 @@ static int send_bio_message(security_async_bridge_t* bridge,
     /* Caller must hold mutex */
 
     if (!bridge->base.bio_ctx) {
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     /* Allocate message buffer */
     size_t msg_size = sizeof(bio_message_header_t) + payload_size;
     uint8_t* msg_buffer = nimcp_malloc(msg_size);
     if (!msg_buffer) {
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Fill header */

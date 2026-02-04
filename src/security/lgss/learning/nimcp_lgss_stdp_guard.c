@@ -20,30 +20,42 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_stdp_guard module */
-static nimcp_health_agent_t* g_lgss_stdp_guard_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_stdp_guard)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_stdp_guard heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_stdp_guard_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_stdp_guard_health_agent = agent;
+static mesh_participant_id_t g_lgss_stdp_guard_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_stdp_guard_mesh_registry = NULL;
+
+nimcp_error_t lgss_stdp_guard_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_stdp_guard_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_stdp_guard", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_stdp_guard";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_stdp_guard_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_stdp_guard_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_stdp_guard module */
-static inline void lgss_stdp_guard_heartbeat(const char* operation, float progress) {
-    if (g_lgss_stdp_guard_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_stdp_guard_health_agent, operation, progress);
+void lgss_stdp_guard_mesh_unregister(void) {
+    if (g_lgss_stdp_guard_mesh_registry && g_lgss_stdp_guard_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_stdp_guard_mesh_registry, g_lgss_stdp_guard_mesh_id);
+        g_lgss_stdp_guard_mesh_id = 0;
+        g_lgss_stdp_guard_mesh_registry = NULL;
     }
 }
 
@@ -111,7 +123,7 @@ static uint32_t hash_synapse_id(uint64_t id, uint32_t size) {
 }
 
 static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity) {
-    buf->timestamps = calloc(capacity, sizeof(uint64_t));
+    buf->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!buf->timestamps) return false;
     buf->capacity = capacity;
     buf->head = 0;
@@ -121,7 +133,7 @@ static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity) {
 
 static void spike_buffer_destroy(spike_buffer_t* buf) {
     if (buf->timestamps) {
-        free(buf->timestamps);
+        nimcp_free(buf->timestamps);
         buf->timestamps = NULL;
     }
 }
@@ -271,7 +283,7 @@ stdp_guard_t stdp_guard_create(
     const stdp_guard_config_t* config,
     plasticity_guard_t base_guard
 ) {
-    struct stdp_guard_internal* guard = calloc(1, sizeof(*guard));
+    struct stdp_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
@@ -292,18 +304,18 @@ stdp_guard_t stdp_guard_create(
 
     /* Initialize synapse tracker hashmap */
     guard->tracker_hashmap_size = 4096;
-    guard->trackers = calloc(guard->tracker_hashmap_size, sizeof(synapse_tracker_t));
+    guard->trackers = nimcp_calloc(guard->tracker_hashmap_size, sizeof(synapse_tracker_t));
     if (!guard->trackers) {
-        free(guard);
+        nimcp_free(guard);
         return NULL;
     }
 
     /* Initialize dt history for pattern detection */
     guard->dt_history_size = 256;
-    guard->dt_history = calloc(guard->dt_history_size, sizeof(float));
+    guard->dt_history = nimcp_calloc(guard->dt_history_size, sizeof(float));
     if (!guard->dt_history) {
-        free(guard->trackers);
-        free(guard);
+        nimcp_free(guard->trackers);
+        nimcp_free(guard);
         return NULL;
     }
 
@@ -323,11 +335,11 @@ void stdp_guard_destroy(stdp_guard_t guard) {
             spike_buffer_destroy(&g->trackers[i].post_spikes);
         }
     }
-    free(g->trackers);
-    free(g->dt_history);
+    nimcp_free(g->trackers);
+    nimcp_free(g->dt_history);
 
     g->magic = 0;
-    free(g);
+    nimcp_free(g);
 }
 
 int stdp_guard_reset(stdp_guard_t guard) {

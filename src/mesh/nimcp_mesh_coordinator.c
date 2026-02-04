@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -414,6 +415,7 @@ nimcp_error_t mesh_coordinator_assign_participant(
     /* Check capacity */
     if (coord->participant_count >= coord->participant_capacity) {
         nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

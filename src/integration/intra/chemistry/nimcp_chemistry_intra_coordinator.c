@@ -12,33 +12,10 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for chemistry_intra_coordinator module */
-static nimcp_health_agent_t* g_chemistry_intra_coordinator_health_agent = NULL;
-
-/**
- * @brief Set health agent for chemistry_intra_coordinator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void chemistry_intra_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_chemistry_intra_coordinator_health_agent = agent;
-}
-
-/** @brief Send heartbeat from chemistry_intra_coordinator module */
-static inline void chemistry_intra_coordinator_heartbeat(const char* operation, float progress) {
-    if (g_chemistry_intra_coordinator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_chemistry_intra_coordinator_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(chemistry_intra_coordinator)
 
 typedef struct {
     void* module;
@@ -75,7 +52,7 @@ nimcp_chemistry_intra_config_t nimcp_chemistry_intra_default_config(void) {
 }
 
 nimcp_chemistry_intra_t nimcp_chemistry_intra_create(const nimcp_chemistry_intra_config_t* config) {
-    nimcp_chemistry_intra_t coord = (nimcp_chemistry_intra_t)calloc(1, sizeof(struct nimcp_chemistry_intra_struct));
+    nimcp_chemistry_intra_t coord = (nimcp_chemistry_intra_t)nimcp_calloc(1, sizeof(struct nimcp_chemistry_intra_struct));
     NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate chemistry intra coordinator");
     coord->config = config ? *config : nimcp_chemistry_intra_default_config();
     coord->state.current_ph = coord->config.baseline_ph;
@@ -85,7 +62,7 @@ nimcp_chemistry_intra_t nimcp_chemistry_intra_create(const nimcp_chemistry_intra
 void nimcp_chemistry_intra_destroy(nimcp_chemistry_intra_t coord) {
     if (!coord) return;
     if (coord->is_initialized) nimcp_chemistry_intra_shutdown(coord);
-    free(coord);
+    nimcp_free(coord);
 }
 
 nimcp_layer_error_t nimcp_chemistry_intra_init(nimcp_chemistry_intra_t coord, nimcp_layer_registry_t registry) {

@@ -19,33 +19,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for thermodynamics_adapter module */
-static nimcp_health_agent_t* g_thermodynamics_adapter_health_agent = NULL;
-
-/**
- * @brief Set health agent for thermodynamics_adapter heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void thermodynamics_adapter_set_health_agent(nimcp_health_agent_t* agent) {
-    g_thermodynamics_adapter_health_agent = agent;
-}
-
-/** @brief Send heartbeat from thermodynamics_adapter module */
-static inline void thermodynamics_adapter_heartbeat(const char* operation, float progress) {
-    if (g_thermodynamics_adapter_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_thermodynamics_adapter_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thermodynamics_adapter)
 
 //=============================================================================
 // Internal Structure
@@ -95,8 +72,8 @@ static nimcp_layer_error_t thermo_init(void* module, void* config) {
 
     /* Allocate arrays */
     uint32_t n = adapter->config.num_regions;
-    adapter->temperatures = (float*)calloc(n, sizeof(float));
-    adapter->heat_sources = (float*)calloc(n, sizeof(float));
+    adapter->temperatures = (float*)nimcp_calloc(n, sizeof(float));
+    adapter->heat_sources = (float*)nimcp_calloc(n, sizeof(float));
 
     if (!adapter->temperatures || !adapter->heat_sources) {
         return NIMCP_LAYER_ERR_NO_MEMORY;
@@ -122,8 +99,8 @@ static nimcp_layer_error_t thermo_shutdown(void* module) {
     nimcp_thermo_adapter_t adapter = (nimcp_thermo_adapter_t)module;
     if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
 
-    free(adapter->temperatures);
-    free(adapter->heat_sources);
+    nimcp_free(adapter->temperatures);
+    nimcp_free(adapter->heat_sources);
 
     adapter->temperatures = NULL;
     adapter->heat_sources = NULL;
@@ -287,7 +264,7 @@ nimcp_thermo_adapter_config_t nimcp_thermo_adapter_default_config(void) {
 nimcp_thermo_adapter_t nimcp_thermo_adapter_create(
     const nimcp_thermo_adapter_config_t* config
 ) {
-    nimcp_thermo_adapter_t adapter = (nimcp_thermo_adapter_t)calloc(
+    nimcp_thermo_adapter_t adapter = (nimcp_thermo_adapter_t)nimcp_calloc(
         1, sizeof(struct nimcp_thermo_adapter_struct));
     NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate thermodynamics adapter");
 
@@ -312,7 +289,7 @@ void nimcp_thermo_adapter_destroy(nimcp_thermo_adapter_t adapter) {
         thermo_shutdown(adapter);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 nimcp_module_interface_t* nimcp_thermo_adapter_get_interface(

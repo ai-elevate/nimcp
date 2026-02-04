@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -352,6 +353,7 @@ nimcp_error_t mesh_brain_integration_default_config(
     mesh_brain_integration_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -461,12 +463,15 @@ nimcp_error_t mesh_brain_integration_register_module(
     nimcp_health_agent_t* health_agent
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -476,6 +481,7 @@ nimcp_error_t mesh_brain_integration_register_module(
     if (integration->region_registered[region]) {
         nimcp_mutex_unlock(integration->mutex);
         LOG_WARN("Region %s already registered", mesh_brain_region_to_string(region));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_brain_integration: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
@@ -566,9 +572,11 @@ nimcp_error_t mesh_brain_integration_unregister_module(
     mesh_brain_region_t region
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -576,6 +584,7 @@ nimcp_error_t mesh_brain_integration_unregister_module(
 
     if (!integration->region_registered[region]) {
         nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_brain_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -766,9 +775,11 @@ nimcp_error_t mesh_brain_integration_get_stats(
     mesh_brain_integration_stats_t* stats
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -785,9 +796,11 @@ nimcp_error_t mesh_brain_integration_register_brain(
     brain_t brain
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -831,9 +844,11 @@ nimcp_error_t mesh_brain_integration_unregister_brain(
     brain_t brain
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

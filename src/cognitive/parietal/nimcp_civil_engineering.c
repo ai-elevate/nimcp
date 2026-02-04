@@ -16,31 +16,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(civil_engineering)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for civil_engineering module */
-static nimcp_health_agent_t* g_civil_engineering_health_agent = NULL;
+static mesh_participant_id_t g_civil_engineering_mesh_id = 0;
+static mesh_participant_registry_t* g_civil_engineering_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for civil_engineering heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void civil_engineering_set_health_agent(nimcp_health_agent_t* agent) {
-    g_civil_engineering_health_agent = agent;
+nimcp_error_t civil_engineering_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_civil_engineering_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "civil_engineering", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "civil_engineering";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_civil_engineering_mesh_id);
+    if (err == NIMCP_SUCCESS) g_civil_engineering_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from civil_engineering module */
-static inline void civil_engineering_heartbeat(const char* operation, float progress) {
-    if (g_civil_engineering_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_civil_engineering_health_agent, operation, progress);
+void civil_engineering_mesh_unregister(void) {
+    if (g_civil_engineering_mesh_registry && g_civil_engineering_mesh_id != 0) {
+        mesh_participant_unregister(g_civil_engineering_mesh_registry, g_civil_engineering_mesh_id);
+        g_civil_engineering_mesh_id = 0;
+        g_civil_engineering_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from civil_engineering module (instance-level) */
 static inline void civil_engineering_heartbeat_instance(
@@ -110,7 +124,7 @@ civil_eng_t* civil_eng_create_custom(const ce_config_t* config) {
     civil_engineering_heartbeat("civil_engine_civil_eng_create_cus", 0.0f);
 
 
-    civil_eng_t* ce = calloc(1, sizeof(civil_eng_t));
+    civil_eng_t* ce = nimcp_calloc(1, sizeof(civil_eng_t));
     if (!ce) {
         set_error("Failed to allocate civil_eng");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ce");
@@ -127,7 +141,7 @@ void civil_eng_destroy(civil_eng_t* ce) {
 
 
     if (ce) {
-        free(ce);
+        nimcp_free(ce);
     }
 }
 
@@ -356,14 +370,14 @@ void civil_eng_free_structural_result(ce_structural_result_t* result) {
 
 
     if (result) {
-        free(result->displacements);
-        free(result->rotations);
-        free(result->axial_forces);
-        free(result->shear_forces_y);
-        free(result->shear_forces_z);
-        free(result->bending_moments_y);
-        free(result->bending_moments_z);
-        free(result->torsion);
+        nimcp_free(result->displacements);
+        nimcp_free(result->rotations);
+        nimcp_free(result->axial_forces);
+        nimcp_free(result->shear_forces_y);
+        nimcp_free(result->shear_forces_z);
+        nimcp_free(result->bending_moments_y);
+        nimcp_free(result->bending_moments_z);
+        nimcp_free(result->torsion);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -559,10 +573,10 @@ void civil_eng_free_hydraulic_result(ce_hydraulic_result_t* result) {
 
 
     if (result) {
-        free(result->flow_rates);
-        free(result->pressures);
-        free(result->velocities);
-        free(result->head_losses);
+        nimcp_free(result->flow_rates);
+        nimcp_free(result->pressures);
+        nimcp_free(result->velocities);
+        nimcp_free(result->head_losses);
         memset(result, 0, sizeof(*result));
     }
 }

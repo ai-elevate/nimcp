@@ -14,29 +14,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parahippocampal)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for parahippocampal module */
-static nimcp_health_agent_t* g_parahippocampal_health_agent = NULL;
+static mesh_participant_id_t g_parahippocampal_mesh_id = 0;
+static mesh_participant_registry_t* g_parahippocampal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for parahippocampal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void parahippocampal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_parahippocampal_health_agent = agent;
+nimcp_error_t parahippocampal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_parahippocampal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "parahippocampal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "parahippocampal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_parahippocampal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_parahippocampal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from parahippocampal module */
-static inline void parahippocampal_heartbeat(const char* operation, float progress) {
-    if (g_parahippocampal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parahippocampal_health_agent, operation, progress);
+void parahippocampal_mesh_unregister(void) {
+    if (g_parahippocampal_mesh_registry && g_parahippocampal_mesh_id != 0) {
+        mesh_participant_unregister(g_parahippocampal_mesh_registry, g_parahippocampal_mesh_id);
+        g_parahippocampal_mesh_id = 0;
+        g_parahippocampal_mesh_registry = NULL;
     }
 }
 
@@ -158,7 +171,7 @@ parahipp_config_t parahipp_default_config(void) {
 }
 
 nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
-    nimcp_parahippocampal_t* ph = (nimcp_parahippocampal_t*)calloc(1, sizeof(nimcp_parahippocampal_t));
+    nimcp_parahippocampal_t* ph = (nimcp_parahippocampal_t*)nimcp_calloc(1, sizeof(nimcp_parahippocampal_t));
     if (!ph) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ph is NULL");
@@ -176,7 +189,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate place cells */
     ph->num_place_cells = ph->config.num_place_cells;
-    ph->place_cells = (nimcp_place_cell_t*)calloc(ph->num_place_cells, sizeof(nimcp_place_cell_t));
+    ph->place_cells = (nimcp_place_cell_t*)nimcp_calloc(ph->num_place_cells, sizeof(nimcp_place_cell_t));
     if (!ph->place_cells) goto error;
 
     /* Initialize place cells with random place fields */
@@ -193,7 +206,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate scene cells */
     ph->num_scene_cells = ph->config.num_scene_cells;
-    ph->scene_cells = (nimcp_scene_cell_t*)calloc(ph->num_scene_cells, sizeof(nimcp_scene_cell_t));
+    ph->scene_cells = (nimcp_scene_cell_t*)nimcp_calloc(ph->num_scene_cells, sizeof(nimcp_scene_cell_t));
     if (!ph->scene_cells) goto error;
 
     /* Initialize scene cells */
@@ -202,7 +215,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
         ph->scene_cells[i].selectivity = ph->config.scene_selectivity;
         ph->scene_cells[i].view_invariance = ph->config.view_invariance_target;
         ph->scene_cells[i].scene_dim = ph->config.scene_dim;
-        ph->scene_cells[i].scene_weights = (float*)calloc(ph->config.scene_dim, sizeof(float));
+        ph->scene_cells[i].scene_weights = (float*)nimcp_calloc(ph->config.scene_dim, sizeof(float));
         if (!ph->scene_cells[i].scene_weights) goto error;
 
         /* Random initialization */
@@ -214,7 +227,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate layout cells */
     ph->num_layout_cells = ph->config.num_layout_cells;
-    ph->layout_cells = (nimcp_layout_cell_t*)calloc(ph->num_layout_cells, sizeof(nimcp_layout_cell_t));
+    ph->layout_cells = (nimcp_layout_cell_t*)nimcp_calloc(ph->num_layout_cells, sizeof(nimcp_layout_cell_t));
     if (!ph->layout_cells) goto error;
 
     /* Initialize layout cells */
@@ -222,20 +235,20 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
         ph->layout_cells[i].cell_id = i;
         ph->layout_cells[i].preferred_layout = (layout_type_t)(i % LAYOUT_TYPE_COUNT);
         ph->layout_cells[i].num_angles = ph->config.boundary_angles;
-        ph->layout_cells[i].boundary_distances = (float*)calloc(ph->config.boundary_angles, sizeof(float));
+        ph->layout_cells[i].boundary_distances = (float*)nimcp_calloc(ph->config.boundary_angles, sizeof(float));
         if (!ph->layout_cells[i].boundary_distances) goto error;
     }
 
     /* Allocate context cells */
     ph->num_context_cells = ph->config.num_context_cells;
-    ph->context_cells = (nimcp_context_cell_t*)calloc(ph->num_context_cells, sizeof(nimcp_context_cell_t));
+    ph->context_cells = (nimcp_context_cell_t*)nimcp_calloc(ph->num_context_cells, sizeof(nimcp_context_cell_t));
     if (!ph->context_cells) goto error;
 
     /* Initialize context cells */
     for (uint32_t i = 0; i < ph->num_context_cells; i++) {
         ph->context_cells[i].cell_id = i;
         ph->context_cells[i].context_dim = ph->config.context_dim;
-        ph->context_cells[i].context_vector = (float*)calloc(ph->config.context_dim, sizeof(float));
+        ph->context_cells[i].context_vector = (float*)nimcp_calloc(ph->config.context_dim, sizeof(float));
         if (!ph->context_cells[i].context_vector) goto error;
         ph->context_cells[i].temporal_stability = 1.0f;
         ph->context_cells[i].spatial_weight = 0.4f;
@@ -245,7 +258,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate landmark cells */
     ph->num_landmark_cells = ph->config.num_landmark_cells;
-    ph->landmark_cells = (nimcp_landmark_cell_t*)calloc(ph->num_landmark_cells, sizeof(nimcp_landmark_cell_t));
+    ph->landmark_cells = (nimcp_landmark_cell_t*)nimcp_calloc(ph->num_landmark_cells, sizeof(nimcp_landmark_cell_t));
     if (!ph->landmark_cells) goto error;
 
     /* Initialize landmark cells */
@@ -256,7 +269,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate stored scenes */
     ph->max_stored_scenes = ph->config.max_stored_scenes;
-    ph->stored_scenes = (nimcp_stored_scene_t*)calloc(ph->max_stored_scenes, sizeof(nimcp_stored_scene_t));
+    ph->stored_scenes = (nimcp_stored_scene_t*)nimcp_calloc(ph->max_stored_scenes, sizeof(nimcp_stored_scene_t));
     if (!ph->stored_scenes) goto error;
 
     for (uint32_t i = 0; i < ph->max_stored_scenes; i++) {
@@ -266,7 +279,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate stored landmarks */
     ph->max_landmarks = ph->config.max_landmarks;
-    ph->stored_landmarks = (nimcp_stored_landmark_t*)calloc(ph->max_landmarks, sizeof(nimcp_stored_landmark_t));
+    ph->stored_landmarks = (nimcp_stored_landmark_t*)nimcp_calloc(ph->max_landmarks, sizeof(nimcp_stored_landmark_t));
     if (!ph->stored_landmarks) goto error;
 
     for (uint32_t i = 0; i < ph->max_landmarks; i++) {
@@ -276,15 +289,15 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
     /* Allocate current processing buffers */
     ph->current_input_dim = ph->config.scene_dim;
-    ph->current_scene_input = (float*)calloc(ph->current_input_dim, sizeof(float));
+    ph->current_scene_input = (float*)nimcp_calloc(ph->current_input_dim, sizeof(float));
     if (!ph->current_scene_input) goto error;
 
     ph->current_context_dim = ph->config.context_dim;
-    ph->current_context = (float*)calloc(ph->current_context_dim, sizeof(float));
+    ph->current_context = (float*)nimcp_calloc(ph->current_context_dim, sizeof(float));
     if (!ph->current_context) goto error;
 
     /* Initialize layout */
-    ph->current_layout.geometric_features = (float*)calloc(ph->config.layout_dim, sizeof(float));
+    ph->current_layout.geometric_features = (float*)nimcp_calloc(ph->config.layout_dim, sizeof(float));
     if (!ph->current_layout.geometric_features) goto error;
     ph->current_layout.feature_dim = ph->config.layout_dim;
 
@@ -307,72 +320,72 @@ void parahipp_destroy(nimcp_parahippocampal_t* ph) {
     if (!ph) return;
 
     /* Free place cells */
-    free(ph->place_cells);
+    nimcp_free(ph->place_cells);
 
     /* Free scene cells */
     if (ph->scene_cells) {
         for (uint32_t i = 0; i < ph->num_scene_cells; i++) {
-            free(ph->scene_cells[i].scene_weights);
+            nimcp_free(ph->scene_cells[i].scene_weights);
         }
-        free(ph->scene_cells);
+        nimcp_free(ph->scene_cells);
     }
 
     /* Free layout cells */
     if (ph->layout_cells) {
         for (uint32_t i = 0; i < ph->num_layout_cells; i++) {
-            free(ph->layout_cells[i].boundary_distances);
+            nimcp_free(ph->layout_cells[i].boundary_distances);
         }
-        free(ph->layout_cells);
+        nimcp_free(ph->layout_cells);
     }
 
     /* Free context cells */
     if (ph->context_cells) {
         for (uint32_t i = 0; i < ph->num_context_cells; i++) {
-            free(ph->context_cells[i].context_vector);
+            nimcp_free(ph->context_cells[i].context_vector);
         }
-        free(ph->context_cells);
+        nimcp_free(ph->context_cells);
     }
 
     /* Free landmark cells */
-    free(ph->landmark_cells);
+    nimcp_free(ph->landmark_cells);
 
     /* Free stored scenes */
     if (ph->stored_scenes) {
         for (uint32_t i = 0; i < ph->max_stored_scenes; i++) {
             if (ph->stored_scenes[i].scene_id != UINT32_MAX) {
-                free(ph->stored_scenes[i].scene_features);
-                free(ph->stored_scenes[i].context_vector);
-                free(ph->stored_scenes[i].landmark_ids);
-                free(ph->stored_scenes[i].object_ids);
-                free(ph->stored_scenes[i].layout.geometric_features);
+                nimcp_free(ph->stored_scenes[i].scene_features);
+                nimcp_free(ph->stored_scenes[i].context_vector);
+                nimcp_free(ph->stored_scenes[i].landmark_ids);
+                nimcp_free(ph->stored_scenes[i].object_ids);
+                nimcp_free(ph->stored_scenes[i].layout.geometric_features);
                 if (ph->stored_scenes[i].view_features) {
                     for (uint32_t v = 0; v < ph->stored_scenes[i].num_views; v++) {
-                        free(ph->stored_scenes[i].view_features[v]);
+                        nimcp_free(ph->stored_scenes[i].view_features[v]);
                     }
-                    free(ph->stored_scenes[i].view_features);
+                    nimcp_free(ph->stored_scenes[i].view_features);
                 }
-                free(ph->stored_scenes[i].view_headings);
+                nimcp_free(ph->stored_scenes[i].view_headings);
             }
         }
-        free(ph->stored_scenes);
+        nimcp_free(ph->stored_scenes);
     }
 
     /* Free stored landmarks */
     if (ph->stored_landmarks) {
         for (uint32_t i = 0; i < ph->max_landmarks; i++) {
             if (ph->stored_landmarks[i].landmark_id != UINT32_MAX) {
-                free(ph->stored_landmarks[i].visual_features);
+                nimcp_free(ph->stored_landmarks[i].visual_features);
             }
         }
-        free(ph->stored_landmarks);
+        nimcp_free(ph->stored_landmarks);
     }
 
     /* Free processing buffers */
-    free(ph->current_scene_input);
-    free(ph->current_context);
-    free(ph->current_layout.geometric_features);
+    nimcp_free(ph->current_scene_input);
+    nimcp_free(ph->current_context);
+    nimcp_free(ph->current_layout.geometric_features);
 
-    free(ph);
+    nimcp_free(ph);
 }
 
 int parahipp_reset(nimcp_parahippocampal_t* ph) {
@@ -495,7 +508,7 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
 
     /* Allocate and copy scene features */
     scene->feature_dim = feature_dim;
-    scene->scene_features = (float*)malloc(feature_dim * sizeof(float));
+    scene->scene_features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!scene->scene_features) {
         scene->scene_id = UINT32_MAX;
         ph->last_error = PARAHIPP_ERROR_ENCODING_FAILED;
@@ -510,7 +523,7 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
     /* Initialize layout */
     scene->layout.type = LAYOUT_TYPE_UNKNOWN;
     scene->layout.feature_dim = ph->config.layout_dim;
-    scene->layout.geometric_features = (float*)calloc(ph->config.layout_dim, sizeof(float));
+    scene->layout.geometric_features = (float*)nimcp_calloc(ph->config.layout_dim, sizeof(float));
 
     /* Copy position and heading */
     if (position) {
@@ -520,7 +533,7 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
 
     /* Initialize context */
     scene->context_dim = ph->config.context_dim;
-    scene->context_vector = (float*)calloc(scene->context_dim, sizeof(float));
+    scene->context_vector = (float*)nimcp_calloc(scene->context_dim, sizeof(float));
     if (ph->current_context) {
         memcpy(scene->context_vector, ph->current_context,
                fminf(scene->context_dim, ph->current_context_dim) * sizeof(float));
@@ -529,10 +542,10 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
 
     /* Initialize first view */
     scene->num_views = 1;
-    scene->view_features = (float**)malloc(sizeof(float*));
-    scene->view_headings = (float*)malloc(sizeof(float));
+    scene->view_features = (float**)nimcp_malloc(sizeof(float*));
+    scene->view_headings = (float*)nimcp_malloc(sizeof(float));
     if (scene->view_features && scene->view_headings) {
-        scene->view_features[0] = (float*)malloc(feature_dim * sizeof(float));
+        scene->view_features[0] = (float*)nimcp_malloc(feature_dim * sizeof(float));
         if (scene->view_features[0]) {
             memcpy(scene->view_features[0], scene_features, feature_dim * sizeof(float));
         }
@@ -660,9 +673,9 @@ int parahipp_add_scene_view(nimcp_parahippocampal_t* ph,
     }
 
     /* Reallocate view arrays */
-    float** new_features = (float**)realloc(scene->view_features,
+    float** new_features = (float**)nimcp_realloc(scene->view_features,
         (scene->num_views + 1) * sizeof(float*));
-    float* new_headings = (float*)realloc(scene->view_headings,
+    float* new_headings = (float*)nimcp_realloc(scene->view_headings,
         (scene->num_views + 1) * sizeof(float));
 
     if (!new_features || !new_headings) return -1;
@@ -670,7 +683,7 @@ int parahipp_add_scene_view(nimcp_parahippocampal_t* ph,
     scene->view_features = new_features;
     scene->view_headings = new_headings;
 
-    scene->view_features[scene->num_views] = (float*)malloc(feature_dim * sizeof(float));
+    scene->view_features[scene->num_views] = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!scene->view_features[scene->num_views]) return -1;
 
     memcpy(scene->view_features[scene->num_views], view_features, feature_dim * sizeof(float));
@@ -709,19 +722,19 @@ int parahipp_forget_scene(nimcp_parahippocampal_t* ph, uint32_t scene_id) {
     if (scene->scene_id == UINT32_MAX) return -1;
 
     /* Free allocated memory */
-    free(scene->scene_features);
-    free(scene->context_vector);
-    free(scene->landmark_ids);
-    free(scene->object_ids);
-    free(scene->layout.geometric_features);
+    nimcp_free(scene->scene_features);
+    nimcp_free(scene->context_vector);
+    nimcp_free(scene->landmark_ids);
+    nimcp_free(scene->object_ids);
+    nimcp_free(scene->layout.geometric_features);
 
     if (scene->view_features) {
         for (uint32_t v = 0; v < scene->num_views; v++) {
-            free(scene->view_features[v]);
+            nimcp_free(scene->view_features[v]);
         }
-        free(scene->view_features);
+        nimcp_free(scene->view_features);
     }
-    free(scene->view_headings);
+    nimcp_free(scene->view_headings);
 
     memset(scene, 0, sizeof(nimcp_stored_scene_t));
     scene->scene_id = UINT32_MAX;
@@ -1056,7 +1069,7 @@ int parahipp_add_landmark(nimcp_parahippocampal_t* ph,
     memcpy(lm->position, position, 3 * sizeof(float));
 
     lm->feature_dim = feature_dim;
-    lm->visual_features = (float*)malloc(feature_dim * sizeof(float));
+    lm->visual_features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!lm->visual_features) {
         lm->landmark_id = UINT32_MAX;
         return -1;
@@ -1182,9 +1195,9 @@ int parahipp_bind_objects_to_scene(nimcp_parahippocampal_t* ph,
     if (scene->scene_id == UINT32_MAX) return -1;
 
     /* Free old objects */
-    free(scene->object_ids);
+    nimcp_free(scene->object_ids);
 
-    scene->object_ids = (uint32_t*)malloc(num_objects * sizeof(uint32_t));
+    scene->object_ids = (uint32_t*)nimcp_malloc(num_objects * sizeof(uint32_t));
     if (!scene->object_ids) return -1;
 
     memcpy(scene->object_ids, object_ids, num_objects * sizeof(uint32_t));
@@ -1323,7 +1336,7 @@ int parahipp_process_visual_input(nimcp_parahippocampal_t* ph,
 
     /* Store current input */
     if (feature_dim != ph->current_input_dim) {
-        float* new_input = (float*)realloc(ph->current_scene_input,
+        float* new_input = (float*)nimcp_realloc(ph->current_scene_input,
             feature_dim * sizeof(float));
         if (!new_input) return -1;
         ph->current_scene_input = new_input;

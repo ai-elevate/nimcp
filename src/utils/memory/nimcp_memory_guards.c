@@ -22,33 +22,10 @@
 #include "utils/logging/nimcp_logging.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for memory_guards module */
-static nimcp_health_agent_t* g_memory_guards_health_agent = NULL;
-
-/**
- * @brief Set health agent for memory_guards heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void memory_guards_set_health_agent(nimcp_health_agent_t* agent) {
-    g_memory_guards_health_agent = agent;
-}
-
-/** @brief Send heartbeat from memory_guards module */
-static inline void memory_guards_heartbeat(const char* operation, float progress) {
-    if (g_memory_guards_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_memory_guards_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_guards)
 
 //=============================================================================
 // Internal Data Structures
@@ -232,14 +209,14 @@ void memory_guards_shutdown(void) {
 
 void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
     if (!g_initialized || !g_config.enable_guards) {
-        return malloc(size);
+        return nimcp_malloc(size);
     }
 
     if (size == 0) return NULL;
 
     // Allocate: header + user_data + footer
     size_t total_size = sizeof(allocation_header_t) + size + sizeof(allocation_footer_t);
-    allocation_header_t* header = (allocation_header_t*)malloc(total_size);
+    allocation_header_t* header = (allocation_header_t*)nimcp_malloc(total_size);
 
     if (!header) {
         fprintf(stderr, "malloc_guarded: allocation failed (%zu bytes) at %s:%d\n",
@@ -305,7 +282,7 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line) 
     }
 
     if (!g_initialized || !g_config.enable_guards) {
-        return realloc(ptr, size);
+        return nimcp_realloc(ptr, size);
     }
 
     // Allocate new block
@@ -335,7 +312,7 @@ void nimcp_free_guarded(void* ptr, const char* file, int line) {
     if (!ptr) return;
 
     if (!g_initialized || !g_config.enable_guards) {
-        free(ptr);
+        nimcp_free(ptr);
         return;
     }
 
@@ -406,7 +383,7 @@ void nimcp_free_guarded(void* ptr, const char* file, int line) {
     }
 
     // Actually free
-    free(header);
+    nimcp_free(header);
 }
 
 bool memory_guards_check_ptr(void* ptr) {

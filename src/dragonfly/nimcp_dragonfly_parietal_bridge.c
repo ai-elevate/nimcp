@@ -20,32 +20,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_parietal_bridge module */
-static nimcp_health_agent_t* g_dragonfly_parietal_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_parietal_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_parietal_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_parietal_bridge module */
-static inline void dragonfly_parietal_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_parietal_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_parietal_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_parietal_bridge)
 
 #define LOG_MODULE "DRAGONFLY_PARIETAL_BRIDGE"
 
@@ -247,7 +225,7 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
     parietal_lobe_t* parietal,
     const parietal_bridge_config_t* config
 ) {
-    dragonfly_parietal_bridge_t* bridge = calloc(1, sizeof(dragonfly_parietal_bridge_t));
+    dragonfly_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(dragonfly_parietal_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_parietal_bridge_create: failed to allocate bridge");
@@ -264,7 +242,7 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
         if (!parietal_bridge_validate_config(config)) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "dragonfly_parietal_bridge_create: invalid configuration");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -276,7 +254,7 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "dragonfly_parietal") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "dragonfly_parietal_bridge_create: failed to initialize base bridge");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -310,7 +288,7 @@ void dragonfly_parietal_bridge_destroy(dragonfly_parietal_bridge_t* bridge) {
     }
 
     bridge_base_cleanup(&bridge->base);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dragonfly_parietal_bridge_reset(dragonfly_parietal_bridge_t* bridge) {
@@ -619,12 +597,12 @@ int dragonfly_parietal_bridge_get_primary_target(
 parietal_attention_map_t* parietal_attention_map_create(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) return NULL;
 
-    parietal_attention_map_t* map = calloc(1, sizeof(parietal_attention_map_t));
+    parietal_attention_map_t* map = nimcp_calloc(1, sizeof(parietal_attention_map_t));
     if (!map) return NULL;
 
-    map->weights = calloc(width * height, sizeof(float));
+    map->weights = nimcp_calloc(width * height, sizeof(float));
     if (!map->weights) {
-        free(map);
+        nimcp_free(map);
         return NULL;
     }
 
@@ -640,8 +618,8 @@ parietal_attention_map_t* parietal_attention_map_create(uint32_t width, uint32_t
 
 void parietal_attention_map_destroy(parietal_attention_map_t* map) {
     if (!map) return;
-    if (map->weights) free(map->weights);
-    free(map);
+    if (map->weights) nimcp_free(map->weights);
+    nimcp_free(map);
 }
 
 float parietal_attention_map_sample(

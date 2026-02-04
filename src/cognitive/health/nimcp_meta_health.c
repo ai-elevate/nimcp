@@ -20,31 +20,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(meta_health)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for meta_health module */
-static nimcp_health_agent_t* g_meta_health_health_agent = NULL;
+static mesh_participant_id_t g_meta_health_mesh_id = 0;
+static mesh_participant_registry_t* g_meta_health_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for meta_health heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void meta_health_set_health_agent(nimcp_health_agent_t* agent) {
-    g_meta_health_health_agent = agent;
+nimcp_error_t meta_health_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_meta_health_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "meta_health", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "meta_health";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_meta_health_mesh_id);
+    if (err == NIMCP_SUCCESS) g_meta_health_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from meta_health module */
-static inline void meta_health_heartbeat(const char* operation, float progress) {
-    if (g_meta_health_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_meta_health_health_agent, operation, progress);
+void meta_health_mesh_unregister(void) {
+    if (g_meta_health_mesh_registry && g_meta_health_mesh_id != 0) {
+        mesh_participant_unregister(g_meta_health_mesh_registry, g_meta_health_mesh_id);
+        g_meta_health_mesh_id = 0;
+        g_meta_health_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from meta_health module (instance-level) */
 static inline void meta_health_heartbeat_instance(
@@ -167,7 +181,7 @@ meta_health_reflector_t* meta_health_create(
     meta_health_heartbeat("meta_health_create", 0.0f);
 
 
-    meta_health_reflector_t* reflector = calloc(1, sizeof(meta_health_reflector_t));
+    meta_health_reflector_t* reflector = nimcp_calloc(1, sizeof(meta_health_reflector_t));
     if (!reflector) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate reflector");
 
@@ -190,19 +204,19 @@ meta_health_reflector_t* meta_health_create(
 
     /* Initialize applied adjustments */
     reflector->max_applied = 32;
-    reflector->applied_adjustments = calloc(reflector->max_applied, sizeof(applied_adjustment_t));
+    reflector->applied_adjustments = nimcp_calloc(reflector->max_applied, sizeof(applied_adjustment_t));
     if (!reflector->applied_adjustments) {
-        free(reflector);
+        nimcp_free(reflector);
         return NULL;
     }
     reflector->num_applied = 0;
 
     /* Initialize pending reflections */
     reflector->max_pending = 8;
-    reflector->pending = calloc(reflector->max_pending, sizeof(pending_reflection_t));
+    reflector->pending = nimcp_calloc(reflector->max_pending, sizeof(pending_reflection_t));
     if (!reflector->pending) {
-        free(reflector->applied_adjustments);
-        free(reflector);
+        nimcp_free(reflector->applied_adjustments);
+        nimcp_free(reflector);
         return NULL;
     }
     reflector->num_pending = 0;
@@ -210,11 +224,11 @@ meta_health_reflector_t* meta_health_create(
 
     /* Initialize discovered patterns */
     reflector->max_patterns = 32;
-    reflector->patterns = calloc(reflector->max_patterns, sizeof(meta_health_pattern_t));
+    reflector->patterns = nimcp_calloc(reflector->max_patterns, sizeof(meta_health_pattern_t));
     if (!reflector->patterns) {
-        free(reflector->pending);
-        free(reflector->applied_adjustments);
-        free(reflector);
+        nimcp_free(reflector->pending);
+        nimcp_free(reflector->applied_adjustments);
+        nimcp_free(reflector);
         return NULL;
     }
     reflector->num_patterns = 0;
@@ -238,10 +252,10 @@ void meta_health_destroy(meta_health_reflector_t* reflector) {
     meta_health_heartbeat("meta_health_destroy", 0.0f);
 
 
-    free(reflector->patterns);
-    free(reflector->pending);
-    free(reflector->applied_adjustments);
-    free(reflector);
+    nimcp_free(reflector->patterns);
+    nimcp_free(reflector->pending);
+    nimcp_free(reflector->applied_adjustments);
+    nimcp_free(reflector);
 }
 
 int meta_health_start(meta_health_reflector_t* reflector) {

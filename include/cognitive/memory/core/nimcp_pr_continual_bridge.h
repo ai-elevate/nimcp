@@ -140,6 +140,7 @@
 #include "nimcp_resonance.h"
 #include "nimcp_z_ladder.h"
 #include "nimcp_entanglement.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -673,7 +674,7 @@ NIMCP_EXPORT float pr_continual_ewc_loss_weighted(
  * Performance: O(num_params)
  *
  * Example:
- *   float* ewc_grad = malloc(num_params * sizeof(float));
+ *   float* ewc_grad = nimcp_malloc(num_params * sizeof(float));
  *   pr_continual_ewc_gradient(bridge, model->params, num_params, ewc_grad);
  *   // Add to task gradients
  *   for (int i = 0; i < num_params; i++) {

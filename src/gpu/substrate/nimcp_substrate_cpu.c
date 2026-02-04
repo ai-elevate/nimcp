@@ -18,33 +18,10 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for substrate_cpu module */
-static nimcp_health_agent_t* g_substrate_cpu_health_agent = NULL;
-
-/**
- * @brief Set health agent for substrate_cpu heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void substrate_cpu_set_health_agent(nimcp_health_agent_t* agent) {
-    g_substrate_cpu_health_agent = agent;
-}
-
-/** @brief Send heartbeat from substrate_cpu module */
-static inline void substrate_cpu_heartbeat(const char* operation, float progress) {
-    if (g_substrate_cpu_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_substrate_cpu_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(substrate_cpu)
 
 // Helper to get tensor data
 static inline float* tensor_data(nimcp_gpu_tensor_t* t) {
@@ -581,7 +558,7 @@ nimcp_kernel_error_t cpu_astrocyte_calcium_wave(
     float* wave = tensor_data(wave_front);
 
     // Need temp buffer for updates
-    float* Ca_new = (float*)malloc(n_astro * sizeof(float));
+    float* Ca_new = (float*)nimcp_malloc(n_astro * sizeof(float));
     if (!Ca_new) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cpu_astrocyte_calcium_wave: failed to allocate temporary buffer");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -606,7 +583,7 @@ nimcp_kernel_error_t cpu_astrocyte_calcium_wave(
     }
 
     memcpy(Ca, Ca_new, n_astro * sizeof(float));
-    free(Ca_new);
+    nimcp_free(Ca_new);
 
     return NIMCP_KERNEL_SUCCESS;
 }

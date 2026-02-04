@@ -24,35 +24,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for vcs_integration module */
-static nimcp_health_agent_t* g_vcs_integration_health_agent = NULL;
-
-/**
- * @brief Set health agent for vcs_integration heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void vcs_integration_set_health_agent(nimcp_health_agent_t* agent) {
-    g_vcs_integration_health_agent = agent;
-}
-
-/** @brief Send heartbeat from vcs_integration module */
-static inline void vcs_integration_heartbeat(const char* operation, float progress) {
-    if (g_vcs_integration_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_vcs_integration_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vcs_integration)
 
 //=============================================================================
 // Internal Structures
@@ -383,8 +357,8 @@ int vcs_write_fix(
             if (*p == '\n' || *p == '\0') {
                 size_t len = p - line_start;
                 /* Use malloc (not nimcp_malloc) to match strdup allocations */
-                /* so free_file_lines can use free() uniformly */
-                new_lines[out_idx] = malloc(len + 2);
+                /* so free_file_lines can use nimcp_free() uniformly */
+                new_lines[out_idx] = nimcp_malloc(len + 2);
                 if (new_lines[out_idx]) {
                     strncpy(new_lines[out_idx], line_start, len);
                     new_lines[out_idx][len] = '\n';
@@ -1165,7 +1139,7 @@ static void free_file_lines(char** lines, uint32_t line_count) {
 
     for (uint32_t i = 0; i < line_count; i++) {
         if (lines[i]) {
-            free(lines[i]);
+            nimcp_free(lines[i]);
         }
     }
     nimcp_free(lines);

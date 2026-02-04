@@ -31,42 +31,10 @@
 //=============================================================================
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 // Avoid including full header to prevent type conflicts
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/* Global health agent reference for CNN training - set by cnn_trainer_set_health_agent() */
-static nimcp_health_agent_t* g_cnn_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cnn)
 
-/**
- * @brief Set health agent for CNN training heartbeat monitoring
- * @param agent Health agent to use for heartbeats
- */
-static void cnn_trainer_set_health_agent(nimcp_health_agent_t* agent) {
-    g_cnn_health_agent = agent;
-}
-
-/**
- * @brief Send heartbeat from CNN training operation
- * @param operation Operation name
- * @param progress Progress value [0.0-1.0]
- */
-static inline void cnn_training_heartbeat(const char* operation, float progress) {
-    if (g_cnn_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_cnn_health_agent, operation, progress);
-    }
-}
-
-//=============================================================================
-// Tensor API Helpers (work around opaque tensor type)
-//=============================================================================
-
-/**
- * @brief Fill tensor with a constant value
- */
 static inline void nimcp_tensor_fill(nimcp_tensor_t* t, float value) {
     if (!t) return;
     float* data = (float*)nimcp_tensor_data(t);

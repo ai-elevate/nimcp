@@ -973,3 +973,34 @@ set_tests_properties(integration_security_test_bbb_immune PROPERTIES
     LABELS "integration;security;bbb;immune;tripwire"
     TIMEOUT 180
 )
+
+# ============================================================================
+# Immune Error Routing Integration Tests (P1-2/3/5/6 + P2-6)
+# ============================================================================
+add_executable(integration_security_test_immune_error_routing
+    test_immune_error_routing.cpp
+)
+target_link_libraries(integration_security_test_immune_error_routing
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_security_test_immune_error_routing
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/utils/exception
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME integration_security_test_immune_error_routing
+         COMMAND integration_security_test_immune_error_routing)
+set_tests_properties(integration_security_test_immune_error_routing PROPERTIES
+    LABELS "integration;security;immune;error-routing"
+    TIMEOUT 120
+)

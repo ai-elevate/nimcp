@@ -17,28 +17,15 @@
 #include <float.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-static nimcp_health_agent_t* g_fuzzy_inference_health_agent = NULL;
-
-static inline void fuzzy_inference_heartbeat(const char* operation, float progress) {
-    if (g_fuzzy_inference_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fuzzy_inference_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_inference)
 
 //=============================================================================
 // Exception Handling
 //=============================================================================
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -119,7 +106,7 @@ fuzzy_inference_engine_t* fuzzy_inference_create(void) {
 }
 
 fuzzy_inference_engine_t* fuzzy_inference_create_custom(const fuzzy_inference_config_t* config) {
-    fuzzy_inference_engine_t* engine = (fuzzy_inference_engine_t*)calloc(1,
+    fuzzy_inference_engine_t* engine = (fuzzy_inference_engine_t*)nimcp_calloc(1,
         sizeof(fuzzy_inference_engine_t));
     if (!engine) {
         set_error("Failed to allocate fuzzy inference engine");
@@ -142,7 +129,7 @@ fuzzy_inference_engine_t* fuzzy_inference_create_custom(const fuzzy_inference_co
 void fuzzy_inference_destroy(fuzzy_inference_engine_t* engine) {
     if (!engine) return;
     fuzzy_inference_heartbeat("fuzzy_inference_destroy", 0.0f);
-    free(engine);
+    nimcp_free(engine);
 }
 
 //=============================================================================

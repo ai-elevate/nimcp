@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -372,6 +373,7 @@ int vae_thalamic_bridge_connect_vae(vae_thalamic_bridge_t* bridge, vae_system_t*
     bridge->gate_buffer = nimcp_calloc(latent_dim, sizeof(float));
 
     if (!bridge->relay_buffer || !bridge->gate_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_THAL_NO_MEMORY, "vae_thalamic_bridge: error condition");
         return NIMCP_ERROR_VAE_THAL_NO_MEMORY;
     }
 
@@ -450,6 +452,7 @@ int vae_thalamic_relay(vae_thalamic_bridge_t* bridge,
     if (!bridge || !input_latent || !result) return NIMCP_ERROR_VAE_THAL_NULL;
     if (nucleus >= VAE_THAL_NUC_COUNT) return NIMCP_ERROR_VAE_THAL_INVALID_NUC;
     if (!(bridge->config.active_nuclei_mask & (1 << nucleus))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_THAL_INVALID_NUC, "vae_thalamic_bridge: error condition");
         return NIMCP_ERROR_VAE_THAL_INVALID_NUC;
     }
 
@@ -465,6 +468,7 @@ int vae_thalamic_relay(vae_thalamic_bridge_t* bridge,
     if (!result->relayed_latent || !result->attention_weights || !result->gate_values) {
         vae_thalamic_relay_result_free(result);
         bridge->state = VAE_THAL_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_THAL_NO_MEMORY, "vae_thalamic_bridge: error condition");
         return NIMCP_ERROR_VAE_THAL_NO_MEMORY;
     }
 

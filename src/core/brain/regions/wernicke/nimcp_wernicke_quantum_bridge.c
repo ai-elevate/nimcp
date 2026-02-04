@@ -23,31 +23,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(wernicke_quantum_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for wernicke_quantum_bridge module */
-static nimcp_health_agent_t* g_wernicke_quantum_bridge_health_agent = NULL;
+static mesh_participant_id_t g_wernicke_quantum_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_wernicke_quantum_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for wernicke_quantum_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void wernicke_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_wernicke_quantum_bridge_health_agent = agent;
+nimcp_error_t wernicke_quantum_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_wernicke_quantum_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "wernicke_quantum_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "wernicke_quantum_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_wernicke_quantum_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_wernicke_quantum_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from wernicke_quantum_bridge module */
-static inline void wernicke_quantum_bridge_heartbeat(const char* operation, float progress) {
-    if (g_wernicke_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_wernicke_quantum_bridge_health_agent, operation, progress);
+void wernicke_quantum_bridge_mesh_unregister(void) {
+    if (g_wernicke_quantum_bridge_mesh_registry && g_wernicke_quantum_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_wernicke_quantum_bridge_mesh_registry, g_wernicke_quantum_bridge_mesh_id);
+        g_wernicke_quantum_bridge_mesh_id = 0;
+        g_wernicke_quantum_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "WERNICKE_QUANTUM_BRIDGE"
 
@@ -222,7 +236,7 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
         return NULL;
     }
 
-    wernicke_quantum_bridge_t* bridge = calloc(1, sizeof(wernicke_quantum_bridge_t));
+    wernicke_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_quantum_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -247,7 +261,7 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
 void wernicke_quantum_bridge_destroy(wernicke_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_quantum");
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool wernicke_quantum_is_enabled(const wernicke_quantum_bridge_t* bridge) {
@@ -275,7 +289,7 @@ int wernicke_quantum_search_lexicon(wernicke_quantum_bridge_t* bridge,
     memset(result, 0, sizeof(quantum_search_result_t));
 
     /* Initialize uniform superposition */
-    float* amplitudes = calloc(lexicon_size, sizeof(float));
+    float* amplitudes = nimcp_calloc(lexicon_size, sizeof(float));
     if (!amplitudes) return -1;
 
     float initial_amp = 1.0f / sqrtf((float)lexicon_size);
@@ -321,7 +335,7 @@ int wernicke_quantum_search_lexicon(wernicke_quantum_bridge_t* bridge,
     /* Generate placeholder word */
     snprintf(result->found_word, sizeof(result->found_word), "word_%u", best_idx);
 
-    free(amplitudes);
+    nimcp_free(amplitudes);
 
     /* Update statistics */
     bridge->stats.grover_searches++;
@@ -359,7 +373,7 @@ int wernicke_quantum_search_concepts(wernicke_quantum_bridge_t* bridge,
     uint32_t target_idx = (uint32_t)(fabsf(target_sum) * 1000) % num_concepts;
 
     /* Initialize superposition */
-    float* amplitudes = calloc(num_concepts, sizeof(float));
+    float* amplitudes = nimcp_calloc(num_concepts, sizeof(float));
     if (!amplitudes) return -1;
 
     float initial_amp = 1.0f / sqrtf((float)num_concepts);
@@ -393,7 +407,7 @@ int wernicke_quantum_search_concepts(wernicke_quantum_bridge_t* bridge,
     result->speedup_achieved = compute_speedup(num_concepts, iterations);
     result->success = (result->probability >= bridge->config.grover_success_threshold);
 
-    free(amplitudes);
+    nimcp_free(amplitudes);
 
     bridge->stats.grover_searches++;
 
@@ -412,7 +426,7 @@ int wernicke_quantum_walk_init(wernicke_quantum_bridge_t* bridge,
 
     memset(state, 0, sizeof(quantum_walk_state_t));
 
-    state->node_amplitudes = calloc(graph_size, sizeof(float));
+    state->node_amplitudes = nimcp_calloc(graph_size, sizeof(float));
     if (!state->node_amplitudes) return -1;
 
     state->num_nodes = graph_size;
@@ -435,7 +449,7 @@ int wernicke_quantum_walk_step(wernicke_quantum_bridge_t* bridge,
     uint32_t n = state->num_nodes;
 
     /* Allocate temporary buffer */
-    float* new_amps = calloc(n, sizeof(float));
+    float* new_amps = nimcp_calloc(n, sizeof(float));
     if (!new_amps) return -1;
 
     /* Simplified quantum walk: each node spreads to neighbors
@@ -460,7 +474,7 @@ int wernicke_quantum_walk_step(wernicke_quantum_bridge_t* bridge,
 
     /* Copy back */
     memcpy(state->node_amplitudes, new_amps, n * sizeof(float));
-    free(new_amps);
+    nimcp_free(new_amps);
 
     state->steps_taken++;
 
@@ -522,11 +536,11 @@ int wernicke_quantum_walk_measure(wernicke_quantum_bridge_t* bridge,
     if (count == 0) return 0;
 
     /* Allocate results */
-    result->activated_concepts = calloc(count, sizeof(uint32_t));
-    result->activation_levels = calloc(count, sizeof(float));
+    result->activated_concepts = nimcp_calloc(count, sizeof(uint32_t));
+    result->activation_levels = nimcp_calloc(count, sizeof(float));
     if (!result->activated_concepts || !result->activation_levels) {
-        free(result->activated_concepts);
-        free(result->activation_levels);
+        nimcp_free(result->activated_concepts);
+        nimcp_free(result->activation_levels);
         return -1;
     }
 
@@ -601,8 +615,8 @@ int wernicke_quantum_disambiguate(wernicke_quantum_bridge_t* bridge,
     /* Copy alternatives */
     if (state.num_concepts > 1) {
         result->num_alternatives = state.num_concepts - 1;
-        result->alternatives = calloc(result->num_alternatives, sizeof(uint32_t));
-        result->alt_probabilities = calloc(result->num_alternatives, sizeof(float));
+        result->alternatives = nimcp_calloc(result->num_alternatives, sizeof(uint32_t));
+        result->alt_probabilities = nimcp_calloc(result->num_alternatives, sizeof(float));
 
         if (result->alternatives && result->alt_probabilities) {
             for (uint32_t i = 1; i < state.num_concepts; i++) {
@@ -641,9 +655,9 @@ int wernicke_quantum_superpose_senses(wernicke_quantum_bridge_t* bridge,
     }
     uint32_t num_senses = 2 + (hash % 4);  /* 2-5 senses */
 
-    state->concept_ids = calloc(num_senses, sizeof(uint32_t));
-    state->amplitudes = calloc(num_senses, sizeof(float));
-    state->phases = calloc(num_senses, sizeof(float));
+    state->concept_ids = nimcp_calloc(num_senses, sizeof(uint32_t));
+    state->amplitudes = nimcp_calloc(num_senses, sizeof(float));
+    state->phases = nimcp_calloc(num_senses, sizeof(float));
 
     if (!state->concept_ids || !state->amplitudes || !state->phases) {
         wernicke_quantum_state_free(state);
@@ -866,29 +880,29 @@ float wernicke_quantum_estimate_speedup(const wernicke_quantum_bridge_t* bridge,
 
 void wernicke_quantum_state_free(quantum_concept_state_t* state) {
     if (!state) return;
-    free(state->concept_ids);
-    free(state->amplitudes);
-    free(state->phases);
+    nimcp_free(state->concept_ids);
+    nimcp_free(state->amplitudes);
+    nimcp_free(state->phases);
     memset(state, 0, sizeof(quantum_concept_state_t));
 }
 
 void wernicke_quantum_walk_free(quantum_walk_state_t* state) {
     if (!state) return;
-    free(state->node_amplitudes);
+    nimcp_free(state->node_amplitudes);
     memset(state, 0, sizeof(quantum_walk_state_t));
 }
 
 void wernicke_quantum_disambig_free(quantum_disambig_result_t* result) {
     if (!result) return;
-    free(result->alternatives);
-    free(result->alt_probabilities);
+    nimcp_free(result->alternatives);
+    nimcp_free(result->alt_probabilities);
     memset(result, 0, sizeof(quantum_disambig_result_t));
 }
 
 void wernicke_quantum_spreading_free(quantum_spreading_result_t* result) {
     if (!result) return;
-    free(result->activated_concepts);
-    free(result->activation_levels);
+    nimcp_free(result->activated_concepts);
+    nimcp_free(result->activation_levels);
     memset(result, 0, sizeof(quantum_spreading_result_t));
 }
 

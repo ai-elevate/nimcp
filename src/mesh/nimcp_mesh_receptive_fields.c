@@ -5,6 +5,7 @@
 
 #include "mesh/nimcp_mesh_receptive_fields.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdbool.h>
 
@@ -282,6 +283,7 @@ nimcp_error_t mesh_receptive_fields_get_by_category(
     size_t* count_out
 ) {
     if (!fields_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_receptive_fields: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -372,9 +374,11 @@ nimcp_error_t mesh_receptive_field_create_range(
     mesh_receptive_field_t* field_out
 ) {
     if (!field_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_receptive_fields: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (dim_start >= MESH_PATTERN_DIM || dim_end > MESH_PATTERN_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_receptive_fields: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

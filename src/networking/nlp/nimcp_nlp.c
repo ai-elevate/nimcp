@@ -42,34 +42,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for nlp module */
-static nimcp_health_agent_t* g_nlp_health_agent = NULL;
-
-/**
- * @brief Set health agent for nlp heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void nlp_set_health_agent(nimcp_health_agent_t* agent) {
-    g_nlp_health_agent = agent;
-}
-
-/** @brief Send heartbeat from nlp module */
-static inline void nlp_heartbeat(const char* operation, float progress) {
-    if (g_nlp_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_nlp_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(nlp)
 
 //=============================================================================
 // Module Registration
@@ -79,6 +54,7 @@ static inline void nlp_heartbeat(const char* operation, float progress) {
 
 static bool g_nlp_initialized = false;
 static nimcp_mutex_t g_nlp_global_mutex;
+static nimcp_once_t g_nlp_once = NIMCP_ONCE_INIT;
 
 // Node structure is defined in nimcp_nlp_internal.h
 
@@ -484,12 +460,11 @@ void nlp_process_bio_inbox(nlp_node_t node) {
 // Initialization
 //=============================================================================
 
-static bool nlp_global_init(void) {
-    if (g_nlp_initialized) return true;
-
+/* One-time init routine called via nimcp_once() */
+static void nlp_global_init_once(void) {
     if (nimcp_mutex_init(&g_nlp_global_mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to init global mutex");
-        return false;
+        return;
     }
 
     // Register with BBB
@@ -500,7 +475,11 @@ static bool nlp_global_init(void) {
 
     g_nlp_initialized = true;
     NIMCP_LOGGING_INFO(NLP_MODULE_NAME, "Neural Link Protocol initialized");
-    return true;
+}
+
+static bool nlp_global_init(void) {
+    nimcp_once(&g_nlp_once, nlp_global_init_once);
+    return g_nlp_initialized;
 }
 
 //=============================================================================

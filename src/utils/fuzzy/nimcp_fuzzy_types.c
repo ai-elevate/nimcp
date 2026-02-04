@@ -23,32 +23,15 @@
 #include <float.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-static nimcp_health_agent_t* g_fuzzy_types_health_agent = NULL;
-
-static void fuzzy_types_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fuzzy_types_health_agent = agent;
-}
-
-static inline void fuzzy_types_heartbeat(const char* operation, float progress) {
-    if (g_fuzzy_types_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fuzzy_types_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_types)
 
 //=============================================================================
 // Exception Handling
 //=============================================================================
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -99,7 +82,7 @@ fuzzy_types_engine_t* fuzzy_types_create(void) {
 }
 
 fuzzy_types_engine_t* fuzzy_types_create_custom(const fuzzy_types_config_t* config) {
-    fuzzy_types_engine_t* engine = (fuzzy_types_engine_t*)calloc(1, sizeof(fuzzy_types_engine_t));
+    fuzzy_types_engine_t* engine = (fuzzy_types_engine_t*)nimcp_calloc(1, sizeof(fuzzy_types_engine_t));
     if (!engine) {
         set_error("Failed to allocate fuzzy types engine");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "fuzzy_types_create_custom: Failed to allocate fuzzy types engine");
@@ -123,7 +106,7 @@ fuzzy_types_engine_t* fuzzy_types_create_custom(const fuzzy_types_config_t* conf
 void fuzzy_types_destroy(fuzzy_types_engine_t* engine) {
     if (!engine) return;
     fuzzy_types_heartbeat("fuzzy_types_destroy", 0.0f);
-    free(engine);
+    nimcp_free(engine);
 }
 
 //=============================================================================
@@ -577,7 +560,7 @@ int fuzzy_discrete_set_create(fuzzy_discrete_set_t* set, uint32_t resolution,
         return FUZZY_ERR_RESOLUTION;
     }
 
-    set->values = (float*)calloc(resolution, sizeof(float));
+    set->values = (float*)nimcp_calloc(resolution, sizeof(float));
     if (!set->values) {
         set_error("fuzzy_discrete_set_create: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "fuzzy_discrete_set_create: allocation failed");
@@ -592,7 +575,7 @@ int fuzzy_discrete_set_create(fuzzy_discrete_set_t* set, uint32_t resolution,
 void fuzzy_discrete_set_free(fuzzy_discrete_set_t* set) {
     if (!set) return;
     if (set->values) {
-        free(set->values);
+        nimcp_free(set->values);
         set->values = NULL;
     }
     set->resolution = 0;

@@ -28,34 +28,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for language_bio_async module */
-static nimcp_health_agent_t* g_language_bio_async_health_agent = NULL;
-
-/**
- * @brief Set health agent for language_bio_async heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void language_bio_async_set_health_agent(nimcp_health_agent_t* agent) {
-    g_language_bio_async_health_agent = agent;
-}
-
-/** @brief Send heartbeat from language_bio_async module */
-static inline void language_bio_async_heartbeat(const char* operation, float progress) {
-    if (g_language_bio_async_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_language_bio_async_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_bio_async)
 
 //=============================================================================
 // Internal Constants
@@ -124,7 +100,7 @@ int language_bio_async_register(
 
     /* Allocate context if needed */
     if (!g_bio_async_ctx) {
-        g_bio_async_ctx = calloc(1, sizeof(language_bio_async_ctx_t));
+        g_bio_async_ctx = nimcp_calloc(1, sizeof(language_bio_async_ctx_t));
         if (!g_bio_async_ctx) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bio_async_register: Failed to allocate bio_async context");
             return -1;

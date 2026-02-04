@@ -62,34 +62,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "utils/logging/nimcp_logging.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for memory_pool module */
-static nimcp_health_agent_t* g_memory_pool_health_agent = NULL;
-
-/**
- * @brief Set health agent for memory_pool heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void memory_pool_set_health_agent(nimcp_health_agent_t* agent) {
-    g_memory_pool_health_agent = agent;
-}
-
-/** @brief Send heartbeat from memory_pool module */
-static inline void memory_pool_heartbeat(const char* operation, float progress) {
-    if (g_memory_pool_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_memory_pool_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_pool)
 
 //=============================================================================
 // Constants and Configuration

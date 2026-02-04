@@ -17,34 +17,9 @@
 #include <string.h>
 
 #define LOG_MODULE "thread_mutex"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for thread_mutex module */
-static nimcp_health_agent_t* g_thread_mutex_health_agent = NULL;
-
-/**
- * @brief Set health agent for thread_mutex heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void thread_mutex_set_health_agent(nimcp_health_agent_t* agent) {
-    g_thread_mutex_health_agent = agent;
-}
-
-/** @brief Send heartbeat from thread_mutex module */
-static inline void thread_mutex_heartbeat(const char* operation, float progress) {
-    if (g_thread_mutex_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_thread_mutex_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thread_mutex)
 
 // External declarations for error handling (defined in nimcp_thread.c)
 extern void set_thread_error(int error_code, const char* format, ...);
@@ -142,7 +117,7 @@ nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr)
 }
 
 /**
- * @brief Destroy mutex (Adapter for pthread_mutex_destroy)
+ * @brief Destroy mutex (Adapter for nimcp_mutex_destroy)
  *
  * WHY DESTROY:
  * - Free kernel resources (futex on Linux)
@@ -198,7 +173,7 @@ nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex)
 }
 
 /**
- * @brief Lock mutex (Adapter for pthread_mutex_lock)
+ * @brief Lock mutex (Adapter for nimcp_mutex_lock)
  *
  * WHY LOCK:
  * - Protect critical section (shared data access)
@@ -225,7 +200,7 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
 }
 
 /**
- * @brief Try to lock mutex without blocking (Adapter for pthread_mutex_trylock)
+ * @brief Try to lock mutex without blocking (Adapter for nimcp_mutex_trylock)
  *
  * WHY TRYLOCK:
  * - Non-blocking alternative to lock
@@ -256,7 +231,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
 }
 
 /**
- * @brief Unlock mutex (Adapter for pthread_mutex_unlock)
+ * @brief Unlock mutex (Adapter for nimcp_mutex_unlock)
  *
  * WHY UNLOCK:
  * - Release critical section
@@ -287,7 +262,7 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
 //=============================================================================
 
 /**
- * @brief Initialize spinlock (Adapter for pthread_mutex_init)
+ * @brief Initialize spinlock (Adapter for nimcp_mutex_init)
  *
  * WHY MUTEX NOT SPINLOCK:
  * - pthread_spin_lock not universally available (optional POSIX feature)
@@ -318,7 +293,7 @@ nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock)
 }
 
 /**
- * @brief Destroy spinlock (Adapter for pthread_mutex_destroy)
+ * @brief Destroy spinlock (Adapter for nimcp_mutex_destroy)
  *
  * WHY DESTROY:
  * - Free kernel resources (futex on Linux)
@@ -345,7 +320,7 @@ nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
 }
 
 /**
- * @brief Lock spinlock (Adapter for pthread_mutex_lock)
+ * @brief Lock spinlock (Adapter for nimcp_mutex_lock)
  *
  * WHY LOCK:
  * - Protect critical section in glial cells (short duration)
@@ -372,7 +347,7 @@ nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
 }
 
 /**
- * @brief Unlock spinlock (Adapter for pthread_mutex_unlock)
+ * @brief Unlock spinlock (Adapter for nimcp_mutex_unlock)
  *
  * WHY UNLOCK:
  * - Release critical section

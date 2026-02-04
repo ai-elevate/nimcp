@@ -33,6 +33,7 @@
 #include "nimcp_ternary_vector.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +81,7 @@ typedef struct {
  */
 static inline trit_matrix_t* trit_matrix_create(size_t rows, size_t cols,
                                                  ternary_pack_mode_t pack_mode) {
-    trit_matrix_t* mat = (trit_matrix_t*)malloc(sizeof(trit_matrix_t));
+    trit_matrix_t* mat = (trit_matrix_t*)nimcp_malloc(sizeof(trit_matrix_t));
     if (!mat) return NULL;
 
     mat->magic = TERNARY_MAGIC;
@@ -95,15 +96,15 @@ static inline trit_matrix_t* trit_matrix_create(size_t rows, size_t cols,
     mat->packed_bytes = bytes;
 
     if (pack_mode == TERNARY_PACK_NONE) {
-        mat->data.unpacked = (trit_t*)calloc(mat->numel, sizeof(trit_t));
+        mat->data.unpacked = (trit_t*)nimcp_calloc(mat->numel, sizeof(trit_t));
         if (!mat->data.unpacked) {
-            free(mat);
+            nimcp_free(mat);
             return NULL;
         }
     } else {
-        mat->data.packed = (uint8_t*)calloc(bytes, 1);
+        mat->data.packed = (uint8_t*)nimcp_calloc(bytes, 1);
         if (!mat->data.packed) {
-            free(mat);
+            nimcp_free(mat);
             return NULL;
         }
     }
@@ -189,14 +190,14 @@ static inline void trit_matrix_destroy(trit_matrix_t* mat) {
 
     if (mat->owns_data) {
         if (mat->pack_mode == TERNARY_PACK_NONE) {
-            free(mat->data.unpacked);
+            nimcp_free(mat->data.unpacked);
         } else {
-            free(mat->data.packed);
+            nimcp_free(mat->data.packed);
         }
     }
 
     mat->magic = 0;
-    free(mat);
+    nimcp_free(mat);
 }
 
 /**

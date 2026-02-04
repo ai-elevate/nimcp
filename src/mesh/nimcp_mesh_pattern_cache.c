@@ -149,6 +149,7 @@ nimcp_error_t pattern_cache_hash(
     pattern_hash_t* hash_out
 ) {
     if (!pattern || !hash_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_cache: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -336,6 +337,7 @@ void pattern_cache_destroy(pattern_cache_t* cache) {
 
 nimcp_error_t pattern_cache_clear(pattern_cache_t* cache) {
     if (!cache || cache->magic != PATTERN_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_cache: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -440,6 +442,7 @@ nimcp_error_t pattern_cache_lookup(
     size_t* count_out
 ) {
     if (!cache || !pattern || !activations_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_cache: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -455,6 +458,7 @@ nimcp_error_t pattern_cache_lookup(
     if (!wrapper) {
         nimcp_rwlock_unlock(&cache->rwlock);
         cache->stats.misses++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_pattern_cache: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -465,6 +469,7 @@ nimcp_error_t pattern_cache_lookup(
     if (entry->ttl_ns > 0 && now > entry->created_ns + entry->ttl_ns) {
         nimcp_rwlock_unlock(&cache->rwlock);
         cache->stats.misses++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_pattern_cache: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -502,9 +507,11 @@ nimcp_error_t pattern_cache_store(
     uint64_t ttl_ms
 ) {
     if (!cache || !pattern || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_cache: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (count > MESH_MAX_ENDORSERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_cache: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -527,6 +534,7 @@ nimcp_error_t pattern_cache_store(
         if (!wrapper) {
             nimcp_mutex_unlock(cache->mutex);
             LOG_WARN("Pattern cache full, cannot store");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         is_new = true;
@@ -537,6 +545,7 @@ nimcp_error_t pattern_cache_store(
             if (!wrapper) {
                 nimcp_mutex_unlock(cache->mutex);
                 LOG_ERROR("Failed to make CoW copy for update");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
                 return NIMCP_ERROR_NO_MEMORY;
             }
             cache->stats.cow_copies++;
@@ -564,6 +573,7 @@ nimcp_error_t pattern_cache_store(
             nimcp_cache_release(wrapper);
             nimcp_mutex_unlock(cache->mutex);
             LOG_ERROR("Failed to insert into pattern cache hash table");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
 
@@ -591,6 +601,7 @@ nimcp_error_t pattern_cache_invalidate(
     const mesh_pattern_t* pattern
 ) {
     if (!cache || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_cache: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -690,6 +701,7 @@ nimcp_error_t pattern_cache_invalidate_module(
     ctx.keys_to_remove = nimcp_calloc(ctx.remove_capacity, sizeof(char*));
     if (!ctx.keys_to_remove) {
         nimcp_mutex_unlock(cache->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -791,10 +803,12 @@ nimcp_error_t pattern_cache_cow_copy(
     pattern_cache_entry_t** new_entry_out
 ) {
     if (!cache || !original || !variant || !new_entry_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_pattern_cache: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!cache->config.enable_cow) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_SUPPORTED, "mesh_pattern_cache: error condition");
         return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
@@ -807,6 +821,7 @@ nimcp_error_t pattern_cache_cow_copy(
 
     if (!orig_wrapper || !orig_wrapper->entry.valid) {
         nimcp_mutex_unlock(cache->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_pattern_cache: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -815,6 +830,7 @@ nimcp_error_t pattern_cache_cow_copy(
     if (!new_wrapper) {
         nimcp_mutex_unlock(cache->mutex);
         LOG_ERROR("Failed to create CoW copy via nimcp_cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -837,6 +853,7 @@ nimcp_error_t pattern_cache_cow_copy(
     if (!hash_table_insert_string(cache->table, key_str, &new_wrapper, sizeof(new_wrapper))) {
         nimcp_cache_release(new_wrapper);
         nimcp_mutex_unlock(cache->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -921,6 +938,7 @@ nimcp_error_t pattern_cache_evict_expired(pattern_cache_t* cache) {
     ctx.keys_to_remove = nimcp_calloc(ctx.remove_capacity, sizeof(char*));
     if (!ctx.keys_to_remove) {
         nimcp_mutex_unlock(cache->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

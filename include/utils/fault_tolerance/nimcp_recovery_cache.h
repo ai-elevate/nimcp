@@ -28,7 +28,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 /* ============================================================================
  * CONSTANTS AND CONFIGURATION
@@ -159,7 +159,7 @@ typedef struct {
     nimcp_recovery_cache_stats_t stats;                      /**< Performance metrics */
 
     /* Thread safety */
-    pthread_mutex_t lock;                                    /**< Protects all fields */
+    nimcp_mutex_t lock;                                    /**< Protects all fields */
 
     /* Configuration flags */
     bool enable_lru;                                         /**< Enable LRU eviction */

@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -710,6 +711,7 @@ int vae_substrate_consume_energy(vae_substrate_bridge_t* bridge,
 
     /* Check if affordable */
     if (!vae_substrate_can_afford(bridge, category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_SUB_CRITICAL, "vae_substrate_bridge: error condition");
         return NIMCP_ERROR_VAE_SUB_CRITICAL;
     }
 

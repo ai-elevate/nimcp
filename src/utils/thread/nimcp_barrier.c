@@ -24,34 +24,9 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for barrier module */
-static nimcp_health_agent_t* g_barrier_health_agent = NULL;
-
-/**
- * @brief Set health agent for barrier heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void barrier_set_health_agent(nimcp_health_agent_t* agent) {
-    g_barrier_health_agent = agent;
-}
-
-/** @brief Send heartbeat from barrier module */
-static inline void barrier_heartbeat(const char* operation, float progress) {
-    if (g_barrier_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_barrier_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(barrier)
 
 //=============================================================================
 // Internal Structure Definition

@@ -13,7 +13,7 @@
 #include "async/nimcp_bio_messages.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +55,7 @@ typedef struct {
     uint32_t active_features;         /**< Count of enabled features */
     float resource_usage;             /**< Current usage % (0.0-100.0) */
     uint64_t last_change_time_ms;     /**< Last level change timestamp */
-    pthread_mutex_t lock;             /**< Thread safety */
+    nimcp_mutex_t lock;             /**< Thread safety */
 } degradation_state_t;
 
 /**

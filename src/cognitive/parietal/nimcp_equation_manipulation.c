@@ -18,31 +18,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(equation_manipulation)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for equation_manipulation module */
-static nimcp_health_agent_t* g_equation_manipulation_health_agent = NULL;
+static mesh_participant_id_t g_equation_manipulation_mesh_id = 0;
+static mesh_participant_registry_t* g_equation_manipulation_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for equation_manipulation heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void equation_manipulation_set_health_agent(nimcp_health_agent_t* agent) {
-    g_equation_manipulation_health_agent = agent;
+nimcp_error_t equation_manipulation_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_equation_manipulation_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "equation_manipulation", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "equation_manipulation";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_equation_manipulation_mesh_id);
+    if (err == NIMCP_SUCCESS) g_equation_manipulation_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from equation_manipulation module */
-static inline void equation_manipulation_heartbeat(const char* operation, float progress) {
-    if (g_equation_manipulation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_equation_manipulation_health_agent, operation, progress);
+void equation_manipulation_mesh_unregister(void) {
+    if (g_equation_manipulation_mesh_registry && g_equation_manipulation_mesh_id != 0) {
+        mesh_participant_unregister(g_equation_manipulation_mesh_registry, g_equation_manipulation_mesh_id);
+        g_equation_manipulation_mesh_id = 0;
+        g_equation_manipulation_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from equation_manipulation module (instance-level) */
 static inline void equation_manipulation_heartbeat_instance(
@@ -119,7 +133,7 @@ static bool is_one(float v) {
 }
 
 static expr_node_t* alloc_node(void) {
-    expr_node_t* node = calloc(1, sizeof(expr_node_t));
+    expr_node_t* node = nimcp_calloc(1, sizeof(expr_node_t));
     return node;
 }
 
@@ -198,7 +212,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
         cfg = equation_default_config();
     }
 
-    equation_engine_t* eq = calloc(1, sizeof(equation_engine_t));
+    equation_engine_t* eq = nimcp_calloc(1, sizeof(equation_engine_t));
     if (!eq) {
         set_equation_error("Failed to allocate equation engine");
         return NULL;
@@ -211,7 +225,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
     eq->lock = nimcp_mutex_create(&attr);
     if (!eq->lock) {
         set_equation_error("Failed to create mutex");
-        free(eq);
+        nimcp_free(eq);
         return NULL;
     }
 
@@ -229,7 +243,7 @@ void equation_engine_destroy(equation_engine_t* eq) {
         nimcp_mutex_free(eq->lock);
     }
 
-    free(eq);
+    nimcp_free(eq);
 }
 
 /* ============================================================================
@@ -369,7 +383,7 @@ void equation_free_expr(expr_node_t* node) {
 
     equation_free_expr(node->left);
     equation_free_expr(node->right);
-    free(node);
+    nimcp_free(node);
 }
 
 expr_node_t* equation_copy_expr(equation_engine_t* eq, const expr_node_t* node) {
@@ -724,7 +738,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                 /* 0 + x = x */
                 expr_node_t* r = result->right;
                 equation_free_expr(result->left);
-                free(result);
+                nimcp_free(result);
                 result = r;
                 changed = true;
             } else if (result->right->type == EXPR_CONSTANT &&
@@ -732,7 +746,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                 /* x + 0 = x */
                 expr_node_t* l = result->left;
                 equation_free_expr(result->right);
-                free(result);
+                nimcp_free(result);
                 result = l;
                 changed = true;
             }
@@ -752,7 +766,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     /* 1 * x = x */
                     expr_node_t* r = result->right;
                     equation_free_expr(result->left);
-                    free(result);
+                    nimcp_free(result);
                     result = r;
                     changed = true;
                 }
@@ -769,7 +783,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     /* x * 1 = x */
                     expr_node_t* l = result->left;
                     equation_free_expr(result->right);
-                    free(result);
+                    nimcp_free(result);
                     result = l;
                     changed = true;
                 }
@@ -790,7 +804,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     /* x^1 = x */
                     expr_node_t* l = result->left;
                     equation_free_expr(result->right);
-                    free(result);
+                    nimcp_free(result);
                     result = l;
                     changed = true;
                 }

@@ -12,33 +12,10 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for layer_coordinator module */
-static nimcp_health_agent_t* g_layer_coordinator_health_agent = NULL;
-
-/**
- * @brief Set health agent for layer_coordinator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void layer_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_layer_coordinator_health_agent = agent;
-}
-
-/** @brief Send heartbeat from layer_coordinator module */
-static inline void layer_coordinator_heartbeat(const char* operation, float progress) {
-    if (g_layer_coordinator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_layer_coordinator_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(layer_coordinator)
 
 struct nimcp_layer_coordinator_struct {
     nimcp_layer_coordinator_config_t config;
@@ -71,7 +48,7 @@ nimcp_layer_coordinator_config_t nimcp_layer_coordinator_default_config(void) {
 }
 
 nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coordinator_config_t* config, brain_t brain) {
-    nimcp_layer_coordinator_t coord = (nimcp_layer_coordinator_t)calloc(1, sizeof(struct nimcp_layer_coordinator_struct));
+    nimcp_layer_coordinator_t coord = (nimcp_layer_coordinator_t)nimcp_calloc(1, sizeof(struct nimcp_layer_coordinator_struct));
     NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate layer coordinator");
 
     coord->config = config ? *config : nimcp_layer_coordinator_default_config();
@@ -81,7 +58,7 @@ nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coord
     /* Create registry */
     coord->registry = nimcp_layer_registry_create(&coord->config.registry_config);
     if (!coord->registry) {
-        free(coord);
+        nimcp_free(coord);
         return NULL;
     }
 
@@ -89,7 +66,7 @@ nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coord
     coord->router = nimcp_inter_layer_router_create(&coord->config.router_config, coord->registry);
     if (!coord->router) {
         nimcp_layer_registry_destroy(coord->registry);
-        free(coord);
+        nimcp_free(coord);
         return NULL;
     }
 
@@ -103,7 +80,7 @@ void nimcp_layer_coordinator_destroy(nimcp_layer_coordinator_t coord) {
     }
     if (coord->router) nimcp_inter_layer_router_destroy(coord->router);
     if (coord->registry) nimcp_layer_registry_destroy(coord->registry);
-    free(coord);
+    nimcp_free(coord);
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_init_all(nimcp_layer_coordinator_t coord) {

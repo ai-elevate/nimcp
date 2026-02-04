@@ -43,3 +43,6 @@ add_memory_test(test_page_cow_stress)
 
 # Unified Memory Integration Tests
 add_memory_test(test_unified_memory)
+
+# P2 Audit: Memory wrapper tests
+add_memory_test(test_nimcp_memory_wrapper)

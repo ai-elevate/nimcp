@@ -32,31 +32,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(theta_gamma)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for theta_gamma module */
-static nimcp_health_agent_t* g_theta_gamma_health_agent = NULL;
+static mesh_participant_id_t g_theta_gamma_mesh_id = 0;
+static mesh_participant_registry_t* g_theta_gamma_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for theta_gamma heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void theta_gamma_set_health_agent(nimcp_health_agent_t* agent) {
-    g_theta_gamma_health_agent = agent;
+nimcp_error_t theta_gamma_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_theta_gamma_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "theta_gamma", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "theta_gamma";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_theta_gamma_mesh_id);
+    if (err == NIMCP_SUCCESS) g_theta_gamma_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from theta_gamma module */
-static inline void theta_gamma_heartbeat(const char* operation, float progress) {
-    if (g_theta_gamma_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_theta_gamma_health_agent, operation, progress);
+void theta_gamma_mesh_unregister(void) {
+    if (g_theta_gamma_mesh_registry && g_theta_gamma_mesh_id != 0) {
+        mesh_participant_unregister(g_theta_gamma_mesh_registry, g_theta_gamma_mesh_id);
+        g_theta_gamma_mesh_id = 0;
+        g_theta_gamma_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from theta_gamma module (instance-level) */
 static inline void theta_gamma_heartbeat_instance(
@@ -350,13 +364,13 @@ static bool allocate_workspace(struct theta_gamma_manager_internal* mgr, uint32_
 
     /* Free existing buffers if size changed */
     if (mgr->work_buffer_size != size) {
-        free(mgr->work_theta_phase);
-        free(mgr->work_gamma_amplitude);
-        free(mgr->work_envelope);
+        nimcp_free(mgr->work_theta_phase);
+        nimcp_free(mgr->work_gamma_amplitude);
+        nimcp_free(mgr->work_envelope);
 
-        mgr->work_theta_phase = (float*)calloc(size, sizeof(float));
-        mgr->work_gamma_amplitude = (float*)calloc(size, sizeof(float));
-        mgr->work_envelope = (float*)calloc(size, sizeof(float));
+        mgr->work_theta_phase = (float*)nimcp_calloc(size, sizeof(float));
+        mgr->work_gamma_amplitude = (float*)nimcp_calloc(size, sizeof(float));
+        mgr->work_envelope = (float*)nimcp_calloc(size, sizeof(float));
 
         if (!mgr->work_theta_phase || !mgr->work_gamma_amplitude || !mgr->work_envelope) {
             set_error("Failed to allocate workspace buffers");
@@ -375,8 +389,8 @@ static bool allocate_workspace(struct theta_gamma_manager_internal* mgr, uint32_
 static bool init_pac_histogram(struct theta_gamma_manager_internal* mgr) {
     uint32_t num_bins = mgr->config.pac_num_bins;
 
-    mgr->pac_histogram = (float*)calloc(num_bins, sizeof(float));
-    mgr->pac_bin_counts = (uint32_t*)calloc(num_bins, sizeof(uint32_t));
+    mgr->pac_histogram = (float*)nimcp_calloc(num_bins, sizeof(float));
+    mgr->pac_bin_counts = (uint32_t*)nimcp_calloc(num_bins, sizeof(uint32_t));
 
     if (!mgr->pac_histogram || !mgr->pac_bin_counts) {
         set_error("Failed to allocate PAC histogram");
@@ -508,7 +522,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
 
 
     struct theta_gamma_manager_internal* mgr =
-        (struct theta_gamma_manager_internal*)calloc(1,
+        (struct theta_gamma_manager_internal*)nimcp_calloc(1,
             sizeof(struct theta_gamma_manager_internal));
 
     if (!mgr) {
@@ -528,7 +542,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
 
     /* Validate configuration */
     if (!theta_gamma_config_validate(&mgr->config)) {
-        free(mgr);
+        nimcp_free(mgr);
         return NULL;
     }
 
@@ -549,7 +563,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
 
     /* Initialize PAC histogram */
     if (!init_pac_histogram(mgr)) {
-        free(mgr);
+        nimcp_free(mgr);
         return NULL;
     }
 
@@ -559,9 +573,9 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     mgr->hilbert = hilbert_create(&hilbert_config);
     if (!mgr->hilbert) {
         set_error("Failed to create Hilbert transform");
-        free(mgr->pac_histogram);
-        free(mgr->pac_bin_counts);
-        free(mgr);
+        nimcp_free(mgr->pac_histogram);
+        nimcp_free(mgr->pac_bin_counts);
+        nimcp_free(mgr);
         return NULL;
     }
 
@@ -605,13 +619,13 @@ void theta_gamma_destroy(theta_gamma_manager_t manager) {
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Free workspace buffers */
-    free(mgr->work_theta_phase);
-    free(mgr->work_gamma_amplitude);
-    free(mgr->work_envelope);
+    nimcp_free(mgr->work_theta_phase);
+    nimcp_free(mgr->work_gamma_amplitude);
+    nimcp_free(mgr->work_envelope);
 
     /* Free PAC histogram */
-    free(mgr->pac_histogram);
-    free(mgr->pac_bin_counts);
+    nimcp_free(mgr->pac_histogram);
+    nimcp_free(mgr->pac_bin_counts);
 
     /* Destroy Hilbert transform */
     if (mgr->hilbert) {
@@ -626,7 +640,7 @@ void theta_gamma_destroy(theta_gamma_manager_t manager) {
     /* Clear sensitive data */
     memset(mgr, 0, sizeof(*mgr));
 
-    free(mgr);
+    nimcp_free(mgr);
 }
 
 bool theta_gamma_reset(theta_gamma_manager_t manager) {

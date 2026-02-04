@@ -34,36 +34,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for swarm_consciousness_enhanced module */
-static nimcp_health_agent_t* g_swarm_consciousness_enhanced_health_agent = NULL;
-
-/**
- * @brief Set health agent for swarm_consciousness_enhanced heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void swarm_consciousness_enhanced_set_health_agent(nimcp_health_agent_t* agent) {
-    g_swarm_consciousness_enhanced_health_agent = agent;
-}
-
-/** @brief Send heartbeat from swarm_consciousness_enhanced module */
-static inline void swarm_consciousness_enhanced_heartbeat(const char* operation, float progress) {
-    if (g_swarm_consciousness_enhanced_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_swarm_consciousness_enhanced_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_consciousness_enhanced)
 
 //=============================================================================
 // Module Constants
@@ -109,7 +84,7 @@ typedef struct {
 struct swarm_consciousness_enhanced_ctx {
     uint32_t magic;                          /**< Validation magic */
     swarm_consciousness_enhanced_config_t config;  /**< Configuration */
-    pthread_mutex_t lock;                    /**< Thread safety */
+    nimcp_mutex_t lock;                    /**< Thread safety */
 
     /* Swarm reference */
     swarm_brain_t* attached_swarm;           /**< Attached swarm brain */
@@ -261,7 +236,7 @@ swarm_consciousness_enhanced_ctx_t* swarm_consciousness_enhanced_create(
     memcpy(&ctx->config, &effective_config, sizeof(effective_config));
 
     // Initialize mutex
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_consciousness_enhanced_create: failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -325,7 +300,7 @@ void swarm_consciousness_enhanced_destroy(swarm_consciousness_enhanced_ctx_t* ct
     bbb_unregister_module(MODULE_NAME);
 
     // Destroy mutex
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
 
     // Clear magic
     ctx->magic = 0;
@@ -355,10 +330,10 @@ bool swarm_consciousness_register_peer_callback(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->peer_callback = callback;
     ctx->peer_callback_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("Peer event callback registered");
     return true;
@@ -374,10 +349,10 @@ void swarm_consciousness_unregister_peer_callback(
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->peer_callback = NULL;
     ctx->peer_callback_data = NULL;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("Peer event callback unregistered");
 }
@@ -395,21 +370,21 @@ bool swarm_consciousness_on_peer_joined(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->peer_join_count++;
 
     // Auto-request phi if enabled
     if (ctx->config.auto_collect_phi_on_join && ctx->attached) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         swarm_consciousness_request_phi(ctx, drone_id);
-        pthread_mutex_lock(&ctx->lock);
+        nimcp_mutex_lock(&ctx->lock);
     }
 
     // Get current drone count
     uint32_t drone_count = ctx->remote_phi_count + 1;  // +1 for self
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke callback
     invoke_peer_callback(ctx, PEER_EVENT_JOINED, drone_id, 0.0f, drone_count);
@@ -435,7 +410,7 @@ bool swarm_consciousness_on_peer_left(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->peer_leave_count++;
 
@@ -453,7 +428,7 @@ bool swarm_consciousness_on_peer_left(
 
     uint32_t drone_count = ctx->remote_phi_count + 1;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke callback
     peer_event_type_t event_type = graceful ? PEER_EVENT_LEFT : PEER_EVENT_TIMEOUT;
@@ -489,13 +464,13 @@ bool swarm_consciousness_request_phi(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Check if already pending
     for (uint32_t i = 0; i < ctx->pending_request_count; i++) {
         if (ctx->pending_requests[i].drone_id == drone_id &&
             !ctx->pending_requests[i].response_received) {
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;  // Already pending
         }
     }
@@ -511,7 +486,7 @@ bool swarm_consciousness_request_phi(
 
     ctx->total_phi_requests++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Send request via swarm protocol
     // Message format: [msg_type][drone_id]
@@ -591,7 +566,7 @@ bool swarm_consciousness_handle_phi_response(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->total_phi_responses++;
 
@@ -624,7 +599,7 @@ bool swarm_consciousness_handle_phi_response(
         entry->valid = true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke callback
     invoke_peer_callback(ctx, PEER_EVENT_PHI_UPDATE, drone_id, phi_value,
@@ -651,7 +626,7 @@ bool swarm_consciousness_get_remote_phi(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&ctx->lock);
+    nimcp_mutex_lock((nimcp_mutex_t*)&ctx->lock);
 
     *count = ctx->remote_phi_count;
     for (uint32_t i = 0; i < ctx->remote_phi_count; i++) {
@@ -659,7 +634,7 @@ bool swarm_consciousness_get_remote_phi(
         drone_ids[i] = ctx->remote_phi[i].drone_id;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)&ctx->lock);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&ctx->lock);
 
     return true;
 }
@@ -696,7 +671,7 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
         swarm_consciousness_metrics_free(base);
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Update phi with remote values
     float total_phi = ctx->local_phi;
@@ -728,7 +703,7 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
     metrics->history_index = ctx->history_index;
     memcpy(metrics->phi_history, ctx->phi_history, sizeof(ctx->phi_history));
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Compute advanced metrics if enabled
     if (ctx->config.enable_geometry && ctx->history_count >= MIN_GEOMETRY_SAMPLES) {
@@ -744,10 +719,10 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
             ctx, &transition_detected);
         if (transition_detected) {
             invoke_phase_callback(ctx, ctx->current_phase, new_phase, metrics);
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             ctx->current_phase = new_phase;
             ctx->phase_transitions++;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
         }
     }
 
@@ -757,14 +732,14 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
         // Check for binding event
         if (metrics->binding.binding_active && !ctx->binding_active) {
             invoke_binding_callback(ctx, &metrics->binding);
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             ctx->binding_active = true;
             ctx->binding_events++;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
         } else if (!metrics->binding.binding_active && ctx->binding_active) {
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             ctx->binding_active = false;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
         }
     }
 
@@ -798,10 +773,10 @@ bool swarm_compute_information_geometry(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->history_count < MIN_GEOMETRY_SAMPLES) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         memset(geometry, 0, sizeof(*geometry));
         return false;
     }
@@ -827,7 +802,7 @@ bool swarm_compute_information_geometry(
     geometry->redundancy = geometry->total_correlation - geometry->integration;
     if (geometry->redundancy < 0) geometry->redundancy = 0;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -845,10 +820,10 @@ bool swarm_compute_consciousness_dynamics(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->history_count < MIN_DYNAMICS_SAMPLES) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         memset(dynamics, 0, sizeof(*dynamics));
         dynamics->current_phase = CONSCIOUSNESS_PHASE_CHAOS;
         return false;
@@ -909,7 +884,7 @@ bool swarm_compute_consciousness_dynamics(
     dynamics->near_transition = near_transition;
     dynamics->transition_probability = near_transition ? 0.3f : 0.05f;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -927,12 +902,12 @@ bool swarm_compute_neural_binding(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     memset(binding, 0, sizeof(*binding));
 
     if (ctx->history_count < 10) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
@@ -975,7 +950,7 @@ bool swarm_compute_neural_binding(
     binding->binding_active = binding_active;
     binding->bound_drone_count = bound_count;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -1001,7 +976,7 @@ bool swarm_compute_hierarchical_consciousness(
     const swarm_peer_info_t* peers = swarm_brain_get_peers(swarm, &peer_count);
     uint32_t total_drones = peer_count + 1;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Level 0: Individual (local phi only)
     hierarchy->phi_by_level[HIERARCHY_INDIVIDUAL] = ctx->local_phi;
@@ -1039,7 +1014,7 @@ bool swarm_compute_hierarchical_consciousness(
     hierarchy->state_by_level[HIERARCHY_SWARM] =
         swarm_classify_collective_phi(swarm_phi, total_drones);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Cross-level integration: how much does adding levels increase phi?
     float level_sum = 0.0f;
@@ -1080,7 +1055,7 @@ bool swarm_compute_consciousness_resilience(
 
     memset(resilience, 0, sizeof(*resilience));
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t total_drones = ctx->remote_phi_count + 1;
 
@@ -1129,7 +1104,7 @@ bool swarm_compute_consciousness_resilience(
     resilience->redundancy_sufficient =
         (min_remaining_phi >= SWARM_CONSCIOUSNESS_MIN_PHI_THRESHOLD * (total_drones - 1));
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -1152,10 +1127,10 @@ bool swarm_consciousness_register_phase_callback(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->phase_callback = callback;
     ctx->phase_callback_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -1177,9 +1152,9 @@ consciousness_phase_t swarm_consciousness_detect_phase_transition(
     consciousness_dynamics_t dynamics;
     swarm_compute_consciousness_dynamics(ctx, &dynamics);
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     consciousness_phase_t old_phase = ctx->current_phase;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     if (detected_transition) {
         *detected_transition = (dynamics.current_phase != old_phase);
@@ -1221,10 +1196,10 @@ bool swarm_consciousness_register_binding_callback(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->binding_callback = callback;
     ctx->binding_callback_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -1262,9 +1237,9 @@ bool swarm_consciousness_get_binding(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&ctx->lock);
+    nimcp_mutex_lock((nimcp_mutex_t*)&ctx->lock);
     memcpy(binding, &ctx->current_binding, sizeof(neural_binding_t));
-    pthread_mutex_unlock((pthread_mutex_t*)&ctx->lock);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&ctx->lock);
 
     return true;
 }
@@ -1286,11 +1261,11 @@ bool swarm_consciousness_attach_to_swarm(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->attached) {
         LOG_WARN("Already attached to a swarm");
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
@@ -1311,7 +1286,7 @@ bool swarm_consciousness_attach_to_swarm(
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Request phi from all existing peers
     if (ctx->config.auto_collect_phi_on_join) {
@@ -1337,17 +1312,17 @@ void swarm_consciousness_detach_from_swarm(
         return;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (!ctx->attached) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return;
     }
 
     ctx->attached_swarm = NULL;
     ctx->attached = false;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("Enhanced consciousness detached from swarm");
 }
@@ -1365,9 +1340,9 @@ bool swarm_consciousness_set_signal_adapter(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->signal_adapter = adapter;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("Signal adapter %s for enhanced consciousness",
               adapter ? "set" : "cleared");
@@ -1397,9 +1372,9 @@ bool swarm_consciousness_handle_protocol_message(
                 return false;
             }
 
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             float phi = ctx->local_phi;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
 
             // Send response
             uint8_t response[5];
@@ -1448,9 +1423,9 @@ bool swarm_consciousness_enhanced_register_bio_async(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->bio_async_registered = true;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("Enhanced consciousness registered with bio-async");
     return true;
@@ -1761,10 +1736,10 @@ static float estimate_joint_entropy(const float* data1, const float* data2,
 static void invoke_peer_callback(swarm_consciousness_enhanced_ctx_t* ctx,
                                   peer_event_type_t type, uint16_t drone_id,
                                   float phi, uint32_t new_count) {
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     peer_event_callback_t callback = ctx->peer_callback;
     void* user_data = ctx->peer_callback_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     if (callback) {
         peer_event_t event = {
@@ -1782,10 +1757,10 @@ static void invoke_phase_callback(swarm_consciousness_enhanced_ctx_t* ctx,
                                    consciousness_phase_t old_phase,
                                    consciousness_phase_t new_phase,
                                    const swarm_consciousness_enhanced_metrics_t* metrics) {
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     phase_transition_callback_t callback = ctx->phase_callback;
     void* user_data = ctx->phase_callback_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     if (callback) {
         callback(old_phase, new_phase, metrics, user_data);
@@ -1799,10 +1774,10 @@ static void invoke_phase_callback(swarm_consciousness_enhanced_ctx_t* ctx,
 
 static void invoke_binding_callback(swarm_consciousness_enhanced_ctx_t* ctx,
                                      const neural_binding_t* binding) {
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     binding_event_callback_t callback = ctx->binding_callback;
     void* user_data = ctx->binding_callback_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     if (callback) {
         callback(binding, user_data);

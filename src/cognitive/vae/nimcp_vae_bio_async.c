@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -71,6 +72,7 @@ static int send_message(vae_bio_async_bridge_t* bridge,
 {
     if (!bridge || !msg) return NIMCP_ERROR_VAE_BIO_ASYNC_NULL;
     if (bridge->state != VAE_BIO_ASYNC_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED;
     }
 
@@ -90,6 +92,7 @@ static int send_message(vae_bio_async_bridge_t* bridge,
         if (bridge->config.enable_logging) {
             LOG_WARNING("[VAE-BioAsync] Failed to send message: %d", result);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_SEND_FAILED, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_SEND_FAILED;
     }
 
@@ -107,6 +110,7 @@ static int send_message_async(vae_bio_async_bridge_t* bridge,
 {
     if (!bridge || !msg) return NIMCP_ERROR_VAE_BIO_ASYNC_NULL;
     if (bridge->state != VAE_BIO_ASYNC_CONNECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED;
     }
 
@@ -231,6 +235,7 @@ int vae_bio_async_connect_router(vae_bio_async_bridge_t* bridge)
             LOG_WARNING("[VAE-BioAsync] Bio-router not initialized");
         }
         bridge->state = VAE_BIO_ASYNC_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED;
     }
 
@@ -245,6 +250,7 @@ int vae_bio_async_connect_router(vae_bio_async_bridge_t* bridge)
     bridge->bio_context = bio_router_register_module(&info);
     if (!bridge->bio_context) {
         bridge->state = VAE_BIO_ASYNC_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_NOT_CONNECTED;
     }
 
@@ -319,6 +325,7 @@ int vae_bio_async_register_handlers(vae_bio_async_bridge_t* bridge)
         vae_bio_async_handle_encode_request
     );
     if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL;
     }
 
@@ -329,6 +336,7 @@ int vae_bio_async_register_handlers(vae_bio_async_bridge_t* bridge)
         vae_bio_async_handle_decode_request
     );
     if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL;
     }
 
@@ -339,6 +347,7 @@ int vae_bio_async_register_handlers(vae_bio_async_bridge_t* bridge)
         vae_bio_async_handle_sample_request
     );
     if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL;
     }
 
@@ -349,6 +358,7 @@ int vae_bio_async_register_handlers(vae_bio_async_bridge_t* bridge)
         vae_bio_async_handle_fep_sync_request
     );
     if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL, "vae_bio_async: error condition");
         return NIMCP_ERROR_VAE_BIO_ASYNC_HANDLER_FAIL;
     }
 
@@ -723,6 +733,7 @@ nimcp_error_t vae_bio_async_handle_encode_request(
     vae_bio_async_bridge_t* bridge = (vae_bio_async_bridge_t*)user_data;
 
     if (!msg || msg_size < sizeof(vae_bio_msg_encode_request_t) || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -769,6 +780,7 @@ nimcp_error_t vae_bio_async_handle_decode_request(
     vae_bio_async_bridge_t* bridge = (vae_bio_async_bridge_t*)user_data;
 
     if (!msg || msg_size < sizeof(vae_bio_msg_decode_request_t) || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -816,6 +828,7 @@ nimcp_error_t vae_bio_async_handle_sample_request(
     vae_bio_async_bridge_t* bridge = (vae_bio_async_bridge_t*)user_data;
 
     if (!msg || msg_size < sizeof(vae_bio_msg_sample_request_t) || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -860,6 +873,7 @@ nimcp_error_t vae_bio_async_handle_fep_sync_request(
     vae_bio_async_bridge_t* bridge = (vae_bio_async_bridge_t*)user_data;
 
     if (!msg || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

@@ -22,35 +22,9 @@
 #include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "API"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for refactored module */
-static nimcp_health_agent_t* g_refactored_health_agent = NULL;
-
-/**
- * @brief Set health agent for refactored heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void refactored_set_health_agent(nimcp_health_agent_t* agent) {
-    g_refactored_health_agent = agent;
-}
-
-/** @brief Send heartbeat from refactored module */
-static inline void refactored_heartbeat(const char* operation, float progress) {
-    if (g_refactored_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_refactored_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(refactored)
 
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
@@ -72,6 +46,7 @@ static inline void refactored_heartbeat(const char* operation, float progress) {
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>

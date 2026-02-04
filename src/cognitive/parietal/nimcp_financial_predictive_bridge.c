@@ -17,49 +17,52 @@
 #include <string.h>
 #include <math.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_predictive_health_agent = NULL;
 
-/**
- * @brief Set global health agent for financial predictive bridge
- * @param agent Health agent (NULL to disable)
- */
-void financial_predictive_bridge_set_global_health_agent(nimcp_health_agent_t* agent) {
-    g_fin_predictive_health_agent = agent;
-}
+
+/* Stub declarations for subsystem integration globals */
+static void* g_fin_predictive_bridge_immune = NULL;
+static void* g_fin_predictive_bridge_bbb = NULL;
 
 //=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune,
-                                            const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune,
-                                         int source, const uint8_t* epitope,
-                                         size_t epitope_len, uint32_t severity,
-                                         uint32_t source_node, uint32_t* antigen_id);
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size,
-                              const char* context);
+static mesh_participant_id_t g_fin_predictive_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_predictive_mesh_registry = NULL;
 
-static brain_immune_system_t* g_fin_predictive_bridge_immune = NULL;
-static bbb_system_t g_fin_predictive_bridge_bbb = NULL;
-
-void financial_predictive_bridge_set_global_immune(brain_immune_system_t* immune) {
-    g_fin_predictive_bridge_immune = immune;
+nimcp_error_t fin_predictive_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_predictive_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_predictive", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_predictive";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_predictive_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_predictive_mesh_registry = registry;
+    return err;
 }
+
+void fin_predictive_mesh_unregister(void) {
+    if (g_fin_predictive_mesh_registry && g_fin_predictive_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_predictive_mesh_registry, g_fin_predictive_mesh_id);
+        g_fin_predictive_mesh_id = 0;
+        g_fin_predictive_mesh_registry = NULL;
+    }
+}
+
 
 void financial_predictive_bridge_set_global_bbb(bbb_system_t bbb) {
     g_fin_predictive_bridge_bbb = bbb;
@@ -353,7 +356,7 @@ financial_predictive_bridge_t* financial_predictive_bridge_create(
     fin_predictive_heartbeat("create", 0.0f);
 
     financial_predictive_bridge_t* bridge =
-        (financial_predictive_bridge_t*)malloc(sizeof(financial_predictive_bridge_t));
+        (financial_predictive_bridge_t*)nimcp_malloc(sizeof(financial_predictive_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_predictive_bridge_t");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -386,10 +389,10 @@ financial_predictive_bridge_t* financial_predictive_bridge_create(
     uint32_t belief_size = bridge->config.num_assets * bridge->config.prediction_horizon;
     bridge->belief_dim = belief_size;
 
-    bridge->belief_mean = (float*)calloc(belief_size, sizeof(float));
-    bridge->belief_precision = (float*)calloc(belief_size, sizeof(float));
-    bridge->prior_mean = (float*)calloc(belief_size, sizeof(float));
-    bridge->prior_precision = (float*)calloc(belief_size, sizeof(float));
+    bridge->belief_mean = (float*)nimcp_calloc(belief_size, sizeof(float));
+    bridge->belief_precision = (float*)nimcp_calloc(belief_size, sizeof(float));
+    bridge->prior_mean = (float*)nimcp_calloc(belief_size, sizeof(float));
+    bridge->prior_precision = (float*)nimcp_calloc(belief_size, sizeof(float));
 
     if (!bridge->belief_mean || !bridge->belief_precision ||
         !bridge->prior_mean || !bridge->prior_precision) {
@@ -431,12 +434,12 @@ void financial_predictive_bridge_destroy(financial_predictive_bridge_t* bridge) 
     if (!bridge) return;
     fin_predictive_heartbeat("destroy", 0.0f);
 
-    if (bridge->belief_mean) free(bridge->belief_mean);
-    if (bridge->belief_precision) free(bridge->belief_precision);
-    if (bridge->prior_mean) free(bridge->prior_mean);
-    if (bridge->prior_precision) free(bridge->prior_precision);
+    if (bridge->belief_mean) nimcp_free(bridge->belief_mean);
+    if (bridge->belief_precision) nimcp_free(bridge->belief_precision);
+    if (bridge->prior_mean) nimcp_free(bridge->prior_mean);
+    if (bridge->prior_precision) nimcp_free(bridge->prior_precision);
 
-    free(bridge);
+    nimcp_free(bridge);
     fin_predictive_heartbeat("destroy", 1.0f);
 }
 
@@ -1221,7 +1224,7 @@ fin_predictive_state_t* financial_predictive_state_create(
         horizon = FIN_PREDICTIVE_MAX_HORIZON;
     }
 
-    fin_predictive_state_t* state = (fin_predictive_state_t*)malloc(sizeof(fin_predictive_state_t));
+    fin_predictive_state_t* state = (fin_predictive_state_t*)nimcp_malloc(sizeof(fin_predictive_state_t));
     if (!state) return NULL;
 
     memset(state, 0, sizeof(*state));
@@ -1229,9 +1232,9 @@ fin_predictive_state_t* financial_predictive_state_create(
     state->horizon = horizon;
 
     uint32_t size = num_assets * horizon;
-    state->predictions = (float*)calloc(size, sizeof(float));
-    state->precisions = (float*)calloc(size, sizeof(float));
-    state->prediction_errors = (float*)calloc(size, sizeof(float));
+    state->predictions = (float*)nimcp_calloc(size, sizeof(float));
+    state->precisions = (float*)nimcp_calloc(size, sizeof(float));
+    state->prediction_errors = (float*)nimcp_calloc(size, sizeof(float));
 
     if (!state->predictions || !state->precisions || !state->prediction_errors) {
         financial_predictive_state_destroy(state);
@@ -1249,10 +1252,10 @@ fin_predictive_state_t* financial_predictive_state_create(
 void financial_predictive_state_destroy(fin_predictive_state_t* state) {
     if (!state) return;
 
-    if (state->predictions) free(state->predictions);
-    if (state->precisions) free(state->precisions);
-    if (state->prediction_errors) free(state->prediction_errors);
-    free(state);
+    if (state->predictions) nimcp_free(state->predictions);
+    if (state->precisions) nimcp_free(state->precisions);
+    if (state->prediction_errors) nimcp_free(state->prediction_errors);
+    nimcp_free(state);
 }
 
 fin_active_inference_result_t* financial_predictive_result_create(
@@ -1262,15 +1265,15 @@ fin_active_inference_result_t* financial_predictive_result_create(
     if (num_actions == 0) num_actions = FIN_ACTION_COUNT;
 
     fin_active_inference_result_t* result =
-        (fin_active_inference_result_t*)malloc(sizeof(fin_active_inference_result_t));
+        (fin_active_inference_result_t*)nimcp_malloc(sizeof(fin_active_inference_result_t));
     if (!result) return NULL;
 
     memset(result, 0, sizeof(*result));
     result->num_weights = num_assets;
     result->num_actions = num_actions;
 
-    result->action_weights = (float*)calloc(num_assets, sizeof(float));
-    result->all_actions = (fin_efe_result_t*)calloc(num_actions, sizeof(fin_efe_result_t));
+    result->action_weights = (float*)nimcp_calloc(num_assets, sizeof(float));
+    result->all_actions = (fin_efe_result_t*)nimcp_calloc(num_actions, sizeof(fin_efe_result_t));
 
     if (!result->action_weights || !result->all_actions) {
         financial_predictive_result_destroy(result);
@@ -1283,9 +1286,9 @@ fin_active_inference_result_t* financial_predictive_result_create(
 void financial_predictive_result_destroy(fin_active_inference_result_t* result) {
     if (!result) return;
 
-    if (result->action_weights) free(result->action_weights);
-    if (result->all_actions) free(result->all_actions);
-    free(result);
+    if (result->action_weights) nimcp_free(result->action_weights);
+    if (result->all_actions) nimcp_free(result->all_actions);
+    nimcp_free(result);
 }
 
 //=============================================================================

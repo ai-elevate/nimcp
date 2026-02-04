@@ -33,33 +33,10 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for brain_training_integration module */
-static nimcp_health_agent_t* g_brain_training_integration_health_agent = NULL;
-
-/**
- * @brief Set health agent for brain_training_integration heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void brain_training_integration_set_health_agent(nimcp_health_agent_t* agent) {
-    g_brain_training_integration_health_agent = agent;
-}
-
-/** @brief Send heartbeat from brain_training_integration module */
-static inline void brain_training_integration_heartbeat(const char* operation, float progress) {
-    if (g_brain_training_integration_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_brain_training_integration_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_training_integration)
 
 /* ============================================================================
  * Internal Structures
@@ -363,7 +340,7 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
         local_config = nimcp_brain_training_default_config();
     }
 
-    nimcp_brain_training_ctx_t* ctx = calloc(1, sizeof(nimcp_brain_training_ctx_t));
+    nimcp_brain_training_ctx_t* ctx = nimcp_calloc(1, sizeof(nimcp_brain_training_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate brain-training context");
         return NULL;
@@ -546,7 +523,7 @@ void nimcp_brain_training_destroy(nimcp_brain_training_ctx_t* ctx)
         }
     }
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_INFO("Brain-training context destroyed");
 }
 
@@ -1084,7 +1061,7 @@ nimcp_result_t nimcp_brain_training_step(
 
     /* Fallback to malloc if unified memory not available or failed */
     if (!gradients) {
-        gradients = (float*)malloc(gradient_size);
+        gradients = (float*)nimcp_malloc(gradient_size);
         NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY, "Failed to allocate gradient buffer");
     }
 
@@ -1101,7 +1078,7 @@ nimcp_result_t nimcp_brain_training_step(
         if (grad_handle) {
             unified_mem_free(grad_handle);
         } else {
-            free(gradients);
+            nimcp_free(gradients);
         }
         return res;
     }
@@ -1117,7 +1094,7 @@ nimcp_result_t nimcp_brain_training_step(
     if (grad_handle) {
         unified_mem_free(grad_handle);
     } else {
-        free(gradients);
+        nimcp_free(gradients);
     }
 
     /* Check for convergence */
@@ -1708,7 +1685,7 @@ uint64_t nimcp_brain_training_apply_dropout(
     }
 
     /* Apply dropout */
-    uint8_t* dropout_mask = mask ? (uint8_t*)malloc(count) : NULL;
+    uint8_t* dropout_mask = mask ? (uint8_t*)nimcp_malloc(count) : NULL;
     nimcp_result_t res = nimcp_dropout_forward(dropout_ctx, output, count, dropout_mask);
 
     /* Count dropped elements */
@@ -1726,7 +1703,7 @@ uint64_t nimcp_brain_training_apply_dropout(
     }
 
     if (dropout_mask) {
-        free(dropout_mask);
+        nimcp_free(dropout_mask);
     }
     nimcp_dropout_destroy(dropout_ctx);
 
@@ -1820,7 +1797,7 @@ nimcp_result_t nimcp_brain_training_step_full(
 
     /* Allocate gradient buffer */
     size_t gradient_count = batch_size * output_size;
-    float* gradients = (float*)malloc(gradient_count * sizeof(float));
+    float* gradients = (float*)nimcp_malloc(gradient_count * sizeof(float));
     NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY,
                       "nimcp_brain_training_step_full: failed to allocate gradients");
     memset(gradients, 0, gradient_count * sizeof(float));
@@ -1832,7 +1809,7 @@ nimcp_result_t nimcp_brain_training_step_full(
     );
 
     if (res != NIMCP_SUCCESS) {
-        free(gradients);
+        nimcp_free(gradients);
         return res;
     }
 
@@ -1856,7 +1833,7 @@ nimcp_result_t nimcp_brain_training_step_full(
         nimcp_grad_health_t health = nimcp_gradient_check_health(gradients, gradient_count);
         if (health == NIMCP_GRAD_HAS_NAN) {
             ctx->stats.grad_nan_count++;
-            free(gradients);
+            nimcp_free(gradients);
             return NIMCP_TRAINING_ERROR_GRAD_NAN;  /* Skip this step */
         }
         if (health == NIMCP_GRAD_HAS_INF) {
@@ -1875,7 +1852,7 @@ nimcp_result_t nimcp_brain_training_step_full(
 
             if (!nimcp_gradient_accum_ready(gm)) {
                 /* Not ready to apply yet, skip optimization */
-                free(gradients);
+                nimcp_free(gradients);
                 return NIMCP_SUCCESS;
             }
 
@@ -1932,7 +1909,7 @@ nimcp_result_t nimcp_brain_training_step_full(
         nimcp_optimizer_set_lr(opt, original_lr);
     }
 
-    free(gradients);
+    nimcp_free(gradients);
 
     if (res != NIMCP_SUCCESS) {
         return res;
@@ -2049,7 +2026,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
 
     /* Allocate gradient buffer */
     size_t gradient_count = batch_size * output_size;
-    float* gradients = (float*)malloc(gradient_count * sizeof(float));
+    float* gradients = (float*)nimcp_malloc(gradient_count * sizeof(float));
     NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY,
                       "nimcp_brain_training_step_biological: failed to allocate gradients");
     memset(gradients, 0, gradient_count * sizeof(float));
@@ -2061,7 +2038,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
     );
 
     if (res != NIMCP_SUCCESS) {
-        free(gradients);
+        nimcp_free(gradients);
         return res;
     }
 
@@ -2213,7 +2190,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
         ctx->stats.avg_lr_modulation = ctx->cumulative_lr_mod / (float)ctx->bio_update_count;
     }
 
-    free(gradients);
+    nimcp_free(gradients);
 
     /* Check convergence/divergence */
     float loss_change = fabsf(*loss_value - ctx->last_loss);

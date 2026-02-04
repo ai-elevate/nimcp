@@ -18,31 +18,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(biology)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for biology module */
-static nimcp_health_agent_t* g_biology_health_agent = NULL;
+static mesh_participant_id_t g_biology_mesh_id = 0;
+static mesh_participant_registry_t* g_biology_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for biology heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void biology_set_health_agent(nimcp_health_agent_t* agent) {
-    g_biology_health_agent = agent;
+nimcp_error_t biology_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_biology_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "biology", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "biology";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_biology_mesh_id);
+    if (err == NIMCP_SUCCESS) g_biology_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from biology module */
-static inline void biology_heartbeat(const char* operation, float progress) {
-    if (g_biology_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_biology_health_agent, operation, progress);
+void biology_mesh_unregister(void) {
+    if (g_biology_mesh_registry && g_biology_mesh_id != 0) {
+        mesh_participant_unregister(g_biology_mesh_registry, g_biology_mesh_id);
+        g_biology_mesh_id = 0;
+        g_biology_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from biology module (instance-level) */
 static inline void biology_heartbeat_instance(
@@ -241,7 +255,7 @@ biology_t* biology_create_custom(const biology_config_t* config) {
         return NULL;
     }
 
-    biology_t* bio = calloc(1, sizeof(biology_t));
+    biology_t* bio = nimcp_calloc(1, sizeof(biology_t));
     if (!bio) {
         set_biology_error("Failed to allocate biology struct");
         return NULL;
@@ -255,7 +269,7 @@ biology_t* biology_create_custom(const biology_config_t* config) {
     bio->lock = nimcp_mutex_create(&attr);
     if (!bio->lock) {
         set_biology_error("Failed to create mutex");
-        free(bio);
+        nimcp_free(bio);
         return NULL;
     }
 
@@ -272,7 +286,7 @@ void biology_destroy(biology_t* bio) {
     if (bio->lock) {
         nimcp_mutex_free(bio->lock);
     }
-    free(bio);
+    nimcp_free(bio);
 }
 
 /* ============================================================================
@@ -757,7 +771,7 @@ phylo_tree_t* biology_create_phylo_tree(
 
     nimcp_mutex_lock(bio->lock);
 
-    phylo_tree_t* tree = calloc(1, sizeof(phylo_tree_t));
+    phylo_tree_t* tree = nimcp_calloc(1, sizeof(phylo_tree_t));
     if (!tree) {
         set_biology_error("Failed to allocate tree");
         nimcp_mutex_unlock(bio->lock);
@@ -765,7 +779,7 @@ phylo_tree_t* biology_create_phylo_tree(
     }
 
     /* Create leaf nodes */
-    phylo_node_t** nodes = calloc(num_species, sizeof(phylo_node_t*));
+    phylo_node_t** nodes = nimcp_calloc(num_species, sizeof(phylo_node_t*));
     for (uint32_t i = 0; i < num_species; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && num_species > 256) {
@@ -773,7 +787,7 @@ phylo_tree_t* biology_create_phylo_tree(
                              (float)(i + 1) / (float)num_species);
         }
 
-        nodes[i] = calloc(1, sizeof(phylo_node_t));
+        nodes[i] = nimcp_calloc(1, sizeof(phylo_node_t));
         nodes[i]->id = i;
         strncpy(nodes[i]->name, species_names[i], sizeof(nodes[i]->name) - 1);
         nodes[i]->is_leaf = true;
@@ -808,7 +822,7 @@ phylo_tree_t* biology_create_phylo_tree(
         }
 
         /* Create internal node */
-        phylo_node_t* internal = calloc(1, sizeof(phylo_node_t));
+        phylo_node_t* internal = nimcp_calloc(1, sizeof(phylo_node_t));
         internal->id = next_id++;
         internal->left = nodes[min_i];
         internal->right = nodes[min_j];
@@ -844,7 +858,7 @@ phylo_tree_t* biology_create_phylo_tree(
     tree->num_leaves = num_species;
     tree->num_internal = num_species - 1;
 
-    free(nodes);
+    nimcp_free(nodes);
     bio->phylo_analyses++;
     nimcp_mutex_unlock(bio->lock);
 
@@ -855,7 +869,7 @@ static void destroy_phylo_node(phylo_node_t* node) {
     if (!node) return;
     destroy_phylo_node(node->left);
     destroy_phylo_node(node->right);
-    free(node);
+    nimcp_free(node);
 }
 
 void biology_destroy_phylo_tree(phylo_tree_t* tree) {
@@ -865,7 +879,7 @@ void biology_destroy_phylo_tree(phylo_tree_t* tree) {
 
 
     destroy_phylo_node(tree->root);
-    free(tree);
+    nimcp_free(tree);
 }
 
 static phylo_node_t* find_node_by_name(phylo_node_t* node, const char* name) {

@@ -24,34 +24,44 @@
  *===========================================================================*/
 
 #define LOG_MODULE "cognitive.extrapolation.counterfactual"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(counterfactual_imagination)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for counterfactual_imagination module */
-static nimcp_health_agent_t* g_counterfactual_imagination_health_agent = NULL;
+static mesh_participant_id_t g_counterfactual_imagination_mesh_id = 0;
+static mesh_participant_registry_t* g_counterfactual_imagination_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for counterfactual_imagination heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void counterfactual_imagination_set_health_agent(nimcp_health_agent_t* agent) {
-    g_counterfactual_imagination_health_agent = agent;
+nimcp_error_t counterfactual_imagination_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_counterfactual_imagination_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "counterfactual_imagination", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "counterfactual_imagination";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_counterfactual_imagination_mesh_id);
+    if (err == NIMCP_SUCCESS) g_counterfactual_imagination_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from counterfactual_imagination module */
-static inline void counterfactual_imagination_heartbeat(const char* operation, float progress) {
-    if (g_counterfactual_imagination_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_counterfactual_imagination_health_agent, operation, progress);
+void counterfactual_imagination_mesh_unregister(void) {
+    if (g_counterfactual_imagination_mesh_registry && g_counterfactual_imagination_mesh_id != 0) {
+        mesh_participant_unregister(g_counterfactual_imagination_mesh_registry, g_counterfactual_imagination_mesh_id);
+        g_counterfactual_imagination_mesh_id = 0;
+        g_counterfactual_imagination_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from counterfactual_imagination module (instance-level) */
 static inline void counterfactual_imagination_heartbeat_instance(
@@ -117,7 +127,7 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     counterfactual_imagination_heartbeat("counterfactu_cf_create", 0.0f);
 
 
-    nimcp_counterfactual_t* cf = calloc(1, sizeof(nimcp_counterfactual_t));
+    nimcp_counterfactual_t* cf = nimcp_calloc(1, sizeof(nimcp_counterfactual_t));
     if (!cf) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cf");
@@ -136,27 +146,27 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     /* Create causal model */
     cf->causal_model = causal_model_create(cf->config.max_variables);
     if (!cf->causal_model) {
-        free(cf);
+        nimcp_free(cf);
         return NULL;
     }
 
     /* Allocate scenarios */
     cf->scenario_capacity = cf->config.max_scenarios;
-    cf->scenarios = calloc(cf->scenario_capacity, sizeof(cf_scenario_t));
+    cf->scenarios = nimcp_calloc(cf->scenario_capacity, sizeof(cf_scenario_t));
     if (!cf->scenarios) {
         causal_model_destroy(cf->causal_model);
-        free(cf);
+        nimcp_free(cf);
         return NULL;
     }
     cf->num_scenarios = 0;
 
     /* Allocate history */
     cf->history_capacity = cf->config.max_history;
-    cf->history = calloc(cf->history_capacity, sizeof(cf_history_entry_t));
+    cf->history = nimcp_calloc(cf->history_capacity, sizeof(cf_history_entry_t));
     if (!cf->history) {
-        free(cf->scenarios);
+        nimcp_free(cf->scenarios);
         causal_model_destroy(cf->causal_model);
-        free(cf);
+        nimcp_free(cf);
         return NULL;
     }
     cf->history_count = 0;
@@ -232,9 +242,9 @@ void cf_destroy(nimcp_counterfactual_t* cf) {
         causal_model_destroy(cf->causal_model);
     }
 
-    free(cf->scenarios);
-    free(cf->history);
-    free(cf);
+    nimcp_free(cf->scenarios);
+    nimcp_free(cf->history);
+    nimcp_free(cf);
 }
 
 /*=============================================================================
@@ -635,7 +645,7 @@ cf_error_t cf_imagine_scenario(
     cf_causal_model_t* model = cf->causal_model;
 
     /* STEP 1: Save current factual values */
-    float* factual_values = calloc(model->num_variables, sizeof(float));
+    float* factual_values = nimcp_calloc(model->num_variables, sizeof(float));
     if (!factual_values) {
         cf->status = CF_STATUS_ERROR;
         cf->last_error = CF_ERR_MEMORY_ALLOC;
@@ -657,7 +667,7 @@ cf_error_t cf_imagine_scenario(
     if (!model->topological_valid) {
         cf_error_t err = compute_topological_order(model);
         if (err != CF_OK) {
-            free(factual_values);
+            nimcp_free(factual_values);
             cf->status = CF_STATUS_ERROR;
             cf->last_error = err;
             return err;
@@ -685,7 +695,7 @@ cf_error_t cf_imagine_scenario(
     /* STEP 4: Propagate counterfactual values through the causal graph */
     cf_error_t err = propagate_values(model);
     if (err != CF_OK) {
-        free(factual_values);
+        nimcp_free(factual_values);
         cf->status = CF_STATUS_ERROR;
         cf->last_error = err;
         return err;
@@ -763,7 +773,7 @@ cf_error_t cf_imagine_scenario(
         model->variables[i].value = factual_values[i];
     }
 
-    free(factual_values);
+    nimcp_free(factual_values);
     cf->status = CF_STATUS_IDLE;
 
     return CF_OK;
@@ -1150,7 +1160,7 @@ const char* cf_variable_type_string(cf_variable_type_t type) {
  *===========================================================================*/
 
 static cf_causal_model_t* causal_model_create(uint32_t capacity) {
-    cf_causal_model_t* model = calloc(1, sizeof(cf_causal_model_t));
+    cf_causal_model_t* model = nimcp_calloc(1, sizeof(cf_causal_model_t));
     if (!model) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate model");
@@ -1160,30 +1170,30 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
     }
 
     model->variable_capacity = capacity;
-    model->variables = calloc(capacity, sizeof(cf_variable_t));
+    model->variables = nimcp_calloc(capacity, sizeof(cf_variable_t));
     if (!model->variables) {
-        free(model);
+        nimcp_free(model);
         return NULL;
     }
 
     /* Allocate adjacency matrix */
-    model->adjacency = calloc(capacity * capacity, sizeof(float));
-    model->has_edge = calloc(capacity * capacity, sizeof(bool));
+    model->adjacency = nimcp_calloc(capacity * capacity, sizeof(float));
+    model->has_edge = nimcp_calloc(capacity * capacity, sizeof(bool));
     if (!model->adjacency || !model->has_edge) {
-        free(model->variables);
-        free(model->adjacency);
-        free(model->has_edge);
-        free(model);
+        nimcp_free(model->variables);
+        nimcp_free(model->adjacency);
+        nimcp_free(model->has_edge);
+        nimcp_free(model);
         return NULL;
     }
 
     /* Allocate topological order array */
-    model->topological_order = calloc(capacity, sizeof(uint32_t));
+    model->topological_order = nimcp_calloc(capacity, sizeof(uint32_t));
     if (!model->topological_order) {
-        free(model->variables);
-        free(model->adjacency);
-        free(model->has_edge);
-        free(model);
+        nimcp_free(model->variables);
+        nimcp_free(model->adjacency);
+        nimcp_free(model->has_edge);
+        nimcp_free(model);
         return NULL;
     }
 
@@ -1204,15 +1214,15 @@ static void causal_model_destroy(cf_causal_model_t* model) {
                              (float)(i + 1) / (float)model->num_variables);
         }
 
-        free(model->variables[i].parent_ids);
-        free(model->variables[i].causal_weights);
+        nimcp_free(model->variables[i].parent_ids);
+        nimcp_free(model->variables[i].causal_weights);
     }
 
-    free(model->variables);
-    free(model->adjacency);
-    free(model->has_edge);
-    free(model->topological_order);
-    free(model);
+    nimcp_free(model->variables);
+    nimcp_free(model->adjacency);
+    nimcp_free(model->has_edge);
+    nimcp_free(model->topological_order);
+    nimcp_free(model);
 }
 
 static cf_error_t causal_model_add_variable(
@@ -1308,7 +1318,7 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
     uint32_t cap = model->variable_capacity;
 
     /* Compute in-degrees */
-    uint32_t* in_degree = calloc(n, sizeof(uint32_t));
+    uint32_t* in_degree = nimcp_calloc(n, sizeof(uint32_t));
     if (!in_degree) return CF_ERR_MEMORY_ALLOC;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1332,9 +1342,9 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
     }
 
     /* Kahn's algorithm for topological sort */
-    uint32_t* queue = calloc(n, sizeof(uint32_t));
+    uint32_t* queue = nimcp_calloc(n, sizeof(uint32_t));
     if (!queue) {
-        free(in_degree);
+        nimcp_free(in_degree);
         return CF_ERR_MEMORY_ALLOC;
     }
 
@@ -1375,8 +1385,8 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
         }
     }
 
-    free(in_degree);
-    free(queue);
+    nimcp_free(in_degree);
+    nimcp_free(queue);
 
     /* Check for cycle */
     if (order_idx != n) {

@@ -45,36 +45,12 @@
 #include <stdio.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 
 #define LOG_MODULE "spatial_neuromod"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for spatial_neuromod module */
-static nimcp_health_agent_t* g_spatial_neuromod_health_agent = NULL;
-
-/**
- * @brief Set health agent for spatial_neuromod heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void spatial_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
-    g_spatial_neuromod_health_agent = agent;
-}
-
-/** @brief Send heartbeat from spatial_neuromod module */
-static inline void spatial_neuromod_heartbeat(const char* operation, float progress) {
-    if (g_spatial_neuromod_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_spatial_neuromod_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spatial_neuromod)
 
 //=============================================================================
 // Constants
@@ -127,7 +103,7 @@ typedef struct {
     spatial_neuromod_system_t* system;         /**< Associated spatial system */
     bool initialized;                          /**< Initialization status */
     uint64_t messages_processed;               /**< Statistics counter */
-    pthread_mutex_t init_mutex;                /**< Mutex protecting initialization */
+    nimcp_mutex_t init_mutex;                /**< Mutex protecting initialization */
 } spatial_neuromod_bio_state_t;
 
 /** Global bio-async state (singleton) */
@@ -136,7 +112,7 @@ static spatial_neuromod_bio_state_t g_spatial_bio_state = {
     .system = NULL,
     .initialized = false,
     .messages_processed = 0,
-    .init_mutex = PTHREAD_MUTEX_INITIALIZER
+    .init_mutex = NIMCP_MUTEX_INITIALIZER
 };
 
 //=============================================================================
@@ -374,11 +350,11 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     }
 
     // Thread-safe initialization check with mutex
-    pthread_mutex_lock(&g_spatial_bio_state.init_mutex);
+    nimcp_mutex_lock(&g_spatial_bio_state.init_mutex);
 
     if (g_spatial_bio_state.initialized) {
         g_spatial_bio_state.system = system;  // Update system reference
-        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
         LOG_DEBUG("Spatial neuromodulator bio-async already initialized, updated system ref");
         return NIMCP_SUCCESS;
     }
@@ -394,7 +370,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
 
     g_spatial_bio_state.module_ctx = bio_router_register_module(&module_info);
     if (!g_spatial_bio_state.module_ctx) {
-        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
         LOG_ERROR("Failed to register spatial neuromodulator module with bio-router");
         return NIMCP_ERROR_NOT_SUPPORTED;
     }
@@ -423,7 +399,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
             LOG_ERROR("Failed to register neuromodulator release handler");
             bio_router_unregister_module(g_spatial_bio_state.module_ctx);
             g_spatial_bio_state.module_ctx = NULL;
-            pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+            nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
             return err;
         }
 
@@ -435,7 +411,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     g_spatial_bio_state.initialized = true;
     g_spatial_bio_state.messages_processed = 0;
 
-    pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+    nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
 
     LOG_INFO("Spatial neuromodulator bio-async integration initialized");
 
@@ -446,10 +422,10 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
  * @brief Shutdown bio-async integration
  */
 static void spatial_neuromod_bio_async_shutdown(void) {
-    pthread_mutex_lock(&g_spatial_bio_state.init_mutex);
+    nimcp_mutex_lock(&g_spatial_bio_state.init_mutex);
 
     if (!g_spatial_bio_state.initialized) {
-        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+        nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
         return;
     }
 
@@ -462,7 +438,7 @@ static void spatial_neuromod_bio_async_shutdown(void) {
     g_spatial_bio_state.system = NULL;
     g_spatial_bio_state.initialized = false;
 
-    pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+    nimcp_mutex_unlock(&g_spatial_bio_state.init_mutex);
 
     LOG_INFO("Spatial neuromodulator bio-async integration shutdown (processed %lu messages)",
              processed);

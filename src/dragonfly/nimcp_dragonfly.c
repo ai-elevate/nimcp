@@ -16,33 +16,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly module */
-static nimcp_health_agent_t* g_dragonfly_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly module */
-static inline void dragonfly_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_STATIC(dragonfly)
 
 //=============================================================================
 // Internal Structures
@@ -221,7 +198,7 @@ dragonfly_system_t* dragonfly_system_create(const dragonfly_config_t* config) {
         return NULL;
     }
 
-    dragonfly_system_t* system = (dragonfly_system_t*)calloc(1, sizeof(dragonfly_system_t));
+    dragonfly_system_t* system = (dragonfly_system_t*)nimcp_calloc(1, sizeof(dragonfly_system_t));
     if (!system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_system_create: failed to allocate system");
         return NULL;
@@ -233,7 +210,7 @@ dragonfly_system_t* dragonfly_system_create(const dragonfly_config_t* config) {
     system->mutex = nimcp_mutex_create(NULL);
     if (!system->mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_system_create: failed to create mutex");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -273,7 +250,7 @@ void dragonfly_system_destroy(dragonfly_system_t* system) {
     if (system->tsdn) tsdn_destroy(system->tsdn);
     if (system->mutex) nimcp_mutex_free(system->mutex);
 
-    free(system);
+    nimcp_free(system);
 }
 
 int dragonfly_system_reset(dragonfly_system_t* system) {

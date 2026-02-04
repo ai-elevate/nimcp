@@ -44,35 +44,9 @@
 #include "utils/thread/nimcp_thread.h"
 
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for swarm_consciousness module */
-static nimcp_health_agent_t* g_swarm_consciousness_health_agent = NULL;
-
-/**
- * @brief Set health agent for swarm_consciousness heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void swarm_consciousness_set_health_agent(nimcp_health_agent_t* agent) {
-    g_swarm_consciousness_health_agent = agent;
-}
-
-/** @brief Send heartbeat from swarm_consciousness module */
-static inline void swarm_consciousness_heartbeat(const char* operation, float progress) {
-    if (g_swarm_consciousness_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_swarm_consciousness_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_consciousness)
 
 //=============================================================================
 // KG-Driven Wiring Infrastructure
@@ -166,7 +140,7 @@ typedef struct swarm_consciousness_ctx {
     swarm_consciousness_config_t config;     /**< Configuration */
     swarm_consciousness_metrics_t* current_metrics; /**< Current metrics */
     consciousness_scaling_model_t scaling_model; /**< Scaling model parameters */
-    pthread_mutex_t lock;                    /**< Thread safety */
+    nimcp_mutex_t lock;                    /**< Thread safety */
 
     // Monitoring state
     bool monitoring_active;                  /**< Is monitoring thread running? */
@@ -274,7 +248,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
     memcpy(&ctx->config, config, sizeof(swarm_consciousness_config_t));
 
     // Initialize mutex
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in swarm_consciousness_create");
         nimcp_free(ctx);
@@ -287,7 +261,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
     if (!ctx->current_metrics) {
         LOG_ERROR("Failed to allocate metrics structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consciousness metrics structure");
-        pthread_mutex_destroy(&ctx->lock);
+        nimcp_mutex_destroy(&ctx->lock);
         nimcp_free(ctx);
         return NULL;
     }
@@ -390,7 +364,7 @@ void swarm_consciousness_destroy(swarm_consciousness_ctx_t* context) {
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
 
     // Clear magic
     ctx->magic = 0;
@@ -670,7 +644,7 @@ swarm_consciousness_metrics_t* swarm_consciousness_get_metrics(
         return NULL;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     swarm_consciousness_metrics_t* result = (swarm_consciousness_metrics_t*)
         nimcp_malloc(sizeof(swarm_consciousness_metrics_t));
@@ -678,7 +652,7 @@ swarm_consciousness_metrics_t* swarm_consciousness_get_metrics(
         memcpy(result, ctx->current_metrics, sizeof(swarm_consciousness_metrics_t));
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return result;
 }
@@ -715,11 +689,11 @@ static void* consciousness_monitor_thread(void* arg) {
 
         // Invoke callback if set
         if (ctx->callback && ctx->current_metrics) {
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             swarm_consciousness_metrics_t metrics_copy;
             memcpy(&metrics_copy, ctx->current_metrics,
                    sizeof(swarm_consciousness_metrics_t));
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
 
             ctx->callback(&metrics_copy, ctx->user_data);
         }
@@ -761,12 +735,12 @@ static bool swarm_consciousness_start_monitoring_internal(
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Guard: Already monitoring
     if (ctx->monitoring_active) {
         LOG_WARN("Monitoring already active");
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
@@ -782,11 +756,11 @@ static bool swarm_consciousness_start_monitoring_internal(
         ctx->monitoring_active = false;
         ctx->callback = NULL;
         ctx->user_data = NULL;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("Swarm consciousness monitoring started");
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "monitoring_start",
@@ -813,25 +787,25 @@ void swarm_consciousness_stop_monitoring(swarm_consciousness_ctx_t* context) {
         return;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (!ctx->monitoring_active) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return;
     }
 
     // Signal thread to stop
     ctx->monitoring_active = false;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Wait for thread to complete
     nimcp_thread_join(ctx->monitor_thread, NULL);
 
     // Clear callback
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->callback = NULL;
     ctx->user_data = NULL;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("Swarm consciousness monitoring stopped");
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "monitoring_stop", "");
@@ -1476,10 +1450,10 @@ static nimcp_error_t imagination_collective_handler(
               imag_msg->relevance);
 
     // Invoke user callback if registered
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     imagination_collective_receive_callback_t callback = ctx->collective_imagination_callback;
     void* callback_data = ctx->collective_imagination_user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     if (callback) {
         // Note: In full implementation, would reconstruct imagination_scenario_t
@@ -1627,7 +1601,7 @@ int swarm_consciousness_receive_imagination(
     // 3. Source node trust/history
     float relevance = 0.5f;  // Base relevance
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Boost relevance based on consciousness state
     if (ctx->current_metrics) {
@@ -1659,7 +1633,7 @@ int swarm_consciousness_receive_imagination(
     imagination_collective_receive_callback_t callback = ctx->collective_imagination_callback;
     void* callback_data = ctx->collective_imagination_user_data;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke callback with relevance-weighted scenario
     if (callback) {
@@ -1703,7 +1677,7 @@ int swarm_consciousness_register_imagination_handler(
         return -1;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Store callback
     ctx->collective_imagination_callback = callback;
@@ -1723,7 +1697,7 @@ int swarm_consciousness_register_imagination_handler(
             if (!ctx->bio_module_ctx) {
                 LOG_WARN("Failed to register swarm_consciousness with bio-router");
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to register swarm_consciousness with bio-router");
-                pthread_mutex_unlock(&ctx->lock);
+                nimcp_mutex_unlock(&ctx->lock);
                 return -1;
             }
         }
@@ -1745,7 +1719,7 @@ int swarm_consciousness_register_imagination_handler(
 
             if (err != NIMCP_SUCCESS) {
                 LOG_WARN("Failed to register imagination handler: error=%d", err);
-                pthread_mutex_unlock(&ctx->lock);
+                nimcp_mutex_unlock(&ctx->lock);
                 return -1;
             }
 
@@ -1760,7 +1734,7 @@ int swarm_consciousness_register_imagination_handler(
         LOG_INFO("Registered imagination collective handler");
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "imagination_handler_registered",
                   "callback=%p", (void*)callback);

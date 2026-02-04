@@ -14,30 +14,42 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_incentive_validator module */
-static nimcp_health_agent_t* g_lgss_incentive_validator_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_incentive_validator)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_incentive_validator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_incentive_validator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_incentive_validator_health_agent = agent;
+static mesh_participant_id_t g_lgss_incentive_validator_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_incentive_validator_mesh_registry = NULL;
+
+nimcp_error_t lgss_incentive_validator_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_incentive_validator_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_incentive_validator", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_incentive_validator";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_incentive_validator_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_incentive_validator_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_incentive_validator module */
-static inline void lgss_incentive_validator_heartbeat(const char* operation, float progress) {
-    if (g_lgss_incentive_validator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_incentive_validator_health_agent, operation, progress);
+void lgss_incentive_validator_mesh_unregister(void) {
+    if (g_lgss_incentive_validator_mesh_registry && g_lgss_incentive_validator_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_incentive_validator_mesh_registry, g_lgss_incentive_validator_mesh_id);
+        g_lgss_incentive_validator_mesh_id = 0;
+        g_lgss_incentive_validator_mesh_registry = NULL;
     }
 }
 
@@ -140,7 +152,7 @@ incentive_validator_config_t incentive_validator_default_config(void) {
 incentive_validator_t* incentive_validator_create(
     const incentive_validator_config_t* config)
 {
-    incentive_validator_t* validator = calloc(1, sizeof(incentive_validator_t));
+    incentive_validator_t* validator = nimcp_calloc(1, sizeof(incentive_validator_t));
     if (!validator) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
 
@@ -186,10 +198,10 @@ incentive_validator_t* incentive_validator_create(
 
     /* Initialize pending reviews */
     validator->pending_capacity = PENDING_REVIEW_INITIAL_CAPACITY;
-    validator->pending_reviews = calloc(validator->pending_capacity,
+    validator->pending_reviews = nimcp_calloc(validator->pending_capacity,
                                         sizeof(incentive_proposal_t));
     if (!validator->pending_reviews) {
-        free(validator);
+        nimcp_free(validator);
         return NULL;
     }
     validator->pending_count = 0;
@@ -206,17 +218,17 @@ void incentive_validator_destroy(incentive_validator_t* validator) {
     if (validator->magic != INCENTIVE_VALIDATOR_MAGIC) return;
 
     if (validator->pending_reviews) {
-        free(validator->pending_reviews);
+        nimcp_free(validator->pending_reviews);
     }
 
     validator->magic = 0;
     validator->initialized = false;
-    free(validator);
+    nimcp_free(validator);
 }
 
 int incentive_validator_reset(incentive_validator_t* validator) {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Clear pending reviews */
@@ -487,10 +499,10 @@ int incentive_validator_compute_harm(
     harm_type_t* harm_type)
 {
     if (!validator || !proposal || !p_harm || !harm_type) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Use proposal's assessment */
@@ -549,10 +561,10 @@ int incentive_validator_set_domain_auth(
     float harm_threshold)
 {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (domain >= INCENTIVE_DOMAIN_COUNT) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     validator->domains[domain].authorized = authorized;
@@ -581,10 +593,10 @@ int incentive_validator_get_domain_auth(
     domain_authorization_t* auth)
 {
     if (!validator || !auth || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (domain >= INCENTIVE_DOMAIN_COUNT) {
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     *auth = validator->domains[domain];
@@ -606,7 +618,7 @@ uint32_t incentive_validator_request_review(
     /* Expand capacity if needed */
     if (validator->pending_count >= validator->pending_capacity) {
         uint32_t new_capacity = validator->pending_capacity * 2;
-        incentive_proposal_t* new_reviews = realloc(
+        incentive_proposal_t* new_reviews = nimcp_realloc(
             validator->pending_reviews,
             new_capacity * sizeof(incentive_proposal_t));
         if (!new_reviews) {
@@ -641,7 +653,7 @@ int incentive_validator_record_review(
     (void)notes;  /* Notes for logging, not stored in simple impl */
 
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Find proposal in pending list */
@@ -690,7 +702,7 @@ int incentive_validator_set_reward_monitor(
     reward_alignment_monitor_t* monitor)
 {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     validator->reward_monitor = monitor;
     return 0;
@@ -705,7 +717,7 @@ int incentive_validator_get_stats(
     incentive_validator_stats_t* stats)
 {
     if (!validator || !stats || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     *stats = validator->stats;
     return 0;
@@ -713,7 +725,7 @@ int incentive_validator_get_stats(
 
 int incentive_validator_reset_stats(incentive_validator_t* validator) {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     memset(&validator->stats, 0, sizeof(incentive_validator_stats_t));
     return 0;
@@ -729,7 +741,7 @@ int incentive_validator_set_review_callback(
     void* user_data)
 {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     validator->review_callback = callback;
     validator->callback_user_data = user_data;

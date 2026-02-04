@@ -12,32 +12,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dragonfly_bio_async_bridge module */
-static nimcp_health_agent_t* g_dragonfly_bio_async_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for dragonfly_bio_async_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dragonfly_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dragonfly_bio_async_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dragonfly_bio_async_bridge module */
-static inline void dragonfly_bio_async_bridge_heartbeat(const char* operation, float progress) {
-    if (g_dragonfly_bio_async_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dragonfly_bio_async_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_bio_async_bridge)
 
 #define LOG_MODULE "DRAGONFLY_BIO_ASYNC_BRIDGE"
 
@@ -137,7 +115,7 @@ dragonfly_bio_async_bridge_t* dragonfly_bio_async_bridge_create(
     void* bio_async_system,
     const dragonfly_bio_async_config_t* config
 ) {
-    dragonfly_bio_async_bridge_t* bridge = calloc(1, sizeof(dragonfly_bio_async_bridge_t));
+    dragonfly_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(dragonfly_bio_async_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "dragonfly_bio_async_bridge_create: failed to allocate bridge");
@@ -148,7 +126,7 @@ dragonfly_bio_async_bridge_t* dragonfly_bio_async_bridge_create(
         if (dragonfly_bio_async_bridge_validate_config(config) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "dragonfly_bio_async_bridge_create: invalid configuration");
-            free(bridge);
+            nimcp_free(bridge);
             return NULL;
         }
         bridge->config = *config;
@@ -180,11 +158,11 @@ void dragonfly_bio_async_bridge_destroy(dragonfly_bio_async_bridge_t* bridge) {
     /* Destroy any active futures */
     for (uint32_t i = 0; i < bridge->num_futures; i++) {
         if (bridge->futures[i]) {
-            free(bridge->futures[i]);
+            nimcp_free(bridge->futures[i]);
         }
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dragonfly_bio_async_bridge_reset(dragonfly_bio_async_bridge_t* bridge) {
@@ -204,7 +182,7 @@ int dragonfly_bio_async_bridge_reset(dragonfly_bio_async_bridge_t* bridge) {
     /* Destroy futures */
     for (uint32_t i = 0; i < bridge->num_futures; i++) {
         if (bridge->futures[i]) {
-            free(bridge->futures[i]);
+            nimcp_free(bridge->futures[i]);
             bridge->futures[i] = NULL;
         }
     }
@@ -229,7 +207,7 @@ dragonfly_bio_future_t* dragonfly_bio_async_start(
     if (!bridge) return NULL;
     if (bridge->num_futures >= DRAGONFLY_BIO_MAX_FUTURES) return NULL;
 
-    dragonfly_bio_future_t* future = calloc(1, sizeof(dragonfly_bio_future_t));
+    dragonfly_bio_future_t* future = nimcp_calloc(1, sizeof(dragonfly_bio_future_t));
     if (!future) return NULL;
 
     future->parent = bridge;
@@ -314,7 +292,7 @@ void dragonfly_bio_future_destroy(dragonfly_bio_future_t* future) {
         }
     }
 
-    free(future);
+    nimcp_free(future);
 }
 
 //=============================================================================

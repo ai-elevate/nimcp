@@ -235,3 +235,35 @@ set_tests_properties(e2e_mesh_security PROPERTIES
 )
 
 message(STATUS "  - e2e_mesh_security (C++/GTest)")
+
+# ============================================================================
+# BBB + Immune Pipeline E2E Tests
+# ============================================================================
+add_executable(e2e_security_test_bbb_immune_pipeline
+    test_bbb_immune_pipeline_e2e.cpp
+)
+target_link_libraries(e2e_security_test_bbb_immune_pipeline
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(e2e_security_test_bbb_immune_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/utils/exception
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(e2e_security_test_bbb_immune_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_security_test_bbb_immune_pipeline
+         COMMAND e2e_security_test_bbb_immune_pipeline)
+set_tests_properties(e2e_security_test_bbb_immune_pipeline PROPERTIES
+    LABELS "e2e;security;bbb;immune;pipeline"
+    TIMEOUT 300
+)

@@ -30,34 +30,44 @@
 #include <math.h>
 #include <signal.h>
 #include <stdint.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(self_heal)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for self_heal module */
-static nimcp_health_agent_t* g_self_heal_health_agent = NULL;
+static mesh_participant_id_t g_self_heal_mesh_id = 0;
+static mesh_participant_registry_t* g_self_heal_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for self_heal heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void self_heal_set_health_agent(nimcp_health_agent_t* agent) {
-    g_self_heal_health_agent = agent;
+nimcp_error_t self_heal_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_self_heal_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "self_heal", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SECURITY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "self_heal";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_self_heal_mesh_id);
+    if (err == NIMCP_SUCCESS) g_self_heal_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from self_heal module */
-static inline void self_heal_heartbeat(const char* operation, float progress) {
-    if (g_self_heal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_self_heal_health_agent, operation, progress);
+void self_heal_mesh_unregister(void) {
+    if (g_self_heal_mesh_registry && g_self_heal_mesh_id != 0) {
+        mesh_participant_unregister(g_self_heal_mesh_registry, g_self_heal_mesh_id);
+        g_self_heal_mesh_id = 0;
+        g_self_heal_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from self_heal module (instance-level) */
 static inline void self_heal_heartbeat_instance(
@@ -2272,8 +2282,8 @@ int heal_pattern_match(
     }
 
     /* Free pattern (use-after-free or double-free) */
-    if (strstr(code, "free(") != NULL || strstr(code, "nimcp_free(") != NULL) {
-        const char* free_call = strstr(code, "free(");
+    if (strstr(code, "nimcp_free(") != NULL || strstr(code, "nimcp_free(") != NULL) {
+        const char* free_call = strstr(code, "nimcp_free(");
         if (free_call != NULL) {
             const char* after_free = free_call + 5;
             if (strstr(after_free, "->") != NULL || strchr(after_free, '[') != NULL) {

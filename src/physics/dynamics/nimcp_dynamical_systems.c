@@ -15,33 +15,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for dynamical_systems module */
-static nimcp_health_agent_t* g_dynamical_systems_health_agent = NULL;
-
-/**
- * @brief Set health agent for dynamical_systems heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void dynamical_systems_set_health_agent(nimcp_health_agent_t* agent) {
-    g_dynamical_systems_health_agent = agent;
-}
-
-/** @brief Send heartbeat from dynamical_systems module */
-static inline void dynamical_systems_heartbeat(const char* operation, float progress) {
-    if (g_dynamical_systems_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_dynamical_systems_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dynamical_systems)
 
 #define LOG_TAG "dynamical_systems"
 
@@ -201,7 +178,7 @@ dynsys_system_t dynsys_create(
         return NULL;
     }
 
-    struct dynsys_system_struct* sys = calloc(1, sizeof(struct dynsys_system_struct));
+    struct dynsys_system_struct* sys = nimcp_calloc(1, sizeof(struct dynsys_system_struct));
     NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate dynamical system");
 
     memcpy(&sys->config, config, sizeof(dynsys_config_t));
@@ -211,11 +188,11 @@ dynsys_system_t dynsys_create(
     sys->initialized = false;
 
     if (config->param_dim > 0) {
-        sys->params = calloc(config->param_dim, sizeof(float));
+        sys->params = nimcp_calloc(config->param_dim, sizeof(float));
         if (!sys->params) {
             LOG_ERROR("Failed to allocate dynamical system parameters");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate dynamical system parameters");
-            free(sys);
+            nimcp_free(sys);
             return NULL;
         }
         sys->param_dim = config->param_dim;
@@ -227,8 +204,8 @@ dynsys_system_t dynsys_create(
 void dynsys_destroy(dynsys_system_t sys)
 {
     if (!sys) return;
-    free(sys->params);
-    free(sys);
+    nimcp_free(sys->params);
+    nimcp_free(sys);
 }
 
 dynsys_error_t dynsys_init(dynsys_system_t sys, nimcp_brain_t brain)
@@ -279,14 +256,14 @@ dynsys_error_t dynsys_step_rk4(dynsys_system_t sys, float* state, float dt)
     if (!sys || !state) return DYNSYS_ERR_NULL_PTR;
 
     uint32_t dim = sys->config.state_dim;
-    float* k1 = calloc(dim, sizeof(float));
-    float* k2 = calloc(dim, sizeof(float));
-    float* k3 = calloc(dim, sizeof(float));
-    float* k4 = calloc(dim, sizeof(float));
-    float* temp = calloc(dim, sizeof(float));
+    float* k1 = nimcp_calloc(dim, sizeof(float));
+    float* k2 = nimcp_calloc(dim, sizeof(float));
+    float* k3 = nimcp_calloc(dim, sizeof(float));
+    float* k4 = nimcp_calloc(dim, sizeof(float));
+    float* temp = nimcp_calloc(dim, sizeof(float));
 
     if (!k1 || !k2 || !k3 || !k4 || !temp) {
-        free(k1); free(k2); free(k3); free(k4); free(temp);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(temp);
         return DYNSYS_ERR_NO_MEMORY;
     }
 
@@ -317,13 +294,13 @@ dynsys_error_t dynsys_step_rk4(dynsys_system_t sys, float* state, float dt)
 
         /* Check for divergence */
         if (!isfinite(state[i])) {
-            free(k1); free(k2); free(k3); free(k4); free(temp);
+            nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(temp);
             sys->stats.divergences++;
             return DYNSYS_ERR_DIVERGENCE;
         }
     }
 
-    free(k1); free(k2); free(k3); free(k4); free(temp);
+    nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(temp);
     return DYNSYS_OK;
 }
 
@@ -342,7 +319,7 @@ dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config,
 {
     if (!config || !sys) return NULL;
 
-    struct dynsys_lyapunov_struct* lyap = calloc(1, sizeof(struct dynsys_lyapunov_struct));
+    struct dynsys_lyapunov_struct* lyap = nimcp_calloc(1, sizeof(struct dynsys_lyapunov_struct));
     if (!lyap) return NULL;
 
     memcpy(&lyap->config, config, sizeof(dynsys_lyapunov_config_t));
@@ -352,9 +329,9 @@ dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config,
     uint32_t num_exp = config->num_exponents;
     if (num_exp > dim) num_exp = dim;
 
-    lyap->perturbations = calloc(dim * num_exp, sizeof(float));
+    lyap->perturbations = nimcp_calloc(dim * num_exp, sizeof(float));
     if (!lyap->perturbations) {
-        free(lyap);
+        nimcp_free(lyap);
         return NULL;
     }
 
@@ -364,8 +341,8 @@ dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config,
 void dynsys_lyapunov_destroy(dynsys_lyapunov_t lyap)
 {
     if (!lyap) return;
-    free(lyap->perturbations);
-    free(lyap);
+    nimcp_free(lyap->perturbations);
+    nimcp_free(lyap);
 }
 
 static void gram_schmidt(float* vectors, uint32_t num_vectors, uint32_t dim, float* norms)
@@ -412,12 +389,12 @@ dynsys_error_t dynsys_lyapunov_compute(dynsys_lyapunov_t lyap, const float* init
     if (num_exp > dim) num_exp = dim;
     if (num_exp > DYNSYS_MAX_LYAPUNOV) num_exp = DYNSYS_MAX_LYAPUNOV;
 
-    float* state = calloc(dim, sizeof(float));
-    float* perturb_state = calloc(dim, sizeof(float));
-    float* norms = calloc(num_exp, sizeof(float));
+    float* state = nimcp_calloc(dim, sizeof(float));
+    float* perturb_state = nimcp_calloc(dim, sizeof(float));
+    float* norms = nimcp_calloc(num_exp, sizeof(float));
 
     if (!state || !perturb_state || !norms) {
-        free(state); free(perturb_state); free(norms);
+        nimcp_free(state); nimcp_free(perturb_state); nimcp_free(norms);
         return DYNSYS_ERR_NO_MEMORY;
     }
 
@@ -440,9 +417,9 @@ dynsys_error_t dynsys_lyapunov_compute(dynsys_lyapunov_t lyap, const float* init
     uint32_t ortho_steps = (uint32_t)(lyap->config.orthonormalization_interval / dt);
     if (ortho_steps < 1) ortho_steps = 1;
 
-    float* exponent_sums = calloc(num_exp, sizeof(float));
+    float* exponent_sums = nimcp_calloc(num_exp, sizeof(float));
     if (!exponent_sums) {
-        free(state); free(perturb_state); free(norms);
+        nimcp_free(state); nimcp_free(perturb_state); nimcp_free(norms);
         return DYNSYS_ERR_NO_MEMORY;
     }
 
@@ -520,7 +497,7 @@ dynsys_error_t dynsys_lyapunov_compute(dynsys_lyapunov_t lyap, const float* init
 
     sys->stats.lyapunov_computations++;
 
-    free(state); free(perturb_state); free(norms); free(exponent_sums);
+    nimcp_free(state); nimcp_free(perturb_state); nimcp_free(norms); nimcp_free(exponent_sums);
     return DYNSYS_OK;
 }
 
@@ -544,7 +521,7 @@ dynsys_bifurcation_t dynsys_bifurcation_create(const dynsys_bifurcation_config_t
 {
     if (!config || !sys) return NULL;
 
-    struct dynsys_bifurcation_struct* bif = calloc(1, sizeof(struct dynsys_bifurcation_struct));
+    struct dynsys_bifurcation_struct* bif = nimcp_calloc(1, sizeof(struct dynsys_bifurcation_struct));
     if (!bif) return NULL;
 
     memcpy(&bif->config, config, sizeof(dynsys_bifurcation_config_t));
@@ -556,7 +533,7 @@ dynsys_bifurcation_t dynsys_bifurcation_create(const dynsys_bifurcation_config_t
 void dynsys_bifurcation_destroy(dynsys_bifurcation_t bif)
 {
     if (!bif) return;
-    free(bif);
+    nimcp_free(bif);
 }
 
 dynsys_error_t dynsys_bifurcation_scan(dynsys_bifurcation_t bif, const float* initial_state,
@@ -571,19 +548,19 @@ dynsys_error_t dynsys_bifurcation_scan(dynsys_bifurcation_t bif, const float* in
 
     memset(result, 0, sizeof(dynsys_bifurcation_result_t));
 
-    result->parameter_values = calloc(num_points, sizeof(float));
-    result->state_samples = calloc(num_points * samples_per_point * dim, sizeof(float));
-    result->bifurcations = calloc(num_points, sizeof(dynsys_bifurcation_point_t));
+    result->parameter_values = nimcp_calloc(num_points, sizeof(float));
+    result->state_samples = nimcp_calloc(num_points * samples_per_point * dim, sizeof(float));
+    result->bifurcations = nimcp_calloc(num_points, sizeof(dynsys_bifurcation_point_t));
 
     if (!result->parameter_values || !result->state_samples || !result->bifurcations) {
         dynsys_bifurcation_result_free(result);
         return DYNSYS_ERR_NO_MEMORY;
     }
 
-    float* state = calloc(dim, sizeof(float));
-    float* params = calloc(sys->param_dim, sizeof(float));
+    float* state = nimcp_calloc(dim, sizeof(float));
+    float* params = nimcp_calloc(sys->param_dim, sizeof(float));
     if (!state || !params) {
-        free(state); free(params);
+        nimcp_free(state); nimcp_free(params);
         dynsys_bifurcation_result_free(result);
         return DYNSYS_ERR_NO_MEMORY;
     }
@@ -615,17 +592,17 @@ dynsys_error_t dynsys_bifurcation_scan(dynsys_bifurcation_t bif, const float* in
 
     sys->stats.bifurcation_scans++;
 
-    free(state);
-    free(params);
+    nimcp_free(state);
+    nimcp_free(params);
     return DYNSYS_OK;
 }
 
 void dynsys_bifurcation_result_free(dynsys_bifurcation_result_t* result)
 {
     if (!result) return;
-    free(result->parameter_values);
-    free(result->state_samples);
-    free(result->bifurcations);
+    nimcp_free(result->parameter_values);
+    nimcp_free(result->state_samples);
+    nimcp_free(result->bifurcations);
     memset(result, 0, sizeof(dynsys_bifurcation_result_t));
 }
 
@@ -653,7 +630,7 @@ dynsys_attractor_t dynsys_attractor_create(const dynsys_attractor_config_t* conf
 {
     if (!config) return NULL;
 
-    struct dynsys_attractor_struct* attr = calloc(1, sizeof(struct dynsys_attractor_struct));
+    struct dynsys_attractor_struct* attr = nimcp_calloc(1, sizeof(struct dynsys_attractor_struct));
     if (!attr) return NULL;
 
     memcpy(&attr->config, config, sizeof(dynsys_attractor_config_t));
@@ -663,7 +640,7 @@ dynsys_attractor_t dynsys_attractor_create(const dynsys_attractor_config_t* conf
 void dynsys_attractor_destroy(dynsys_attractor_t attr)
 {
     if (!attr) return;
-    free(attr);
+    nimcp_free(attr);
 }
 
 dynsys_error_t dynsys_attractor_reconstruct(dynsys_attractor_t attr, const float* time_series,
@@ -679,7 +656,7 @@ dynsys_error_t dynsys_attractor_reconstruct(dynsys_attractor_t attr, const float
 
     memset(result, 0, sizeof(dynsys_attractor_result_t));
 
-    result->embedded_points = calloc(num_points * embed_dim, sizeof(float));
+    result->embedded_points = nimcp_calloc(num_points * embed_dim, sizeof(float));
     if (!result->embedded_points) return DYNSYS_ERR_NO_MEMORY;
 
     result->num_points = num_points;
@@ -705,7 +682,7 @@ dynsys_error_t dynsys_attractor_reconstruct(dynsys_attractor_t attr, const float
 void dynsys_attractor_result_free(dynsys_attractor_result_t* result)
 {
     if (!result) return;
-    free(result->embedded_points);
+    nimcp_free(result->embedded_points);
     memset(result, 0, sizeof(dynsys_attractor_result_t));
 }
 
@@ -743,7 +720,7 @@ dynsys_energy_t dynsys_energy_create(const dynsys_energy_config_t* config, dynsy
 {
     if (!config || !sys) return NULL;
 
-    struct dynsys_energy_struct* energy = calloc(1, sizeof(struct dynsys_energy_struct));
+    struct dynsys_energy_struct* energy = nimcp_calloc(1, sizeof(struct dynsys_energy_struct));
     if (!energy) return NULL;
 
     memcpy(&energy->config, config, sizeof(dynsys_energy_config_t));
@@ -754,7 +731,7 @@ dynsys_energy_t dynsys_energy_create(const dynsys_energy_config_t* config, dynsy
 void dynsys_energy_destroy(dynsys_energy_t energy)
 {
     if (!energy) return;
-    free(energy);
+    nimcp_free(energy);
 }
 
 dynsys_error_t dynsys_energy_compute(dynsys_energy_t energy, dynsys_energy_result_t* result)
@@ -766,10 +743,10 @@ dynsys_error_t dynsys_energy_compute(dynsys_energy_t energy, dynsys_energy_resul
 
     memset(result, 0, sizeof(dynsys_energy_result_t));
 
-    result->energy_values = calloc(grid_size, sizeof(float));
-    result->gradient = calloc(grid_size * 2, sizeof(float));
-    result->minima_locations = calloc(10 * 2, sizeof(float));
-    result->minima_energies = calloc(10, sizeof(float));
+    result->energy_values = nimcp_calloc(grid_size, sizeof(float));
+    result->gradient = nimcp_calloc(grid_size * 2, sizeof(float));
+    result->minima_locations = nimcp_calloc(10 * 2, sizeof(float));
+    result->minima_energies = nimcp_calloc(10, sizeof(float));
 
     if (!result->energy_values || !result->gradient) {
         dynsys_energy_result_free(result);
@@ -804,12 +781,12 @@ dynsys_error_t dynsys_energy_compute(dynsys_energy_t energy, dynsys_energy_resul
 void dynsys_energy_result_free(dynsys_energy_result_t* result)
 {
     if (!result) return;
-    free(result->energy_values);
-    free(result->gradient);
-    free(result->minima_locations);
-    free(result->minima_energies);
-    free(result->saddle_locations);
-    free(result->barriers);
+    nimcp_free(result->energy_values);
+    nimcp_free(result->gradient);
+    nimcp_free(result->minima_locations);
+    nimcp_free(result->minima_energies);
+    nimcp_free(result->saddle_locations);
+    nimcp_free(result->barriers);
     memset(result, 0, sizeof(dynsys_energy_result_t));
 }
 
@@ -859,7 +836,7 @@ dynsys_slowfast_t dynsys_slowfast_create(const dynsys_slowfast_config_t* config,
 {
     if (!config || !sys) return NULL;
 
-    struct dynsys_slowfast_struct* sf = calloc(1, sizeof(struct dynsys_slowfast_struct));
+    struct dynsys_slowfast_struct* sf = nimcp_calloc(1, sizeof(struct dynsys_slowfast_struct));
     if (!sf) return NULL;
 
     memcpy(&sf->config, config, sizeof(dynsys_slowfast_config_t));
@@ -870,7 +847,7 @@ dynsys_slowfast_t dynsys_slowfast_create(const dynsys_slowfast_config_t* config,
 void dynsys_slowfast_destroy(dynsys_slowfast_t sf)
 {
     if (!sf) return;
-    free(sf);
+    nimcp_free(sf);
 }
 
 dynsys_error_t dynsys_slowfast_compute(dynsys_slowfast_t sf, dynsys_slowfast_result_t* result)
@@ -888,9 +865,9 @@ dynsys_error_t dynsys_slowfast_compute(dynsys_slowfast_t sf, dynsys_slowfast_res
 void dynsys_slowfast_result_free(dynsys_slowfast_result_t* result)
 {
     if (!result) return;
-    free(result->slow_manifold);
-    free(result->fast_manifold);
-    free(result->slow_flow);
+    nimcp_free(result->slow_manifold);
+    nimcp_free(result->fast_manifold);
+    nimcp_free(result->slow_flow);
     memset(result, 0, sizeof(dynsys_slowfast_result_t));
 }
 
@@ -912,7 +889,7 @@ dynsys_bridge_t dynsys_bridge_create(const dynsys_bridge_config_t* config, dynsy
 {
     if (!config || !sys) return NULL;
 
-    struct dynsys_bridge_struct* bridge = calloc(1, sizeof(struct dynsys_bridge_struct));
+    struct dynsys_bridge_struct* bridge = nimcp_calloc(1, sizeof(struct dynsys_bridge_struct));
     if (!bridge) return NULL;
 
     memcpy(&bridge->config, config, sizeof(dynsys_bridge_config_t));
@@ -925,7 +902,7 @@ dynsys_bridge_t dynsys_bridge_create(const dynsys_bridge_config_t* config, dynsy
 void dynsys_bridge_destroy(dynsys_bridge_t bridge)
 {
     if (!bridge) return;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int dynsys_bridge_init(dynsys_bridge_t bridge, nimcp_brain_t brain,
@@ -1061,12 +1038,12 @@ dynsys_error_t dynsys_numerical_jacobian(dynsys_system_t sys, const float* state
 
     uint32_t dim = sys->config.state_dim;
 
-    float* f0 = calloc(dim, sizeof(float));
-    float* f1 = calloc(dim, sizeof(float));
-    float* perturbed = calloc(dim, sizeof(float));
+    float* f0 = nimcp_calloc(dim, sizeof(float));
+    float* f1 = nimcp_calloc(dim, sizeof(float));
+    float* perturbed = nimcp_calloc(dim, sizeof(float));
 
     if (!f0 || !f1 || !perturbed) {
-        free(f0); free(f1); free(perturbed);
+        nimcp_free(f0); nimcp_free(f1); nimcp_free(perturbed);
         return DYNSYS_ERR_NO_MEMORY;
     }
 
@@ -1083,7 +1060,7 @@ dynsys_error_t dynsys_numerical_jacobian(dynsys_system_t sys, const float* state
         }
     }
 
-    free(f0); free(f1); free(perturbed);
+    nimcp_free(f0); nimcp_free(f1); nimcp_free(perturbed);
     return DYNSYS_OK;
 }
 

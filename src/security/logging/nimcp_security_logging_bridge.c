@@ -33,34 +33,44 @@
 #include <time.h>
 #include <stdarg.h>
 #include <math.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_logging_bridge)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for security_logging_bridge module */
-static nimcp_health_agent_t* g_security_logging_bridge_health_agent = NULL;
+static mesh_participant_id_t g_security_logging_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_security_logging_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for security_logging_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_logging_bridge_health_agent = agent;
+nimcp_error_t security_logging_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_logging_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_logging_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_logging_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_logging_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_logging_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_logging_bridge module */
-static inline void security_logging_bridge_heartbeat(const char* operation, float progress) {
-    if (g_security_logging_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_logging_bridge_health_agent, operation, progress);
+void security_logging_bridge_mesh_unregister(void) {
+    if (g_security_logging_bridge_mesh_registry && g_security_logging_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_security_logging_bridge_mesh_registry, g_security_logging_bridge_mesh_id);
+        g_security_logging_bridge_mesh_id = 0;
+        g_security_logging_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "SECURITY_LOGGING_BRIDGE"
 
@@ -235,7 +245,7 @@ static int ring_buffer_push(log_entry_ring_buffer_t* rb,
 
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "overwrite_on_full is NULL");
 
-            return -1;
+            return NIMCP_ERROR_OPERATION_FAILED;
 
         }
         /* Overwrite oldest: advance tail */
@@ -378,7 +388,7 @@ int security_log_entry_init(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -453,7 +463,7 @@ int security_logging_default_config(security_logging_bridge_config_t* config) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -628,7 +638,7 @@ int security_logging_bridge_reset(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -680,7 +690,7 @@ int security_logging_connect_bbb(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -700,7 +710,7 @@ int security_logging_connect_anomaly_detector(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -720,7 +730,7 @@ int security_logging_connect_rate_limiter(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -740,7 +750,7 @@ int security_logging_connect_encrypted_audit(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -761,7 +771,7 @@ int security_logging_connect_nimcp_logger(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -779,7 +789,7 @@ int security_logging_disconnect_all(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -845,7 +855,7 @@ static int log_entry_internal(
                                   bridge->config.overwrite_on_full);
     if (result != 0) {
         bridge->stats.entries_dropped++;
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     /* Update statistics */
@@ -1005,7 +1015,7 @@ int security_logging_log_access(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1043,7 +1053,7 @@ int security_logging_log_policy(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1081,7 +1091,7 @@ int security_logging_log_bbb(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1131,7 +1141,7 @@ int security_logging_log_anomaly(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1175,7 +1185,7 @@ int security_logging_log_rate_limit(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1223,7 +1233,7 @@ int security_logging_log_crypto(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.logging_enabled) return 0;
@@ -1322,7 +1332,7 @@ int security_logging_unregister_stream(
     int callback_id
 ) {
     if (!bridge || callback_id < 0 || callback_id >= SECURITY_LOG_MAX_STREAM_CALLBACKS) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1349,7 +1359,7 @@ int security_logging_register_pattern_callback(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -1372,7 +1382,7 @@ int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->config.pattern_analysis.enabled) return 0;
@@ -1572,7 +1582,7 @@ int security_logging_clear_patterns(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -1776,7 +1786,7 @@ int security_logging_export_to_file(
     if (!fp) {
         LOG_MODULE_ERROR(SECURITY_LOGGING_MODULE_NAME,
                         "Failed to open export file: %s", file_path);
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1878,7 +1888,7 @@ int security_logging_rotate(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -1920,7 +1930,7 @@ int security_logging_flush(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -1960,7 +1970,7 @@ int security_logging_reset_stats(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -1996,7 +2006,7 @@ int security_logging_get_effects(
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -2022,7 +2032,7 @@ int security_logging_update(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     if (!bridge->state.active) return 0;
@@ -2047,7 +2057,7 @@ int security_logging_apply_modulation(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
 
@@ -2080,7 +2090,7 @@ int security_logging_connect_bio_async(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     return bridge_base_connect_bio_async(&bridge->base);
@@ -2091,7 +2101,7 @@ int security_logging_disconnect_bio_async(security_logging_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
 
     }
     return bridge_base_disconnect_bio_async(&bridge->base);
@@ -2133,7 +2143,7 @@ int security_logging_broadcast_event(
         if (err != NIMCP_SUCCESS) {
             LOG_MODULE_WARN(SECURITY_LOGGING_MODULE_NAME,
                            "Failed to broadcast security event");
-            return -1;
+            return NIMCP_ERROR_OPERATION_FAILED;
         }
     }
 

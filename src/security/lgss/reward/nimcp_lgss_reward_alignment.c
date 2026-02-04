@@ -14,30 +14,42 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for lgss_reward_alignment module */
-static nimcp_health_agent_t* g_lgss_reward_alignment_health_agent = NULL;
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_reward_alignment)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/**
- * @brief Set health agent for lgss_reward_alignment heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void lgss_reward_alignment_set_health_agent(nimcp_health_agent_t* agent) {
-    g_lgss_reward_alignment_health_agent = agent;
+static mesh_participant_id_t g_lgss_reward_alignment_mesh_id = 0;
+static mesh_participant_registry_t* g_lgss_reward_alignment_mesh_registry = NULL;
+
+nimcp_error_t lgss_reward_alignment_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_lgss_reward_alignment_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "lgss_reward_alignment", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "lgss_reward_alignment";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_reward_alignment_mesh_id);
+    if (err == NIMCP_SUCCESS) g_lgss_reward_alignment_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from lgss_reward_alignment module */
-static inline void lgss_reward_alignment_heartbeat(const char* operation, float progress) {
-    if (g_lgss_reward_alignment_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_lgss_reward_alignment_health_agent, operation, progress);
+void lgss_reward_alignment_mesh_unregister(void) {
+    if (g_lgss_reward_alignment_mesh_registry && g_lgss_reward_alignment_mesh_id != 0) {
+        mesh_participant_unregister(g_lgss_reward_alignment_mesh_registry, g_lgss_reward_alignment_mesh_id);
+        g_lgss_reward_alignment_mesh_id = 0;
+        g_lgss_reward_alignment_mesh_registry = NULL;
     }
 }
 
@@ -174,7 +186,7 @@ reward_alignment_config_t reward_alignment_default_config(void) {
 reward_alignment_monitor_t* reward_alignment_create(
     const reward_alignment_config_t* config)
 {
-    reward_alignment_monitor_t* monitor = calloc(1, sizeof(reward_alignment_monitor_t));
+    reward_alignment_monitor_t* monitor = nimcp_calloc(1, sizeof(reward_alignment_monitor_t));
     if (!monitor) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
 
@@ -213,12 +225,12 @@ void reward_alignment_destroy(reward_alignment_monitor_t* monitor) {
 
     monitor->magic = 0;
     monitor->initialized = false;
-    free(monitor);
+    nimcp_free(monitor);
 }
 
 int reward_alignment_reset(reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Reset window */
@@ -521,13 +533,13 @@ int reward_alignment_register_goal(
     bool is_safety_aligned)
 {
     if (!monitor || goal_id == 0) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (monitor->num_aligned_goals >= REWARD_ALIGNMENT_MAX_ALIGNED_GOALS) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Check if already registered */
@@ -576,10 +588,10 @@ int reward_alignment_unregister_goal(
     uint32_t goal_id)
 {
     if (!monitor || goal_id == 0) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Pathway protection check */
@@ -622,10 +634,10 @@ int reward_alignment_get_rate(
     float* rate)
 {
     if (!monitor || !rate) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     *rate = calculate_reward_rate(monitor);
@@ -669,7 +681,7 @@ float reward_alignment_get_rate_anomaly(const reward_alignment_monitor_t* monito
 
 int reward_alignment_lock_pathways(reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     monitor->pathway_hash = compute_pathway_hash(monitor);
@@ -705,7 +717,7 @@ int reward_alignment_set_vta(
     void* vta)
 {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     monitor->vta = vta;
     return 0;
@@ -716,7 +728,7 @@ int reward_alignment_set_aix(
     void* aix)
 {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     monitor->aix = aix;
     return 0;
@@ -731,10 +743,10 @@ int reward_alignment_get_stats(
     reward_alignment_stats_t* stats)
 {
     if (!monitor || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     *stats = monitor->stats;
@@ -743,7 +755,7 @@ int reward_alignment_get_stats(
 
 int reward_alignment_reset_stats(reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(&monitor->stats, 0, sizeof(reward_alignment_stats_t));
@@ -760,7 +772,7 @@ int reward_alignment_set_hack_callback(
     void* user_data)
 {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     monitor->hack_alert_callback = callback;

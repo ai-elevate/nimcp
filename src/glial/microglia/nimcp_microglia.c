@@ -36,30 +36,9 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
-//=============================================================================
-
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/* Global health agent for microglia operations */
-static nimcp_health_agent_t* g_microglia_health_agent = NULL;
-
-static void microglia_set_health_agent(nimcp_health_agent_t* agent) {
-    g_microglia_health_agent = agent;
-}
-
-static inline void microglia_heartbeat(const char* operation, float progress) {
-    if (g_microglia_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_microglia_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(microglia)
 
 //=============================================================================
 // Global Bio-Async Context

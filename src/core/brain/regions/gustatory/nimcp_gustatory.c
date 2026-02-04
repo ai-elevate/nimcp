@@ -13,29 +13,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gustatory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for gustatory module */
-static nimcp_health_agent_t* g_gustatory_health_agent = NULL;
+static mesh_participant_id_t g_gustatory_mesh_id = 0;
+static mesh_participant_registry_t* g_gustatory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for gustatory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void gustatory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_gustatory_health_agent = agent;
+nimcp_error_t gustatory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_gustatory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "gustatory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "gustatory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_gustatory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_gustatory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from gustatory module */
-static inline void gustatory_heartbeat(const char* operation, float progress) {
-    if (g_gustatory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_gustatory_health_agent, operation, progress);
+void gustatory_mesh_unregister(void) {
+    if (g_gustatory_mesh_registry && g_gustatory_mesh_id != 0) {
+        mesh_participant_unregister(g_gustatory_mesh_registry, g_gustatory_mesh_id);
+        g_gustatory_mesh_id = 0;
+        g_gustatory_mesh_registry = NULL;
     }
 }
 
@@ -67,7 +80,7 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
         config = &default_config;
     }
 
-    nimcp_gustatory_t* gust = (nimcp_gustatory_t*)calloc(1, sizeof(nimcp_gustatory_t));
+    nimcp_gustatory_t* gust = (nimcp_gustatory_t*)nimcp_calloc(1, sizeof(nimcp_gustatory_t));
     if (!gust) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust is NULL");
@@ -81,8 +94,8 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     gust->last_error = GUST_ERROR_NONE;
 
     /* Allocate receptors */
-    gust->receptors = (taste_receptor_t*)calloc(config->max_receptors, sizeof(taste_receptor_t));
-    if (!gust->receptors) { free(gust); return NULL; }
+    gust->receptors = (taste_receptor_t*)nimcp_calloc(config->max_receptors, sizeof(taste_receptor_t));
+    if (!gust->receptors) { nimcp_free(gust); return NULL; }
     gust->num_receptors = config->max_receptors;
 
     /* Initialize receptors with default sensitivity */
@@ -96,13 +109,13 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     }
 
     /* Allocate insula neurons */
-    gust->insula_activation = (float*)calloc(config->num_insula_neurons, sizeof(float));
-    if (!gust->insula_activation) { free(gust->receptors); free(gust); return NULL; }
+    gust->insula_activation = (float*)nimcp_calloc(config->num_insula_neurons, sizeof(float));
+    if (!gust->insula_activation) { nimcp_free(gust->receptors); nimcp_free(gust); return NULL; }
     gust->num_insula = config->num_insula_neurons;
 
     /* Allocate OFC neurons */
-    gust->ofc_activation = (float*)calloc(config->num_ofc_neurons, sizeof(float));
-    if (!gust->ofc_activation) { free(gust->insula_activation); free(gust->receptors); free(gust); return NULL; }
+    gust->ofc_activation = (float*)nimcp_calloc(config->num_ofc_neurons, sizeof(float));
+    if (!gust->ofc_activation) { nimcp_free(gust->insula_activation); nimcp_free(gust->receptors); nimcp_free(gust); return NULL; }
     gust->num_ofc = config->num_ofc_neurons;
 
     /* Initialize adaptation */
@@ -122,10 +135,10 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
 
 void gust_destroy(nimcp_gustatory_t* gust) {
     if (!gust) return;
-    if (gust->receptors) free(gust->receptors);
-    if (gust->insula_activation) free(gust->insula_activation);
-    if (gust->ofc_activation) free(gust->ofc_activation);
-    free(gust);
+    if (gust->receptors) nimcp_free(gust->receptors);
+    if (gust->insula_activation) nimcp_free(gust->insula_activation);
+    if (gust->ofc_activation) nimcp_free(gust->ofc_activation);
+    nimcp_free(gust);
 }
 
 int gust_reset(nimcp_gustatory_t* gust) {

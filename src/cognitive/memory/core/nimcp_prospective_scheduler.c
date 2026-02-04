@@ -31,31 +31,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(prospective_scheduler)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for prospective_scheduler module */
-static nimcp_health_agent_t* g_prospective_scheduler_health_agent = NULL;
+static mesh_participant_id_t g_prospective_scheduler_mesh_id = 0;
+static mesh_participant_registry_t* g_prospective_scheduler_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for prospective_scheduler heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void prospective_scheduler_set_health_agent(nimcp_health_agent_t* agent) {
-    g_prospective_scheduler_health_agent = agent;
+nimcp_error_t prospective_scheduler_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_prospective_scheduler_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "prospective_scheduler", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "prospective_scheduler";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_prospective_scheduler_mesh_id);
+    if (err == NIMCP_SUCCESS) g_prospective_scheduler_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from prospective_scheduler module */
-static inline void prospective_scheduler_heartbeat(const char* operation, float progress) {
-    if (g_prospective_scheduler_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_prospective_scheduler_health_agent, operation, progress);
+void prospective_scheduler_mesh_unregister(void) {
+    if (g_prospective_scheduler_mesh_registry && g_prospective_scheduler_mesh_id != 0) {
+        mesh_participant_unregister(g_prospective_scheduler_mesh_registry, g_prospective_scheduler_mesh_id);
+        g_prospective_scheduler_mesh_id = 0;
+        g_prospective_scheduler_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from prospective_scheduler module (instance-level) */
 static inline void prospective_scheduler_heartbeat_instance(
@@ -282,7 +296,7 @@ static scheduled_intention_t* scheduled_intention_create(prospective_intention_t
         return NULL;
     }
 
-    scheduled_intention_t* scheduled = (scheduled_intention_t*)malloc(sizeof(scheduled_intention_t));
+    scheduled_intention_t* scheduled = (scheduled_intention_t*)nimcp_malloc(sizeof(scheduled_intention_t));
     if (!scheduled) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate scheduled");
 
@@ -318,7 +332,7 @@ static scheduled_intention_t* scheduled_intention_create(prospective_intention_t
  */
 static void scheduled_intention_destroy(scheduled_intention_t* scheduled) {
     if (scheduled) {
-        free(scheduled);
+        nimcp_free(scheduled);
     }
 }
 
@@ -559,7 +573,7 @@ prospective_scheduler_t* prospective_scheduler_create(
     }
 
     // Allocate scheduler
-    prospective_scheduler_t* scheduler = (prospective_scheduler_t*)malloc(
+    prospective_scheduler_t* scheduler = (prospective_scheduler_t*)nimcp_malloc(
         sizeof(prospective_scheduler_t));
     if (!scheduler) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate scheduler");
@@ -573,41 +587,41 @@ prospective_scheduler_t* prospective_scheduler_create(
 
     // Allocate heap
     scheduler->heap_capacity = cfg.max_intentions;
-    scheduler->heap = (priority_heap_node_t*)calloc(
+    scheduler->heap = (priority_heap_node_t*)nimcp_calloc(
         cfg.max_intentions, sizeof(priority_heap_node_t));
     if (!scheduler->heap) {
-        free(scheduler);
+        nimcp_free(scheduler);
         return NULL;
     }
 
     // Allocate time-ordered list
     scheduler->time_ordered_capacity = cfg.max_intentions;
-    scheduler->time_ordered = (scheduled_intention_t**)calloc(
+    scheduler->time_ordered = (scheduled_intention_t**)nimcp_calloc(
         cfg.max_intentions, sizeof(scheduled_intention_t*));
     if (!scheduler->time_ordered) {
-        free(scheduler->heap);
-        free(scheduler);
+        nimcp_free(scheduler->heap);
+        nimcp_free(scheduler);
         return NULL;
     }
 
     // Allocate all intentions array
-    scheduler->all_intentions = (scheduled_intention_t**)calloc(
+    scheduler->all_intentions = (scheduled_intention_t**)nimcp_calloc(
         cfg.max_intentions, sizeof(scheduled_intention_t*));
     if (!scheduler->all_intentions) {
-        free(scheduler->time_ordered);
-        free(scheduler->heap);
-        free(scheduler);
+        nimcp_free(scheduler->time_ordered);
+        nimcp_free(scheduler->heap);
+        nimcp_free(scheduler);
         return NULL;
     }
 
     // Allocate conflict groups
-    scheduler->conflict_groups = (pr_conflict_group_t*)calloc(
+    scheduler->conflict_groups = (pr_conflict_group_t*)nimcp_calloc(
         cfg.max_conflict_groups, sizeof(pr_conflict_group_t));
     if (!scheduler->conflict_groups) {
-        free(scheduler->all_intentions);
-        free(scheduler->time_ordered);
-        free(scheduler->heap);
-        free(scheduler);
+        nimcp_free(scheduler->all_intentions);
+        nimcp_free(scheduler->time_ordered);
+        nimcp_free(scheduler->heap);
+        nimcp_free(scheduler);
         return NULL;
     }
 
@@ -669,25 +683,25 @@ void prospective_scheduler_destroy(prospective_scheduler_t* scheduler) {
         }
 
         if (scheduler->conflict_groups[i].intention_ids) {
-            free(scheduler->conflict_groups[i].intention_ids);
+            nimcp_free(scheduler->conflict_groups[i].intention_ids);
         }
     }
 
     // Free main arrays
     if (scheduler->heap) {
-        free(scheduler->heap);
+        nimcp_free(scheduler->heap);
     }
     if (scheduler->time_ordered) {
-        free(scheduler->time_ordered);
+        nimcp_free(scheduler->time_ordered);
     }
     if (scheduler->all_intentions) {
-        free(scheduler->all_intentions);
+        nimcp_free(scheduler->all_intentions);
     }
     if (scheduler->conflict_groups) {
-        free(scheduler->conflict_groups);
+        nimcp_free(scheduler->conflict_groups);
     }
 
-    free(scheduler);
+    nimcp_free(scheduler);
 }
 
 pr_sched_error_t prospective_scheduler_reset(prospective_scheduler_t* scheduler) {
@@ -726,7 +740,7 @@ pr_sched_error_t prospective_scheduler_reset(prospective_scheduler_t* scheduler)
         }
 
         if (scheduler->conflict_groups[i].intention_ids) {
-            free(scheduler->conflict_groups[i].intention_ids);
+            nimcp_free(scheduler->conflict_groups[i].intention_ids);
             scheduler->conflict_groups[i].intention_ids = NULL;
         }
     }
@@ -761,7 +775,7 @@ prospective_intention_t* prospective_intention_create(
     prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
 
 
-    prospective_intention_t* intention = (prospective_intention_t*)malloc(
+    prospective_intention_t* intention = (prospective_intention_t*)nimcp_malloc(
         sizeof(prospective_intention_t));
     if (!intention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate intention");
@@ -812,7 +826,7 @@ void prospective_intention_destroy(prospective_intention_t* intention) {
     prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
 
 
-    free(intention);
+    nimcp_free(intention);
 }
 
 pr_sched_error_t prospective_intention_set_time_window(
@@ -1447,7 +1461,7 @@ uint32_t prospective_scheduler_add_conflict(
     group->strategy = strategy;
     group->capacity = num_intentions > INITIAL_CONFLICT_CAPACITY ?
                       num_intentions : INITIAL_CONFLICT_CAPACITY;
-    group->intention_ids = (uint64_t*)malloc(group->capacity * sizeof(uint64_t));
+    group->intention_ids = (uint64_t*)nimcp_malloc(group->capacity * sizeof(uint64_t));
     if (!group->intention_ids) {
         return 0;
     }
@@ -1470,7 +1484,7 @@ uint32_t prospective_scheduler_add_conflict(
 
     if (group->num_intentions < 2) {
         // Not enough valid intentions for a conflict
-        free(group->intention_ids);
+        nimcp_free(group->intention_ids);
         group->intention_ids = NULL;
         return 0;
     }
@@ -1515,7 +1529,7 @@ pr_sched_error_t prospective_scheduler_remove_conflict(
 
     // Free group resources
     if (group->intention_ids) {
-        free(group->intention_ids);
+        nimcp_free(group->intention_ids);
     }
 
     // Shift remaining groups

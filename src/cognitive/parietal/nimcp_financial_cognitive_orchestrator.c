@@ -28,29 +28,49 @@
 
 #include "cognitive/parietal/nimcp_financial_cognitive_orchestrator.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_orch)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial cognitive orchestrator module */
-static nimcp_health_agent_t* g_fin_orch_health_agent = NULL;
+static mesh_participant_id_t g_fin_orch_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_orch_mesh_registry = NULL;
 
-void financial_cognitive_orchestrator_set_health_agent_global(void* agent) {
-    g_fin_orch_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_orch_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_orch_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_orch", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_orch";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_orch_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_orch_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_orch_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_orch_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_orch_health_agent, operation, progress);
+void fin_orch_mesh_unregister(void) {
+    if (g_fin_orch_mesh_registry && g_fin_orch_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_orch_mesh_registry, g_fin_orch_mesh_id);
+        g_fin_orch_mesh_id = 0;
+        g_fin_orch_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -320,7 +340,7 @@ financial_cognitive_orchestrator_handle_t* financial_cognitive_orchestrator_crea
     fin_orch_heartbeat_global("orchestrator_create", 0.0f);
 
     financial_cognitive_orchestrator_handle_t* orch =
-        (financial_cognitive_orchestrator_handle_t*)calloc(
+        (financial_cognitive_orchestrator_handle_t*)nimcp_calloc(
             1, sizeof(financial_cognitive_orchestrator_handle_t));
     if (!orch) {
         set_error("Failed to allocate orchestrator");
@@ -366,7 +386,7 @@ void financial_cognitive_orchestrator_destroy(
      * Ownership and destruction is the responsibility of the caller. */
 
     orch->magic = 0;
-    free(orch);
+    nimcp_free(orch);
 
     fin_orch_heartbeat_global("orchestrator_destroy", 1.0f);
 }

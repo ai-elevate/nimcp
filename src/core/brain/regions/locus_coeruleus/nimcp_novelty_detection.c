@@ -13,29 +13,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(novelty_detection)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for novelty_detection module */
-static nimcp_health_agent_t* g_novelty_detection_health_agent = NULL;
+static mesh_participant_id_t g_novelty_detection_mesh_id = 0;
+static mesh_participant_registry_t* g_novelty_detection_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for novelty_detection heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void novelty_detection_set_health_agent(nimcp_health_agent_t* agent) {
-    g_novelty_detection_health_agent = agent;
+nimcp_error_t novelty_detection_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_novelty_detection_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "novelty_detection", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "novelty_detection";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_novelty_detection_mesh_id);
+    if (err == NIMCP_SUCCESS) g_novelty_detection_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from novelty_detection module */
-static inline void novelty_detection_heartbeat(const char* operation, float progress) {
-    if (g_novelty_detection_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_novelty_detection_health_agent, operation, progress);
+void novelty_detection_mesh_unregister(void) {
+    if (g_novelty_detection_mesh_registry && g_novelty_detection_mesh_id != 0) {
+        mesh_participant_unregister(g_novelty_detection_mesh_registry, g_novelty_detection_mesh_id);
+        g_novelty_detection_mesh_id = 0;
+        g_novelty_detection_mesh_registry = NULL;
     }
 }
 
@@ -123,7 +136,7 @@ int nimcp_novelty_init(
 
     /* Allocate feature statistics */
     if (cfg.input_dimension > 0 && cfg.input_dimension <= NOVELTY_MAX_INPUT_DIM) {
-        system->feature_stats = (nimcp_novelty_stats_t*)calloc(
+        system->feature_stats = (nimcp_novelty_stats_t*)nimcp_calloc(
             cfg.input_dimension, sizeof(nimcp_novelty_stats_t));
         if (!system->feature_stats) {
             return -1;
@@ -180,13 +193,13 @@ int nimcp_novelty_shutdown(nimcp_novelty_system_t* system) {
     }
 
     if (system->feature_stats) {
-        free(system->feature_stats);
+        nimcp_free(system->feature_stats);
     }
     if (system->predictor.predicted) {
-        free(system->predictor.predicted);
+        nimcp_free(system->predictor.predicted);
     }
     if (system->predictor.weights) {
-        free(system->predictor.weights);
+        nimcp_free(system->predictor.weights);
     }
 
     memset(system, 0, sizeof(nimcp_novelty_system_t));

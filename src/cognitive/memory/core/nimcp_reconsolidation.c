@@ -27,31 +27,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reconsolidation)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for reconsolidation module */
-static nimcp_health_agent_t* g_reconsolidation_health_agent = NULL;
+static mesh_participant_id_t g_reconsolidation_mesh_id = 0;
+static mesh_participant_registry_t* g_reconsolidation_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for reconsolidation heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void reconsolidation_set_health_agent(nimcp_health_agent_t* agent) {
-    g_reconsolidation_health_agent = agent;
+nimcp_error_t reconsolidation_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_reconsolidation_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "reconsolidation", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "reconsolidation";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_reconsolidation_mesh_id);
+    if (err == NIMCP_SUCCESS) g_reconsolidation_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from reconsolidation module */
-static inline void reconsolidation_heartbeat(const char* operation, float progress) {
-    if (g_reconsolidation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_reconsolidation_health_agent, operation, progress);
+void reconsolidation_mesh_unregister(void) {
+    if (g_reconsolidation_mesh_registry && g_reconsolidation_mesh_id != 0) {
+        mesh_participant_unregister(g_reconsolidation_mesh_registry, g_reconsolidation_mesh_id);
+        g_reconsolidation_mesh_id = 0;
+        g_reconsolidation_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from reconsolidation module (instance-level) */
 static inline void reconsolidation_heartbeat_instance(
@@ -273,7 +287,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     }
 
     // Allocate system structure
-    reconsolidation_system_t* system = (reconsolidation_system_t*)calloc(
+    reconsolidation_system_t* system = (reconsolidation_system_t*)nimcp_calloc(
         1, sizeof(reconsolidation_system_t));
     if (system == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
@@ -298,18 +312,18 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     system->max_windows = cfg.max_windows;
 
     // Allocate windows array
-    system->windows = (reconsolidation_window_t*)calloc(
+    system->windows = (reconsolidation_window_t*)nimcp_calloc(
         cfg.max_windows, sizeof(reconsolidation_window_t));
     if (system->windows == NULL) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate free indices stack
-    system->free_indices = (size_t*)malloc(cfg.max_windows * sizeof(size_t));
+    system->free_indices = (size_t*)nimcp_malloc(cfg.max_windows * sizeof(size_t));
     if (system->free_indices == NULL) {
-        free(system->windows);
-        free(system);
+        nimcp_free(system->windows);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -326,24 +340,24 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     system->free_count = cfg.max_windows;
 
     // Allocate hash table
-    system->hash_table = (window_hash_entry_t**)calloc(
+    system->hash_table = (window_hash_entry_t**)nimcp_calloc(
         WINDOW_HASH_TABLE_SIZE, sizeof(window_hash_entry_t*));
     if (system->hash_table == NULL) {
-        free(system->free_indices);
-        free(system->windows);
-        free(system);
+        nimcp_free(system->free_indices);
+        nimcp_free(system->windows);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate entry pool for hash table
     system->entry_pool_size = cfg.max_windows;
-    system->entry_pool = (window_hash_entry_t*)calloc(
+    system->entry_pool = (window_hash_entry_t*)nimcp_calloc(
         system->entry_pool_size, sizeof(window_hash_entry_t));
     if (system->entry_pool == NULL) {
-        free(system->hash_table);
-        free(system->free_indices);
-        free(system->windows);
-        free(system);
+        nimcp_free(system->hash_table);
+        nimcp_free(system->free_indices);
+        nimcp_free(system->windows);
+        nimcp_free(system);
         return NULL;
     }
     system->entries_used = 0;
@@ -358,7 +372,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
 
         system->windows[i].max_interfering = cfg.max_interfering_per_window;
         if (cfg.max_interfering_per_window > 0) {
-            system->windows[i].interfering_memories = (pr_memory_node_t**)calloc(
+            system->windows[i].interfering_memories = (pr_memory_node_t**)nimcp_calloc(
                 cfg.max_interfering_per_window, sizeof(pr_memory_node_t*));
             // Allocation failure is not fatal - just disables interference tracking
         }
@@ -378,14 +392,14 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
             }
 
             if (system->windows[i].interfering_memories != NULL) {
-                free(system->windows[i].interfering_memories);
+                nimcp_free(system->windows[i].interfering_memories);
             }
         }
-        free(system->entry_pool);
-        free(system->hash_table);
-        free(system->free_indices);
-        free(system->windows);
-        free(system);
+        nimcp_free(system->entry_pool);
+        nimcp_free(system->hash_table);
+        nimcp_free(system->free_indices);
+        nimcp_free(system->windows);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -431,7 +445,7 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
             cleanup_window(&system->windows[i]);
         }
         if (system->windows[i].interfering_memories != NULL) {
-            free(system->windows[i].interfering_memories);
+            nimcp_free(system->windows[i].interfering_memories);
             system->windows[i].interfering_memories = NULL;
         }
     }
@@ -440,11 +454,11 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
 
     // Free resources
     nimcp_mutex_free(system->mutex);
-    free(system->entry_pool);
-    free(system->hash_table);
-    free(system->free_indices);
-    free(system->windows);
-    free(system);
+    nimcp_free(system->entry_pool);
+    nimcp_free(system->hash_table);
+    nimcp_free(system->free_indices);
+    nimcp_free(system->windows);
+    nimcp_free(system);
 }
 
 //=============================================================================

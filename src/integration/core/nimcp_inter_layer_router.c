@@ -11,35 +11,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for inter_layer_router module */
-static nimcp_health_agent_t* g_inter_layer_router_health_agent = NULL;
-
-/**
- * @brief Set health agent for inter_layer_router heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void inter_layer_router_set_health_agent(nimcp_health_agent_t* agent) {
-    g_inter_layer_router_health_agent = agent;
-}
-
-/** @brief Send heartbeat from inter_layer_router module */
-static inline void inter_layer_router_heartbeat(const char* operation, float progress) {
-    if (g_inter_layer_router_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_inter_layer_router_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(inter_layer_router)
 
 #define MAX_PENDING_MESSAGES 1024
 #define MAX_QUEUES NIMCP_LAYER_COUNT
@@ -76,7 +50,7 @@ nimcp_inter_layer_router_config_t nimcp_inter_layer_router_default_config(void) 
 nimcp_inter_layer_router_t nimcp_inter_layer_router_create(
     const nimcp_inter_layer_router_config_t* config, nimcp_layer_registry_t registry
 ) {
-    nimcp_inter_layer_router_t router = (nimcp_inter_layer_router_t)calloc(1, sizeof(struct nimcp_inter_layer_router_struct));
+    nimcp_inter_layer_router_t router = (nimcp_inter_layer_router_t)nimcp_calloc(1, sizeof(struct nimcp_inter_layer_router_struct));
     NIMCP_API_CHECK_ALLOC(router, "Failed to allocate inter-layer router");
     router->config = config ? *config : nimcp_inter_layer_router_default_config();
     router->registry = registry;
@@ -94,7 +68,7 @@ void nimcp_inter_layer_router_destroy(nimcp_inter_layer_router_t router) {
             q->count--;
         }
     }
-    free(router);
+    nimcp_free(router);
 }
 
 nimcp_layer_error_t nimcp_inter_layer_router_reset(nimcp_inter_layer_router_t router) {

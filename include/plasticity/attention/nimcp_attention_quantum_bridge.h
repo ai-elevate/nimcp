@@ -182,6 +182,7 @@ void attention_quantum_reset_stats(attention_quantum_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct attention_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -213,7 +214,7 @@ attention_quantum_config_t attention_quantum_default_config(void) {
 attention_quantum_bridge_t* attention_quantum_bridge_create(
     const attention_quantum_config_t* config
 ) {
-    attention_quantum_bridge_t* bridge = (attention_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    attention_quantum_bridge_t* bridge = (attention_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     if (config) {
@@ -234,7 +235,7 @@ void attention_quantum_bridge_destroy(attention_quantum_bridge_t* bridge) {
     if (bridge->qattn) {
         quantum_attention_destroy(bridge->qattn);
     }
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int attention_quantum_bridge_connect(

@@ -16,6 +16,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -205,6 +206,7 @@ int vae_hippo_bridge_connect_vae(vae_hippo_bridge_t* bridge, vae_system_t* vae) 
         !bridge->latent_buffer || !bridge->variance_buffer ||
         !bridge->latent_mean_baseline || !bridge->latent_var_baseline) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate working buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -290,6 +292,7 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         if (z_tensor) nimcp_tensor_destroy(z_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -306,6 +309,7 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(z_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
         bridge->stats.failed_operations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -317,6 +321,7 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(logvar_tensor);
         nimcp_tensor_destroy(z_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -361,6 +366,7 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(z_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
         bridge->stats.failed_operations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -498,6 +504,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -512,6 +519,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
         bridge->stats.failed_operations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -540,6 +548,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_CONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -553,6 +562,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -569,6 +579,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED;
     }
 
@@ -626,6 +637,7 @@ int vae_hippo_retrieve_by_id(vae_hippo_bridge_t* bridge,
     const nimcp_episode_t* episode = hippo_get_episode(hippo, episode_id);
 
     if (!episode || !episode->what_content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -635,6 +647,7 @@ int vae_hippo_retrieve_by_id(vae_hippo_bridge_t* bridge,
     if (!latent_tensor || !recon_tensor) {
         if (latent_tensor) nimcp_tensor_destroy(latent_tensor);
         if (recon_tensor) nimcp_tensor_destroy(recon_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -647,6 +660,7 @@ int vae_hippo_retrieve_by_id(vae_hippo_bridge_t* bridge,
     if (ret != 0) {
         nimcp_tensor_destroy(latent_tensor);
         nimcp_tensor_destroy(recon_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED;
     }
 
@@ -702,6 +716,7 @@ int vae_hippo_find_similar(vae_hippo_bridge_t* bridge,
         if (result->similarities) nimcp_free(result->similarities);
         result->episode_ids = NULL;
         result->similarities = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -715,6 +730,7 @@ int vae_hippo_find_similar(vae_hippo_bridge_t* bridge,
         if (cue_tensor) nimcp_tensor_destroy(cue_tensor);
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -727,6 +743,7 @@ int vae_hippo_find_similar(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(cue_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -743,6 +760,7 @@ int vae_hippo_find_similar(vae_hippo_bridge_t* bridge,
     nimcp_tensor_destroy(logvar_tensor);
 
     if (ret != HIPPO_ERROR_NONE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -810,6 +828,7 @@ int vae_hippo_pattern_separate(vae_hippo_bridge_t* bridge,
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -823,6 +842,7 @@ int vae_hippo_pattern_separate(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_PATTERN_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_PATTERN_FAIL;
     }
 
@@ -835,6 +855,7 @@ int vae_hippo_pattern_separate(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -886,6 +907,7 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
     result->output_pattern = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
     if (!result->output_pattern) {
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -898,6 +920,7 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
         nimcp_free(result->output_pattern);
         result->output_pattern = NULL;
         bridge->state = VAE_HIPPO_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -915,6 +938,7 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
             nimcp_free(result->output_pattern);
             result->output_pattern = NULL;
             bridge->state = VAE_HIPPO_STATE_ERROR;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_PATTERN_FAIL, "vae_hippocampus_bridge: error condition");
             return NIMCP_ERROR_VAE_HIPPO_PATTERN_FAIL;
         }
 
@@ -981,6 +1005,7 @@ int vae_hippo_pattern_bind(vae_hippo_bridge_t* bridge,
     uint32_t total_dim = (what ? what_dim : 0) + (where ? where_dim : 0) + (when ? when_dim : 0);
     result->output_pattern = (float*)nimcp_calloc(total_dim, sizeof(float));
     if (!result->output_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -1024,6 +1049,7 @@ int vae_hippo_generate_memories(vae_hippo_bridge_t* bridge,
     int ret = vae_generate(bridge->vae, num_samples, output);
     if (ret != 0) {
         nimcp_tensor_destroy(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED;
     }
 
@@ -1054,6 +1080,7 @@ int vae_hippo_interpolate_episodes(vae_hippo_bridge_t* bridge,
     const nimcp_episode_t* ep2 = hippo_get_episode(hippo, episode_id_2);
 
     if (!ep1 || !ep2 || !ep1->what_content || !ep2->what_content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -1066,6 +1093,7 @@ int vae_hippo_interpolate_episodes(vae_hippo_bridge_t* bridge,
         if (z1) nimcp_tensor_destroy(z1);
         if (z2) nimcp_tensor_destroy(z2);
         if (interp) nimcp_tensor_destroy(interp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -1083,6 +1111,7 @@ int vae_hippo_interpolate_episodes(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(z1);
         nimcp_tensor_destroy(z2);
         nimcp_tensor_destroy(interp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED;
     }
 
@@ -1113,6 +1142,7 @@ int vae_hippo_generate_variation(vae_hippo_bridge_t* bridge,
     const nimcp_episode_t* episode = hippo_get_episode(hippo, episode_id);
 
     if (!episode || !episode->what_content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 
@@ -1122,6 +1152,7 @@ int vae_hippo_generate_variation(vae_hippo_bridge_t* bridge,
     if (!z_tensor || !recon_tensor) {
         if (z_tensor) nimcp_tensor_destroy(z_tensor);
         if (recon_tensor) nimcp_tensor_destroy(recon_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -1139,6 +1170,7 @@ int vae_hippo_generate_variation(vae_hippo_bridge_t* bridge,
     if (ret != 0) {
         nimcp_tensor_destroy(z_tensor);
         nimcp_tensor_destroy(recon_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_DECODE_FAILED;
     }
 
@@ -1177,6 +1209,7 @@ int vae_hippo_compute_novelty(vae_hippo_bridge_t* bridge,
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -1189,6 +1222,7 @@ int vae_hippo_compute_novelty(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -1234,6 +1268,7 @@ int vae_hippo_update_baseline(vae_hippo_bridge_t* bridge,
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
     }
 
@@ -1246,6 +1281,7 @@ int vae_hippo_update_baseline(vae_hippo_bridge_t* bridge,
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_ENCODE_FAILED;
     }
 
@@ -1348,6 +1384,7 @@ int vae_hippo_export_for_training(vae_hippo_bridge_t* bridge,
 
     int ret = hippo_get_recent_episodes(hippo, episode_ids, max_patterns, &num_episodes);
     if (ret != HIPPO_ERROR_NONE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL, "vae_hippocampus_bridge: error condition");
         return NIMCP_ERROR_VAE_HIPPO_EPISODE_FAIL;
     }
 

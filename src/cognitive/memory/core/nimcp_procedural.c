@@ -24,31 +24,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(procedural)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for procedural module */
-static nimcp_health_agent_t* g_procedural_health_agent = NULL;
+static mesh_participant_id_t g_procedural_mesh_id = 0;
+static mesh_participant_registry_t* g_procedural_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for procedural heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void procedural_set_health_agent(nimcp_health_agent_t* agent) {
-    g_procedural_health_agent = agent;
+nimcp_error_t procedural_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_procedural_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "procedural", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "procedural";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_procedural_mesh_id);
+    if (err == NIMCP_SUCCESS) g_procedural_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from procedural module */
-static inline void procedural_heartbeat(const char* operation, float progress) {
-    if (g_procedural_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_procedural_health_agent, operation, progress);
+void procedural_mesh_unregister(void) {
+    if (g_procedural_mesh_registry && g_procedural_mesh_id != 0) {
+        mesh_participant_unregister(g_procedural_mesh_registry, g_procedural_mesh_id);
+        g_procedural_mesh_id = 0;
+        g_procedural_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from procedural module (instance-level) */
 static inline void procedural_heartbeat_instance(
@@ -308,7 +322,7 @@ static void free_skill(procedural_skill_t* skill) {
     if (!skill) return;
 
     if (skill->skill_name) {
-        free(skill->skill_name);
+        nimcp_free(skill->skill_name);
         skill->skill_name = NULL;
     }
 
@@ -321,20 +335,20 @@ static void free_skill(procedural_skill_t* skill) {
             }
 
             if (skill->steps[i].action_description) {
-                free(skill->steps[i].action_description);
+                nimcp_free(skill->steps[i].action_description);
             }
         }
-        free(skill->steps);
+        nimcp_free(skill->steps);
         skill->steps = NULL;
     }
 
     if (skill->accuracy_history) {
-        free(skill->accuracy_history);
+        nimcp_free(skill->accuracy_history);
         skill->accuracy_history = NULL;
     }
 
     if (skill->sub_skills) {
-        free(skill->sub_skills);
+        nimcp_free(skill->sub_skills);
         skill->sub_skills = NULL;
     }
 
@@ -350,7 +364,7 @@ static void free_habit(procedural_habit_t* habit) {
     if (!habit) return;
 
     if (habit->reward_history) {
-        free(habit->reward_history);
+        nimcp_free(habit->reward_history);
         habit->reward_history = NULL;
     }
 
@@ -376,7 +390,7 @@ static char* copy_string(const char* src, size_t max_len) {
         len = max_len - 1;
     }
 
-    char* copy = (char*)malloc(len + 1);
+    char* copy = (char*)nimcp_malloc(len + 1);
     if (!copy) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate copy");
@@ -653,7 +667,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     }
 
     // Allocate manager
-    procedural_memory_t pm = (procedural_memory_t)calloc(1, sizeof(struct procedural_memory_internal));
+    procedural_memory_t pm = (procedural_memory_t)nimcp_calloc(1, sizeof(struct procedural_memory_internal));
     if (!pm) {
         set_error("Memory allocation failed for manager");
         return NULL;
@@ -664,10 +678,10 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     pm->node_manager = node_manager;
 
     // Allocate skills array
-    pm->skills = (procedural_skill_t*)calloc(cfg.max_skills, sizeof(procedural_skill_t));
+    pm->skills = (procedural_skill_t*)nimcp_calloc(cfg.max_skills, sizeof(procedural_skill_t));
     if (!pm->skills) {
         set_error("Memory allocation failed for skills");
-        free(pm);
+        nimcp_free(pm);
         return NULL;
     }
 
@@ -686,11 +700,11 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     pm->max_skills = cfg.max_skills;
 
     // Allocate habits array
-    pm->habits = (procedural_habit_t*)calloc(cfg.max_habits, sizeof(procedural_habit_t));
+    pm->habits = (procedural_habit_t*)nimcp_calloc(cfg.max_habits, sizeof(procedural_habit_t));
     if (!pm->habits) {
         set_error("Memory allocation failed for habits");
-        free(pm->skills);
-        free(pm);
+        nimcp_free(pm->skills);
+        nimcp_free(pm);
         return NULL;
     }
 
@@ -743,7 +757,7 @@ NIMCP_EXPORT void procedural_destroy(procedural_memory_t pm) {
 
             free_skill(&pm->skills[i]);
         }
-        free(pm->skills);
+        nimcp_free(pm->skills);
     }
 
     // Free habits
@@ -757,10 +771,10 @@ NIMCP_EXPORT void procedural_destroy(procedural_memory_t pm) {
 
             free_habit(&pm->habits[i]);
         }
-        free(pm->habits);
+        nimcp_free(pm->habits);
     }
 
-    free(pm);
+    nimcp_free(pm);
 }
 
 NIMCP_EXPORT procedural_error_t procedural_reset(procedural_memory_t pm) {
@@ -855,7 +869,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_skill(
     }
 
     // Allocate steps array
-    skill->steps = (procedural_step_t*)calloc(pm->config.max_steps_per_skill,
+    skill->steps = (procedural_step_t*)nimcp_calloc(pm->config.max_steps_per_skill,
                                                sizeof(procedural_step_t));
     if (!skill->steps) {
         set_error("Failed to allocate steps array");
@@ -866,7 +880,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_skill(
     skill->num_steps = 0;
 
     // Allocate accuracy history
-    skill->accuracy_history = (float*)calloc(pm->config.accuracy_history_len, sizeof(float));
+    skill->accuracy_history = (float*)nimcp_calloc(pm->config.accuracy_history_len, sizeof(float));
     if (!skill->accuracy_history) {
         set_error("Failed to allocate accuracy history");
         free_skill(skill);
@@ -1148,7 +1162,7 @@ NIMCP_EXPORT procedural_error_t procedural_remove_step(
 
     // Free the step's resources
     if (skill->steps[step_index].action_description) {
-        free(skill->steps[step_index].action_description);
+        nimcp_free(skill->steps[step_index].action_description);
     }
 
     // Shift remaining steps
@@ -1759,7 +1773,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_habit(
 
     // Initialize reward tracking
     habit->history_capacity = pm->config.reward_history_len;
-    habit->reward_history = (float*)calloc(habit->history_capacity, sizeof(float));
+    habit->reward_history = (float*)nimcp_calloc(habit->history_capacity, sizeof(float));
     if (!habit->reward_history) {
         set_error("Failed to allocate reward history");
         free_habit(habit);
@@ -2075,7 +2089,7 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
     chunk->is_chunk = true;
 
     // Allocate sub-skills array
-    chunk->sub_skills = (uint64_t*)malloc(num_sub_skills * sizeof(uint64_t));
+    chunk->sub_skills = (uint64_t*)nimcp_malloc(num_sub_skills * sizeof(uint64_t));
     if (!chunk->sub_skills) {
         procedural_remove_skill(pm, chunk_id);
         set_error("Failed to allocate sub-skills array");
@@ -2464,7 +2478,7 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
         float strength;
     } skill_entry_t;
 
-    skill_entry_t* entries = (skill_entry_t*)malloc(pm->num_skills * sizeof(skill_entry_t));
+    skill_entry_t* entries = (skill_entry_t*)nimcp_malloc(pm->num_skills * sizeof(skill_entry_t));
     if (!entries) {
         set_error("Memory allocation failed");
         return PROC_ERROR_NO_MEMORY;
@@ -2515,7 +2529,7 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
         }
     }
 
-    free(entries);
+    nimcp_free(entries);
 
     if (count_out) *count_out = count;
     return PROC_SUCCESS;

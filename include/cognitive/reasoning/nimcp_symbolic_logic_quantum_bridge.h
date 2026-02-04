@@ -160,6 +160,7 @@ void symbolic_quantum_reset_stats(symbolic_quantum_bridge_t* bridge);
 
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct symbolic_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -184,7 +185,7 @@ symbolic_quantum_config_t symbolic_quantum_default_config(void) {
 symbolic_quantum_bridge_t* symbolic_quantum_bridge_create(
     const symbolic_quantum_config_t* config
 ) {
-    symbolic_quantum_bridge_t* bridge = (symbolic_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    symbolic_quantum_bridge_t* bridge = (symbolic_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : symbolic_quantum_default_config();
@@ -197,7 +198,7 @@ symbolic_quantum_bridge_t* symbolic_quantum_bridge_create(
     qconfig.use_ternary_logic = bridge->config.use_ternary_logic;
     bridge->reasoner = qreason_create(&qconfig);
     if (!bridge->reasoner) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -207,7 +208,7 @@ symbolic_quantum_bridge_t* symbolic_quantum_bridge_create(
 void symbolic_quantum_bridge_destroy(symbolic_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->reasoner) qreason_destroy(bridge->reasoner);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int symbolic_quantum_bridge_connect(

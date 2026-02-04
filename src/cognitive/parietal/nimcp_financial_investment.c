@@ -21,50 +21,53 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-/** Global health agent for financial_investment module */
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_investment_health_agent = NULL;
 
+
+/* Stub declarations for subsystem integration globals */
+static void* g_fin_investment_immune = NULL;
+static void* g_fin_investment_bbb = NULL;
+
 //=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune, int source, const uint8_t* epitope, size_t epitope_len, uint32_t severity, uint32_t source_node, uint32_t* antigen_id);
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, const char* context);
+static mesh_participant_id_t g_financial_investment_mesh_id = 0;
+static mesh_participant_registry_t* g_financial_investment_mesh_registry = NULL;
 
-static brain_immune_system_t* g_fin_investment_immune = NULL;
-static bbb_system_t g_fin_investment_bbb = NULL;
-
-void financial_investment_set_immune(brain_immune_system_t* immune) {
-    g_fin_investment_immune = immune;
+nimcp_error_t financial_investment_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_financial_investment_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "financial_investment", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "financial_investment";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_financial_investment_mesh_id);
+    if (err == NIMCP_SUCCESS) g_financial_investment_mesh_registry = registry;
+    return err;
 }
 
-void financial_investment_set_bbb(bbb_system_t bbb) {
-    g_fin_investment_bbb = bbb;
+void financial_investment_mesh_unregister(void) {
+    if (g_financial_investment_mesh_registry && g_financial_investment_mesh_id != 0) {
+        mesh_participant_unregister(g_financial_investment_mesh_registry, g_financial_investment_mesh_id);
+        g_financial_investment_mesh_id = 0;
+        g_financial_investment_mesh_registry = NULL;
+    }
 }
 
-//=============================================================================
-// Bio-Async Integration (Change Set 4)
-//=============================================================================
-struct bio_async_context;
-typedef struct bio_async_context bio_async_context_t;
-struct bio_router_struct;
-typedef struct bio_router_struct* bio_router_t;
 
-//=============================================================================
-// KG Wiring Integration (Change Set 1)
 //=============================================================================
 struct kg_wiring;
 typedef struct kg_wiring kg_wiring_t;
@@ -388,7 +391,7 @@ financial_investment_eng_t* financial_investment_create_custom(const fin_config_
     }
     financial_investment_heartbeat("fin_create_custom", 0.0f);
 
-    financial_investment_eng_t* eng = (financial_investment_eng_t*)calloc(
+    financial_investment_eng_t* eng = (financial_investment_eng_t*)nimcp_calloc(
         1, sizeof(financial_investment_eng_t));
     if (!eng) {
         set_error("Failed to allocate financial_investment_eng");
@@ -419,7 +422,7 @@ financial_investment_eng_t* financial_investment_create_custom(const fin_config_
 void financial_investment_destroy(financial_investment_eng_t* fin) {
     financial_investment_heartbeat("fin_destroy", 0.0f);
     if (fin) {
-        free(fin);
+        nimcp_free(fin);
     }
 }
 
@@ -640,7 +643,7 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
     uint32_t n = portfolio->asset_count;
 
     /* Portfolio returns from history (weighted sum) */
-    float* port_returns = (float*)calloc(history_length, sizeof(float));
+    float* port_returns = (float*)nimcp_calloc(history_length, sizeof(float));
     if (!port_returns) {
         set_error("Allocation failed for portfolio returns");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_assess_risk: Allocation failed");
@@ -702,14 +705,14 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
 
     /* Max drawdown */
     /* Reconstruct cumulative returns for drawdown */
-    float* cum_values = (float*)calloc(history_length, sizeof(float));
+    float* cum_values = (float*)nimcp_calloc(history_length, sizeof(float));
     if (cum_values) {
         cum_values[0] = 1.0f + port_returns[0];
         for (uint32_t t = 1; t < history_length; t++) {
             cum_values[t] = cum_values[t - 1] * (1.0f + port_returns[t]);
         }
         out_metrics->max_drawdown = financial_investment_max_drawdown(cum_values, history_length);
-        free(cum_values);
+        nimcp_free(cum_values);
     }
 
     /* Present antigen for extreme drawdown (Phase 9) */
@@ -793,7 +796,7 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
             div_score * 0.6f + conc_score * 0.4f);
     }
 
-    free(port_returns);
+    nimcp_free(port_returns);
     fin->stats.risk_assessments++;
     return FIN_ERR_OK;
 }
@@ -819,7 +822,7 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
     financial_investment_heartbeat("fin_compute_var", 0.0f);
 
     /* Copy and sort returns ascending */
-    float* sorted = (float*)malloc(count * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(count * sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in compute_var");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_compute_var: Allocation failed");
@@ -839,7 +842,7 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
         investment_present_antigen(fin, "var_exceedance", 7);
     }
 
-    free(sorted);
+    nimcp_free(sorted);
     return var;
 }
 
@@ -860,7 +863,7 @@ float financial_investment_compute_cvar(financial_investment_eng_t* fin,
     financial_investment_heartbeat("fin_compute_cvar", 0.0f);
 
     /* Copy and sort returns ascending */
-    float* sorted = (float*)malloc(count * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(count * sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in compute_cvar");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_compute_cvar: Allocation failed");
@@ -881,7 +884,7 @@ float financial_investment_compute_cvar(financial_investment_eng_t* fin,
     }
     float cvar = -cvar_sum / (float)var_idx;
 
-    free(sorted);
+    nimcp_free(sorted);
     return cvar;
 }
 
@@ -1135,7 +1138,7 @@ int financial_investment_binomial_tree(financial_investment_eng_t* fin,
     float p = (expf(rate * dt) - d) / (u - d); /* Risk-neutral probability */
 
     /* Allocate price tree at terminal nodes */
-    float* prices = (float*)malloc((steps + 1) * sizeof(float));
+    float* prices = (float*)nimcp_malloc((steps + 1) * sizeof(float));
     if (!prices) {
         set_error("Allocation failed in binomial_tree");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_binomial_tree: Allocation failed");
@@ -1206,7 +1209,7 @@ int financial_investment_binomial_tree(financial_investment_eng_t* fin,
     out_result->charm = 0.0f;
     out_result->vanna = 0.0f;
 
-    free(prices);
+    nimcp_free(prices);
     fin->stats.option_pricings++;
     return FIN_ERR_OK;
 }
@@ -1356,7 +1359,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     out_result->method = FIN_VALUATION_COMPARABLES;
 
     /* Find median of peer multiples */
-    float* sorted = (float*)malloc(peer_count * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(peer_count * sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in comparables");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_comparables: Allocation failed");
@@ -1393,7 +1396,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     out_result->margin_of_safety = 0.0f;
     out_result->upside_potential = 0.0f;
 
-    free(sorted);
+    nimcp_free(sorted);
     fin->stats.valuations++;
     return FIN_ERR_OK;
 }
@@ -1875,21 +1878,21 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
      */
 
     /* Compute X^T X (K x K) */
-    float* xtx = (float*)calloc(K * K, sizeof(float));
-    float* xty = (float*)calloc(K, sizeof(float));
+    float* xtx = (float*)nimcp_calloc(K * K, sizeof(float));
+    float* xty = (float*)nimcp_calloc(K, sizeof(float));
     if (!xtx || !xty) {
-        free(xtx);
-        free(xty);
+        nimcp_free(xtx);
+        nimcp_free(xty);
         set_error("Allocation failed in factor_analysis");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed");
         return FIN_ERR_ALLOC;
     }
 
     /* Compute factor means for de-meaning */
-    float* factor_means = (float*)calloc(K, sizeof(float));
+    float* factor_means = (float*)nimcp_calloc(K, sizeof(float));
     float asset_mean = 0.0f;
     if (!factor_means) {
-        free(xtx); free(xty);
+        nimcp_free(xtx); nimcp_free(xty);
         set_error("Allocation failed in factor_analysis");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed for factor_means");
         return FIN_ERR_ALLOC;
@@ -1939,9 +1942,9 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         }
     } else {
         /* Gaussian elimination with partial pivoting */
-        float* aug = (float*)calloc(K * (K + 1), sizeof(float));
+        float* aug = (float*)nimcp_calloc(K * (K + 1), sizeof(float));
         if (!aug) {
-            free(xtx); free(xty); free(factor_means);
+            nimcp_free(xtx); nimcp_free(xty); nimcp_free(factor_means);
             set_error("Allocation failed in factor_analysis");
             NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed for augmented matrix");
             return FIN_ERR_ALLOC;
@@ -1998,7 +2001,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
             }
         }
 
-        free(aug);
+        nimcp_free(aug);
     }
 
     /* Compute residual return (alpha) */
@@ -2028,9 +2031,9 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         out_result->factor_returns[k] = factor_means[k];
     }
 
-    free(xtx);
-    free(xty);
-    free(factor_means);
+    nimcp_free(xtx);
+    nimcp_free(xty);
+    nimcp_free(factor_means);
     fin->stats.factor_analyses++;
     return FIN_ERR_OK;
 }

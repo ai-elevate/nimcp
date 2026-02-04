@@ -14,6 +14,7 @@
 #include "mesh/nimcp_mesh_gpu.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -184,7 +185,7 @@ static nimcp_error_t init_coordinators(mesh_gpu_channel_t channel) {
     int device_count = mesh_gpu_get_device_count();
     if (device_count == 0) {
         /* No GPUs - create dummy coordinator for CPU fallback */
-        channel->coordinators = (gpu_coordinator_t*)calloc(1, sizeof(gpu_coordinator_t));
+        channel->coordinators = (gpu_coordinator_t*)nimcp_calloc(1, sizeof(gpu_coordinator_t));
         if (!channel->coordinators) return NIMCP_ERROR_NO_MEMORY;
 
         channel->coordinators[0].device_id = -1;  /* CPU fallback marker */
@@ -201,7 +202,7 @@ static nimcp_error_t init_coordinators(mesh_gpu_channel_t channel) {
         num_devices = MESH_GPU_MAX_DEVICES;
     }
 
-    channel->coordinators = (gpu_coordinator_t*)calloc(num_devices, sizeof(gpu_coordinator_t));
+    channel->coordinators = (gpu_coordinator_t*)nimcp_calloc(num_devices, sizeof(gpu_coordinator_t));
     if (!channel->coordinators) return NIMCP_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < num_devices; i++) {
@@ -276,7 +277,7 @@ static gpu_coordinator_t* select_coordinator(mesh_gpu_channel_t channel, const m
 static nimcp_error_t batch_init(mesh_gpu_batch_t* batch, size_t capacity) {
     if (!batch) return NIMCP_ERROR_INVALID_PARAM;
 
-    batch->transactions = (mesh_gpu_transaction_t**)calloc(capacity, sizeof(mesh_gpu_transaction_t*));
+    batch->transactions = (mesh_gpu_transaction_t**)nimcp_calloc(capacity, sizeof(mesh_gpu_transaction_t*));
     if (!batch->transactions) return NIMCP_ERROR_NO_MEMORY;
 
     batch->capacity = capacity;
@@ -303,7 +304,7 @@ static void batch_clear(mesh_gpu_batch_t* batch) {
 
 static void batch_destroy(mesh_gpu_batch_t* batch) {
     if (!batch) return;
-    free(batch->transactions);
+    nimcp_free(batch->transactions);
     batch->transactions = NULL;
     batch->capacity = 0;
     batch->count = 0;
@@ -371,6 +372,7 @@ static nimcp_error_t process_transaction_gpu(mesh_gpu_channel_t channel,
             tx->status = MESH_GPU_TX_STATUS_FAILED;
             tx->error = NIMCP_ERROR_GPU;
             snprintf(tx->error_msg, sizeof(tx->error_msg), "Failed to set device %d", coord->device_id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "mesh_gpu: error condition");
             return NIMCP_ERROR_GPU;
         }
     }
@@ -400,6 +402,7 @@ static nimcp_error_t process_transaction_gpu(mesh_gpu_channel_t channel,
             tx->status = MESH_GPU_TX_STATUS_FAILED;
             tx->error = NIMCP_ERROR_INVALID_PARAM;
             snprintf(tx->error_msg, sizeof(tx->error_msg), "Unknown GPU transaction type");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu: invalid parameter");
             return NIMCP_ERROR_INVALID_PARAM;
     }
 #else
@@ -442,6 +445,7 @@ static nimcp_error_t process_batch(mesh_gpu_channel_t channel, mesh_gpu_batch_t*
                     "No GPU coordinator available");
             channel->stats.total_failed++;
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_READY, "mesh_gpu: error condition");
         return NIMCP_ERROR_NOT_READY;
     }
 
@@ -519,33 +523,33 @@ static nimcp_error_t flush_batch(mesh_gpu_channel_t channel) {
  * ============================================================================ */
 
 mesh_gpu_channel_t mesh_gpu_channel_create(const mesh_gpu_channel_config_t* config) {
-    mesh_gpu_channel_t channel = (mesh_gpu_channel_t)calloc(1, sizeof(struct mesh_gpu_channel_internal));
+    mesh_gpu_channel_t channel = (mesh_gpu_channel_t)nimcp_calloc(1, sizeof(struct mesh_gpu_channel_internal));
     if (!channel) return NULL;
 
     channel->config = config ? *config : mesh_gpu_channel_default_config();
 
     /* Initialize coordinators */
     if (init_coordinators(channel) != NIMCP_SUCCESS) {
-        free(channel);
+        nimcp_free(channel);
         return NULL;
     }
 
     /* Initialize batch */
     size_t batch_capacity = channel->config.batch_threshold * 2;
     if (batch_init(&channel->current_batch, batch_capacity) != NIMCP_SUCCESS) {
-        free(channel->coordinators);
-        free(channel);
+        nimcp_free(channel->coordinators);
+        nimcp_free(channel);
         return NULL;
     }
 
     /* Initialize fallback array */
     channel->fallback_capacity = 16;
-    channel->fallbacks = (cpu_fallback_entry_t*)calloc(channel->fallback_capacity,
+    channel->fallbacks = (cpu_fallback_entry_t*)nimcp_calloc(channel->fallback_capacity,
                                                         sizeof(cpu_fallback_entry_t));
     if (!channel->fallbacks) {
         batch_destroy(&channel->current_batch);
-        free(channel->coordinators);
-        free(channel);
+        nimcp_free(channel->coordinators);
+        nimcp_free(channel);
         return NULL;
     }
 
@@ -567,7 +571,7 @@ void mesh_gpu_channel_destroy(mesh_gpu_channel_t channel) {
     while (entry) {
         pending_tx_entry_t* next = entry->next;
         mesh_gpu_transaction_destroy(entry->tx);
-        free(entry);
+        nimcp_free(entry);
         entry = next;
     }
 
@@ -575,15 +579,15 @@ void mesh_gpu_channel_destroy(mesh_gpu_channel_t channel) {
     batch_destroy(&channel->current_batch);
 
     /* Free coordinators */
-    free(channel->coordinators);
+    nimcp_free(channel->coordinators);
 
     /* Free fallbacks */
-    free(channel->fallbacks);
+    nimcp_free(channel->fallbacks);
 
     /* Free stats device array if allocated */
-    free(channel->stats.device_stats);
+    nimcp_free(channel->stats.device_stats);
 
-    free(channel);
+    nimcp_free(channel);
 }
 
 nimcp_error_t mesh_gpu_channel_start(mesh_gpu_channel_t channel) {
@@ -617,6 +621,7 @@ nimcp_error_t mesh_gpu_channel_submit(mesh_gpu_channel_t channel, mesh_gpu_trans
     if (!channel || !tx) return NIMCP_ERROR_INVALID_PARAM;
     if (!channel->running) return NIMCP_ERROR_NOT_READY;
     if (channel->pending_count >= channel->config.max_pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_gpu: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -676,7 +681,7 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
     size_t input_size,
     size_t output_size
 ) {
-    mesh_gpu_transaction_t* tx = (mesh_gpu_transaction_t*)calloc(1, sizeof(mesh_gpu_transaction_t));
+    mesh_gpu_transaction_t* tx = (mesh_gpu_transaction_t*)nimcp_calloc(1, sizeof(mesh_gpu_transaction_t));
     if (!tx) return NULL;
 
     tx->gpu_type = gpu_type;
@@ -685,9 +690,9 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
 
     /* Copy input data */
     if (input_data && input_size > 0) {
-        tx->input_data = malloc(input_size);
+        tx->input_data = nimcp_malloc(input_size);
         if (!tx->input_data) {
-            free(tx);
+            nimcp_free(tx);
             return NULL;
         }
         memcpy(tx->input_data, input_data, input_size);
@@ -696,10 +701,10 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
 
     /* Allocate output buffer */
     if (output_size > 0) {
-        tx->output_data = calloc(1, output_size);
+        tx->output_data = nimcp_calloc(1, output_size);
         if (!tx->output_data) {
-            free(tx->input_data);
-            free(tx);
+            nimcp_free(tx->input_data);
+            nimcp_free(tx);
             return NULL;
         }
         tx->output_size = output_size;
@@ -714,9 +719,9 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
 
 void mesh_gpu_transaction_destroy(mesh_gpu_transaction_t* tx) {
     if (!tx) return;
-    free(tx->input_data);
-    free(tx->output_data);
-    free(tx);
+    nimcp_free(tx->input_data);
+    nimcp_free(tx->output_data);
+    nimcp_free(tx);
 }
 
 nimcp_error_t mesh_gpu_channel_wait(
@@ -750,6 +755,7 @@ nimcp_error_t mesh_gpu_channel_wait(
         nanosleep(&ts, NULL);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_TIMEOUT, "mesh_gpu: error condition");
     return NIMCP_ERROR_TIMEOUT;
 }
 
@@ -769,6 +775,7 @@ nimcp_error_t mesh_gpu_channel_get_status(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_gpu: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -817,6 +824,7 @@ nimcp_error_t mesh_gpu_channel_get_device_state(
 
 nimcp_error_t mesh_gpu_channel_disable_device(mesh_gpu_channel_t channel, size_t device_idx) {
     if (!channel || device_idx >= channel->coordinator_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     channel->coordinators[device_idx].enabled = false;
@@ -825,6 +833,7 @@ nimcp_error_t mesh_gpu_channel_disable_device(mesh_gpu_channel_t channel, size_t
 
 nimcp_error_t mesh_gpu_channel_enable_device(mesh_gpu_channel_t channel, size_t device_idx) {
     if (!channel || device_idx >= channel->coordinator_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     channel->coordinators[device_idx].enabled = true;
@@ -922,7 +931,7 @@ nimcp_error_t mesh_gpu_channel_get_stats(
 
     /* Allocate and fill device stats */
     if (channel->coordinator_count > 0) {
-        stats->device_stats = (mesh_gpu_device_state_t*)calloc(
+        stats->device_stats = (mesh_gpu_device_state_t*)nimcp_calloc(
             channel->coordinator_count, sizeof(mesh_gpu_device_state_t));
         if (stats->device_stats) {
             size_t valid_count = 0;
@@ -962,7 +971,7 @@ nimcp_error_t mesh_gpu_channel_reset_stats(mesh_gpu_channel_t channel) {
 
 void mesh_gpu_channel_stats_free(mesh_gpu_channel_stats_t* stats) {
     if (!stats) return;
-    free(stats->device_stats);
+    nimcp_free(stats->device_stats);
     stats->device_stats = NULL;
     stats->device_count = 0;
 }

@@ -25,31 +25,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(skill_acquisition)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for skill_acquisition module */
-static nimcp_health_agent_t* g_skill_acquisition_health_agent = NULL;
+static mesh_participant_id_t g_skill_acquisition_mesh_id = 0;
+static mesh_participant_registry_t* g_skill_acquisition_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for skill_acquisition heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void skill_acquisition_set_health_agent(nimcp_health_agent_t* agent) {
-    g_skill_acquisition_health_agent = agent;
+nimcp_error_t skill_acquisition_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_skill_acquisition_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "skill_acquisition", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "skill_acquisition";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_skill_acquisition_mesh_id);
+    if (err == NIMCP_SUCCESS) g_skill_acquisition_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from skill_acquisition module */
-static inline void skill_acquisition_heartbeat(const char* operation, float progress) {
-    if (g_skill_acquisition_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_skill_acquisition_health_agent, operation, progress);
+void skill_acquisition_mesh_unregister(void) {
+    if (g_skill_acquisition_mesh_registry && g_skill_acquisition_mesh_id != 0) {
+        mesh_participant_unregister(g_skill_acquisition_mesh_registry, g_skill_acquisition_mesh_id);
+        g_skill_acquisition_mesh_id = 0;
+        g_skill_acquisition_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from skill_acquisition module (instance-level) */
 static inline void skill_acquisition_heartbeat_instance(
@@ -296,7 +310,7 @@ static void init_power_law(power_law_state_t* state, const skill_acquisition_con
  */
 static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
                                                const skill_acquisition_config_t* config) {
-    skill_acquisition_state_t* state = (skill_acquisition_state_t*)calloc(
+    skill_acquisition_state_t* state = (skill_acquisition_state_t*)nimcp_calloc(
         1, sizeof(skill_acquisition_state_t));
     if (!state) {
 
@@ -313,9 +327,9 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
 
     // Allocate performance history
     size_t history_len = config ? config->default_history_len : SKILL_DEFAULT_HISTORY_LEN;
-    state->performance_history = (float*)calloc(history_len, sizeof(float));
+    state->performance_history = (float*)nimcp_calloc(history_len, sizeof(float));
     if (!state->performance_history) {
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
     state->history_len = history_len;
@@ -323,21 +337,21 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
 
     // Allocate transfers
     state->max_transfers = SKILL_MAX_TRANSFERS;
-    state->transfers = (skill_transfer_t*)calloc(state->max_transfers, sizeof(skill_transfer_t));
+    state->transfers = (skill_transfer_t*)nimcp_calloc(state->max_transfers, sizeof(skill_transfer_t));
     if (!state->transfers) {
-        free(state->performance_history);
-        free(state);
+        nimcp_free(state->performance_history);
+        nimcp_free(state);
         return NULL;
     }
     state->num_transfers = 0;
 
     // Allocate plateaus
     state->max_plateaus = SKILL_MAX_PLATEAUS;
-    state->plateaus = (learning_plateau_t*)calloc(state->max_plateaus, sizeof(learning_plateau_t));
+    state->plateaus = (learning_plateau_t*)nimcp_calloc(state->max_plateaus, sizeof(learning_plateau_t));
     if (!state->plateaus) {
-        free(state->transfers);
-        free(state->performance_history);
-        free(state);
+        nimcp_free(state->transfers);
+        nimcp_free(state->performance_history);
+        nimcp_free(state);
         return NULL;
     }
     state->num_plateaus = 0;
@@ -345,18 +359,18 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
 
     // Allocate step-level tracking
     if (skill && skill->num_steps > 0) {
-        state->step_errors = (size_t*)calloc(skill->num_steps, sizeof(size_t));
-        state->step_practice_count = (size_t*)calloc(skill->num_steps, sizeof(size_t));
-        state->step_difficulty = (float*)calloc(skill->num_steps, sizeof(float));
+        state->step_errors = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
+        state->step_practice_count = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
+        state->step_difficulty = (float*)nimcp_calloc(skill->num_steps, sizeof(float));
 
         if (!state->step_errors || !state->step_practice_count || !state->step_difficulty) {
-            free(state->step_errors);
-            free(state->step_practice_count);
-            free(state->step_difficulty);
-            free(state->plateaus);
-            free(state->transfers);
-            free(state->performance_history);
-            free(state);
+            nimcp_free(state->step_errors);
+            nimcp_free(state->step_practice_count);
+            nimcp_free(state->step_difficulty);
+            nimcp_free(state->plateaus);
+            nimcp_free(state->transfers);
+            nimcp_free(state->performance_history);
+            nimcp_free(state);
             return NULL;
         }
 
@@ -395,23 +409,23 @@ static void destroy_state(skill_acquisition_state_t* state) {
     if (state->skill) {
         if (state->skill->step_names) {
             for (size_t i = 0; i < state->skill->num_steps; i++) {
-                free(state->skill->step_names[i]);
+                nimcp_free(state->skill->step_names[i]);
             }
-            free(state->skill->step_names);
+            nimcp_free(state->skill->step_names);
         }
         if (state->skill->signature) {
             prime_sig_destroy(state->skill->signature);
         }
-        free(state->skill);
+        nimcp_free(state->skill);
     }
 
-    free(state->performance_history);
-    free(state->transfers);
-    free(state->plateaus);
-    free(state->step_errors);
-    free(state->step_practice_count);
-    free(state->step_difficulty);
-    free(state);
+    nimcp_free(state->performance_history);
+    nimcp_free(state->transfers);
+    nimcp_free(state->plateaus);
+    nimcp_free(state->step_errors);
+    nimcp_free(state->step_practice_count);
+    nimcp_free(state->step_difficulty);
+    nimcp_free(state);
 }
 
 /**
@@ -658,7 +672,7 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
     state->power_law.asymptote = best_c;
 
     // Compute R-squared
-    float* predicted = (float*)malloc(state->history_count * sizeof(float));
+    float* predicted = (float*)nimcp_malloc(state->history_count * sizeof(float));
     if (predicted) {
         for (size_t i = 0; i < state->history_count; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -671,7 +685,7 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
         }
         state->power_law.fit_r_squared = compute_r_squared(
             state->performance_history, predicted, state->history_count);
-        free(predicted);
+        nimcp_free(predicted);
     }
 
     state->power_law.fit_valid = (state->power_law.fit_r_squared > 0.5f);
@@ -741,7 +755,7 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
         cfg = skill_acquisition_config_default();
     }
 
-    skill_acquisition_t* sa = (skill_acquisition_t*)calloc(1, sizeof(skill_acquisition_t));
+    skill_acquisition_t* sa = (skill_acquisition_t*)nimcp_calloc(1, sizeof(skill_acquisition_t));
     if (!sa) {
         set_error("Memory allocation failed for skill acquisition");
         return NULL;
@@ -749,11 +763,11 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
 
     // Allocate states array
     sa->max_states = SKILL_INITIAL_CAPACITY;
-    sa->states = (skill_acquisition_state_t**)calloc(sa->max_states,
+    sa->states = (skill_acquisition_state_t**)nimcp_calloc(sa->max_states,
                                                       sizeof(skill_acquisition_state_t*));
     if (!sa->states) {
         set_error("Memory allocation failed for states array");
-        free(sa);
+        nimcp_free(sa);
         return NULL;
     }
     sa->num_states = 0;
@@ -791,7 +805,7 @@ NIMCP_EXPORT void skill_acquisition_destroy(skill_acquisition_t* sa) {
 
             destroy_state(sa->states[i]);
         }
-        free(sa->states);
+        nimcp_free(sa->states);
     }
 
     // Free transfer matrix
@@ -803,12 +817,12 @@ NIMCP_EXPORT void skill_acquisition_destroy(skill_acquisition_t* sa) {
                                  (float)(i + 1) / (float)sa->matrix_size);
             }
 
-            free(sa->transfer_matrix[i]);
+            nimcp_free(sa->transfer_matrix[i]);
         }
-        free(sa->transfer_matrix);
+        nimcp_free(sa->transfer_matrix);
     }
 
-    free(sa);
+    nimcp_free(sa);
 }
 
 NIMCP_EXPORT skill_error_t skill_acquisition_reset(skill_acquisition_t* sa) {
@@ -840,9 +854,9 @@ NIMCP_EXPORT skill_error_t skill_acquisition_reset(skill_acquisition_t* sa) {
                                  (float)(i + 1) / (float)sa->matrix_size);
             }
 
-            free(sa->transfer_matrix[i]);
+            nimcp_free(sa->transfer_matrix[i]);
         }
-        free(sa->transfer_matrix);
+        nimcp_free(sa->transfer_matrix);
         sa->transfer_matrix = NULL;
         sa->matrix_size = 0;
     }
@@ -875,7 +889,7 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
     // Expand states array if needed
     if (sa->num_states >= sa->max_states) {
         size_t new_max = sa->max_states * SKILL_GROWTH_FACTOR;
-        skill_acquisition_state_t** new_states = (skill_acquisition_state_t**)realloc(
+        skill_acquisition_state_t** new_states = (skill_acquisition_state_t**)nimcp_realloc(
             sa->states, new_max * sizeof(skill_acquisition_state_t*));
         if (!new_states) {
             set_error("Failed to expand states array");
@@ -891,7 +905,7 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
     }
 
     // Create procedural skill
-    procedural_skill_t* skill = (procedural_skill_t*)calloc(1, sizeof(procedural_skill_t));
+    procedural_skill_t* skill = (procedural_skill_t*)nimcp_calloc(1, sizeof(procedural_skill_t));
     if (!skill) {
         set_error("Failed to allocate skill");
         return SKILL_INVALID_ID;
@@ -908,7 +922,7 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
     // Set up steps
     skill->num_steps = num_steps;
     if (num_steps > 0 && step_names) {
-        skill->step_names = (char**)calloc(num_steps, sizeof(char*));
+        skill->step_names = (char**)nimcp_calloc(num_steps, sizeof(char*));
         if (skill->step_names) {
             for (size_t i = 0; i < num_steps; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -950,14 +964,14 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
                                      (float)(i + 1) / (float)num_steps);
                 }
 
-                free(skill->step_names[i]);
+                nimcp_free(skill->step_names[i]);
             }
-            free(skill->step_names);
+            nimcp_free(skill->step_names);
         }
         if (skill->signature) {
             prime_sig_destroy(skill->signature);
         }
-        free(skill);
+        nimcp_free(skill);
         return SKILL_INVALID_ID;
     }
 
@@ -1742,12 +1756,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_analyze_weak_points(
     }
 
     // Allocate arrays
-    analysis->weak_step_indices = (size_t*)malloc(num_weak * sizeof(size_t));
-    analysis->weak_step_errors = (float*)malloc(num_weak * sizeof(float));
+    analysis->weak_step_indices = (size_t*)nimcp_malloc(num_weak * sizeof(size_t));
+    analysis->weak_step_errors = (float*)nimcp_malloc(num_weak * sizeof(float));
 
     if (!analysis->weak_step_indices || !analysis->weak_step_errors) {
-        free(analysis->weak_step_indices);
-        free(analysis->weak_step_errors);
+        nimcp_free(analysis->weak_step_indices);
+        nimcp_free(analysis->weak_step_errors);
         set_error("Memory allocation failed");
         return SKILL_ERROR_NO_MEMORY;
     }
@@ -1813,8 +1827,8 @@ NIMCP_EXPORT size_t skill_acquisition_get_most_difficult_step(
 NIMCP_EXPORT void skill_acquisition_free_weak_point_analysis(weak_point_analysis_t* analysis) {
     if (!analysis) return;
 
-    free(analysis->weak_step_indices);
-    free(analysis->weak_step_errors);
+    nimcp_free(analysis->weak_step_indices);
+    nimcp_free(analysis->weak_step_errors);
 
     analysis->weak_step_indices = NULL;
     analysis->weak_step_errors = NULL;
@@ -1851,8 +1865,8 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
         // No weak points - distribute practice evenly
         if (state->skill && state->skill->num_steps > 0) {
             plan->num_focus_steps = state->skill->num_steps;
-            plan->focus_steps = (size_t*)malloc(plan->num_focus_steps * sizeof(size_t));
-            plan->focus_durations = (float*)malloc(plan->num_focus_steps * sizeof(float));
+            plan->focus_steps = (size_t*)nimcp_malloc(plan->num_focus_steps * sizeof(size_t));
+            plan->focus_durations = (float*)nimcp_malloc(plan->num_focus_steps * sizeof(float));
 
             if (plan->focus_steps && plan->focus_durations) {
                 float equal_time = 1.0f / (float)plan->num_focus_steps;
@@ -1878,7 +1892,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
         plan->focus_steps = weak_analysis.weak_step_indices;
         weak_analysis.weak_step_indices = NULL;  // Transfer ownership
 
-        plan->focus_durations = (float*)malloc(plan->num_focus_steps * sizeof(float));
+        plan->focus_durations = (float*)nimcp_malloc(plan->num_focus_steps * sizeof(float));
         if (plan->focus_durations) {
             // Allocate time proportional to difficulty
             float total_difficulty = 0.0f;
@@ -1920,7 +1934,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
                  weak_analysis.weak_step_errors[weak_analysis.most_critical] * 100.0f);
         plan->strategy_description = strdup(description);
 
-        free(weak_analysis.weak_step_errors);
+        nimcp_free(weak_analysis.weak_step_errors);
     }
 
     return SKILL_SUCCESS;
@@ -1992,9 +2006,9 @@ NIMCP_EXPORT skill_error_t skill_acquisition_set_feedback_frequency(
 NIMCP_EXPORT void skill_acquisition_free_practice_plan(deliberate_practice_plan_t* plan) {
     if (!plan) return;
 
-    free(plan->focus_steps);
-    free(plan->focus_durations);
-    free(plan->strategy_description);
+    nimcp_free(plan->focus_steps);
+    nimcp_free(plan->focus_durations);
+    nimcp_free(plan->strategy_description);
 
     plan->focus_steps = NULL;
     plan->focus_durations = NULL;
@@ -2103,14 +2117,14 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_learning_curve(
     }
 
     // Allocate arrays
-    curve->trial_numbers = (float*)malloc(state->history_count * sizeof(float));
-    curve->performances = (float*)malloc(state->history_count * sizeof(float));
-    curve->predicted = (float*)malloc(state->history_count * sizeof(float));
+    curve->trial_numbers = (float*)nimcp_malloc(state->history_count * sizeof(float));
+    curve->performances = (float*)nimcp_malloc(state->history_count * sizeof(float));
+    curve->predicted = (float*)nimcp_malloc(state->history_count * sizeof(float));
 
     if (!curve->trial_numbers || !curve->performances || !curve->predicted) {
-        free(curve->trial_numbers);
-        free(curve->performances);
-        free(curve->predicted);
+        nimcp_free(curve->trial_numbers);
+        nimcp_free(curve->performances);
+        nimcp_free(curve->predicted);
         set_error("Memory allocation failed");
         return SKILL_ERROR_NO_MEMORY;
     }
@@ -2137,9 +2151,9 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_learning_curve(
 NIMCP_EXPORT void skill_acquisition_free_learning_curve(learning_curve_t* curve) {
     if (!curve) return;
 
-    free(curve->trial_numbers);
-    free(curve->performances);
-    free(curve->predicted);
+    nimcp_free(curve->trial_numbers);
+    nimcp_free(curve->performances);
+    nimcp_free(curve->predicted);
 
     curve->trial_numbers = NULL;
     curve->performances = NULL;

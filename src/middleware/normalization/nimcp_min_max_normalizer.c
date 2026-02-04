@@ -17,35 +17,9 @@
 
 #define LOG_MODULE "nimcp_min_max_normalizer"
 #define LOG_MODULE_ID 0x0522
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for min_max_normalizer module */
-static nimcp_health_agent_t* g_min_max_normalizer_health_agent = NULL;
-
-/**
- * @brief Set health agent for min_max_normalizer heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void min_max_normalizer_set_health_agent(nimcp_health_agent_t* agent) {
-    g_min_max_normalizer_health_agent = agent;
-}
-
-/** @brief Send heartbeat from min_max_normalizer module */
-static inline void min_max_normalizer_heartbeat(const char* operation, float progress) {
-    if (g_min_max_normalizer_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_min_max_normalizer_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(min_max_normalizer)
 
 typedef struct {
     float min_value;

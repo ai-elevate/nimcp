@@ -19,31 +19,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spatial_reasoning)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for spatial_reasoning module */
-static nimcp_health_agent_t* g_spatial_reasoning_health_agent = NULL;
+static mesh_participant_id_t g_spatial_reasoning_mesh_id = 0;
+static mesh_participant_registry_t* g_spatial_reasoning_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for spatial_reasoning heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void spatial_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
-    g_spatial_reasoning_health_agent = agent;
+nimcp_error_t spatial_reasoning_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_spatial_reasoning_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "spatial_reasoning", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "spatial_reasoning";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_spatial_reasoning_mesh_id);
+    if (err == NIMCP_SUCCESS) g_spatial_reasoning_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from spatial_reasoning module */
-static inline void spatial_reasoning_heartbeat(const char* operation, float progress) {
-    if (g_spatial_reasoning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_spatial_reasoning_health_agent, operation, progress);
+void spatial_reasoning_mesh_unregister(void) {
+    if (g_spatial_reasoning_mesh_registry && g_spatial_reasoning_mesh_id != 0) {
+        mesh_participant_unregister(g_spatial_reasoning_mesh_registry, g_spatial_reasoning_mesh_id);
+        g_spatial_reasoning_mesh_id = 0;
+        g_spatial_reasoning_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from spatial_reasoning module (instance-level) */
 static inline void spatial_reasoning_heartbeat_instance(
@@ -164,7 +178,7 @@ static float kd_get_coord(const spatial_object_t* obj, uint8_t axis) {
 }
 
 static kd_node_t* kd_create_node(spatial_object_t* obj) {
-    kd_node_t* node = calloc(1, sizeof(kd_node_t));
+    kd_node_t* node = nimcp_calloc(1, sizeof(kd_node_t));
     if (node) {
         node->object = obj;
     }
@@ -196,7 +210,7 @@ static void kd_destroy(kd_node_t* root) {
     kd_destroy(root->left);
     kd_destroy(root->right);
     /* Note: objects are stored in the objects array, don't free here */
-    free(root);
+    nimcp_free(root);
 }
 
 typedef struct {
@@ -348,7 +362,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
         cfg = spatial_default_config();
     }
 
-    spatial_reasoning_t* sr = calloc(1, sizeof(spatial_reasoning_t));
+    spatial_reasoning_t* sr = nimcp_calloc(1, sizeof(spatial_reasoning_t));
     NIMCP_API_CHECK_ALLOC(sr, "Failed to allocate spatial reasoning");
 
     sr->config = cfg;
@@ -356,10 +370,10 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     sr->next_object_id = 1;
 
     /* Allocate object array */
-    sr->objects = calloc(cfg.max_objects, sizeof(spatial_object_t*));
+    sr->objects = nimcp_calloc(cfg.max_objects, sizeof(spatial_object_t*));
     if (!sr->objects) {
         set_spatial_error("Failed to allocate object array");
-        free(sr);
+        nimcp_free(sr);
         return NULL;
     }
 
@@ -368,8 +382,8 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     sr->lock = nimcp_mutex_create(&attr);
     if (!sr->lock) {
         set_spatial_error("Failed to create mutex");
-        free(sr->objects);
-        free(sr);
+        nimcp_free(sr->objects);
+        nimcp_free(sr);
         return NULL;
     }
 
@@ -396,18 +410,18 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
 
         if (sr->objects[i]) {
             if (sr->objects[i]->vertices) {
-                free(sr->objects[i]->vertices);
+                nimcp_free(sr->objects[i]->vertices);
             }
-            free(sr->objects[i]);
+            nimcp_free(sr->objects[i]);
         }
     }
-    free(sr->objects);
+    nimcp_free(sr->objects);
 
     if (sr->lock) {
         nimcp_mutex_free(sr->lock);
     }
 
-    free(sr);
+    nimcp_free(sr);
 }
 
 /* ============================================================================
@@ -803,7 +817,7 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
     }
 
     /* Copy object */
-    spatial_object_t* new_obj = calloc(1, sizeof(spatial_object_t));
+    spatial_object_t* new_obj = nimcp_calloc(1, sizeof(spatial_object_t));
     if (!new_obj) {
         set_spatial_error("Failed to allocate object");
         nimcp_mutex_unlock(sr->lock);
@@ -815,7 +829,7 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
 
     /* Copy vertices if present */
     if (object->vertices && object->num_vertices > 0) {
-        new_obj->vertices = malloc(object->num_vertices * sizeof(vec3_t));
+        new_obj->vertices = nimcp_malloc(object->num_vertices * sizeof(vec3_t));
         if (new_obj->vertices) {
             memcpy(new_obj->vertices, object->vertices,
                    object->num_vertices * sizeof(vec3_t));
@@ -853,9 +867,9 @@ int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
 
         if (sr->objects[i] && sr->objects[i]->id == object_id) {
             if (sr->objects[i]->vertices) {
-                free(sr->objects[i]->vertices);
+                nimcp_free(sr->objects[i]->vertices);
             }
-            free(sr->objects[i]);
+            nimcp_free(sr->objects[i]);
 
             /* Shift remaining objects */
             for (uint32_t j = i; j < sr->num_objects - 1; j++) {
@@ -978,12 +992,12 @@ uint32_t spatial_find_k_nearest(
     /* For production, use a proper K-NN algorithm with priority queue */
 
     /* Collect all distances */
-    float* all_dists = malloc(sr->num_objects * sizeof(float));
-    uint32_t* indices = malloc(sr->num_objects * sizeof(uint32_t));
+    float* all_dists = nimcp_malloc(sr->num_objects * sizeof(float));
+    uint32_t* indices = nimcp_malloc(sr->num_objects * sizeof(uint32_t));
 
     if (!all_dists || !indices) {
-        free(all_dists);
-        free(indices);
+        nimcp_free(all_dists);
+        nimcp_free(indices);
         nimcp_mutex_unlock(sr->lock);
         return 0;
     }
@@ -1031,8 +1045,8 @@ uint32_t spatial_find_k_nearest(
 
     result->count = count;
 
-    free(all_dists);
-    free(indices);
+    nimcp_free(all_dists);
+    nimcp_free(indices);
 
     sr->spatial_queries++;
 
@@ -1079,19 +1093,19 @@ spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
     spatial_reasoning_heartbeat("spatial_reas_spatial_query_result", 0.0f);
 
 
-    spatial_query_result_t* result = calloc(1, sizeof(spatial_query_result_t));
+    spatial_query_result_t* result = nimcp_calloc(1, sizeof(spatial_query_result_t));
     NIMCP_API_CHECK_ALLOC(result, "Failed to allocate spatial query result");
 
-    result->objects = calloc(capacity, sizeof(spatial_object_t*));
-    result->distances = calloc(capacity, sizeof(float));
+    result->objects = nimcp_calloc(capacity, sizeof(spatial_object_t*));
+    result->distances = nimcp_calloc(capacity, sizeof(float));
 
     if (!result->objects || !result->distances) {
         LOG_ERROR("Failed to allocate spatial query result arrays");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * (sizeof(spatial_object_t*) + sizeof(float)),
                           "Failed to allocate spatial query arrays");
-        free(result->objects);
-        free(result->distances);
-        free(result);
+        nimcp_free(result->objects);
+        nimcp_free(result->distances);
+        nimcp_free(result);
         return NULL;
     }
 
@@ -1105,9 +1119,9 @@ void spatial_query_result_destroy(spatial_query_result_t* result) {
     spatial_reasoning_heartbeat("spatial_reas_spatial_query_result", 0.0f);
 
 
-    free(result->objects);
-    free(result->distances);
-    free(result);
+    nimcp_free(result->objects);
+    nimcp_free(result->distances);
+    nimcp_free(result);
 }
 
 /* ============================================================================
@@ -1131,15 +1145,15 @@ spatial_attention_t* spatial_attention_create(
         return NULL;
     }
 
-    spatial_attention_t* attn = calloc(1, sizeof(spatial_attention_t));
+    spatial_attention_t* attn = nimcp_calloc(1, sizeof(spatial_attention_t));
     NIMCP_API_CHECK_ALLOC(attn, "Failed to allocate spatial attention");
 
-    attn->weights = calloc(grid_width * grid_height, sizeof(float));
+    attn->weights = nimcp_calloc(grid_width * grid_height, sizeof(float));
     if (!attn->weights) {
         LOG_ERROR("Failed to allocate attention weights");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, grid_width * grid_height * sizeof(float),
                           "Failed to allocate attention weights");
-        free(attn);
+        nimcp_free(attn);
         return NULL;
     }
 
@@ -1156,8 +1170,8 @@ void spatial_attention_destroy(spatial_attention_t* attention) {
     spatial_reasoning_heartbeat("spatial_reas_spatial_attention_de", 0.0f);
 
 
-    free(attention->weights);
-    free(attention);
+    nimcp_free(attention->weights);
+    nimcp_free(attention);
 }
 
 int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, float spread) {

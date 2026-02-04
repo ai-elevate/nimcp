@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -368,7 +369,7 @@ static inline quantum_consensus_config_t quantum_consensus_default_config(void) 
 static inline quantum_consensus_t quantum_consensus_create(
     const quantum_consensus_config_t* config
 ) {
-    quantum_consensus_t ctx = (quantum_consensus_t)calloc(1, sizeof(quantum_consensus_internal_t));
+    quantum_consensus_t ctx = (quantum_consensus_t)nimcp_calloc(1, sizeof(quantum_consensus_internal_t));
     if (!ctx) return NULL;
 
     ctx->magic = QUANTUM_CONSENSUS_MAGIC;
@@ -380,15 +381,15 @@ static inline quantum_consensus_t quantum_consensus_create(
 
     /* Allocate proposals */
     ctx->proposals_capacity = 32;
-    ctx->proposals = (quantum_proposal_t*)calloc(ctx->proposals_capacity, sizeof(quantum_proposal_t));
+    ctx->proposals = (quantum_proposal_t*)nimcp_calloc(ctx->proposals_capacity, sizeof(quantum_proposal_t));
     if (!ctx->proposals) {
         quantum_consensus_destroy(ctx);
         return NULL;
     }
 
     /* Allocate amplitude arrays */
-    ctx->amplitudes = (float*)calloc(ctx->config.max_voters, sizeof(float));
-    ctx->phases = (float*)calloc(ctx->config.max_voters, sizeof(float));
+    ctx->amplitudes = (float*)nimcp_calloc(ctx->config.max_voters, sizeof(float));
+    ctx->phases = (float*)nimcp_calloc(ctx->config.max_voters, sizeof(float));
     ctx->vote_states = trit_vector_create(ctx->config.max_voters, TERNARY_PACK_NONE);
 
     if (!ctx->amplitudes || !ctx->phases || !ctx->vote_states) {
@@ -412,17 +413,17 @@ static inline void quantum_consensus_destroy(quantum_consensus_t ctx) {
     /* Free proposal votes */
     if (ctx->proposals) {
         for (uint32_t i = 0; i < ctx->n_proposals; i++) {
-            free(ctx->proposals[i].votes);
+            nimcp_free(ctx->proposals[i].votes);
         }
-        free(ctx->proposals);
+        nimcp_free(ctx->proposals);
     }
 
-    free(ctx->amplitudes);
-    free(ctx->phases);
+    nimcp_free(ctx->amplitudes);
+    nimcp_free(ctx->phases);
     if (ctx->vote_states) trit_vector_destroy(ctx->vote_states);
 
     ctx->magic = 0;
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 //=============================================================================
@@ -446,7 +447,7 @@ static inline int quantum_consensus_propose(
     /* Expand proposals array if needed */
     if (ctx->n_proposals >= ctx->proposals_capacity) {
         uint32_t new_cap = ctx->proposals_capacity * 2;
-        quantum_proposal_t* new_proposals = (quantum_proposal_t*)realloc(
+        quantum_proposal_t* new_proposals = (quantum_proposal_t*)nimcp_realloc(
             ctx->proposals, new_cap * sizeof(quantum_proposal_t));
         if (!new_proposals) return QCONSENSUS_ERR_ALLOC;
         ctx->proposals = new_proposals;
@@ -466,7 +467,7 @@ static inline int quantum_consensus_propose(
 
     /* Allocate votes array */
     prop->votes_capacity = ctx->config.max_voters;
-    prop->votes = (quantum_vote_t*)calloc(prop->votes_capacity, sizeof(quantum_vote_t));
+    prop->votes = (quantum_vote_t*)nimcp_calloc(prop->votes_capacity, sizeof(quantum_vote_t));
     if (!prop->votes) return QCONSENSUS_ERR_ALLOC;
 
     *proposal_id_out = prop->proposal_id;

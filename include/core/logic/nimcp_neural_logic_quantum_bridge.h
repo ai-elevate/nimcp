@@ -299,6 +299,7 @@ qreason_truth_t neural_logic_quantum_implies(qreason_truth_t a, qreason_truth_t 
 #include <string.h>
 #include <math.h>
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "NEURAL_LOGIC_QUANTUM"
 
@@ -329,7 +330,7 @@ neural_logic_quantum_config_t neural_logic_quantum_default_config(void) {
 neural_logic_quantum_bridge_t* neural_logic_quantum_bridge_create(
     const neural_logic_quantum_config_t* config
 ) {
-    neural_logic_quantum_bridge_t* bridge = (neural_logic_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    neural_logic_quantum_bridge_t* bridge = (neural_logic_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate quantum bridge");
         return NULL;
@@ -349,7 +350,7 @@ neural_logic_quantum_bridge_t* neural_logic_quantum_bridge_create(
     bridge->reasoner = qreason_create(&qconfig);
     if (!bridge->reasoner) {
         NIMCP_LOGGING_ERROR("Failed to create quantum reasoner");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -367,7 +368,7 @@ void neural_logic_quantum_bridge_destroy(neural_logic_quantum_bridge_t* bridge) 
         qreason_destroy(bridge->reasoner);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed neural logic quantum bridge");
 }
 

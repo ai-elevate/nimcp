@@ -51,34 +51,9 @@
 #include <string.h>
 #include <time.h>
 #include "utils/logging/nimcp_logging.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for buffer_pool module */
-static nimcp_health_agent_t* g_buffer_pool_health_agent = NULL;
-
-/**
- * @brief Set health agent for buffer_pool heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void buffer_pool_set_health_agent(nimcp_health_agent_t* agent) {
-    g_buffer_pool_health_agent = agent;
-}
-
-/** @brief Send heartbeat from buffer_pool module */
-static inline void buffer_pool_heartbeat(const char* operation, float progress) {
-    if (g_buffer_pool_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_buffer_pool_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(buffer_pool)
 
 //=============================================================================
 // Internal Structures
@@ -175,7 +150,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     if (config->max_channels == 0 || config->expected_active == 0) return NULL;
 
     // Allocate pool structure
-    buffer_pool_t pool = calloc(1, sizeof(struct buffer_pool_struct));
+    buffer_pool_t pool = nimcp_calloc(1, sizeof(struct buffer_pool_struct));
     if (!pool) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
@@ -199,7 +174,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     memory_pool_config_t pool_config = memory_pool_default_config(integration_size, pool_capacity);
     pool->integration_pool = memory_pool_create(&pool_config);
     if (!pool->integration_pool) {
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -207,7 +182,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     pool->window_pool = memory_pool_create(&pool_config);
     if (!pool->window_pool) {
         memory_pool_destroy(pool->integration_pool);
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -216,39 +191,39 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     if (!pool->accumulator_pool) {
         memory_pool_destroy(pool->integration_pool);
         memory_pool_destroy(pool->window_pool);
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
     // Create CoW managers if CoW enabled
     if (config->enable_cow) {
         // Allocate zero-initialized templates
-        float* integration_template = calloc(integration_size / sizeof(float), sizeof(float));
-        float* window_template = calloc(window_size / sizeof(float), sizeof(float));
-        float* accumulator_template = calloc(accumulator_size / sizeof(float), sizeof(float));
+        float* integration_template = nimcp_calloc(integration_size / sizeof(float), sizeof(float));
+        float* window_template = nimcp_calloc(window_size / sizeof(float), sizeof(float));
+        float* accumulator_template = nimcp_calloc(accumulator_size / sizeof(float), sizeof(float));
 
         if (!integration_template || !window_template || !accumulator_template) {
-            free(integration_template);
-            free(window_template);
-            free(accumulator_template);
+            nimcp_free(integration_template);
+            nimcp_free(window_template);
+            nimcp_free(accumulator_template);
             memory_pool_destroy(pool->integration_pool);
             memory_pool_destroy(pool->window_pool);
             memory_pool_destroy(pool->accumulator_pool);
-            free(pool);
+            nimcp_free(pool);
             return NULL;
         }
 
         cow_manager_config_t cow_config = cow_default_config(integration_size, pool->integration_pool);
         pool->integration_cow = cow_manager_create(&cow_config, integration_template);
-        free(integration_template);
+        nimcp_free(integration_template);
 
         cow_config = cow_default_config(window_size, pool->window_pool);
         pool->window_cow = cow_manager_create(&cow_config, window_template);
-        free(window_template);
+        nimcp_free(window_template);
 
         cow_config = cow_default_config(accumulator_size, pool->accumulator_pool);
         pool->accumulator_cow = cow_manager_create(&cow_config, accumulator_template);
-        free(accumulator_template);
+        nimcp_free(accumulator_template);
 
         if (!pool->integration_cow || !pool->window_cow || !pool->accumulator_cow) {
             cow_manager_destroy(pool->integration_cow);
@@ -257,13 +232,13 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
             memory_pool_destroy(pool->integration_pool);
             memory_pool_destroy(pool->window_pool);
             memory_pool_destroy(pool->accumulator_pool);
-            free(pool);
+            nimcp_free(pool);
             return NULL;
         }
     }
 
     // Allocate channel tracking array
-    pool->channels = calloc(config->max_channels, sizeof(channel_info_t));
+    pool->channels = nimcp_calloc(config->max_channels, sizeof(channel_info_t));
     if (!pool->channels) {
         cow_manager_destroy(pool->integration_cow);
         cow_manager_destroy(pool->window_cow);
@@ -271,7 +246,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
         memory_pool_destroy(pool->integration_pool);
         memory_pool_destroy(pool->window_pool);
         memory_pool_destroy(pool->accumulator_pool);
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -282,14 +257,14 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
 
     // Initialize mutex
     if (nimcp_platform_mutex_init(&pool->mutex, false) != 0) {
-        free(pool->channels);
+        nimcp_free(pool->channels);
         cow_manager_destroy(pool->integration_cow);
         cow_manager_destroy(pool->window_cow);
         cow_manager_destroy(pool->accumulator_cow);
         memory_pool_destroy(pool->integration_pool);
         memory_pool_destroy(pool->window_pool);
         memory_pool_destroy(pool->accumulator_pool);
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -312,7 +287,7 @@ NIMCP_EXPORT void buffer_pool_destroy(buffer_pool_t pool) {
     }
 
     // Free channel tracking
-    free(pool->channels);
+    nimcp_free(pool->channels);
 
     // Destroy CoW managers
     cow_manager_destroy(pool->integration_cow);
@@ -325,7 +300,7 @@ NIMCP_EXPORT void buffer_pool_destroy(buffer_pool_t pool) {
     memory_pool_destroy(pool->accumulator_pool);
 
     // Free pool
-    free(pool);
+    nimcp_free(pool);
 }
 
 /*

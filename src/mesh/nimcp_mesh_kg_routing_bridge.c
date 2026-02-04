@@ -10,6 +10,7 @@
 #include "mesh/nimcp_mesh_kg_routing_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -182,6 +183,7 @@ nimcp_error_t mesh_kg_bridge_register_module(
     const mesh_receptive_field_t* field
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -207,6 +209,7 @@ nimcp_error_t mesh_kg_bridge_register_module(
 
     /* Add new */
     if (bridge->module_count >= MESH_KG_MAX_TOPOLOGY_CACHE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -239,6 +242,7 @@ nimcp_error_t mesh_kg_bridge_init_from_topology(
     mesh_kg_routing_bridge_t* bridge
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -290,9 +294,11 @@ nimcp_error_t mesh_kg_bridge_route(
     size_t* count_out
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx || !endorsers || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_kg_routing_bridge: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -368,6 +374,7 @@ nimcp_error_t mesh_kg_bridge_route_with_explanation(
     size_t* count_out
 ) {
     if (!bridge || !tx || !endorsers || !explanations || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -405,9 +412,11 @@ nimcp_error_t mesh_kg_bridge_get_topological_neighbors(
     size_t* count_out
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!neighbors || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_kg_routing_bridge: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -514,9 +523,11 @@ nimcp_error_t mesh_kg_bridge_find_convergence_points(
     size_t* count_out
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!sources || !convergence_points || !count_out || source_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_kg_routing_bridge: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -567,6 +578,7 @@ nimcp_error_t mesh_kg_bridge_suggest_multimodal_endorsers(
     size_t* count_out
 ) {
     if (!bridge || !patterns || !pattern_sources || !suggested || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -677,6 +689,7 @@ nimcp_error_t mesh_kg_bridge_filter_by_structure(
     size_t* count
 ) {
     if (!bridge || !activations || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -708,6 +721,7 @@ nimcp_error_t mesh_kg_bridge_learn_outcome(
     float reward
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -728,6 +742,7 @@ nimcp_error_t mesh_kg_bridge_strengthen_connection(
     float strength
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -735,10 +750,12 @@ nimcp_error_t mesh_kg_bridge_strengthen_connection(
     kg_bridge_module_t* to_mod = find_module(bridge, to_id);
 
     if (!from_mod || !to_mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!from_mod->has_field || !to_mod->has_field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_kg_routing_bridge: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -764,6 +781,7 @@ nimcp_error_t mesh_kg_bridge_get_stats(
     mesh_kg_bridge_stats_t* stats
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -773,6 +791,7 @@ nimcp_error_t mesh_kg_bridge_get_stats(
 
 nimcp_error_t mesh_kg_bridge_reset_stats(mesh_kg_routing_bridge_t* bridge) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -791,6 +810,7 @@ nimcp_error_t mesh_kg_bridge_explain_routing(
     mesh_kg_routing_explanation_t* explanation
 ) {
     if (!bridge || !tx || !explanation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -799,6 +819,7 @@ nimcp_error_t mesh_kg_bridge_explain_routing(
 
     kg_bridge_module_t* mod = find_module(bridge, module_id);
     if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 

@@ -107,6 +107,7 @@
 
 #include "core/brain/nimcp_brain_kg.h"
 #include "cognitive/memory/core/nimcp_prime_signature.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -545,7 +546,7 @@ NIMCP_EXPORT int pr_kg_remove_entanglement(
  *
  * Example:
  *   pr_kg_query_result_t result;
- *   result.mappings = malloc(100 * sizeof(pr_kg_mapping_t));
+ *   result.mappings = nimcp_malloc(100 * sizeof(pr_kg_mapping_t));
  *   result.capacity = 100;
  *   int count = pr_kg_query_by_module(bridge, HIPPOCAMPUS_ID, &result, 100);
  */

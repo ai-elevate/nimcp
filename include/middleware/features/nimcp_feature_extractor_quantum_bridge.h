@@ -97,6 +97,7 @@ void feature_quantum_reset_stats(feature_quantum_bridge_t* bridge);
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 struct feature_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -120,7 +121,7 @@ feature_quantum_config_t feature_quantum_default_config(void) {
 feature_quantum_bridge_t* feature_quantum_bridge_create(
     const feature_quantum_config_t* config
 ) {
-    feature_quantum_bridge_t* bridge = (feature_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+    feature_quantum_bridge_t* bridge = (feature_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : feature_quantum_default_config();
@@ -134,7 +135,7 @@ feature_quantum_bridge_t* feature_quantum_bridge_create(
 
     bridge->qfm = quantum_feature_map_create(&qconfig);
     if (!bridge->qfm) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -144,7 +145,7 @@ feature_quantum_bridge_t* feature_quantum_bridge_create(
 void feature_quantum_bridge_destroy(feature_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->qfm) quantum_feature_map_destroy(bridge->qfm);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool feature_quantum_bridge_is_enabled(const feature_quantum_bridge_t* bridge) {

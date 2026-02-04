@@ -14,31 +14,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(electrical_engineering)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for electrical_engineering module */
-static nimcp_health_agent_t* g_electrical_engineering_health_agent = NULL;
+static mesh_participant_id_t g_electrical_engineering_mesh_id = 0;
+static mesh_participant_registry_t* g_electrical_engineering_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for electrical_engineering heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void electrical_engineering_set_health_agent(nimcp_health_agent_t* agent) {
-    g_electrical_engineering_health_agent = agent;
+nimcp_error_t electrical_engineering_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_electrical_engineering_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "electrical_engineering", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "electrical_engineering";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_electrical_engineering_mesh_id);
+    if (err == NIMCP_SUCCESS) g_electrical_engineering_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from electrical_engineering module */
-static inline void electrical_engineering_heartbeat(const char* operation, float progress) {
-    if (g_electrical_engineering_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_electrical_engineering_health_agent, operation, progress);
+void electrical_engineering_mesh_unregister(void) {
+    if (g_electrical_engineering_mesh_registry && g_electrical_engineering_mesh_id != 0) {
+        mesh_participant_unregister(g_electrical_engineering_mesh_registry, g_electrical_engineering_mesh_id);
+        g_electrical_engineering_mesh_id = 0;
+        g_electrical_engineering_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from electrical_engineering module (instance-level) */
 static inline void electrical_engineering_heartbeat_instance(
@@ -109,7 +123,7 @@ electrical_eng_t* electrical_eng_create_custom(const ee_config_t* config) {
     electrical_engineering_heartbeat("electrical_e_electrical_eng_creat", 0.0f);
 
 
-    electrical_eng_t* ee = calloc(1, sizeof(electrical_eng_t));
+    electrical_eng_t* ee = nimcp_calloc(1, sizeof(electrical_eng_t));
     if (!ee) {
         set_error("Failed to allocate electrical_eng");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ee");
@@ -126,7 +140,7 @@ void electrical_eng_destroy(electrical_eng_t* ee) {
 
 
     if (ee) {
-        free(ee);
+        nimcp_free(ee);
     }
 }
 
@@ -139,7 +153,7 @@ ee_circuit_t* electrical_eng_create_circuit(const char* name) {
     electrical_engineering_heartbeat("electrical_e_electrical_eng_creat", 0.0f);
 
 
-    ee_circuit_t* circuit = calloc(1, sizeof(ee_circuit_t));
+    ee_circuit_t* circuit = nimcp_calloc(1, sizeof(ee_circuit_t));
     if (!circuit) {
         set_error("Failed to allocate circuit");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate circuit");
@@ -158,8 +172,8 @@ void electrical_eng_destroy_circuit(ee_circuit_t* circuit) {
 
 
     if (circuit) {
-        free(circuit->elements);
-        free(circuit);
+        nimcp_free(circuit->elements);
+        nimcp_free(circuit);
     }
 }
 
@@ -238,8 +252,8 @@ void electrical_eng_free_dc_result(ee_dc_result_t* result) {
 
 
     if (result) {
-        free(result->node_voltages);
-        free(result->branch_currents);
+        nimcp_free(result->node_voltages);
+        nimcp_free(result->branch_currents);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -250,11 +264,11 @@ void electrical_eng_free_ac_result(ee_ac_result_t* result) {
 
 
     if (result) {
-        free(result->node_voltages);
-        free(result->branch_currents);
-        free(result->impedances);
-        free(result->magnitude_db);
-        free(result->phase_deg);
+        nimcp_free(result->node_voltages);
+        nimcp_free(result->branch_currents);
+        nimcp_free(result->impedances);
+        nimcp_free(result->magnitude_db);
+        nimcp_free(result->phase_deg);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -273,9 +287,9 @@ void electrical_eng_free_transient_result(ee_transient_result_t* result) {
                                      (float)(i + 1) / (float)result->num_steps);
                 }
 
-                free(result->node_voltages[i]);
+                nimcp_free(result->node_voltages[i]);
             }
-            free(result->node_voltages);
+            nimcp_free(result->node_voltages);
         }
         if (result->branch_currents) {
             for (uint32_t i = 0; i < result->num_steps; i++) {
@@ -285,11 +299,11 @@ void electrical_eng_free_transient_result(ee_transient_result_t* result) {
                                      (float)(i + 1) / (float)result->num_steps);
                 }
 
-                free(result->branch_currents[i]);
+                nimcp_free(result->branch_currents[i]);
             }
-            free(result->branch_currents);
+            nimcp_free(result->branch_currents);
         }
-        free(result->time_points);
+        nimcp_free(result->time_points);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -390,10 +404,10 @@ void electrical_eng_free_frequency_response(ee_frequency_response_t* response) {
 
 
     if (response) {
-        free(response->frequencies);
-        free(response->magnitude_db);
-        free(response->phase_deg);
-        free(response->group_delay);
+        nimcp_free(response->frequencies);
+        nimcp_free(response->magnitude_db);
+        nimcp_free(response->phase_deg);
+        nimcp_free(response->group_delay);
         memset(response, 0, sizeof(*response));
     }
 }
@@ -404,10 +418,10 @@ void electrical_eng_free_transfer_function(ee_transfer_function_t* tf) {
 
 
     if (tf) {
-        free(tf->zeros);
-        free(tf->poles);
-        free(tf->numerator);
-        free(tf->denominator);
+        nimcp_free(tf->zeros);
+        nimcp_free(tf->poles);
+        nimcp_free(tf->numerator);
+        nimcp_free(tf->denominator);
         memset(tf, 0, sizeof(*tf));
     }
 }
@@ -495,8 +509,8 @@ void electrical_eng_free_stability_result(ee_stability_result_t* result) {
 
 
     if (result) {
-        free(result->pole_real);
-        free(result->pole_imag);
+        nimcp_free(result->pole_real);
+        nimcp_free(result->pole_imag);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -565,7 +579,7 @@ void electrical_eng_free_power_result(ee_power_result_t* result) {
 
 
     if (result) {
-        free(result->harmonic_magnitudes);
+        nimcp_free(result->harmonic_magnitudes);
         memset(result, 0, sizeof(*result));
     }
 }

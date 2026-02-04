@@ -17,46 +17,53 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_context_instance)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for fep_context module */
-static nimcp_health_agent_t* g_fep_context_health_agent = NULL;
+static mesh_participant_id_t g_fep_context_instance_mesh_id = 0;
+static mesh_participant_registry_t* g_fep_context_mesh_registry = NULL;
 
-/** Instance-level health agent for fep_context (non-bridge fallback) */
-static nimcp_health_agent_t* g_fep_context_instance_health_agent = NULL;
-
-/**
- * @brief Set health agent for fep_context heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void fep_context_set_health_agent(nimcp_health_agent_t* agent) {
-    g_fep_context_health_agent = agent;
+nimcp_error_t fep_context_instance_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fep_context_instance_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fep_context_instance", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fep_context_instance";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fep_context_instance_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fep_context_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from fep_context module */
-static inline void fep_context_heartbeat(const char* operation, float progress) {
-    if (g_fep_context_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_context_health_agent, operation, progress);
+void fep_context_instance_mesh_unregister(void) {
+    if (g_fep_context_mesh_registry && g_fep_context_instance_mesh_id != 0) {
+        mesh_participant_unregister(g_fep_context_mesh_registry, g_fep_context_instance_mesh_id);
+        g_fep_context_instance_mesh_id = 0;
+        g_fep_context_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from fep_context module (instance-level) */
 static inline void fep_context_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_fep_context_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fep_context_health_agent, operation, progress);
+    if (g_fep_context_instance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_context_instance_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_fep_context_health_agent) {
+    if (instance_agent && instance_agent != g_fep_context_instance_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -135,7 +142,7 @@ static fep_context_t* find_context(fep_context_system_t* sys, uint32_t id) {
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->num_contexts > 256) {
-            fep_context_heartbeat("fep_context_loop",
+            fep_context_instance_heartbeat("fep_context_loop",
                              (float)(i + 1) / (float)sys->num_contexts);
         }
 
@@ -163,7 +170,7 @@ static float compute_context_free_energy(
     for (size_t i = 0; i < dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && dim > 256) {
-            fep_context_heartbeat("fep_context_loop",
+            fep_context_instance_heartbeat("fep_context_loop",
                              (float)(i + 1) / (float)dim);
         }
 
@@ -183,7 +190,7 @@ void fep_context_default_config(fep_context_config_t* config) {
     if (!config) return;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_default_config", 0.0f);
+    fep_context_instance_heartbeat("fep_context_default_config", 0.0f);
 
 
     config->max_contexts = FEP_CONTEXT_DEFAULT_MAX;
@@ -197,7 +204,7 @@ void fep_context_default_config(fep_context_config_t* config) {
 
 fep_context_system_t* fep_context_create(const fep_context_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_create", 0.0f);
+    fep_context_instance_heartbeat("fep_context_create", 0.0f);
 
 
     fep_context_system_t* sys = (fep_context_system_t*)nimcp_calloc(
@@ -241,7 +248,7 @@ void fep_context_destroy(fep_context_system_t* sys) {
     if (!sys) return;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_destroy", 0.0f);
+    fep_context_instance_heartbeat("fep_context_destroy", 0.0f);
 
 
     if (sys->bio_async_enabled) {
@@ -253,7 +260,7 @@ void fep_context_destroy(fep_context_system_t* sys) {
         for (uint32_t i = 0; i < sys->num_contexts; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && sys->num_contexts > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)sys->num_contexts);
             }
 
@@ -290,7 +297,7 @@ int fep_context_add(
     if (belief_dim == 0) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_add", 0.0f);
+    fep_context_instance_heartbeat("fep_context_add", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -341,7 +348,7 @@ int fep_context_remove(fep_context_system_t* sys, uint32_t context_id) {
     if (!sys) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_remove", 0.0f);
+    fep_context_instance_heartbeat("fep_context_remove", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -351,7 +358,7 @@ int fep_context_remove(fep_context_system_t* sys, uint32_t context_id) {
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->num_contexts > 256) {
-            fep_context_heartbeat("fep_context_loop",
+            fep_context_instance_heartbeat("fep_context_loop",
                              (float)(i + 1) / (float)sys->num_contexts);
         }
 
@@ -394,7 +401,7 @@ int fep_context_get(
     if (!sys || !context) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_get", 0.0f);
+    fep_context_instance_heartbeat("fep_context_get", 0.0f);
 
 
     fep_context_t* ctx = find_context((fep_context_system_t*)sys, context_id);
@@ -413,7 +420,7 @@ int fep_context_update(
     if (!sys || !new_beliefs) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_update", 0.0f);
+    fep_context_instance_heartbeat("fep_context_update", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -463,7 +470,7 @@ static void apply_context_priors_nolock(
         for (size_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)dim);
             }
 
@@ -481,7 +488,7 @@ int fep_context_switch(
     if (!sys || !fep) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_switch", 0.0f);
+    fep_context_instance_heartbeat("fep_context_switch", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -543,7 +550,7 @@ int fep_context_infer(
     if (sys->num_contexts == 0) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_infer", 0.0f);
+    fep_context_instance_heartbeat("fep_context_infer", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -561,7 +568,7 @@ int fep_context_infer(
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->num_contexts > 256) {
-            fep_context_heartbeat("fep_context_loop",
+            fep_context_instance_heartbeat("fep_context_loop",
                              (float)(i + 1) / (float)sys->num_contexts);
         }
 
@@ -579,7 +586,7 @@ int fep_context_infer(
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && sys->num_contexts > 256) {
-            fep_context_heartbeat("fep_context_loop",
+            fep_context_instance_heartbeat("fep_context_loop",
                              (float)(i + 1) / (float)sys->num_contexts);
         }
 
@@ -608,7 +615,7 @@ int fep_context_auto_switch(
     if (!sys || !fep || !observation) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_auto_switch", 0.0f);
+    fep_context_instance_heartbeat("fep_context_auto_switch", 0.0f);
 
 
     uint32_t inferred_id;
@@ -637,7 +644,7 @@ int fep_context_apply(
     if (!sys || !fep) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_apply", 0.0f);
+    fep_context_instance_heartbeat("fep_context_apply", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -657,7 +664,7 @@ int fep_context_apply(
         for (size_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)dim);
             }
 
@@ -680,7 +687,7 @@ int fep_context_blend(
     if (!sys || !fep) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_blend", 0.0f);
+    fep_context_instance_heartbeat("fep_context_blend", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -705,7 +712,7 @@ int fep_context_blend(
         for (size_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)dim);
             }
 
@@ -733,7 +740,7 @@ int fep_context_learn_from_experience(
     if (!sys->config.enable_context_learning) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_learn_from_experienc", 0.0f);
+    fep_context_instance_heartbeat("fep_context_learn_from_experienc", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -756,7 +763,7 @@ int fep_context_learn_from_experience(
         for (size_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)dim);
             }
 
@@ -782,7 +789,7 @@ int fep_context_create_from_current(
 
     /* Extract current beliefs */
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_create_from_current", 0.0f);
+    fep_context_instance_heartbeat("fep_context_create_from_current", 0.0f);
 
 
     fep_belief_t* beliefs = &fep->levels[0].beliefs;
@@ -801,7 +808,7 @@ int fep_context_get_state(
     if (!sys || !state) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_get_state", 0.0f);
+    fep_context_instance_heartbeat("fep_context_get_state", 0.0f);
 
 
     state->active_context_id = sys->active_context_id;
@@ -819,7 +826,7 @@ int fep_context_get_active(
     if (!sys || !context_id) return -1;
     *context_id = sys->active_context_id;
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_get_active", 0.0f);
+    fep_context_instance_heartbeat("fep_context_get_active", 0.0f);
 
 
     return 0;
@@ -833,7 +840,7 @@ int fep_context_connect(fep_context_system_t* context, fep_system_t* fep) {
     if (!context || !fep) return -1;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_connect", 0.0f);
+    fep_context_instance_heartbeat("fep_context_connect", 0.0f);
 
 
     nimcp_platform_mutex_lock(context->mutex);
@@ -853,7 +860,7 @@ int fep_context_connect_bio_async(fep_context_system_t* sys) {
     if (sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_connect_bio_async", 0.0f);
+    fep_context_instance_heartbeat("fep_context_connect_bio_async", 0.0f);
 
 
     bio_module_info_t info = {
@@ -878,7 +885,7 @@ int fep_context_disconnect_bio_async(fep_context_system_t* sys) {
     if (!sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_disconnect_bio_async", 0.0f);
+    fep_context_instance_heartbeat("fep_context_disconnect_bio_async", 0.0f);
 
 
     if (sys->bio_ctx) {
@@ -891,7 +898,7 @@ int fep_context_disconnect_bio_async(fep_context_system_t* sys) {
 
 bool fep_context_is_bio_async_connected(const fep_context_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_is_bio_async_connect", 0.0f);
+    fep_context_instance_heartbeat("fep_context_is_bio_async_connect", 0.0f);
 
 
     return sys && sys->bio_async_enabled;
@@ -905,7 +912,7 @@ int fep_context_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_heartbeat("fep_context_query_self_knowledge", 0.0f);
+    fep_context_instance_heartbeat("fep_context_query_self_knowledge", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Context");
@@ -913,7 +920,7 @@ int fep_context_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                fep_context_heartbeat("fep_context_loop",
+                fep_context_instance_heartbeat("fep_context_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 

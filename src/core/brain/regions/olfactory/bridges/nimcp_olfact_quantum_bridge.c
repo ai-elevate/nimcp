@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(olfact_quantum_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for olfact_quantum_bridge module */
-static nimcp_health_agent_t* g_olfact_quantum_bridge_health_agent = NULL;
+static mesh_participant_id_t g_olfact_quantum_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_olfact_quantum_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for olfact_quantum_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void olfact_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_olfact_quantum_bridge_health_agent = agent;
+nimcp_error_t olfact_quantum_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_olfact_quantum_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "olfact_quantum_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "olfact_quantum_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_olfact_quantum_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_olfact_quantum_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from olfact_quantum_bridge module */
-static inline void olfact_quantum_bridge_heartbeat(const char* operation, float progress) {
-    if (g_olfact_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_olfact_quantum_bridge_health_agent, operation, progress);
+void olfact_quantum_bridge_mesh_unregister(void) {
+    if (g_olfact_quantum_bridge_mesh_registry && g_olfact_quantum_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_olfact_quantum_bridge_mesh_registry, g_olfact_quantum_bridge_mesh_id);
+        g_olfact_quantum_bridge_mesh_id = 0;
+        g_olfact_quantum_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "OLFACT_QUANTUM_BRIDGE"
 
@@ -104,7 +118,7 @@ int olfact_quantum_default_config(olfact_quantum_config_t* config) {
 }
 
 olfact_quantum_bridge_t* olfact_quantum_bridge_create(const olfact_quantum_config_t* config) {
-    olfact_quantum_bridge_t* bridge = (olfact_quantum_bridge_t*)calloc(1, sizeof(olfact_quantum_bridge_t));
+    olfact_quantum_bridge_t* bridge = (olfact_quantum_bridge_t*)nimcp_calloc(1, sizeof(olfact_quantum_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -129,7 +143,7 @@ olfact_quantum_bridge_t* olfact_quantum_bridge_create(const olfact_quantum_confi
 void olfact_quantum_bridge_destroy(olfact_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "olfact_quantum");
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================
@@ -176,7 +190,7 @@ int olfact_quantum_estimate_binding(olfact_quantum_bridge_t* bridge,
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
-    result->binding_affinities = (float*)calloc(spec->num_receptor_types, sizeof(float));
+    result->binding_affinities = (float*)nimcp_calloc(spec->num_receptor_types, sizeof(float));
     if (!result->binding_affinities) {
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
         return -1;
@@ -249,11 +263,11 @@ int olfact_quantum_search_similar(olfact_quantum_bridge_t* bridge,
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
-    result->similar_odors = (uint32_t*)calloc(spec->max_results, sizeof(uint32_t));
-    result->similarity_scores = (float*)calloc(spec->max_results, sizeof(float));
+    result->similar_odors = (uint32_t*)nimcp_calloc(spec->max_results, sizeof(uint32_t));
+    result->similarity_scores = (float*)nimcp_calloc(spec->max_results, sizeof(float));
     if (!result->similar_odors || !result->similarity_scores) {
-        free(result->similar_odors);
-        free(result->similarity_scores);
+        nimcp_free(result->similar_odors);
+        nimcp_free(result->similarity_scores);
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
         return -1;
     }
@@ -340,7 +354,7 @@ int olfact_quantum_classify_odor(olfact_quantum_bridge_t* bridge,
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
     uint32_t num_cats = ODOR_CAT_COUNT;
-    result->category_probabilities = (float*)calloc(num_cats, sizeof(float));
+    result->category_probabilities = (float*)nimcp_calloc(num_cats, sizeof(float));
     if (!result->category_probabilities) {
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
         return -1;
@@ -395,11 +409,11 @@ int olfact_quantum_decompose_mixture(olfact_quantum_bridge_t* bridge,
 
     /* Simple decomposition - assume 2-3 components */
     uint32_t num_comp = 2;
-    result->component_odors = (uint32_t*)calloc(num_comp, sizeof(uint32_t));
-    result->component_concentrations = (float*)calloc(num_comp, sizeof(float));
+    result->component_odors = (uint32_t*)nimcp_calloc(num_comp, sizeof(uint32_t));
+    result->component_concentrations = (float*)nimcp_calloc(num_comp, sizeof(float));
     if (!result->component_odors || !result->component_concentrations) {
-        free(result->component_odors);
-        free(result->component_concentrations);
+        nimcp_free(result->component_odors);
+        nimcp_free(result->component_concentrations);
         return -1;
     }
 
@@ -436,28 +450,28 @@ int olfact_quantum_optimize_hedonic(olfact_quantum_bridge_t* bridge,
 
 void olfact_qmc_binding_result_free(olfact_qmc_binding_result_t* result) {
     if (!result) return;
-    free(result->binding_affinities);
+    nimcp_free(result->binding_affinities);
     result->binding_affinities = NULL;
 }
 
 void olfact_quantum_similarity_result_free(olfact_quantum_similarity_result_t* result) {
     if (!result) return;
-    free(result->similar_odors);
-    free(result->similarity_scores);
+    nimcp_free(result->similar_odors);
+    nimcp_free(result->similarity_scores);
     result->similar_odors = NULL;
     result->similarity_scores = NULL;
 }
 
 void olfact_quantum_classification_result_free(olfact_quantum_classification_result_t* result) {
     if (!result) return;
-    free(result->category_probabilities);
+    nimcp_free(result->category_probabilities);
     result->category_probabilities = NULL;
 }
 
 void olfact_quantum_mixture_result_free(olfact_quantum_mixture_result_t* result) {
     if (!result) return;
-    free(result->component_odors);
-    free(result->component_concentrations);
+    nimcp_free(result->component_odors);
+    nimcp_free(result->component_concentrations);
     result->component_odors = NULL;
     result->component_concentrations = NULL;
 }

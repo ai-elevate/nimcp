@@ -28,25 +28,9 @@
 /* ============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/* Global health agent for STDP operations */
-static nimcp_health_agent_t* g_stdp_health_agent = NULL;
-
-void stdp_set_health_agent(nimcp_health_agent_t* agent) {
-    g_stdp_health_agent = agent;
-}
-
-static inline void stdp_heartbeat(const char* operation, float progress) {
-    if (g_stdp_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_stdp_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp)
 
 /* ============================================================================
  * Configuration

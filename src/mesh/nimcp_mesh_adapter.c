@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /* ============================================================================
@@ -248,6 +249,7 @@ nimcp_error_t mesh_adapter_base_register(
     mesh_participant_registry_t* registry
 ) {
     if (!base || base->magic != MESH_ADAPTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_adapter: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!registry) return NIMCP_ERROR_NULL_POINTER;
@@ -281,10 +283,12 @@ nimcp_error_t mesh_adapter_base_join_channel(
     mesh_channel_t* channel
 ) {
     if (!base || base->magic != MESH_ADAPTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_adapter: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!channel) return NIMCP_ERROR_NULL_POINTER;
     if (base->participant_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_adapter: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     
@@ -305,10 +309,12 @@ nimcp_error_t mesh_adapter_base_add_to_policy(
     endorser_role_t role
 ) {
     if (!base || base->magic != MESH_ADAPTER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_adapter: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!collector || !policy_name) return NIMCP_ERROR_NULL_POINTER;
     if (base->participant_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_adapter: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 

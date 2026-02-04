@@ -16,51 +16,52 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
+/* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_wm_health_agent = NULL;
 
+
+/* Stub declarations for subsystem integration globals */
+static void* g_fin_wm_bridge_immune = NULL;
+static void* g_fin_wm_bridge_bbb = NULL;
+
 //=============================================================================
-// Immune/BBB Integration (Phase 9: Security Integration)
+// Mesh Participant Registration
 //=============================================================================
 
-struct brain_immune_system;
-typedef struct brain_immune_system brain_immune_system_t;
-extern int brain_immune_validate_operation(brain_immune_system_t* immune,
-                                            const char* operation,
-                                            uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune,
-                                         int source,
-                                         const uint8_t* epitope,
-                                         size_t epitope_len,
-                                         uint32_t severity,
-                                         uint32_t source_node,
-                                         uint32_t* antigen_id);
+static mesh_participant_id_t g_fin_wm_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_wm_mesh_registry = NULL;
 
-struct bbb_system_struct;
-typedef struct bbb_system_struct* bbb_system_t;
-extern int bbb_validate_data(bbb_system_t bbb, const void* data,
-                              size_t size, const char* context);
-
-static brain_immune_system_t* g_fin_wm_bridge_immune = NULL;
-static bbb_system_t g_fin_wm_bridge_bbb = NULL;
-
-void financial_wm_bridge_set_immune_system(brain_immune_system_t* immune) {
-    g_fin_wm_bridge_immune = immune;
+nimcp_error_t fin_wm_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_wm_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_wm", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_wm";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_wm_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_wm_mesh_registry = registry;
+    return err;
 }
 
-void financial_wm_bridge_set_global_bbb(bbb_system_t bbb) {
-    g_fin_wm_bridge_bbb = bbb;
+void fin_wm_mesh_unregister(void) {
+    if (g_fin_wm_mesh_registry && g_fin_wm_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_wm_mesh_registry, g_fin_wm_mesh_id);
+        g_fin_wm_mesh_id = 0;
+        g_fin_wm_mesh_registry = NULL;
+    }
 }
+
 
 //=============================================================================
 // KG Wiring Integration (Change Set 1)
@@ -293,7 +294,7 @@ int financial_wm_bridge_create(financial_wm_bridge_t** bridge,
 
     fin_wm_heartbeat("financial_wm_bridge_create", 0.0f);
 
-    financial_wm_bridge_t* b = (financial_wm_bridge_t*)malloc(sizeof(financial_wm_bridge_t));
+    financial_wm_bridge_t* b = (financial_wm_bridge_t*)nimcp_malloc(sizeof(financial_wm_bridge_t));
     if (!b) {
         set_error("Failed to allocate financial_wm_bridge_t");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -319,10 +320,10 @@ int financial_wm_bridge_create(financial_wm_bridge_t** bridge,
     b->capacity = b->config.capacity;
 
     /* Allocate item storage */
-    b->items = (fin_wm_item_t*)malloc(sizeof(fin_wm_item_t) * b->capacity);
+    b->items = (fin_wm_item_t*)nimcp_malloc(sizeof(fin_wm_item_t) * b->capacity);
     if (!b->items) {
         set_error("Failed to allocate item storage");
-        free(b);
+        nimcp_free(b);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate working memory item storage");
         return FIN_WM_ERR_MEMORY;
@@ -349,11 +350,11 @@ void financial_wm_bridge_destroy(financial_wm_bridge_t* bridge) {
     fin_wm_heartbeat("financial_wm_bridge_destroy", 0.0f);
 
     if (bridge->items) {
-        free(bridge->items);
+        nimcp_free(bridge->items);
         bridge->items = NULL;
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 
     fin_wm_heartbeat("financial_wm_bridge_destroy", 1.0f);
 }

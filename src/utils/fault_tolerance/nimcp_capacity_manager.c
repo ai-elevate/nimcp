@@ -21,33 +21,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for capacity_manager module */
-static nimcp_health_agent_t* g_capacity_manager_health_agent = NULL;
-
-/**
- * @brief Set health agent for capacity_manager heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void capacity_manager_set_health_agent(nimcp_health_agent_t* agent) {
-    g_capacity_manager_health_agent = agent;
-}
-
-/** @brief Send heartbeat from capacity_manager module */
-static inline void capacity_manager_heartbeat(const char* operation, float progress) {
-    if (g_capacity_manager_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_capacity_manager_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(capacity_manager)
 
 /* ============================================================================
  * Logging Tag
@@ -164,14 +141,14 @@ int capacity_manager_create(capacity_manager_t** cm,
 
     }
 
-    *cm = (capacity_manager_t*)calloc(1, sizeof(capacity_manager_t));
+    *cm = (capacity_manager_t*)nimcp_calloc(1, sizeof(capacity_manager_t));
     if (!*cm) {
         LOG_ERROR("Failed to allocate capacity manager");
         return -1;
     }
 
     if (capacity_manager_init(*cm, config, module_name) != 0) {
-        free(*cm);
+        nimcp_free(*cm);
         *cm = NULL;
         return -1;
     }
@@ -233,7 +210,7 @@ void capacity_manager_destroy(capacity_manager_t* cm) {
     }
 
     cm->magic = 0;  /* Invalidate */
-    free(cm);
+    nimcp_free(cm);
 }
 
 int capacity_manager_set_callbacks(capacity_manager_t* cm,

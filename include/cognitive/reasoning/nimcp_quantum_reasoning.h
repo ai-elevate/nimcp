@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -240,7 +241,7 @@ static inline qreason_t qreason_create(const qreason_config_t* config) {
         cfg = qreason_default_config();
     }
 
-    qreason_internal_t* ctx = (qreason_internal_t*)calloc(1, sizeof(qreason_internal_t));
+    qreason_internal_t* ctx = (qreason_internal_t*)nimcp_calloc(1, sizeof(qreason_internal_t));
     if (!ctx) return NULL;
 
     ctx->config = cfg;
@@ -259,7 +260,7 @@ static inline qreason_t qreason_create(const qreason_config_t* config) {
  * WHAT: Destroy quantum reasoner
  */
 static inline void qreason_destroy(qreason_t ctx) {
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 //=============================================================================
@@ -1391,23 +1392,23 @@ static inline ternary_belief_matrix_t* ternary_belief_matrix_create(
     uint32_t cols,
     bool with_confidences
 ) {
-    ternary_belief_matrix_t* matrix = (ternary_belief_matrix_t*)calloc(
+    ternary_belief_matrix_t* matrix = (ternary_belief_matrix_t*)nimcp_calloc(
         1, sizeof(ternary_belief_matrix_t)
     );
     if (!matrix) return NULL;
 
     size_t size = (size_t)rows * cols;
-    matrix->data = (ternary_belief_t*)calloc(size, sizeof(ternary_belief_t));
+    matrix->data = (ternary_belief_t*)nimcp_calloc(size, sizeof(ternary_belief_t));
     if (!matrix->data) {
-        free(matrix);
+        nimcp_free(matrix);
         return NULL;
     }
 
     if (with_confidences) {
-        matrix->confidences = (float*)calloc(size, sizeof(float));
+        matrix->confidences = (float*)nimcp_calloc(size, sizeof(float));
         if (!matrix->confidences) {
-            free(matrix->data);
-            free(matrix);
+            nimcp_free(matrix->data);
+            nimcp_free(matrix);
             return NULL;
         }
         /* Initialize confidences to 0.5 (neutral) */
@@ -1429,9 +1430,9 @@ static inline ternary_belief_matrix_t* ternary_belief_matrix_create(
  */
 static inline void ternary_belief_matrix_destroy(ternary_belief_matrix_t* matrix) {
     if (!matrix) return;
-    free(matrix->data);
-    free(matrix->confidences);
-    free(matrix);
+    nimcp_free(matrix->data);
+    nimcp_free(matrix->confidences);
+    nimcp_free(matrix);
 }
 
 /**

@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(trigeminal_oral_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for trigeminal_oral_bridge module */
-static nimcp_health_agent_t* g_trigeminal_oral_bridge_health_agent = NULL;
+static mesh_participant_id_t g_trigeminal_oral_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_trigeminal_oral_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for trigeminal_oral_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void trigeminal_oral_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_trigeminal_oral_bridge_health_agent = agent;
+nimcp_error_t trigeminal_oral_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_trigeminal_oral_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "trigeminal_oral_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "trigeminal_oral_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_trigeminal_oral_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_trigeminal_oral_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from trigeminal_oral_bridge module */
-static inline void trigeminal_oral_bridge_heartbeat(const char* operation, float progress) {
-    if (g_trigeminal_oral_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_trigeminal_oral_bridge_health_agent, operation, progress);
+void trigeminal_oral_bridge_mesh_unregister(void) {
+    if (g_trigeminal_oral_bridge_mesh_registry && g_trigeminal_oral_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_trigeminal_oral_bridge_mesh_registry, g_trigeminal_oral_bridge_mesh_id);
+        g_trigeminal_oral_bridge_mesh_id = 0;
+        g_trigeminal_oral_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "TRIGEMINAL_ORAL_BRIDGE"
 
@@ -141,7 +155,7 @@ int trigeminal_oral_default_config(trigeminal_oral_config_t* config) {
 }
 
 trigeminal_oral_bridge_t* trigeminal_oral_bridge_create(const trigeminal_oral_config_t* config) {
-    trigeminal_oral_bridge_t* bridge = (trigeminal_oral_bridge_t*)calloc(1, sizeof(trigeminal_oral_bridge_t));
+    trigeminal_oral_bridge_t* bridge = (trigeminal_oral_bridge_t*)nimcp_calloc(1, sizeof(trigeminal_oral_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -171,13 +185,13 @@ void trigeminal_oral_bridge_destroy(trigeminal_oral_bridge_t* bridge) {
 
     /* Free any allocated texture/mouthfeel profiles */
     if (bridge->current_texture.texture_profile) {
-        free(bridge->current_texture.texture_profile);
+        nimcp_free(bridge->current_texture.texture_profile);
     }
     if (bridge->current_mouthfeel.mouthfeel_profile) {
-        free(bridge->current_mouthfeel.mouthfeel_profile);
+        nimcp_free(bridge->current_mouthfeel.mouthfeel_profile);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 /* ============================================================================
@@ -452,7 +466,7 @@ int trigeminal_oral_analyze_texture(trigeminal_oral_bridge_t* bridge,
 
     /* Allocate and fill texture profile */
     texture->profile_dim = TRIGEMINAL_TEXTURE_DIM;
-    texture->texture_profile = (float*)calloc(texture->profile_dim, sizeof(float));
+    texture->texture_profile = (float*)nimcp_calloc(texture->profile_dim, sizeof(float));
     if (texture->texture_profile) {
         texture->texture_profile[0] = roughness;
         texture->texture_profile[1] = hardness;
@@ -466,7 +480,7 @@ int trigeminal_oral_analyze_texture(trigeminal_oral_bridge_t* bridge,
 
     /* Store current texture */
     if (bridge->current_texture.texture_profile) {
-        free(bridge->current_texture.texture_profile);
+        nimcp_free(bridge->current_texture.texture_profile);
     }
     memcpy(&bridge->current_texture, texture, sizeof(texture_perception_t));
     bridge->current_texture.texture_profile = NULL;  /* Don't share pointer */
@@ -705,7 +719,7 @@ int trigeminal_oral_compute_mouthfeel(trigeminal_oral_bridge_t* bridge,
 
     /* Allocate mouthfeel profile */
     mouthfeel->profile_dim = TRIGEMINAL_MOUTHFEEL_DIM;
-    mouthfeel->mouthfeel_profile = (float*)calloc(mouthfeel->profile_dim, sizeof(float));
+    mouthfeel->mouthfeel_profile = (float*)nimcp_calloc(mouthfeel->profile_dim, sizeof(float));
     if (mouthfeel->mouthfeel_profile) {
         mouthfeel->mouthfeel_profile[0] = (float)mouthfeel->primary_quality / MOUTHFEEL_COUNT;
         mouthfeel->mouthfeel_profile[1] = mouthfeel->taste_enhancement;
@@ -723,7 +737,7 @@ int trigeminal_oral_compute_mouthfeel(trigeminal_oral_bridge_t* bridge,
 
     /* Store current mouthfeel */
     if (bridge->current_mouthfeel.mouthfeel_profile) {
-        free(bridge->current_mouthfeel.mouthfeel_profile);
+        nimcp_free(bridge->current_mouthfeel.mouthfeel_profile);
     }
     memcpy(&bridge->current_mouthfeel, mouthfeel, sizeof(mouthfeel_t));
     bridge->current_mouthfeel.mouthfeel_profile = NULL;
@@ -970,13 +984,13 @@ float trigeminal_normalized_to_scoville(float normalized) {
 
 void trigeminal_texture_free(texture_perception_t* texture) {
     if (!texture) return;
-    free(texture->texture_profile);
+    nimcp_free(texture->texture_profile);
     texture->texture_profile = NULL;
 }
 
 void trigeminal_mouthfeel_free(mouthfeel_t* mouthfeel) {
     if (!mouthfeel) return;
-    free(mouthfeel->mouthfeel_profile);
+    nimcp_free(mouthfeel->mouthfeel_profile);
     mouthfeel->mouthfeel_profile = NULL;
     trigeminal_texture_free(&mouthfeel->texture);
 }

@@ -145,7 +145,7 @@
 //
 // MEMORY OVERHEAD:
 // - Barrier structure: ~80 bytes
-//   * mutex: ~40 bytes (pthread_mutex_t)
+//   * mutex: ~40 bytes (nimcp_mutex_t)
 //   * cond: ~48 bytes (pthread_cond_t)
 //   * counters: 4×4 = 16 bytes (count, waiting, cycle, stats)
 //

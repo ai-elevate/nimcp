@@ -17,31 +17,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mathematical_intuition)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for mathematical_intuition module */
-static nimcp_health_agent_t* g_mathematical_intuition_health_agent = NULL;
+static mesh_participant_id_t g_mathematical_intuition_mesh_id = 0;
+static mesh_participant_registry_t* g_mathematical_intuition_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for mathematical_intuition heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void mathematical_intuition_set_health_agent(nimcp_health_agent_t* agent) {
-    g_mathematical_intuition_health_agent = agent;
+nimcp_error_t mathematical_intuition_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_mathematical_intuition_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "mathematical_intuition", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "mathematical_intuition";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_mathematical_intuition_mesh_id);
+    if (err == NIMCP_SUCCESS) g_mathematical_intuition_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from mathematical_intuition module */
-static inline void mathematical_intuition_heartbeat(const char* operation, float progress) {
-    if (g_mathematical_intuition_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_mathematical_intuition_health_agent, operation, progress);
+void mathematical_intuition_mesh_unregister(void) {
+    if (g_mathematical_intuition_mesh_registry && g_mathematical_intuition_mesh_id != 0) {
+        mesh_participant_unregister(g_mathematical_intuition_mesh_registry, g_mathematical_intuition_mesh_id);
+        g_mathematical_intuition_mesh_id = 0;
+        g_mathematical_intuition_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from mathematical_intuition module (instance-level) */
 static inline void mathematical_intuition_heartbeat_instance(
@@ -399,7 +413,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
         cfg = math_intuition_default_config();
     }
 
-    math_intuition_t* mi = calloc(1, sizeof(math_intuition_t));
+    math_intuition_t* mi = nimcp_calloc(1, sizeof(math_intuition_t));
     if (!mi) {
         set_math_error("Failed to allocate math intuition");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mi");
@@ -414,7 +428,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
     mi->lock = nimcp_mutex_create(&attr);
     if (!mi->lock) {
         set_math_error("Failed to create mutex");
-        free(mi);
+        nimcp_free(mi);
         return NULL;
     }
 
@@ -432,7 +446,7 @@ void math_intuition_destroy(math_intuition_t* mi) {
         nimcp_mutex_free(mi->lock);
     }
 
-    free(mi);
+    nimcp_free(mi);
 }
 
 /* ============================================================================
@@ -469,14 +483,14 @@ detected_pattern_t math_detect_pattern(
     nimcp_mutex_lock(mi->lock);
 
     /* Allocate working arrays */
-    float* diffs = malloc((length - 1) * sizeof(float));
-    float* ratios = malloc((length - 1) * sizeof(float));
-    float* x_vals = malloc(length * sizeof(float));
+    float* diffs = nimcp_malloc((length - 1) * sizeof(float));
+    float* ratios = nimcp_malloc((length - 1) * sizeof(float));
+    float* x_vals = nimcp_malloc(length * sizeof(float));
 
     if (!diffs || !ratios || !x_vals) {
-        free(diffs);
-        free(ratios);
-        free(x_vals);
+        nimcp_free(diffs);
+        nimcp_free(ratios);
+        nimcp_free(x_vals);
         nimcp_mutex_unlock(mi->lock);
         return result;
     }
@@ -657,9 +671,9 @@ done:
         mi->total_pattern_confidence += result.confidence;
     }
 
-    free(diffs);
-    free(ratios);
-    free(x_vals);
+    nimcp_free(diffs);
+    nimcp_free(ratios);
+    nimcp_free(x_vals);
 
     nimcp_mutex_unlock(mi->lock);
 
@@ -879,12 +893,12 @@ geometric_result_t math_check_congruent(
     }
 
     /* Compute edge lengths for both shapes */
-    float* edges1 = malloc(num_vertices1 * sizeof(float));
-    float* edges2 = malloc(num_vertices2 * sizeof(float));
+    float* edges1 = nimcp_malloc(num_vertices1 * sizeof(float));
+    float* edges2 = nimcp_malloc(num_vertices2 * sizeof(float));
 
     if (!edges1 || !edges2) {
-        free(edges1);
-        free(edges2);
+        nimcp_free(edges1);
+        nimcp_free(edges2);
         nimcp_mutex_unlock(mi->lock);
         return result;
     }
@@ -951,8 +965,8 @@ geometric_result_t math_check_congruent(
         result.scale_factor = 1.0f;
     }
 
-    free(edges1);
-    free(edges2);
+    nimcp_free(edges1);
+    nimcp_free(edges2);
 
     mi->geometric_analyses++;
 

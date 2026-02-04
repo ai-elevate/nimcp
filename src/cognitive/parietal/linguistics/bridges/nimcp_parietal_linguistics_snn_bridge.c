@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * PRIVATE CONSTANTS
@@ -208,7 +210,7 @@ ling_snn_bridge_config_t ling_snn_bridge_default_config(void) {
 ling_snn_bridge_t* ling_snn_bridge_create(
     const ling_snn_bridge_config_t* config
 ) {
-    ling_snn_bridge_t* bridge = calloc(1, sizeof(ling_snn_bridge_t));
+    ling_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(ling_snn_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate SNN bridge");
         return NULL;
@@ -231,9 +233,9 @@ ling_snn_bridge_t* ling_snn_bridge_create(
     uint32_t spatial_pop_size = LING_SNN_NUM_SPATIAL_WORDS * bridge->config.neurons_per_spatial;
     uint32_t number_pop_size = LING_SNN_NUM_NUMBER_TYPES * bridge->config.neurons_per_number;
 
-    bridge->phoneme_rates = calloc(phoneme_pop_size, sizeof(float));
-    bridge->spatial_rates = calloc(spatial_pop_size, sizeof(float));
-    bridge->number_rates = calloc(number_pop_size, sizeof(float));
+    bridge->phoneme_rates = nimcp_calloc(phoneme_pop_size, sizeof(float));
+    bridge->spatial_rates = nimcp_calloc(spatial_pop_size, sizeof(float));
+    bridge->number_rates = nimcp_calloc(number_pop_size, sizeof(float));
 
     if (!bridge->phoneme_rates || !bridge->spatial_rates || !bridge->number_rates) {
         set_error("Failed to allocate population rate buffers");
@@ -246,8 +248,8 @@ ling_snn_bridge_t* ling_snn_bridge_create(
     if (spatial_pop_size > max_pop) max_pop = spatial_pop_size;
     if (number_pop_size > max_pop) max_pop = number_pop_size;
 
-    bridge->spike_buffer = calloc(max_pop, sizeof(uint8_t));
-    bridge->rate_buffer = calloc(max_pop, sizeof(float));
+    bridge->spike_buffer = nimcp_calloc(max_pop, sizeof(uint8_t));
+    bridge->rate_buffer = nimcp_calloc(max_pop, sizeof(float));
 
     if (!bridge->spike_buffer || !bridge->rate_buffer) {
         set_error("Failed to allocate working buffers");
@@ -311,14 +313,14 @@ void ling_snn_bridge_destroy(ling_snn_bridge_t* bridge) {
     if (bridge->number_decoder) snn_decoder_destroy(bridge->number_decoder);
 
     /* Free buffers */
-    free(bridge->phoneme_rates);
-    free(bridge->spatial_rates);
-    free(bridge->number_rates);
-    free(bridge->spike_buffer);
-    free(bridge->rate_buffer);
+    nimcp_free(bridge->phoneme_rates);
+    nimcp_free(bridge->spatial_rates);
+    nimcp_free(bridge->number_rates);
+    nimcp_free(bridge->spike_buffer);
+    nimcp_free(bridge->rate_buffer);
 
     bridge->magic = 0;
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int ling_snn_bridge_register_mesh(

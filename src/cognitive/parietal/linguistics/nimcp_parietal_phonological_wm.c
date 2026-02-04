@@ -14,6 +14,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * INTERNAL CONSTANTS
@@ -435,7 +436,7 @@ phonological_wm_t* phonological_wm_create(void) {
 }
 
 phonological_wm_t* phonological_wm_create_custom(const phonological_wm_config_t* config) {
-    phonological_wm_t* pwm = (phonological_wm_t*)calloc(1, sizeof(phonological_wm_t));
+    phonological_wm_t* pwm = (phonological_wm_t*)nimcp_calloc(1, sizeof(phonological_wm_t));
     if (!pwm) {
         set_last_error("Failed to allocate phonological working memory");
         NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "phonological_wm_create: allocation failed");
@@ -472,7 +473,7 @@ phonological_wm_t* phonological_wm_create_custom(const phonological_wm_config_t*
 
 void phonological_wm_destroy(phonological_wm_t* pwm) {
     if (pwm) {
-        free(pwm);
+        nimcp_free(pwm);
     }
 }
 

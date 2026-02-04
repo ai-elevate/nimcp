@@ -97,36 +97,44 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #include "utils/platform/nimcp_platform_tier.h"
 
 #define LOG_MODULE "cognitive.executive"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(exec)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: Heartbeat for Long Operations)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for executive (set via executive_set_health_agent) */
-static nimcp_health_agent_t* g_exec_health_agent = NULL;
+static mesh_participant_id_t g_exec_mesh_id = 0;
+static mesh_participant_registry_t* g_exec_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for executive heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void executive_set_health_agent(nimcp_health_agent_t* agent) {
-    g_exec_health_agent = agent;
+nimcp_error_t exec_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_exec_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "exec", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "exec";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_exec_mesh_id);
+    if (err == NIMCP_SUCCESS) g_exec_mesh_registry = registry;
+    return err;
 }
 
-/**
- * @brief Send heartbeat during executive operations
- */
-static inline void exec_heartbeat(const char* operation, float progress) {
-    if (g_exec_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_exec_health_agent, operation, progress);
+void exec_mesh_unregister(void) {
+    if (g_exec_mesh_registry && g_exec_mesh_id != 0) {
+        mesh_participant_unregister(g_exec_mesh_registry, g_exec_mesh_id);
+        g_exec_mesh_id = 0;
+        g_exec_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat (instance-level) */
 static inline void exec_heartbeat_instance(

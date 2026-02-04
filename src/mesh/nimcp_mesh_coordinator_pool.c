@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -552,6 +553,7 @@ nimcp_error_t mesh_coordinator_pool_add(
 
     if (pool->coordinator_count >= pool->coordinator_capacity) {
         nimcp_mutex_unlock(pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -584,6 +586,7 @@ nimcp_error_t mesh_coordinator_pool_remove(
     int idx = find_coordinator_index(pool, coordinator_id);
     if (idx < 0) {
         nimcp_mutex_unlock(pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_coordinator_pool: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -912,6 +915,7 @@ nimcp_error_t mesh_coordinator_pool_assign_participant(
 
     if (!coord) {
         nimcp_mutex_unlock(pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_coordinator_pool: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1026,6 +1030,7 @@ nimcp_error_t mesh_coordinator_pool_handle_failure(
     int idx = find_coordinator_index(pool, failed_coord_id);
     if (idx < 0) {
         nimcp_mutex_unlock(pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_coordinator_pool: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1083,6 +1088,7 @@ nimcp_error_t mesh_coordinator_pool_promote_standby(
     if (!standby) return NIMCP_ERROR_NOT_FOUND;
 
     if (mesh_coordinator_get_role(standby) != COORD_ROLE_STANDBY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_coordinator_pool: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 

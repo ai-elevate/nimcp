@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -254,9 +255,11 @@ nimcp_error_t mesh_endorsement_select_endorsers(
     endorser_set_t* endorsers_out
 ) {
     if (!collector || !pattern || !endorsers_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!collector->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_endorsement: not initialized");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -333,6 +336,7 @@ nimcp_error_t mesh_endorsement_start_collection(
     const endorsement_quorum_t* quorum
 ) {
     if (!collector || !tx || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -341,6 +345,7 @@ nimcp_error_t mesh_endorsement_start_collection(
     /* Check if already collecting */
     if (find_collection(collector, &tx->id)) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_endorsement: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
@@ -348,6 +353,7 @@ nimcp_error_t mesh_endorsement_start_collection(
     endorsement_collection_t* coll = allocate_collection(collector);
     if (!coll) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -365,6 +371,7 @@ nimcp_error_t mesh_endorsement_start_collection(
     if (!coll->received.endorsements) {
         collector->collection_count--;
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
     coll->received.capacity = MESH_MAX_ENDORSERS;
@@ -397,6 +404,7 @@ nimcp_error_t mesh_endorsement_add(
     const mesh_endorsement_t* endorsement
 ) {
     if (!collector || !tx_id || !endorsement) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -405,17 +413,20 @@ nimcp_error_t mesh_endorsement_add(
     endorsement_collection_t* coll = find_collection(collector, tx_id);
     if (!coll) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_endorsement: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (coll->collection_complete) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_endorsement: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Add to received endorsements */
     if (coll->received.count >= MESH_MAX_ENDORSERS) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -436,6 +447,7 @@ nimcp_error_t mesh_endorsement_request(
     mesh_participant_id_t endorser_id
 ) {
     if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -444,6 +456,7 @@ nimcp_error_t mesh_endorsement_request(
     endorsement_collection_t* coll = find_collection(collector, tx_id);
     if (!coll) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_endorsement: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -463,6 +476,7 @@ nimcp_error_t mesh_endorsement_request_all(
     const mesh_tx_id_t* tx_id
 ) {
     if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -471,6 +485,7 @@ nimcp_error_t mesh_endorsement_request_all(
     endorsement_collection_t* coll = find_collection(collector, tx_id);
     if (!coll) {
         nimcp_mutex_unlock(collector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_endorsement: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -575,6 +590,7 @@ nimcp_error_t mesh_endorsement_cancel_collection(
     const mesh_tx_id_t* tx_id
 ) {
     if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -599,6 +615,7 @@ nimcp_error_t mesh_endorsement_cancel_collection(
     }
 
     nimcp_mutex_unlock(collector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_endorsement: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -611,6 +628,7 @@ nimcp_error_t mesh_endorsement_collector_update(
     uint64_t delta_ms
 ) {
     if (!collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -651,6 +669,7 @@ nimcp_error_t mesh_endorsement_create(
     mesh_endorsement_t* endorsement_out
 ) {
     if (!endorsement_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

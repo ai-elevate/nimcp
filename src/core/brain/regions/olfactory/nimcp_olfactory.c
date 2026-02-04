@@ -13,29 +13,42 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(olfactory)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for olfactory module */
-static nimcp_health_agent_t* g_olfactory_health_agent = NULL;
+static mesh_participant_id_t g_olfactory_mesh_id = 0;
+static mesh_participant_registry_t* g_olfactory_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for olfactory heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void olfactory_set_health_agent(nimcp_health_agent_t* agent) {
-    g_olfactory_health_agent = agent;
+nimcp_error_t olfactory_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_olfactory_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "olfactory", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "olfactory";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_olfactory_mesh_id);
+    if (err == NIMCP_SUCCESS) g_olfactory_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from olfactory module */
-static inline void olfactory_heartbeat(const char* operation, float progress) {
-    if (g_olfactory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_olfactory_health_agent, operation, progress);
+void olfactory_mesh_unregister(void) {
+    if (g_olfactory_mesh_registry && g_olfactory_mesh_id != 0) {
+        mesh_participant_unregister(g_olfactory_mesh_registry, g_olfactory_mesh_id);
+        g_olfactory_mesh_id = 0;
+        g_olfactory_mesh_registry = NULL;
     }
 }
 
@@ -66,7 +79,7 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
         config = &default_config;
     }
 
-    nimcp_olfactory_t* olfact = (nimcp_olfactory_t*)calloc(1, sizeof(nimcp_olfactory_t));
+    nimcp_olfactory_t* olfact = (nimcp_olfactory_t*)nimcp_calloc(1, sizeof(nimcp_olfactory_t));
     if (!olfact) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact is NULL");
@@ -80,34 +93,34 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
     olfact->last_error = OLFACT_ERROR_NONE;
 
     /* Allocate glomeruli */
-    olfact->glomeruli = (olfact_glomerulus_t*)calloc(OLFACT_MAX_GLOMERULI, sizeof(olfact_glomerulus_t));
-    if (!olfact->glomeruli) { free(olfact); return NULL; }
+    olfact->glomeruli = (olfact_glomerulus_t*)nimcp_calloc(OLFACT_MAX_GLOMERULI, sizeof(olfact_glomerulus_t));
+    if (!olfact->glomeruli) { nimcp_free(olfact); return NULL; }
     olfact->num_glomeruli = OLFACT_MAX_GLOMERULI;
 
     /* Allocate mitral cells */
-    olfact->mitral_cells = (olfact_mitral_cell_t*)calloc(config->num_mitral_cells, sizeof(olfact_mitral_cell_t));
-    if (!olfact->mitral_cells) { free(olfact->glomeruli); free(olfact); return NULL; }
+    olfact->mitral_cells = (olfact_mitral_cell_t*)nimcp_calloc(config->num_mitral_cells, sizeof(olfact_mitral_cell_t));
+    if (!olfact->mitral_cells) { nimcp_free(olfact->glomeruli); nimcp_free(olfact); return NULL; }
     olfact->num_mitral_cells = config->num_mitral_cells;
 
     /* Allocate piriform cortex */
-    olfact->piriform_activation = (float*)calloc(config->num_piriform_neurons, sizeof(float));
-    if (!olfact->piriform_activation) { free(olfact->mitral_cells); free(olfact->glomeruli); free(olfact); return NULL; }
+    olfact->piriform_activation = (float*)nimcp_calloc(config->num_piriform_neurons, sizeof(float));
+    if (!olfact->piriform_activation) { nimcp_free(olfact->mitral_cells); nimcp_free(olfact->glomeruli); nimcp_free(olfact); return NULL; }
     olfact->num_piriform = config->num_piriform_neurons;
 
     /* Allocate memories */
     olfact->max_memories = config->max_stored_odors;
-    olfact->odor_memories = (olfact_memory_t*)calloc(olfact->max_memories, sizeof(olfact_memory_t));
+    olfact->odor_memories = (olfact_memory_t*)nimcp_calloc(olfact->max_memories, sizeof(olfact_memory_t));
     if (!olfact->odor_memories) {
-        free(olfact->piriform_activation);
-        free(olfact->mitral_cells);
-        free(olfact->glomeruli);
-        free(olfact);
+        nimcp_free(olfact->piriform_activation);
+        nimcp_free(olfact->mitral_cells);
+        nimcp_free(olfact->glomeruli);
+        nimcp_free(olfact);
         return NULL;
     }
     olfact->num_memories = 0;
 
     /* Allocate known odors */
-    olfact->known_odors = (olfact_odor_id_t*)calloc(config->max_stored_odors, sizeof(olfact_odor_id_t));
+    olfact->known_odors = (olfact_odor_id_t*)nimcp_calloc(config->max_stored_odors, sizeof(olfact_odor_id_t));
     olfact->num_known_odors = 0;
 
     /* Initialize sniff state */
@@ -125,12 +138,12 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
 
 void olfact_destroy(nimcp_olfactory_t* olfact) {
     if (!olfact) return;
-    if (olfact->glomeruli) free(olfact->glomeruli);
-    if (olfact->mitral_cells) free(olfact->mitral_cells);
-    if (olfact->piriform_activation) free(olfact->piriform_activation);
-    if (olfact->odor_memories) free(olfact->odor_memories);
-    if (olfact->known_odors) free(olfact->known_odors);
-    free(olfact);
+    if (olfact->glomeruli) nimcp_free(olfact->glomeruli);
+    if (olfact->mitral_cells) nimcp_free(olfact->mitral_cells);
+    if (olfact->piriform_activation) nimcp_free(olfact->piriform_activation);
+    if (olfact->odor_memories) nimcp_free(olfact->odor_memories);
+    if (olfact->known_odors) nimcp_free(olfact->known_odors);
+    nimcp_free(olfact);
 }
 
 int olfact_reset(nimcp_olfactory_t* olfact) {

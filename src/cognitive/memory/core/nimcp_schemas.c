@@ -28,31 +28,45 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(schemas)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for schemas module */
-static nimcp_health_agent_t* g_schemas_health_agent = NULL;
+static mesh_participant_id_t g_schemas_mesh_id = 0;
+static mesh_participant_registry_t* g_schemas_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for schemas heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void schemas_set_health_agent(nimcp_health_agent_t* agent) {
-    g_schemas_health_agent = agent;
+nimcp_error_t schemas_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_schemas_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "schemas", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "schemas";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_schemas_mesh_id);
+    if (err == NIMCP_SUCCESS) g_schemas_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from schemas module */
-static inline void schemas_heartbeat(const char* operation, float progress) {
-    if (g_schemas_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_schemas_health_agent, operation, progress);
+void schemas_mesh_unregister(void) {
+    if (g_schemas_mesh_registry && g_schemas_mesh_id != 0) {
+        mesh_participant_unregister(g_schemas_mesh_registry, g_schemas_mesh_id);
+        g_schemas_mesh_id = 0;
+        g_schemas_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from schemas module (instance-level) */
 static inline void schemas_heartbeat_instance(
@@ -166,7 +180,7 @@ static char* str_dup(const char* s) {
 
     }
     size_t len = strlen(s) + 1;
-    char* dup = (char*)malloc(len);
+    char* dup = (char*)nimcp_malloc(len);
     if (dup) {
         memcpy(dup, s, len);
     }
@@ -266,7 +280,7 @@ static bool id_table_remove(schema_system_t system, uint64_t key) {
 static void free_slot(schema_slot_t* slot) {
     if (!slot) return;
     if (slot->slot_name) {
-        free(slot->slot_name);
+        nimcp_free(slot->slot_name);
         slot->slot_name = NULL;
     }
 }
@@ -278,7 +292,7 @@ static void free_schema_contents(schema_t* schema) {
     if (!schema) return;
 
     if (schema->schema_name) {
-        free(schema->schema_name);
+        nimcp_free(schema->schema_name);
         schema->schema_name = NULL;
     }
 
@@ -292,12 +306,12 @@ static void free_schema_contents(schema_t* schema) {
 
             free_slot(&schema->slots[i]);
         }
-        free(schema->slots);
+        nimcp_free(schema->slots);
         schema->slots = NULL;
     }
 
     if (schema->child_schemas) {
-        free(schema->child_schemas);
+        nimcp_free(schema->child_schemas);
         schema->child_schemas = NULL;
     }
 
@@ -464,7 +478,7 @@ schema_system_t schema_system_create(
     }
 
     // Allocate system
-    schema_system_t system = (schema_system_t)calloc(1, sizeof(struct schema_system_struct));
+    schema_system_t system = (schema_system_t)nimcp_calloc(1, sizeof(struct schema_system_struct));
     if (!system) {
         set_error("Failed to allocate schema system");
         return NULL;
@@ -477,36 +491,36 @@ schema_system_t schema_system_create(
 
     // Allocate schema array
     system->schemas_capacity = 64;  // Start small, grow as needed
-    system->schemas = (schema_t**)calloc(system->schemas_capacity, sizeof(schema_t*));
+    system->schemas = (schema_t**)nimcp_calloc(system->schemas_capacity, sizeof(schema_t*));
     if (!system->schemas) {
         set_error("Failed to allocate schema array");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate ID hash table (2x capacity for load factor)
     system->id_table_capacity = system->schemas_capacity * 2;
-    system->id_table_keys = (uint64_t*)calloc(system->id_table_capacity, sizeof(uint64_t));
-    system->id_table_values = (size_t*)calloc(system->id_table_capacity, sizeof(size_t));
+    system->id_table_keys = (uint64_t*)nimcp_calloc(system->id_table_capacity, sizeof(uint64_t));
+    system->id_table_values = (size_t*)nimcp_calloc(system->id_table_capacity, sizeof(size_t));
     if (!system->id_table_keys || !system->id_table_values) {
         set_error("Failed to allocate ID table");
-        free(system->schemas);
-        free(system->id_table_keys);
-        free(system->id_table_values);
-        free(system);
+        nimcp_free(system->schemas);
+        nimcp_free(system->id_table_keys);
+        nimcp_free(system->id_table_values);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate active instantiations array
     system->active_capacity = 32;
-    system->active = (schema_instantiation_t**)calloc(
+    system->active = (schema_instantiation_t**)nimcp_calloc(
         system->active_capacity, sizeof(schema_instantiation_t*));
     if (!system->active) {
         set_error("Failed to allocate active array");
-        free(system->schemas);
-        free(system->id_table_keys);
-        free(system->id_table_values);
-        free(system);
+        nimcp_free(system->schemas);
+        nimcp_free(system->id_table_keys);
+        nimcp_free(system->id_table_values);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -514,7 +528,7 @@ schema_system_t schema_system_create(
     if (cfg.enable_cooccurrence) {
         system->cooc_dim = 128;  // Fixed size for simplicity
         size_t cooc_size = system->cooc_dim * system->cooc_dim;
-        system->slot_cooccurrence = (float*)calloc(cooc_size, sizeof(float));
+        system->slot_cooccurrence = (float*)nimcp_calloc(cooc_size, sizeof(float));
         // OK if this fails, just disables cooccurrence
     }
 
@@ -543,10 +557,10 @@ void schema_system_destroy(schema_system_t system) {
 
         if (system->schemas[i]) {
             free_schema_contents(system->schemas[i]);
-            free(system->schemas[i]);
+            nimcp_free(system->schemas[i]);
         }
     }
-    free(system->schemas);
+    nimcp_free(system->schemas);
 
     // Destroy all instantiations
     for (size_t i = 0; i < system->num_active; i++) {
@@ -560,17 +574,17 @@ void schema_system_destroy(schema_system_t system) {
             schema_instantiation_destroy(system->active[i]);
         }
     }
-    free(system->active);
+    nimcp_free(system->active);
 
     // Free hash table
-    free(system->id_table_keys);
-    free(system->id_table_values);
+    nimcp_free(system->id_table_keys);
+    nimcp_free(system->id_table_values);
 
     // Free cooccurrence matrix
-    free(system->slot_cooccurrence);
+    nimcp_free(system->slot_cooccurrence);
 
     // Free system
-    free(system);
+    nimcp_free(system);
 }
 
 bool schema_system_clear(schema_system_t system) {
@@ -593,7 +607,7 @@ bool schema_system_clear(schema_system_t system) {
 
         if (system->schemas[i]) {
             free_schema_contents(system->schemas[i]);
-            free(system->schemas[i]);
+            nimcp_free(system->schemas[i]);
             system->schemas[i] = NULL;
         }
     }
@@ -660,7 +674,7 @@ schema_t* schema_create(
     }
 
     // Allocate schema
-    schema_t* schema = (schema_t*)calloc(1, sizeof(schema_t));
+    schema_t* schema = (schema_t*)nimcp_calloc(1, sizeof(schema_t));
     if (!schema) {
         set_error("Failed to allocate schema");
         return NULL;
@@ -671,7 +685,7 @@ schema_t* schema_create(
     schema->schema_name = str_dup(name);
     if (!schema->schema_name) {
         set_error("Failed to duplicate schema name");
-        free(schema);
+        nimcp_free(schema);
         return NULL;
     }
 
@@ -681,22 +695,22 @@ schema_t* schema_create(
 
     // Allocate initial slot array
     schema->slots_capacity = 8;
-    schema->slots = (schema_slot_t*)calloc(schema->slots_capacity, sizeof(schema_slot_t));
+    schema->slots = (schema_slot_t*)nimcp_calloc(schema->slots_capacity, sizeof(schema_slot_t));
     if (!schema->slots) {
         set_error("Failed to allocate slots");
-        free(schema->schema_name);
-        free(schema);
+        nimcp_free(schema->schema_name);
+        nimcp_free(schema);
         return NULL;
     }
 
     // Allocate initial children array
     schema->children_capacity = 4;
-    schema->child_schemas = (uint64_t*)calloc(schema->children_capacity, sizeof(uint64_t));
+    schema->child_schemas = (uint64_t*)nimcp_calloc(schema->children_capacity, sizeof(uint64_t));
     if (!schema->child_schemas) {
         set_error("Failed to allocate children");
-        free(schema->slots);
-        free(schema->schema_name);
-        free(schema);
+        nimcp_free(schema->slots);
+        nimcp_free(schema->schema_name);
+        nimcp_free(schema);
         return NULL;
     }
 
@@ -777,7 +791,7 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
 
     // Free schema
     free_schema_contents(schema);
-    free(schema);
+    nimcp_free(schema);
 
     // Update stats
     system->stats.num_schemas = system->num_schemas;
@@ -808,7 +822,7 @@ bool schema_add(schema_system_t system, schema_t* schema) {
             return false;
         }
 
-        schema_t** new_schemas = (schema_t**)realloc(
+        schema_t** new_schemas = (schema_t**)nimcp_realloc(
             system->schemas, new_capacity * sizeof(schema_t*));
         if (!new_schemas) {
             set_error("Failed to grow schema array");
@@ -819,11 +833,11 @@ bool schema_add(schema_system_t system, schema_t* schema) {
 
         // Grow hash table too
         size_t new_table_cap = new_capacity * 2;
-        uint64_t* new_keys = (uint64_t*)calloc(new_table_cap, sizeof(uint64_t));
-        size_t* new_values = (size_t*)calloc(new_table_cap, sizeof(size_t));
+        uint64_t* new_keys = (uint64_t*)nimcp_calloc(new_table_cap, sizeof(uint64_t));
+        size_t* new_values = (size_t*)nimcp_calloc(new_table_cap, sizeof(size_t));
         if (!new_keys || !new_values) {
-            free(new_keys);
-            free(new_values);
+            nimcp_free(new_keys);
+            nimcp_free(new_values);
             set_error("Failed to grow hash table");
             return false;
         }
@@ -849,8 +863,8 @@ bool schema_add(schema_system_t system, schema_t* schema) {
             }
         }
 
-        free(old_keys);
-        free(old_values);
+        nimcp_free(old_keys);
+        nimcp_free(old_values);
     }
 
     // Add schema
@@ -982,7 +996,7 @@ bool schema_define_slot(
             return false;
         }
 
-        schema_slot_t* new_slots = (schema_slot_t*)realloc(
+        schema_slot_t* new_slots = (schema_slot_t*)nimcp_realloc(
             schema->slots, new_capacity * sizeof(schema_slot_t));
         if (!new_slots) {
             set_error("Failed to grow slots array");
@@ -1169,7 +1183,7 @@ schema_instantiation_t* schema_instantiate(
             return NULL;
         }
 
-        schema_instantiation_t** new_active = (schema_instantiation_t**)realloc(
+        schema_instantiation_t** new_active = (schema_instantiation_t**)nimcp_realloc(
             system->active, new_capacity * sizeof(schema_instantiation_t*));
         if (!new_active) {
             set_error("Failed to grow active array");
@@ -1180,7 +1194,7 @@ schema_instantiation_t* schema_instantiate(
     }
 
     // Allocate instantiation
-    schema_instantiation_t* inst = (schema_instantiation_t*)calloc(
+    schema_instantiation_t* inst = (schema_instantiation_t*)nimcp_calloc(
         1, sizeof(schema_instantiation_t));
     if (!inst) {
         set_error("Failed to allocate instantiation");
@@ -1192,13 +1206,13 @@ schema_instantiation_t* schema_instantiate(
     inst->created_time_ms = schema_current_time_ms();
 
     // Allocate slot arrays
-    inst->filled_slots = (schema_slot_t*)calloc(schema->num_slots, sizeof(schema_slot_t));
-    inst->inferred_slots = (schema_slot_t*)calloc(schema->num_slots, sizeof(schema_slot_t));
+    inst->filled_slots = (schema_slot_t*)nimcp_calloc(schema->num_slots, sizeof(schema_slot_t));
+    inst->inferred_slots = (schema_slot_t*)nimcp_calloc(schema->num_slots, sizeof(schema_slot_t));
     if (!inst->filled_slots || !inst->inferred_slots) {
         set_error("Failed to allocate slot arrays");
-        free(inst->filled_slots);
-        free(inst->inferred_slots);
-        free(inst);
+        nimcp_free(inst->filled_slots);
+        nimcp_free(inst->inferred_slots);
+        nimcp_free(inst);
         return NULL;
     }
 
@@ -1310,7 +1324,7 @@ schema_instantiation_t* schema_instantiate_from_memory(
     }
 
     // Track source memory
-    inst->source_memory_ids = (uint64_t*)malloc(sizeof(uint64_t));
+    inst->source_memory_ids = (uint64_t*)nimcp_malloc(sizeof(uint64_t));
     if (inst->source_memory_ids) {
         inst->source_memory_ids[0] = pr_memory_node_get_id(memory);
         inst->num_sources = 1;
@@ -1337,7 +1351,7 @@ void schema_instantiation_destroy(schema_instantiation_t* instantiation) {
 
             free_slot(&instantiation->filled_slots[i]);
         }
-        free(instantiation->filled_slots);
+        nimcp_free(instantiation->filled_slots);
     }
 
     // Free inferred slots
@@ -1351,13 +1365,13 @@ void schema_instantiation_destroy(schema_instantiation_t* instantiation) {
 
             free_slot(&instantiation->inferred_slots[i]);
         }
-        free(instantiation->inferred_slots);
+        nimcp_free(instantiation->inferred_slots);
     }
 
     // Free source tracking
-    free(instantiation->source_memory_ids);
+    nimcp_free(instantiation->source_memory_ids);
 
-    free(instantiation);
+    nimcp_free(instantiation);
 }
 
 schema_instantiation_t* schema_get_instantiation(
@@ -1646,7 +1660,7 @@ bool schema_match_top_k(
         float fit;
     } fit_entry_t;
 
-    fit_entry_t* entries = (fit_entry_t*)malloc(system->num_schemas * sizeof(fit_entry_t));
+    fit_entry_t* entries = (fit_entry_t*)nimcp_malloc(system->num_schemas * sizeof(fit_entry_t));
     if (!entries) {
         set_error("Failed to allocate fit array");
         return false;
@@ -1703,7 +1717,7 @@ bool schema_match_top_k(
         (*result_count)++;
     }
 
-    free(entries);
+    nimcp_free(entries);
     clear_error();
     return true;
 }
@@ -2013,7 +2027,7 @@ schema_t* schema_abstract(
     // Add to system
     if (!schema_add(system, abstract)) {
         free_schema_contents(abstract);
-        free(abstract);
+        nimcp_free(abstract);
         return NULL;
     }
 
@@ -2078,7 +2092,7 @@ schema_t* schema_specialize(
             size_t new_cap = parent_mut->children_capacity * 2;
             if (new_cap > SCHEMA_MAX_CHILDREN) new_cap = SCHEMA_MAX_CHILDREN;
 
-            uint64_t* new_children = (uint64_t*)realloc(
+            uint64_t* new_children = (uint64_t*)nimcp_realloc(
                 parent_mut->child_schemas, new_cap * sizeof(uint64_t));
             if (new_children) {
                 parent_mut->child_schemas = new_children;
@@ -2095,7 +2109,7 @@ schema_t* schema_specialize(
     // Add to system
     if (!schema_add(system, child)) {
         free_schema_contents(child);
-        free(child);
+        nimcp_free(child);
         return NULL;
     }
 
@@ -2168,7 +2182,7 @@ schema_t* schema_merge(
     // Add to system
     if (!schema_add(system, merged)) {
         free_schema_contents(merged);
-        free(merged);
+        nimcp_free(merged);
         return NULL;
     }
 
@@ -2347,7 +2361,7 @@ bool schema_set_parent(
             size_t new_cap = parent_mut->children_capacity * 2;
             if (new_cap > SCHEMA_MAX_CHILDREN) new_cap = SCHEMA_MAX_CHILDREN;
 
-            uint64_t* new_children = (uint64_t*)realloc(
+            uint64_t* new_children = (uint64_t*)nimcp_realloc(
                 parent_mut->child_schemas, new_cap * sizeof(uint64_t));
             if (!new_children) {
                 set_error("Failed to grow children array");

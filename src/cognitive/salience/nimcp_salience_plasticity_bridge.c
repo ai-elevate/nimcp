@@ -19,31 +19,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(salience_plasticity_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for salience_plasticity_bridge module */
-static nimcp_health_agent_t* g_salience_plasticity_bridge_health_agent = NULL;
+static mesh_participant_id_t g_salience_plasticity_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_salience_plasticity_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for salience_plasticity_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void salience_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_salience_plasticity_bridge_health_agent = agent;
+nimcp_error_t salience_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_salience_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "salience_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "salience_plasticity_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_salience_plasticity_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_salience_plasticity_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from salience_plasticity_bridge module */
-static inline void salience_plasticity_bridge_heartbeat(const char* operation, float progress) {
-    if (g_salience_plasticity_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_salience_plasticity_bridge_health_agent, operation, progress);
+void salience_plasticity_bridge_mesh_unregister(void) {
+    if (g_salience_plasticity_bridge_mesh_registry && g_salience_plasticity_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_salience_plasticity_bridge_mesh_registry, g_salience_plasticity_bridge_mesh_id);
+        g_salience_plasticity_bridge_mesh_id = 0;
+        g_salience_plasticity_bridge_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from salience_plasticity_bridge module (instance-level) */
 static inline void salience_plasticity_bridge_heartbeat_instance(
@@ -220,7 +234,7 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
 
 
-    salience_plasticity_bridge_t* bridge = calloc(1, sizeof(salience_plasticity_bridge_t));
+    salience_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(salience_plasticity_bridge_t));
     if (!bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
@@ -235,17 +249,17 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     bridge->max_features = SALIENCE_PLASTICITY_MAX_FEATURES;
 
     // Allocate synapses
-    bridge->synapses = calloc(bridge->max_synapses, sizeof(salience_plasticity_synapse_t));
+    bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(salience_plasticity_synapse_t));
     if (!bridge->synapses) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     // Allocate feature learning states
-    bridge->features = calloc(bridge->max_features, sizeof(salience_feature_learning_t));
+    bridge->features = nimcp_calloc(bridge->max_features, sizeof(salience_feature_learning_t));
     if (!bridge->features) {
-        free(bridge->synapses);
-        free(bridge);
+        nimcp_free(bridge->synapses);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -264,9 +278,9 @@ void salience_plasticity_destroy(salience_plasticity_bridge_t* bridge) {
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
 
 
-    free(bridge->synapses);
-    free(bridge->features);
-    free(bridge);
+    nimcp_free(bridge->synapses);
+    nimcp_free(bridge->features);
+    nimcp_free(bridge);
 }
 
 int salience_plasticity_reset(salience_plasticity_bridge_t* bridge) {

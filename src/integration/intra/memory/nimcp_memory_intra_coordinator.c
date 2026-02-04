@@ -13,33 +13,10 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for memory_intra_coordinator module */
-static nimcp_health_agent_t* g_memory_intra_coordinator_health_agent = NULL;
-
-/**
- * @brief Set health agent for memory_intra_coordinator heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void memory_intra_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
-    g_memory_intra_coordinator_health_agent = agent;
-}
-
-/** @brief Send heartbeat from memory_intra_coordinator module */
-static inline void memory_intra_coordinator_heartbeat(const char* operation, float progress) {
-    if (g_memory_intra_coordinator_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_memory_intra_coordinator_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_intra_coordinator)
 
 typedef struct {
     void* module;
@@ -81,7 +58,7 @@ nimcp_memory_intra_config_t nimcp_memory_intra_default_config(void) {
 }
 
 nimcp_memory_intra_t nimcp_memory_intra_create(const nimcp_memory_intra_config_t* config) {
-    nimcp_memory_intra_t coord = (nimcp_memory_intra_t)calloc(1, sizeof(struct nimcp_memory_intra_struct));
+    nimcp_memory_intra_t coord = (nimcp_memory_intra_t)nimcp_calloc(1, sizeof(struct nimcp_memory_intra_struct));
     NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate memory intra coordinator");
     coord->config = config ? *config : nimcp_memory_intra_default_config();
     return coord;
@@ -90,7 +67,7 @@ nimcp_memory_intra_t nimcp_memory_intra_create(const nimcp_memory_intra_config_t
 void nimcp_memory_intra_destroy(nimcp_memory_intra_t coord) {
     if (!coord) return;
     if (coord->is_initialized) nimcp_memory_intra_shutdown(coord);
-    free(coord);
+    nimcp_free(coord);
 }
 
 nimcp_layer_error_t nimcp_memory_intra_init(nimcp_memory_intra_t coord, nimcp_layer_registry_t registry) {

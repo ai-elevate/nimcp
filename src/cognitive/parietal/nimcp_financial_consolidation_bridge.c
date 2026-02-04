@@ -30,25 +30,44 @@
 /* ============================================================================
  * Health Agent Integration (Phase 8: System-Wide Health Integration)
  * ============================================================================ */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_consolidation)
+//=============================================================================
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for financial consolidation bridge module */
-static nimcp_health_agent_t* g_fin_consolidation_health_agent = NULL;
+static mesh_participant_id_t g_fin_consolidation_mesh_id = 0;
+static mesh_participant_registry_t* g_fin_consolidation_mesh_registry = NULL;
 
-void financial_consolidation_bridge_set_health_agent_global(void* agent) {
-    g_fin_consolidation_health_agent = (nimcp_health_agent_t*)agent;
+nimcp_error_t fin_consolidation_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_fin_consolidation_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "fin_consolidation", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "fin_consolidation";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_consolidation_mesh_id);
+    if (err == NIMCP_SUCCESS) g_fin_consolidation_mesh_registry = registry;
+    return err;
 }
 
-static inline void fin_consolidation_heartbeat_global(const char* operation, float progress) {
-    if (g_fin_consolidation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_consolidation_health_agent, operation, progress);
+void fin_consolidation_mesh_unregister(void) {
+    if (g_fin_consolidation_mesh_registry && g_fin_consolidation_mesh_id != 0) {
+        mesh_participant_unregister(g_fin_consolidation_mesh_registry, g_fin_consolidation_mesh_id);
+        g_fin_consolidation_mesh_id = 0;
+        g_fin_consolidation_mesh_registry = NULL;
     }
 }
+
 
 /* ============================================================================
  * Immune/BBB Integration (Phase 9: Security Integration)
@@ -266,7 +285,7 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
     fin_consolidation_heartbeat_global("fin_consolidation_create", 0.0f);
 
     financial_consolidation_bridge_t* bridge = (financial_consolidation_bridge_t*)
-        malloc(sizeof(financial_consolidation_bridge_t));
+        nimcp_malloc(sizeof(financial_consolidation_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate financial_consolidation_bridge");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
@@ -286,11 +305,11 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
 
     /* Allocate trade history */
     bridge->trades_capacity = bridge->config.max_history_size;
-    bridge->trades = (fin_trade_record_t*)malloc(
+    bridge->trades = (fin_trade_record_t*)nimcp_malloc(
         bridge->trades_capacity * sizeof(fin_trade_record_t));
     if (!bridge->trades) {
         set_error("Failed to allocate trade history");
-        free(bridge);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate trade history");
         return NULL;
@@ -299,12 +318,12 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
     bridge->num_trades = 0;
 
     /* Allocate pattern memory */
-    bridge->patterns = (fin_pattern_entry_t*)malloc(
+    bridge->patterns = (fin_pattern_entry_t*)nimcp_malloc(
         bridge->config.max_pattern_count * sizeof(fin_pattern_entry_t));
     if (!bridge->patterns) {
         set_error("Failed to allocate pattern memory");
-        free(bridge->trades);
-        free(bridge);
+        nimcp_free(bridge->trades);
+        nimcp_free(bridge);
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate pattern memory");
         return NULL;
@@ -314,15 +333,15 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
     bridge->next_pattern_id = 1;
 
     /* Allocate trade-pattern association arrays */
-    bridge->trade_patterns = (uint32_t**)calloc(bridge->trades_capacity, sizeof(uint32_t*));
-    bridge->trade_pattern_counts = (uint32_t*)calloc(bridge->trades_capacity, sizeof(uint32_t));
+    bridge->trade_patterns = (uint32_t**)nimcp_calloc(bridge->trades_capacity, sizeof(uint32_t*));
+    bridge->trade_pattern_counts = (uint32_t*)nimcp_calloc(bridge->trades_capacity, sizeof(uint32_t));
     if (!bridge->trade_patterns || !bridge->trade_pattern_counts) {
         set_error("Failed to allocate trade-pattern associations");
-        if (bridge->trade_patterns) free(bridge->trade_patterns);
-        if (bridge->trade_pattern_counts) free(bridge->trade_pattern_counts);
-        free(bridge->patterns);
-        free(bridge->trades);
-        free(bridge);
+        if (bridge->trade_patterns) nimcp_free(bridge->trade_patterns);
+        if (bridge->trade_pattern_counts) nimcp_free(bridge->trade_pattern_counts);
+        nimcp_free(bridge->patterns);
+        nimcp_free(bridge->trades);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -342,24 +361,24 @@ void financial_consolidation_bridge_destroy(financial_consolidation_bridge_t* br
         if (bridge->trade_patterns) {
             for (uint32_t i = 0; i < bridge->trades_capacity; i++) {
                 if (bridge->trade_patterns[i]) {
-                    free(bridge->trade_patterns[i]);
+                    nimcp_free(bridge->trade_patterns[i]);
                 }
             }
-            free(bridge->trade_patterns);
+            nimcp_free(bridge->trade_patterns);
         }
         if (bridge->trade_pattern_counts) {
-            free(bridge->trade_pattern_counts);
+            nimcp_free(bridge->trade_pattern_counts);
         }
 
         if (bridge->patterns) {
-            free(bridge->patterns);
+            nimcp_free(bridge->patterns);
         }
         if (bridge->trades) {
-            free(bridge->trades);
+            nimcp_free(bridge->trades);
         }
         bridge->magic = 0;
         bridge->op_state = FIN_CONSOLIDATION_OP_STATE_UNINITIALIZED;
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 
@@ -392,7 +411,7 @@ int financial_consolidation_bridge_reset(financial_consolidation_bridge_t* bridg
     /* Clear trade-pattern associations */
     for (uint32_t i = 0; i < bridge->trades_capacity; i++) {
         if (bridge->trade_patterns[i]) {
-            free(bridge->trade_patterns[i]);
+            nimcp_free(bridge->trade_patterns[i]);
             bridge->trade_patterns[i] = NULL;
         }
         bridge->trade_pattern_counts[i] = 0;
@@ -642,7 +661,7 @@ int financial_consolidation_bridge_add_annotated_trade(
     /* Associate patterns if provided */
     uint32_t trade_idx = bridge->num_trades - 1;
     if (trade->pattern_ids && trade->num_patterns > 0) {
-        bridge->trade_patterns[trade_idx] = (uint32_t*)malloc(
+        bridge->trade_patterns[trade_idx] = (uint32_t*)nimcp_malloc(
             trade->num_patterns * sizeof(uint32_t));
         if (bridge->trade_patterns[trade_idx]) {
             memcpy(bridge->trade_patterns[trade_idx], trade->pattern_ids,
@@ -719,7 +738,7 @@ int financial_consolidation_bridge_clear_history(
     /* Clear trade-pattern associations */
     for (uint32_t i = 0; i < bridge->trades_capacity; i++) {
         if (bridge->trade_patterns[i]) {
-            free(bridge->trade_patterns[i]);
+            nimcp_free(bridge->trade_patterns[i]);
             bridge->trade_patterns[i] = NULL;
         }
         bridge->trade_pattern_counts[i] = 0;
@@ -943,7 +962,7 @@ int financial_consolidation_bridge_replay(
     financial_consolidation_result_init(result);
 
     /* Allocate pattern strengths array */
-    result->pattern_strengths = (float*)malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;
@@ -1040,7 +1059,7 @@ int financial_consolidation_bridge_prune_losers(
     /* Initialize result */
     financial_consolidation_result_init(result);
 
-    result->pattern_strengths = (float*)malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;
@@ -1156,7 +1175,7 @@ int financial_consolidation_bridge_strengthen_winners(
     /* Initialize result */
     financial_consolidation_result_init(result);
 
-    result->pattern_strengths = (float*)malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;
@@ -1330,7 +1349,7 @@ void financial_consolidation_result_init(fin_consolidation_result_t* result) {
 void financial_consolidation_result_free(fin_consolidation_result_t* result) {
     if (result) {
         if (result->pattern_strengths) {
-            free(result->pattern_strengths);
+            nimcp_free(result->pattern_strengths);
             result->pattern_strengths = NULL;
         }
         result->num_patterns = 0;

@@ -14,32 +14,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for neuromod_executive_bridge module */
-static nimcp_health_agent_t* g_neuromod_executive_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for neuromod_executive_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void neuromod_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_neuromod_executive_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from neuromod_executive_bridge module */
-static inline void neuromod_executive_bridge_heartbeat(const char* operation, float progress) {
-    if (g_neuromod_executive_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_neuromod_executive_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_executive_bridge)
 
 #define LOG_MODULE "NEUROMOD_EXECUTIVE_BRIDGE"
 
@@ -72,7 +50,7 @@ nimcp_neuromod_executive_config_t nimcp_neuromod_executive_default_config(void) 
 }
 
 nimcp_neuromod_executive_bridge_t nimcp_neuromod_executive_create(const nimcp_neuromod_executive_config_t* config) {
-    nimcp_neuromod_executive_bridge_t bridge = (nimcp_neuromod_executive_bridge_t)calloc(1, sizeof(struct nimcp_neuromod_executive_bridge_struct));
+    nimcp_neuromod_executive_bridge_t bridge = (nimcp_neuromod_executive_bridge_t)nimcp_calloc(1, sizeof(struct nimcp_neuromod_executive_bridge_struct));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-executive bridge");
     bridge->config = config ? *config : nimcp_neuromod_executive_default_config();
     bridge->state.bridge_coherence = 1.0f;
@@ -87,7 +65,7 @@ void nimcp_neuromod_executive_destroy(nimcp_neuromod_executive_bridge_t bridge) 
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromod_executive");
     if (bridge->is_initialized) nimcp_neuromod_executive_shutdown(bridge);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_init(

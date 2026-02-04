@@ -57,36 +57,11 @@
 #include <math.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for collective_workspace module */
-static nimcp_health_agent_t* g_collective_workspace_health_agent = NULL;
-
-/**
- * @brief Set health agent for collective_workspace heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void collective_workspace_set_health_agent(nimcp_health_agent_t* agent) {
-    g_collective_workspace_health_agent = agent;
-}
-
-/** @brief Send heartbeat from collective_workspace module */
-static inline void collective_workspace_heartbeat(const char* operation, float progress) {
-    if (g_collective_workspace_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_collective_workspace_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(collective_workspace)
 
 //=============================================================================
 // Module Constants
@@ -706,7 +681,7 @@ collective_workspace_t* collective_workspace_create(
     workspace->broadcasts_sent = 0;
 
     // Initialize mutex
-    if (pthread_mutex_init(&workspace->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&workspace->mutex, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_create: failed to initialize mutex");
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",
                      "Mutex initialization failed");
@@ -743,7 +718,7 @@ void collective_workspace_destroy(collective_workspace_t* workspace) {
              workspace->item_count, workspace->total_items_sent,
              workspace->total_items_received, workspace->merge_conflicts);
 
-    pthread_mutex_destroy(&workspace->mutex);
+    nimcp_mutex_destroy(&workspace->mutex);
     nimcp_free(workspace);
 }
 
@@ -767,7 +742,7 @@ bool collective_workspace_add_item(
         return false;
     }
 
-    pthread_mutex_lock(&workspace->mutex);
+    nimcp_mutex_lock(&workspace->mutex);
 
     // Increment local clock
     workspace->local_clock++;
@@ -789,7 +764,7 @@ bool collective_workspace_add_item(
     if (insert_idx < 0) {
         LOG_DEBUG("Item rejected (workspace full, salience too low): id=0x%08x, salience=%.3f",
                   local_item.item_id, local_item.salience);
-        pthread_mutex_unlock(&workspace->mutex);
+        nimcp_mutex_unlock(&workspace->mutex);
         return false;
     }
 
@@ -810,7 +785,7 @@ bool collective_workspace_add_item(
               local_item.salience,
               local_item.marked_for_broadcast);
 
-    pthread_mutex_unlock(&workspace->mutex);
+    nimcp_mutex_unlock(&workspace->mutex);
     return true;
 }
 
@@ -842,7 +817,7 @@ bool collective_workspace_merge_item(
         return false;
     }
 
-    pthread_mutex_lock(&workspace->mutex);
+    nimcp_mutex_lock(&workspace->mutex);
 
     workspace->total_items_received++;
 
@@ -858,7 +833,7 @@ bool collective_workspace_merge_item(
         if (insert_idx < 0) {
             LOG_DEBUG("Received item rejected (workspace full, salience too low): id=0x%08x",
                       item->item_id);
-            pthread_mutex_unlock(&workspace->mutex);
+            nimcp_mutex_unlock(&workspace->mutex);
             return false;
         }
 
@@ -875,7 +850,7 @@ bool collective_workspace_merge_item(
         LOG_DEBUG("Merged new item: id=0x%08x, salience=%.3f, source_drone=%u",
                   item->item_id, item->salience, item->source_drone);
 
-        pthread_mutex_unlock(&workspace->mutex);
+        nimcp_mutex_unlock(&workspace->mutex);
         return true;
     }
 
@@ -895,14 +870,14 @@ bool collective_workspace_merge_item(
     if (clock_cmp == 0) {
         // Same event (duplicate) - ignore
         LOG_DEBUG("Duplicate item ignored: id=0x%08x", item->item_id);
-        pthread_mutex_unlock(&workspace->mutex);
+        nimcp_mutex_unlock(&workspace->mutex);
         return true;
 
     } else if (clock_cmp == -1) {
         // Incoming happened-before existing - keep existing (newer)
         LOG_DEBUG("Incoming item older (causal), keeping existing: id=0x%08x",
                   item->item_id);
-        pthread_mutex_unlock(&workspace->mutex);
+        nimcp_mutex_unlock(&workspace->mutex);
         return true;
 
     } else if (clock_cmp == 1) {
@@ -991,7 +966,7 @@ bool collective_workspace_merge_item(
 
     update_collective_metrics(workspace, get_time_ms());
 
-    pthread_mutex_unlock(&workspace->mutex);
+    nimcp_mutex_unlock(&workspace->mutex);
     return true;
 }
 
@@ -1015,7 +990,7 @@ bool collective_workspace_get_top_items(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
 
     uint32_t count = (workspace->item_count < max_items) ?
                      workspace->item_count : max_items;
@@ -1025,7 +1000,7 @@ bool collective_workspace_get_top_items(
 
     *actual_count = count;
 
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
     return true;
 }
 
@@ -1049,7 +1024,7 @@ bool collective_workspace_get_broadcast_items(
         return false;
     }
 
-    pthread_mutex_lock(&workspace->mutex);
+    nimcp_mutex_lock(&workspace->mutex);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < workspace->item_count && count < max_items; i++) {
@@ -1073,7 +1048,7 @@ bool collective_workspace_get_broadcast_items(
         LOG_DEBUG("Got %u items for broadcast", count);
     }
 
-    pthread_mutex_unlock(&workspace->mutex);
+    nimcp_mutex_unlock(&workspace->mutex);
     return true;
 }
 
@@ -1118,11 +1093,11 @@ bool collective_workspace_mark_for_broadcast(
         return false;
     }
 
-    pthread_mutex_lock(&workspace->mutex);
+    nimcp_mutex_lock(&workspace->mutex);
 
     int32_t idx = find_item_by_id(workspace, item_id);
     if (idx < 0) {
-        pthread_mutex_unlock(&workspace->mutex);
+        nimcp_mutex_unlock(&workspace->mutex);
         return false;
     }
 
@@ -1132,7 +1107,7 @@ bool collective_workspace_mark_for_broadcast(
                  "id=0x%08x", item_id);
     LOG_DEBUG("Marked item for broadcast: id=0x%08x", item_id);
 
-    pthread_mutex_unlock(&workspace->mutex);
+    nimcp_mutex_unlock(&workspace->mutex);
     return true;
 }
 
@@ -1145,7 +1120,7 @@ uint32_t collective_workspace_prune(
         return 0;
     }
 
-    pthread_mutex_lock(&workspace->mutex);
+    nimcp_mutex_lock(&workspace->mutex);
 
     workspace->last_prune_time_ms = current_time_ms;
 
@@ -1188,7 +1163,7 @@ uint32_t collective_workspace_prune(
         LOG_DEBUG("Pruned %u items", pruned_count);
     }
 
-    pthread_mutex_unlock(&workspace->mutex);
+    nimcp_mutex_unlock(&workspace->mutex);
     return pruned_count;
 }
 
@@ -1199,9 +1174,9 @@ float collective_workspace_get_coherence(
         return 0.0F;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
     float coherence = workspace->collective_coherence;
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
 
     return coherence;
 }
@@ -1218,10 +1193,10 @@ bool collective_workspace_get_focus_vector(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
     memcpy(focus_vector, workspace->swarm_focus_vector,
            COLLECTIVE_WORKSPACE_CONTENT_DIM * sizeof(float));
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
 
     return true;
 }
@@ -1233,9 +1208,9 @@ uint32_t collective_workspace_get_item_count(
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
     uint32_t count = workspace->item_count;
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
 
     return count;
 }
@@ -1251,14 +1226,14 @@ bool collective_workspace_get_statistics(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
 
     if (total_received) *total_received = workspace->total_items_received;
     if (total_sent) *total_sent = workspace->total_items_sent;
     if (merge_conflicts) *merge_conflicts = workspace->merge_conflicts;
     if (items_pruned) *items_pruned = workspace->items_pruned;
 
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
     return true;
 }
 
@@ -1292,7 +1267,7 @@ void collective_workspace_print_state(
         return;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&workspace->mutex);
 
     fprintf(stderr, "\n=== Collective Workspace State ===\n");
     fprintf(stderr, "Drone ID: %u / %u\n",
@@ -1351,7 +1326,7 @@ void collective_workspace_print_state(
 
     fprintf(stderr, "================================\n\n");
 
-    pthread_mutex_unlock((pthread_mutex_t*)&workspace->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&workspace->mutex);
 }
 
 bool collective_workspace_validate_config(

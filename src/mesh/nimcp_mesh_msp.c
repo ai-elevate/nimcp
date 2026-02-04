@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * BBB and Immune System Type Definitions
@@ -130,6 +132,7 @@ static void generate_credential_id(uint8_t* id_out) {
 
 nimcp_error_t mesh_msp_default_config(mesh_msp_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -156,7 +159,7 @@ mesh_msp_t* mesh_msp_create(
     const mesh_msp_config_t* config,
     mesh_participant_registry_t* registry
 ) {
-    mesh_msp_t* msp = calloc(1, sizeof(mesh_msp_t));
+    mesh_msp_t* msp = nimcp_calloc(1, sizeof(mesh_msp_t));
     if (!msp) {
         return NULL;
     }
@@ -196,7 +199,7 @@ void mesh_msp_destroy(mesh_msp_t* msp) {
     credential_entry_t* cred = msp->credentials_head;
     while (cred) {
         credential_entry_t* next = cred->next;
-        free(cred);
+        nimcp_free(cred);
         cred = next;
     }
 
@@ -204,13 +207,13 @@ void mesh_msp_destroy(mesh_msp_t* msp) {
     policy_entry_t* pol = msp->policies_head;
     while (pol) {
         policy_entry_t* next = pol->next;
-        free((void*)pol->policy.required_channels);
-        free(pol);
+        nimcp_free((void*)pol->policy.required_channels);
+        nimcp_free(pol);
         pol = next;
     }
 
-    free(msp->name);
-    free(msp);
+    nimcp_free(msp->name);
+    nimcp_free(msp);
 }
 
 const char* mesh_msp_get_name(const mesh_msp_t* msp) {
@@ -236,6 +239,7 @@ nimcp_error_t mesh_msp_connect_bbb(
     bbb_system_t bbb
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -263,6 +267,7 @@ nimcp_error_t mesh_msp_connect_immune(
     brain_immune_system_t* immune
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -307,6 +312,7 @@ nimcp_error_t mesh_msp_issue_credential(
     credential_t* credential_out
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -324,8 +330,9 @@ nimcp_error_t mesh_msp_issue_credential(
     if (existing) {
         entry = existing;
     } else {
-        entry = calloc(1, sizeof(credential_entry_t));
+        entry = nimcp_calloc(1, sizeof(credential_entry_t));
         if (!entry) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         entry->participant_id = participant_id;
@@ -363,6 +370,7 @@ nimcp_error_t mesh_msp_revoke_credential(
     const char* reason
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -370,6 +378,7 @@ nimcp_error_t mesh_msp_revoke_credential(
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -390,15 +399,18 @@ nimcp_error_t mesh_msp_suspend_credential(
     uint64_t duration_ms
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_VALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -414,15 +426,18 @@ nimcp_error_t mesh_msp_restore_credential(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_SUSPENDED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -480,15 +495,18 @@ nimcp_error_t mesh_msp_refresh_credential(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_VALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -508,11 +526,13 @@ nimcp_error_t mesh_msp_grant_channel_membership(
     mesh_channel_id_t channel_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -524,6 +544,7 @@ nimcp_error_t mesh_msp_grant_channel_membership(
     }
 
     if (entry->membership_count >= MESH_MSP_MAX_MEMBERSHIPS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_msp: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -537,11 +558,13 @@ nimcp_error_t mesh_msp_revoke_channel_membership(
     mesh_channel_id_t channel_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -556,6 +579,7 @@ nimcp_error_t mesh_msp_revoke_channel_membership(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -592,6 +616,7 @@ nimcp_error_t mesh_msp_get_channel_memberships(
     size_t* count_out
 ) {
     if (!msp || !channels_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -609,6 +634,7 @@ nimcp_error_t mesh_msp_get_channel_memberships(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -623,6 +649,7 @@ nimcp_error_t mesh_msp_authenticate(
     size_t signature_len
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -631,12 +658,14 @@ nimcp_error_t mesh_msp_authenticate(
     /* Check credential */
     if (!mesh_msp_is_credential_valid(msp, participant_id)) {
         msp->stats.auth_denied++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_msp: error condition");
         return NIMCP_ERROR_ACCESS_DENIED;
     }
 
     /* Check quarantine */
     if (mesh_msp_is_quarantined(msp, participant_id)) {
         msp->stats.auth_denied++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_msp: error condition");
         return NIMCP_ERROR_ACCESS_DENIED;
     }
 
@@ -675,6 +704,7 @@ nimcp_error_t mesh_msp_authenticate(
                         );
                     }
 
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_msp: error condition");
                     return NIMCP_ERROR_BBB_VALIDATION;
                 }
             }
@@ -690,6 +720,7 @@ nimcp_error_t mesh_msp_validate_transaction(
     const mesh_transaction_t* tx
 ) {
     if (!msp || !tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -738,6 +769,7 @@ nimcp_error_t mesh_msp_validate_transaction(
                 }
             }
 
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_msp: error condition");
             return NIMCP_ERROR_BBB_VALIDATION;
         }
     }
@@ -746,18 +778,21 @@ nimcp_error_t mesh_msp_validate_transaction(
     if (!mesh_msp_has_channel_membership(msp, tx->proposer_id, tx->target_channel)) {
         /* Auto-grant for home channel */
         if (tx->source_channel != tx->target_channel) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_msp: error condition");
             return NIMCP_ERROR_ACCESS_DENIED;
         }
     }
 
     /* Check capability */
     if (!mesh_msp_check_capability(msp, tx->proposer_id, MESH_CAP_PROPOSE)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "mesh_msp: error condition");
         return NIMCP_ERROR_PERMISSION_DENIED;
     }
 
     /* Check cross-channel */
     if (tx->is_cross_channel) {
         if (!mesh_msp_check_capability(msp, tx->proposer_id, MESH_CAP_CROSS_CHANNEL)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "mesh_msp: error condition");
             return NIMCP_ERROR_PERMISSION_DENIED;
         }
     }
@@ -765,6 +800,7 @@ nimcp_error_t mesh_msp_validate_transaction(
     /* Check emergency */
     if (tx->is_emergency) {
         if (!mesh_msp_check_capability(msp, tx->proposer_id, MESH_CAP_EMERGENCY)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "mesh_msp: error condition");
             return NIMCP_ERROR_PERMISSION_DENIED;
         }
     }
@@ -807,16 +843,19 @@ nimcp_error_t mesh_msp_add_policy(
     const msp_access_policy_t* policy
 ) {
     if (!msp || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Check for duplicate */
     if (policy->policy_name && find_policy(msp, policy->policy_name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_msp: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
-    policy_entry_t* entry = calloc(1, sizeof(policy_entry_t));
+    policy_entry_t* entry = nimcp_calloc(1, sizeof(policy_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -824,7 +863,7 @@ nimcp_error_t mesh_msp_add_policy(
 
     /* Copy required channels if present */
     if (policy->required_channels && policy->required_channel_count > 0) {
-        entry->policy.required_channels = calloc(policy->required_channel_count,
+        entry->policy.required_channels = nimcp_calloc(policy->required_channel_count,
                                                   sizeof(mesh_channel_id_t));
         if (entry->policy.required_channels) {
             memcpy((void*)entry->policy.required_channels, policy->required_channels,
@@ -844,6 +883,7 @@ nimcp_error_t mesh_msp_remove_policy(
     const char* policy_name
 ) {
     if (!msp || !policy_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -857,8 +897,8 @@ nimcp_error_t mesh_msp_remove_policy(
             } else {
                 msp->policies_head = entry->next;
             }
-            free((void*)entry->policy.required_channels);
-            free(entry);
+            nimcp_free((void*)entry->policy.required_channels);
+            nimcp_free(entry);
             msp->policy_count--;
             return NIMCP_SUCCESS;
         }
@@ -866,6 +906,7 @@ nimcp_error_t mesh_msp_remove_policy(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -929,11 +970,13 @@ nimcp_error_t mesh_msp_set_policy_callback(
     void* ctx
 ) {
     if (!msp || !policy_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     policy_entry_t* entry = find_policy(msp, policy_name);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -953,14 +996,16 @@ nimcp_error_t mesh_msp_quarantine(
     uint64_t duration_ms
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
         /* Create minimal entry for tracking */
-        entry = calloc(1, sizeof(credential_entry_t));
+        entry = nimcp_calloc(1, sizeof(credential_entry_t));
         if (!entry) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
         entry->participant_id = participant_id;
@@ -1011,11 +1056,13 @@ nimcp_error_t mesh_msp_release_quarantine(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1071,6 +1118,7 @@ nimcp_error_t mesh_msp_set_immune_callback(
     void* ctx
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1086,6 +1134,7 @@ nimcp_error_t mesh_msp_handle_immune_event(
     int event_type
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1126,6 +1175,7 @@ nimcp_error_t mesh_msp_update(
     uint64_t delta_ms
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1178,6 +1228,7 @@ nimcp_error_t mesh_msp_get_stats(
     mesh_msp_stats_t* stats
 ) {
     if (!msp || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

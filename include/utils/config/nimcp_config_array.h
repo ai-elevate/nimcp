@@ -89,6 +89,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "utils/config/nimcp_dynamic_config.h"
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -543,7 +544,7 @@ NIMCP_EXPORT config_array_t* config_parse_array_auto(const char* str);
  * ```c
  * char* str = config_array_to_string(arr);
  * printf("layer_sizes = %s\n", str);
- * free(str);
+ * nimcp_free(str);
  * ```
  */
 NIMCP_EXPORT char* config_array_to_string(const config_array_t* arr);

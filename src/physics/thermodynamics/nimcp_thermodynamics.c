@@ -26,34 +26,9 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for thermodynamics module */
-static nimcp_health_agent_t* g_thermodynamics_health_agent = NULL;
-
-/**
- * @brief Set health agent for thermodynamics heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void thermodynamics_set_health_agent(nimcp_health_agent_t* agent) {
-    g_thermodynamics_health_agent = agent;
-}
-
-/** @brief Send heartbeat from thermodynamics module */
-static inline void thermodynamics_heartbeat(const char* operation, float progress) {
-    if (g_thermodynamics_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_thermodynamics_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thermodynamics)
 
 //=============================================================================
 // Internal Constants

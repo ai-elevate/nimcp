@@ -17,36 +17,11 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-
 #include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/thread/nimcp_thread.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for pattern_immune module */
-static nimcp_health_agent_t* g_pattern_immune_health_agent = NULL;
-
-/**
- * @brief Set health agent for pattern_immune heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void pattern_immune_set_health_agent(nimcp_health_agent_t* agent) {
-    g_pattern_immune_health_agent = agent;
-}
-
-/** @brief Send heartbeat from pattern_immune module */
-static inline void pattern_immune_heartbeat(const char* operation, float progress) {
-    if (g_pattern_immune_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_pattern_immune_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pattern_immune)
 
 /* ============================================================================
  * Helper Functions
@@ -267,7 +242,7 @@ void pattern_immune_bridge_destroy(pattern_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     /* Free anomalies */
@@ -327,7 +302,7 @@ int pattern_immune_apply_inflammation_effects(pattern_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_degradation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get current inflammation state */
     brain_inflammation_level_t max_level = get_max_inflammation_level(bridge->immune_system);
@@ -361,7 +336,7 @@ int pattern_immune_apply_inflammation_effects(pattern_immune_bridge_t* bridge) {
         bridge->pattern_degradation_events++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -432,7 +407,7 @@ int pattern_immune_detect_pathological_oscillation(
     if (!bridge || !oscillation_result) return -1;
     if (!bridge->enable_oscillation_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     bool detected_anomaly = false;
     pattern_anomaly_type_t anomaly_type = PATTERN_ANOMALY_NONE;
@@ -482,7 +457,7 @@ int pattern_immune_detect_pathological_oscillation(
         anomaly->signature_len = BRAIN_IMMUNE_EPITOPE_SIZE;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -494,7 +469,7 @@ int pattern_immune_detect_pathological_synchrony(
     if (!bridge || !synchrony_result) return -1;
     if (!bridge->enable_synchrony_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     bool detected_anomaly = false;
     pattern_anomaly_type_t anomaly_type = PATTERN_ANOMALY_NONE;
@@ -537,7 +512,7 @@ int pattern_immune_detect_pathological_synchrony(
         anomaly->signature_len = BRAIN_IMMUNE_EPITOPE_SIZE;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -550,7 +525,7 @@ int pattern_immune_detect_pathological_sequence(
     if (!bridge || !detections) return -1;
     if (!bridge->enable_sequence_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Check for repetitive sequences */
     uint32_t repetition_counts[256] = {0};  /* Track template repetitions */
@@ -582,7 +557,7 @@ int pattern_immune_detect_pathological_sequence(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -676,9 +651,9 @@ int pattern_immune_bridge_update(
 
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Apply inflammation effects to patterns */
     if (bridge->enable_inflammation_degradation) {
@@ -686,13 +661,13 @@ int pattern_immune_bridge_update(
     }
 
     /* Present any un-alerted anomalies to immune system */
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     for (size_t i = 0; i < bridge->anomaly_count; i++) {
         if (!bridge->anomalies[i].immune_alerted) {
             pattern_immune_present_anomaly(bridge, &bridge->anomalies[i]);
         }
     }
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -707,9 +682,9 @@ int pattern_immune_get_inflammation_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->inflammation_effects, sizeof(inflammation_pattern_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -720,9 +695,9 @@ int pattern_immune_get_pathological_oscillation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_oscillation, sizeof(pathological_oscillation_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -733,9 +708,9 @@ int pattern_immune_get_pathological_synchrony_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_synchrony, sizeof(pathological_synchrony_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -746,9 +721,9 @@ int pattern_immune_get_pathological_sequence_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_sequence, sizeof(pathological_sequence_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -761,7 +736,7 @@ int pattern_immune_get_anomalies(
 ) {
     if (!bridge || !anomalies || !num_anomalies) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     uint32_t count = (bridge->anomaly_count < max_anomalies) ?
                      bridge->anomaly_count : max_anomalies;
@@ -769,7 +744,7 @@ int pattern_immune_get_anomalies(
     memcpy(anomalies, bridge->anomalies, sizeof(pattern_anomaly_t) * count);
     *num_anomalies = count;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

@@ -45,34 +45,44 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.prediction"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(failure_prediction)
 //=============================================================================
-#include <stddef.h>  /* for NULL */
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for failure_prediction module */
-static nimcp_health_agent_t* g_failure_prediction_health_agent = NULL;
+static mesh_participant_id_t g_failure_prediction_mesh_id = 0;
+static mesh_participant_registry_t* g_failure_prediction_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for failure_prediction heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-void failure_prediction_set_health_agent(nimcp_health_agent_t* agent) {
-    g_failure_prediction_health_agent = agent;
+nimcp_error_t failure_prediction_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_failure_prediction_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "failure_prediction", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "failure_prediction";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_failure_prediction_mesh_id);
+    if (err == NIMCP_SUCCESS) g_failure_prediction_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from failure_prediction module */
-static inline void failure_prediction_heartbeat(const char* operation, float progress) {
-    if (g_failure_prediction_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_failure_prediction_health_agent, operation, progress);
+void failure_prediction_mesh_unregister(void) {
+    if (g_failure_prediction_mesh_registry && g_failure_prediction_mesh_id != 0) {
+        mesh_participant_unregister(g_failure_prediction_mesh_registry, g_failure_prediction_mesh_id);
+        g_failure_prediction_mesh_id = 0;
+        g_failure_prediction_mesh_registry = NULL;
     }
 }
+
 
 /** @brief Send heartbeat from failure_prediction module (instance-level) */
 static inline void failure_prediction_heartbeat_instance(
@@ -547,7 +557,7 @@ bool failure_predictor_update_indicator(
 
 bool failure_predictor_update_from_health_metrics(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     // =========================================================================
@@ -690,7 +700,7 @@ leading_indicator_t* failure_predictor_get_all_indicators(
 
 bool failure_predictor_detect_memory_leak(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     if (!predictor || !metrics) {
@@ -739,7 +749,7 @@ bool failure_predictor_detect_memory_leak(
 
 bool failure_predictor_detect_gradient_explosion(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     if (!predictor || !metrics) {
@@ -785,7 +795,7 @@ bool failure_predictor_detect_gradient_explosion(
 
 uint64_t failure_predictor_estimate_time_to_oom(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     if (!predictor || !metrics) {
@@ -845,7 +855,7 @@ uint64_t failure_predictor_estimate_time_to_oom(
 
 uint64_t failure_predictor_estimate_time_to_explosion(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     if (!predictor || !metrics) {
@@ -908,7 +918,7 @@ uint64_t failure_predictor_estimate_time_to_explosion(
 
 failure_prediction_t* failure_predictor_predict(
     failure_predictor_t* predictor,
-    const health_metrics_t* metrics
+    const failure_health_metrics_t* metrics
 )
 {
     if (!predictor || !metrics) {

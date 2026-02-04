@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -252,7 +253,7 @@ static inline qstdp_optimizer_t qstdp_optimizer_create(
 
     /* Allocate context */
     qstdp_optimizer_internal_t* ctx =
-        (qstdp_optimizer_internal_t*)calloc(1, sizeof(qstdp_optimizer_internal_t));
+        (qstdp_optimizer_internal_t*)nimcp_calloc(1, sizeof(qstdp_optimizer_internal_t));
     if (!ctx) return NULL;
 
     ctx->config = cfg;
@@ -284,7 +285,7 @@ static inline qstdp_optimizer_t qstdp_optimizer_create(
  * WHY:  Free all allocated resources
  */
 static inline void qstdp_optimizer_destroy(qstdp_optimizer_t ctx) {
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 //=============================================================================

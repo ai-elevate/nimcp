@@ -29,35 +29,9 @@
 #include <time.h>
 #include <stdint.h>
 #include <float.h>  /* For FLT_MAX, overflow protection */
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for surface_optimization module */
-static nimcp_health_agent_t* g_surface_optimization_health_agent = NULL;
-
-/**
- * @brief Set health agent for surface_optimization heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void surface_optimization_set_health_agent(nimcp_health_agent_t* agent) {
-    g_surface_optimization_health_agent = agent;
-}
-
-/** @brief Send heartbeat from surface_optimization module */
-static inline void surface_optimization_heartbeat(const char* operation, float progress) {
-    if (g_surface_optimization_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_surface_optimization_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_optimization)
 
 //=============================================================================
 // THREAD-SAFE RNG STATE

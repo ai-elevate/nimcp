@@ -156,7 +156,7 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line);
  *
  * WHAT: Free memory and check guards
  * WHY:  Detect corruption and double-frees
- * HOW:  Verify canaries, mark as freed, call free()
+ * HOW:  Verify canaries, mark as freed, call nimcp_free()
  *
  * @param ptr Pointer to free
  * @param file Source file (__FILE__)

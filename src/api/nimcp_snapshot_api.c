@@ -19,35 +19,9 @@
 #include <string.h>
 
 #define LOG_MODULE "API.SNAPSHOT"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for snapshot_api module */
-static nimcp_health_agent_t* g_snapshot_api_health_agent = NULL;
-
-/**
- * @brief Set health agent for snapshot_api heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void snapshot_api_set_health_agent(nimcp_health_agent_t* agent) {
-    g_snapshot_api_health_agent = agent;
-}
-
-/** @brief Send heartbeat from snapshot_api module */
-static inline void snapshot_api_heartbeat(const char* operation, float progress) {
-    if (g_snapshot_api_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_snapshot_api_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snapshot_api)
 
 // External declarations from nimcp.c
 extern void set_error(const char* fmt, ...);

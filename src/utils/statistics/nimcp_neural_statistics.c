@@ -18,6 +18,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -116,7 +117,7 @@ static int float_compare(const void* a, const void* b) {
 static float compute_median(const float* data, uint32_t n) {
     if (n == 0) return NAN;
 
-    float* sorted = (float*)malloc(n * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
     if (!sorted) return NAN;
     memcpy(sorted, data, n * sizeof(float));
     qsort(sorted, n, sizeof(float), float_compare);
@@ -128,7 +129,7 @@ static float compute_median(const float* data, uint32_t n) {
         result = (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0f;
     }
 
-    free(sorted);
+    nimcp_free(sorted);
     return result;
 }
 
@@ -153,7 +154,7 @@ neural_spike_train_t* nimcp_neural_spike_train_create(
         return NULL;
     }
 
-    neural_spike_train_t* train = (neural_spike_train_t*)calloc(1, sizeof(neural_spike_train_t));
+    neural_spike_train_t* train = (neural_spike_train_t*)nimcp_calloc(1, sizeof(neural_spike_train_t));
     if (!train) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate spike train structure");
@@ -161,9 +162,9 @@ neural_spike_train_t* nimcp_neural_spike_train_create(
     }
 
     if (n_spikes > 0) {
-        train->spike_times = (float*)malloc(n_spikes * sizeof(float));
+        train->spike_times = (float*)nimcp_malloc(n_spikes * sizeof(float));
         if (!train->spike_times) {
-            free(train);
+            nimcp_free(train);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "Failed to allocate spike times array");
             return NULL;
@@ -181,8 +182,8 @@ neural_spike_train_t* nimcp_neural_spike_train_create(
 
 void nimcp_neural_spike_train_destroy(neural_spike_train_t* train) {
     if (!train) return;
-    free(train->spike_times);
-    free(train);
+    nimcp_free(train->spike_times);
+    nimcp_free(train);
 }
 
 neural_spike_ensemble_t* nimcp_neural_spike_ensemble_create(
@@ -195,7 +196,7 @@ neural_spike_ensemble_t* nimcp_neural_spike_ensemble_create(
         return NULL;
     }
 
-    neural_spike_ensemble_t* ensemble = (neural_spike_ensemble_t*)calloc(1,
+    neural_spike_ensemble_t* ensemble = (neural_spike_ensemble_t*)nimcp_calloc(1,
         sizeof(neural_spike_ensemble_t));
     if (!ensemble) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -203,9 +204,9 @@ neural_spike_ensemble_t* nimcp_neural_spike_ensemble_create(
         return NULL;
     }
 
-    ensemble->trains = (neural_spike_train_t*)calloc(n_neurons, sizeof(neural_spike_train_t));
+    ensemble->trains = (neural_spike_train_t*)nimcp_calloc(n_neurons, sizeof(neural_spike_train_t));
     if (!ensemble->trains) {
-        free(ensemble);
+        nimcp_free(ensemble);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate spike trains array");
         return NULL;
@@ -218,7 +219,7 @@ neural_spike_ensemble_t* nimcp_neural_spike_ensemble_create(
     for (uint32_t i = 0; i < n_neurons; i++) {
         ensemble->trains[i] = trains[i];
         if (trains[i].n_spikes > 0) {
-            ensemble->trains[i].spike_times = (float*)malloc(
+            ensemble->trains[i].spike_times = (float*)nimcp_malloc(
                 trains[i].n_spikes * sizeof(float));
             if (ensemble->trains[i].spike_times) {
                 memcpy(ensemble->trains[i].spike_times, trains[i].spike_times,
@@ -242,10 +243,10 @@ void nimcp_neural_spike_ensemble_destroy(neural_spike_ensemble_t* ensemble) {
     if (!ensemble) return;
 
     for (uint32_t i = 0; i < ensemble->n_neurons; i++) {
-        free(ensemble->trains[i].spike_times);
+        nimcp_free(ensemble->trains[i].spike_times);
     }
-    free(ensemble->trains);
-    free(ensemble);
+    nimcp_free(ensemble->trains);
+    nimcp_free(ensemble);
 }
 
 //=============================================================================
@@ -273,7 +274,7 @@ neural_stats_result_t nimcp_neural_isi_distribution(
     result->n_intervals = n_intervals;
 
     // Allocate ISI array
-    result->intervals = (float*)malloc(n_intervals * sizeof(float));
+    result->intervals = (float*)nimcp_malloc(n_intervals * sizeof(float));
     if (!result->intervals) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate ISI array");
@@ -386,7 +387,7 @@ float nimcp_neural_isi_cv2(const neural_spike_train_t* spike_train) {
 
 void nimcp_neural_isi_distribution_free(neural_isi_distribution_t* result) {
     if (!result) return;
-    free(result->intervals);
+    nimcp_free(result->intervals);
     memset(result, 0, sizeof(neural_isi_distribution_t));
 }
 
@@ -420,7 +421,7 @@ neural_stats_result_t nimcp_neural_fano_factor(
     }
 
     // Count spikes in each window
-    uint32_t* counts = (uint32_t*)calloc(n_windows, sizeof(uint32_t));
+    uint32_t* counts = (uint32_t*)nimcp_calloc(n_windows, sizeof(uint32_t));
     if (!counts) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate spike counts");
@@ -449,7 +450,7 @@ neural_stats_result_t nimcp_neural_fano_factor(
     }
     double variance = sum_sq_diff / (n_windows - 1);
 
-    free(counts);
+    nimcp_free(counts);
 
     // Fano factor
     if (mean > NEURAL_STATS_EPSILON) {
@@ -470,8 +471,8 @@ neural_stats_result_t nimcp_neural_fano_factor(
 
 void nimcp_neural_fano_result_free(neural_fano_result_t* result) {
     if (!result) return;
-    free(result->fano_by_window);
-    free(result->window_sizes);
+    nimcp_free(result->fano_by_window);
+    nimcp_free(result->window_sizes);
     memset(result, 0, sizeof(neural_fano_result_t));
 }
 
@@ -506,7 +507,7 @@ neural_stats_result_t nimcp_neural_spike_train_entropy(
     }
 
     // Discretize spike train into binary bins
-    uint8_t* binary = (uint8_t*)calloc(n_bins, sizeof(uint8_t));
+    uint8_t* binary = (uint8_t*)nimcp_calloc(n_bins, sizeof(uint8_t));
     if (!binary) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate binary array");
@@ -523,9 +524,9 @@ neural_stats_result_t nimcp_neural_spike_train_entropy(
 
     // Count word patterns
     uint32_t n_patterns_possible = 1 << word_length;  // 2^word_length
-    uint32_t* pattern_counts = (uint32_t*)calloc(n_patterns_possible, sizeof(uint32_t));
+    uint32_t* pattern_counts = (uint32_t*)nimcp_calloc(n_patterns_possible, sizeof(uint32_t));
     if (!pattern_counts) {
-        free(binary);
+        nimcp_free(binary);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate pattern counts");
         return NEURAL_STATS_ERROR_MEMORY;
@@ -540,7 +541,7 @@ neural_stats_result_t nimcp_neural_spike_train_entropy(
         pattern_counts[pattern]++;
     }
 
-    free(binary);
+    nimcp_free(binary);
 
     // Compute entropy
     double entropy = 0.0;
@@ -554,7 +555,7 @@ neural_stats_result_t nimcp_neural_spike_train_entropy(
         }
     }
 
-    free(pattern_counts);
+    nimcp_free(pattern_counts);
 
     result->total_entropy = (float)entropy;
     result->entropy_rate = (float)(entropy / word_length);  // bits per bin
@@ -608,11 +609,11 @@ neural_stats_result_t nimcp_neural_firing_rate(
         return NEURAL_STATS_OK;
     }
 
-    result->instantaneous = (float*)calloc(n_points, sizeof(float));
-    result->rate_times = (float*)malloc(n_points * sizeof(float));
+    result->instantaneous = (float*)nimcp_calloc(n_points, sizeof(float));
+    result->rate_times = (float*)nimcp_malloc(n_points * sizeof(float));
     if (!result->instantaneous || !result->rate_times) {
-        free(result->instantaneous);
-        free(result->rate_times);
+        nimcp_free(result->instantaneous);
+        nimcp_free(result->rate_times);
         result->instantaneous = NULL;
         result->rate_times = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -681,8 +682,8 @@ neural_stats_result_t nimcp_neural_firing_rate(
 
 void nimcp_neural_firing_rate_free(neural_firing_rate_t* result) {
     if (!result) return;
-    free(result->instantaneous);
-    free(result->rate_times);
+    nimcp_free(result->instantaneous);
+    nimcp_free(result->rate_times);
     memset(result, 0, sizeof(neural_firing_rate_t));
 }
 
@@ -747,14 +748,14 @@ neural_stats_result_t nimcp_neural_burst_detection(
     }
 
     // Allocate arrays
-    result->burst_starts = (float*)malloc(n_bursts * sizeof(float));
-    result->burst_ends = (float*)malloc(n_bursts * sizeof(float));
-    result->spikes_per_burst = (uint32_t*)malloc(n_bursts * sizeof(uint32_t));
+    result->burst_starts = (float*)nimcp_malloc(n_bursts * sizeof(float));
+    result->burst_ends = (float*)nimcp_malloc(n_bursts * sizeof(float));
+    result->spikes_per_burst = (uint32_t*)nimcp_malloc(n_bursts * sizeof(uint32_t));
 
     if (!result->burst_starts || !result->burst_ends || !result->spikes_per_burst) {
-        free(result->burst_starts);
-        free(result->burst_ends);
-        free(result->spikes_per_burst);
+        nimcp_free(result->burst_starts);
+        nimcp_free(result->burst_ends);
+        nimcp_free(result->spikes_per_burst);
         memset(result, 0, sizeof(neural_burst_result_t));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate burst arrays");
@@ -833,9 +834,9 @@ neural_stats_result_t nimcp_neural_burst_detection(
 
 void nimcp_neural_burst_result_free(neural_burst_result_t* result) {
     if (!result) return;
-    free(result->burst_starts);
-    free(result->burst_ends);
-    free(result->spikes_per_burst);
+    nimcp_free(result->burst_starts);
+    nimcp_free(result->burst_ends);
+    nimcp_free(result->spikes_per_burst);
     memset(result, 0, sizeof(neural_burst_result_t));
 }
 
@@ -871,7 +872,7 @@ neural_stats_result_t nimcp_neural_fisher_information(
     result->n_params = 1;  // Single stimulus dimension
 
     // Allocate derivative array
-    float* df_ds = (float*)malloc(n_neurons * (n_stimuli - 1) * sizeof(float));
+    float* df_ds = (float*)nimcp_malloc(n_neurons * (n_stimuli - 1) * sizeof(float));
     if (!df_ds) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate derivative array");
@@ -893,9 +894,9 @@ neural_stats_result_t nimcp_neural_fisher_information(
     }
 
     // Compute Fisher information at each stimulus point
-    float* fisher_per_stim = (float*)calloc(n_stimuli - 1, sizeof(float));
+    float* fisher_per_stim = (float*)nimcp_calloc(n_stimuli - 1, sizeof(float));
     if (!fisher_per_stim) {
-        free(df_ds);
+        nimcp_free(df_ds);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate Fisher array");
         return NEURAL_STATS_ERROR_MEMORY;
@@ -947,14 +948,14 @@ neural_stats_result_t nimcp_neural_fisher_information(
     result->total_info = total_fisher;
 
     // Cramer-Rao bound: Var(estimate) >= 1/I
-    result->cramer_rao_bounds = (float*)malloc(sizeof(float));
+    result->cramer_rao_bounds = (float*)nimcp_malloc(sizeof(float));
     if (result->cramer_rao_bounds) {
         result->cramer_rao_bounds[0] = (result->fisher_info > NEURAL_STATS_EPSILON) ?
             1.0f / result->fisher_info : FLT_MAX;
     }
 
-    free(df_ds);
-    free(fisher_per_stim);
+    nimcp_free(df_ds);
+    nimcp_free(fisher_per_stim);
 
     LOG_DEBUG("Fisher information: I=%.4f, CR bound=%.4f",
         result->fisher_info,
@@ -965,8 +966,8 @@ neural_stats_result_t nimcp_neural_fisher_information(
 
 void nimcp_neural_fisher_info_free(neural_fisher_info_t* result) {
     if (!result) return;
-    free(result->fisher_matrix);
-    free(result->cramer_rao_bounds);
+    nimcp_free(result->fisher_matrix);
+    nimcp_free(result->cramer_rao_bounds);
     memset(result, 0, sizeof(neural_fisher_info_t));
 }
 
@@ -993,12 +994,12 @@ neural_stats_result_t nimcp_neural_population_vector(
 
     memset(result, 0, sizeof(neural_population_vector_t));
 
-    result->decoded_stimulus = (float*)malloc(n_time_points * sizeof(float));
-    result->confidence = (float*)malloc(n_time_points * sizeof(float));
+    result->decoded_stimulus = (float*)nimcp_malloc(n_time_points * sizeof(float));
+    result->confidence = (float*)nimcp_malloc(n_time_points * sizeof(float));
 
     if (!result->decoded_stimulus || !result->confidence) {
-        free(result->decoded_stimulus);
-        free(result->confidence);
+        nimcp_free(result->decoded_stimulus);
+        nimcp_free(result->confidence);
         memset(result, 0, sizeof(neural_population_vector_t));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate population vector arrays");
@@ -1063,8 +1064,8 @@ neural_stats_result_t nimcp_neural_population_vector(
 
 void nimcp_neural_population_vector_free(neural_population_vector_t* result) {
     if (!result) return;
-    free(result->decoded_stimulus);
-    free(result->confidence);
+    nimcp_free(result->decoded_stimulus);
+    nimcp_free(result->confidence);
     memset(result, 0, sizeof(neural_population_vector_t));
 }
 
@@ -1258,14 +1259,14 @@ neural_stats_result_t nimcp_neural_cross_correlogram(
     result->bin_width = bin_width;
     result->max_lag = max_lag;
 
-    result->correlogram = (float*)calloc(n_bins, sizeof(float));
-    result->lags = (float*)malloc(n_bins * sizeof(float));
-    result->is_significant = (bool*)calloc(n_bins, sizeof(bool));
+    result->correlogram = (float*)nimcp_calloc(n_bins, sizeof(float));
+    result->lags = (float*)nimcp_malloc(n_bins * sizeof(float));
+    result->is_significant = (bool*)nimcp_calloc(n_bins, sizeof(bool));
 
     if (!result->correlogram || !result->lags || !result->is_significant) {
-        free(result->correlogram);
-        free(result->lags);
-        free(result->is_significant);
+        nimcp_free(result->correlogram);
+        nimcp_free(result->lags);
+        nimcp_free(result->is_significant);
         memset(result, 0, sizeof(neural_cross_correlogram_t));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate correlogram arrays");
@@ -1332,9 +1333,9 @@ neural_stats_result_t nimcp_neural_cross_correlogram(
 
 void nimcp_neural_cross_correlogram_free(neural_cross_correlogram_t* result) {
     if (!result) return;
-    free(result->correlogram);
-    free(result->lags);
-    free(result->is_significant);
+    nimcp_free(result->correlogram);
+    nimcp_free(result->lags);
+    nimcp_free(result->is_significant);
     memset(result, 0, sizeof(neural_cross_correlogram_t));
 }
 
@@ -1373,11 +1374,11 @@ neural_stats_result_t nimcp_neural_jpsth(
     result->n_bins = n_bins;
     result->bin_width = bin_width;
 
-    result->jpsth_matrix = (float*)calloc(n_bins * n_bins, sizeof(float));
-    result->psth1 = (float*)calloc(n_bins, sizeof(float));
-    result->psth2 = (float*)calloc(n_bins, sizeof(float));
-    result->time_bins = (float*)malloc(n_bins * sizeof(float));
-    result->coincidence_histogram = (float*)calloc(n_bins, sizeof(float));
+    result->jpsth_matrix = (float*)nimcp_calloc(n_bins * n_bins, sizeof(float));
+    result->psth1 = (float*)nimcp_calloc(n_bins, sizeof(float));
+    result->psth2 = (float*)nimcp_calloc(n_bins, sizeof(float));
+    result->time_bins = (float*)nimcp_malloc(n_bins * sizeof(float));
+    result->coincidence_histogram = (float*)nimcp_calloc(n_bins, sizeof(float));
 
     if (!result->jpsth_matrix || !result->psth1 || !result->psth2 ||
         !result->time_bins || !result->coincidence_histogram) {
@@ -1475,12 +1476,12 @@ neural_stats_result_t nimcp_neural_jpsth(
 
 void nimcp_neural_jpsth_free(neural_jpsth_t* result) {
     if (!result) return;
-    free(result->jpsth_matrix);
-    free(result->psth1);
-    free(result->psth2);
-    free(result->time_bins);
-    free(result->coincidence_histogram);
-    free(result->normalized_jpsth);
+    nimcp_free(result->jpsth_matrix);
+    nimcp_free(result->psth1);
+    nimcp_free(result->psth2);
+    nimcp_free(result->time_bins);
+    nimcp_free(result->coincidence_histogram);
+    nimcp_free(result->normalized_jpsth);
     memset(result, 0, sizeof(neural_jpsth_t));
 }
 
@@ -1520,9 +1521,9 @@ neural_stats_result_t nimcp_neural_spike_triggered_average(
     uint32_t n_sta_samples = samples_before + samples_after + 1;
 
     result->n_samples = n_sta_samples;
-    result->sta = (float*)calloc(n_sta_samples, sizeof(float));
-    result->sta_times = (float*)malloc(n_sta_samples * sizeof(float));
-    result->sta_std = (float*)calloc(n_sta_samples, sizeof(float));
+    result->sta = (float*)nimcp_calloc(n_sta_samples, sizeof(float));
+    result->sta_times = (float*)nimcp_malloc(n_sta_samples * sizeof(float));
+    result->sta_std = (float*)nimcp_calloc(n_sta_samples, sizeof(float));
 
     if (!result->sta || !result->sta_times || !result->sta_std) {
         nimcp_neural_sta_free(result);
@@ -1537,7 +1538,7 @@ neural_stats_result_t nimcp_neural_spike_triggered_average(
     }
 
     // Accumulate signal windows aligned to spikes
-    float* sum_sq = (float*)calloc(n_sta_samples, sizeof(float));
+    float* sum_sq = (float*)nimcp_calloc(n_sta_samples, sizeof(float));
     if (!sum_sq) {
         nimcp_neural_sta_free(result);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1577,7 +1578,7 @@ neural_stats_result_t nimcp_neural_spike_triggered_average(
     }
 
     if (result->n_spikes_used == 0) {
-        free(sum_sq);
+        nimcp_free(sum_sq);
         LOG_WARN("No usable spikes for STA (all at edges)");
         return NEURAL_STATS_ERROR_SIZE;
     }
@@ -1598,7 +1599,7 @@ neural_stats_result_t nimcp_neural_spike_triggered_average(
         }
     }
 
-    free(sum_sq);
+    nimcp_free(sum_sq);
 
     LOG_DEBUG("STA computed: n_spikes_used=%u, peak=%.4f at t=%.2f ms",
         result->n_spikes_used, result->peak_amplitude, result->peak_time);
@@ -1608,11 +1609,11 @@ neural_stats_result_t nimcp_neural_spike_triggered_average(
 
 void nimcp_neural_sta_free(neural_sta_t* result) {
     if (!result) return;
-    free(result->sta);
-    free(result->sta_times);
-    free(result->sta_std);
-    free(result->confidence_upper);
-    free(result->confidence_lower);
+    nimcp_free(result->sta);
+    nimcp_free(result->sta_times);
+    nimcp_free(result->sta_std);
+    nimcp_free(result->confidence_upper);
+    nimcp_free(result->confidence_lower);
     memset(result, 0, sizeof(neural_sta_t));
 }
 
@@ -1643,11 +1644,11 @@ neural_stats_result_t nimcp_neural_spike_field_coherence(
     memset(result, 0, sizeof(neural_spike_field_coherence_t));
 
     result->n_frequencies = n_frequencies;
-    result->coherence = (float*)calloc(n_frequencies, sizeof(float));
-    result->frequencies = (float*)malloc(n_frequencies * sizeof(float));
-    result->phase = (float*)calloc(n_frequencies, sizeof(float));
-    result->phase_std = (float*)calloc(n_frequencies, sizeof(float));
-    result->confidence_level = (float*)malloc(n_frequencies * sizeof(float));
+    result->coherence = (float*)nimcp_calloc(n_frequencies, sizeof(float));
+    result->frequencies = (float*)nimcp_malloc(n_frequencies * sizeof(float));
+    result->phase = (float*)nimcp_calloc(n_frequencies, sizeof(float));
+    result->phase_std = (float*)nimcp_calloc(n_frequencies, sizeof(float));
+    result->confidence_level = (float*)nimcp_malloc(n_frequencies * sizeof(float));
 
     if (!result->coherence || !result->frequencies || !result->phase ||
         !result->phase_std || !result->confidence_level) {
@@ -1743,11 +1744,11 @@ neural_stats_result_t nimcp_neural_spike_field_coherence(
 
 void nimcp_neural_spike_field_coherence_free(neural_spike_field_coherence_t* result) {
     if (!result) return;
-    free(result->coherence);
-    free(result->frequencies);
-    free(result->phase);
-    free(result->phase_std);
-    free(result->confidence_level);
+    nimcp_free(result->coherence);
+    nimcp_free(result->frequencies);
+    nimcp_free(result->phase);
+    nimcp_free(result->phase_std);
+    nimcp_free(result->confidence_level);
     memset(result, 0, sizeof(neural_spike_field_coherence_t));
 }
 
@@ -1823,8 +1824,8 @@ neural_stats_result_t nimcp_neural_quantal_analysis(
     // Build amplitude histogram
     uint32_t n_bins = 50;
     result->n_bins = n_bins;
-    result->amplitude_histogram = (float*)calloc(n_bins, sizeof(float));
-    result->histogram_bins = (float*)malloc(n_bins * sizeof(float));
+    result->amplitude_histogram = (float*)nimcp_calloc(n_bins, sizeof(float));
+    result->histogram_bins = (float*)nimcp_malloc(n_bins * sizeof(float));
 
     if (result->amplitude_histogram && result->histogram_bins) {
         float min_amp = amplitudes[0], max_amp = amplitudes[0];
@@ -1860,8 +1861,8 @@ neural_stats_result_t nimcp_neural_quantal_analysis(
 
 void nimcp_neural_quantal_analysis_free(neural_quantal_analysis_t* result) {
     if (!result) return;
-    free(result->amplitude_histogram);
-    free(result->histogram_bins);
+    nimcp_free(result->amplitude_histogram);
+    nimcp_free(result->histogram_bins);
     memset(result, 0, sizeof(neural_quantal_analysis_t));
 }
 
@@ -1932,7 +1933,7 @@ neural_stats_result_t nimcp_neural_release_probability(
 
 void nimcp_neural_release_prob_free(neural_release_prob_t* result) {
     if (!result) return;
-    free(result->p_by_stimulus);
+    nimcp_free(result->p_by_stimulus);
     memset(result, 0, sizeof(neural_release_prob_t));
 }
 
@@ -2009,8 +2010,8 @@ neural_stats_result_t nimcp_neural_paired_pulse_ratio(
 
 void nimcp_neural_ppr_result_free(neural_ppr_result_t* result) {
     if (!result) return;
-    free(result->ppr_by_interval);
-    free(result->intervals);
+    nimcp_free(result->ppr_by_interval);
+    nimcp_free(result->intervals);
     memset(result, 0, sizeof(neural_ppr_result_t));
 }
 

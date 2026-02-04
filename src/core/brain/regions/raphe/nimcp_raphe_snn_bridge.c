@@ -16,31 +16,45 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(raphe_snn_bridge)
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+// Mesh Participant Registration
+//=============================================================================
 
-/** Global health agent for raphe_snn_bridge module */
-static nimcp_health_agent_t* g_raphe_snn_bridge_health_agent = NULL;
+static mesh_participant_id_t g_raphe_snn_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_raphe_snn_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for raphe_snn_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void raphe_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_raphe_snn_bridge_health_agent = agent;
+nimcp_error_t raphe_snn_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_raphe_snn_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "raphe_snn_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "raphe_snn_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_raphe_snn_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_raphe_snn_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from raphe_snn_bridge module */
-static inline void raphe_snn_bridge_heartbeat(const char* operation, float progress) {
-    if (g_raphe_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_raphe_snn_bridge_health_agent, operation, progress);
+void raphe_snn_bridge_mesh_unregister(void) {
+    if (g_raphe_snn_bridge_mesh_registry && g_raphe_snn_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_raphe_snn_bridge_mesh_registry, g_raphe_snn_bridge_mesh_id);
+        g_raphe_snn_bridge_mesh_id = 0;
+        g_raphe_snn_bridge_mesh_registry = NULL;
     }
 }
+
 
 #define LOG_MODULE "RAPHE_SNN_BRIDGE"
 
@@ -87,7 +101,7 @@ nimcp_raphe_snn_config_t nimcp_raphe_snn_config_default(void) {
 }
 
 nimcp_raphe_snn_bridge_t* nimcp_raphe_snn_create(const nimcp_raphe_snn_config_t* config) {
-    nimcp_raphe_snn_bridge_t* b = calloc(1, sizeof(*b));
+    nimcp_raphe_snn_bridge_t* b = nimcp_calloc(1, sizeof(*b));
     if (!b) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
@@ -97,8 +111,8 @@ nimcp_raphe_snn_bridge_t* nimcp_raphe_snn_create(const nimcp_raphe_snn_config_t*
     }
     b->config = config ? *config : nimcp_raphe_snn_config_default();
     b->spike_buffer_size = b->config.population_size;
-    b->input_spikes = calloc(b->spike_buffer_size, sizeof(float));
-    b->output_spikes = calloc(b->spike_buffer_size, sizeof(float));
+    b->input_spikes = nimcp_calloc(b->spike_buffer_size, sizeof(float));
+    b->output_spikes = nimcp_calloc(b->spike_buffer_size, sizeof(float));
     if (!b->input_spikes || !b->output_spikes) { nimcp_raphe_snn_destroy(b); return NULL; }
     b->state.state = RAPHE_SNN_STATE_IDLE;
     b->state.ht.impulse_control = 0.5f;
@@ -111,9 +125,9 @@ nimcp_raphe_snn_bridge_t* nimcp_raphe_snn_create(const nimcp_raphe_snn_config_t*
 void nimcp_raphe_snn_destroy(nimcp_raphe_snn_bridge_t* b) {
     if (!b) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "raphe_snn");
-    free(b->input_spikes);
-    free(b->output_spikes);
-    free(b);
+    nimcp_free(b->input_spikes);
+    nimcp_free(b->output_spikes);
+    nimcp_free(b);
 }
 
 int nimcp_raphe_snn_reset(nimcp_raphe_snn_bridge_t* b) {

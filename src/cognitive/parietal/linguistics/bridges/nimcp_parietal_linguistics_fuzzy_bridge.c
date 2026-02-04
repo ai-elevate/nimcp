@@ -16,6 +16,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory.h"
 
 /* ============================================================================
  * CONSTANTS
@@ -410,7 +411,7 @@ ling_fuzzy_bridge_config_t ling_fuzzy_bridge_default_config(void) {
 ling_fuzzy_bridge_t* ling_fuzzy_bridge_create(
     const ling_fuzzy_bridge_config_t* config
 ) {
-    ling_fuzzy_bridge_t* bridge = (ling_fuzzy_bridge_t*)calloc(1, sizeof(ling_fuzzy_bridge_t));
+    ling_fuzzy_bridge_t* bridge = (ling_fuzzy_bridge_t*)nimcp_calloc(1, sizeof(ling_fuzzy_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fuzzy bridge");
         return NULL;
@@ -443,7 +444,7 @@ void ling_fuzzy_bridge_destroy(ling_fuzzy_bridge_t* bridge) {
     }
 
     bridge->magic = 0;  /* Invalidate */
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 int ling_fuzzy_bridge_register_mesh(

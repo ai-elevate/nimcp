@@ -36,35 +36,9 @@
 #include <math.h>
 
 #define LOG_MODULE "SPIKE_EVENT"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-#include <stddef.h>  /* for NULL */
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
-
-/** Global health agent for spike_event module */
-static nimcp_health_agent_t* g_spike_event_health_agent = NULL;
-
-/**
- * @brief Set health agent for spike_event heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void spike_event_set_health_agent(nimcp_health_agent_t* agent) {
-    g_spike_event_health_agent = agent;
-}
-
-/** @brief Send heartbeat from spike_event module */
-static inline void spike_event_heartbeat(const char* operation, float progress) {
-    if (g_spike_event_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_spike_event_health_agent, operation, progress);
-    }
-}
-
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spike_event)
 
 // C11 atomics for lock-free operations
 #if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)

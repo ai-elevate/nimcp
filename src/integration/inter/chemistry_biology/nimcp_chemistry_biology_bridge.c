@@ -14,32 +14,10 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
-//=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
-//=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
+#include "utils/memory/nimcp_memory.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-/** Global health agent for chemistry_biology_bridge module */
-static nimcp_health_agent_t* g_chemistry_biology_bridge_health_agent = NULL;
-
-/**
- * @brief Set health agent for chemistry_biology_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void chemistry_biology_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_chemistry_biology_bridge_health_agent = agent;
-}
-
-/** @brief Send heartbeat from chemistry_biology_bridge module */
-static inline void chemistry_biology_bridge_heartbeat(const char* operation, float progress) {
-    if (g_chemistry_biology_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_chemistry_biology_bridge_health_agent, operation, progress);
-    }
-}
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(chemistry_biology_bridge)
 
 #define LOG_MODULE "CHEMISTRY_BIOLOGY_BRIDGE"
 
@@ -70,7 +48,7 @@ nimcp_chemistry_biology_config_t nimcp_chemistry_biology_default_config(void) {
 }
 
 nimcp_chemistry_biology_bridge_t nimcp_chemistry_biology_create(const nimcp_chemistry_biology_config_t* config) {
-    nimcp_chemistry_biology_bridge_t bridge = (nimcp_chemistry_biology_bridge_t)calloc(1, sizeof(struct nimcp_chemistry_biology_bridge_struct));
+    nimcp_chemistry_biology_bridge_t bridge = (nimcp_chemistry_biology_bridge_t)nimcp_calloc(1, sizeof(struct nimcp_chemistry_biology_bridge_struct));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate chemistry-biology bridge");
     bridge->config = config ? *config : nimcp_chemistry_biology_default_config();
     bridge->state.bridge_coherence = 1.0f;
@@ -82,7 +60,7 @@ void nimcp_chemistry_biology_destroy(nimcp_chemistry_biology_bridge_t bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "chemistry_biology");
     if (bridge->is_initialized) nimcp_chemistry_biology_shutdown(bridge);
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 nimcp_layer_error_t nimcp_chemistry_biology_init(

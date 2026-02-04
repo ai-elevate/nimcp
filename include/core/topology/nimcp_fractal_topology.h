@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "utils/memory/nimcp_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -337,7 +338,7 @@ bool topology_fit_power_law(
  * for (uint32_t i = 0; i < count; i++) {
  *     printf("  Hub %u: neuron %u\n", i, hubs[i]);
  * }
- * free(hubs);
+ * nimcp_free(hubs);
  * @endcode
  */
 bool topology_identify_hubs(

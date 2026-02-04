@@ -945,3 +945,61 @@ set_tests_properties(unit_security_test_artifact_verify PROPERTIES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bbb/CMakeLists.txt")
     add_subdirectory(bbb)
 endif()
+
+# ============================================================================
+# BBB API Validation Tests (P1-4)
+# ============================================================================
+add_executable(unit_security_test_bbb_api_validation
+    test_bbb_api_validation.cpp
+)
+target_link_libraries(unit_security_test_bbb_api_validation
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_bbb_api_validation
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_security_test_bbb_api_validation
+         COMMAND unit_security_test_bbb_api_validation)
+set_tests_properties(unit_security_test_bbb_api_validation PROPERTIES
+    LABELS "unit;security;bbb;p1-4"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Security Error Codes Tests (P2-7)
+# ============================================================================
+add_executable(unit_security_test_error_codes
+    test_security_error_codes.cpp
+)
+target_link_libraries(unit_security_test_error_codes
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_error_codes
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_security_test_error_codes
+         COMMAND unit_security_test_error_codes)
+set_tests_properties(unit_security_test_error_codes PROPERTIES
+    LABELS "unit;security;error-codes;p2-7"
+    TIMEOUT 60
+)

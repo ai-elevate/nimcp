@@ -356,6 +356,7 @@ quantum_semantic_t working_memory_quantum_get_context(
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory.h"
 
 /**
  * @brief Internal bridge structure
@@ -393,7 +394,7 @@ working_memory_quantum_bridge_t* working_memory_quantum_bridge_create(
     const working_memory_quantum_config_t* config
 ) {
     working_memory_quantum_bridge_t* bridge =
-        (working_memory_quantum_bridge_t*)calloc(1, sizeof(*bridge));
+        (working_memory_quantum_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) return NULL;
 
     bridge->config = config ? *config : working_memory_quantum_default_config();
@@ -407,24 +408,24 @@ working_memory_quantum_bridge_t* working_memory_quantum_bridge_create(
 
     bridge->qsem = quantum_semantic_create(&qconfig, bridge->config.max_items);
     if (!bridge->qsem) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Allocate slot tracking arrays */
-    bridge->item_pointers = (const float**)calloc(bridge->config.max_items, sizeof(float*));
-    bridge->item_sizes = (uint32_t*)calloc(bridge->config.max_items, sizeof(uint32_t));
-    bridge->item_saliences = (float*)calloc(bridge->config.max_items, sizeof(float));
-    bridge->slot_occupied = (bool*)calloc(bridge->config.max_items, sizeof(bool));
+    bridge->item_pointers = (const float**)nimcp_calloc(bridge->config.max_items, sizeof(float*));
+    bridge->item_sizes = (uint32_t*)nimcp_calloc(bridge->config.max_items, sizeof(uint32_t));
+    bridge->item_saliences = (float*)nimcp_calloc(bridge->config.max_items, sizeof(float));
+    bridge->slot_occupied = (bool*)nimcp_calloc(bridge->config.max_items, sizeof(bool));
 
     if (!bridge->item_pointers || !bridge->item_sizes ||
         !bridge->item_saliences || !bridge->slot_occupied) {
         quantum_semantic_destroy(bridge->qsem);
-        free(bridge->item_pointers);
-        free(bridge->item_sizes);
-        free(bridge->item_saliences);
-        free(bridge->slot_occupied);
-        free(bridge);
+        nimcp_free(bridge->item_pointers);
+        nimcp_free(bridge->item_sizes);
+        nimcp_free(bridge->item_saliences);
+        nimcp_free(bridge->slot_occupied);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -435,11 +436,11 @@ working_memory_quantum_bridge_t* working_memory_quantum_bridge_create(
 void working_memory_quantum_bridge_destroy(working_memory_quantum_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->qsem) quantum_semantic_destroy(bridge->qsem);
-    free(bridge->item_pointers);
-    free(bridge->item_sizes);
-    free(bridge->item_saliences);
-    free(bridge->slot_occupied);
-    free(bridge);
+    nimcp_free(bridge->item_pointers);
+    nimcp_free(bridge->item_sizes);
+    nimcp_free(bridge->item_saliences);
+    nimcp_free(bridge->slot_occupied);
+    nimcp_free(bridge);
 }
 
 bool working_memory_quantum_bridge_is_enabled(

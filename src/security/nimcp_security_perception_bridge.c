@@ -12,32 +12,41 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-#include <stddef.h>  /* for NULL */
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_perception_bridge)
 //=============================================================================
-// Health Agent Integration (Phase 8: System-Wide Health Integration)
+// Mesh Participant Registration
 //=============================================================================
-struct nimcp_health_agent;
-typedef struct nimcp_health_agent nimcp_health_agent_t;
-extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
-                                             const char* operation,
-                                             float progress);
 
-/** Global health agent for security_perception_bridge module */
-static nimcp_health_agent_t* g_security_perception_bridge_health_agent = NULL;
+static mesh_participant_id_t g_security_perception_bridge_mesh_id = 0;
+static mesh_participant_registry_t* g_security_perception_bridge_mesh_registry = NULL;
 
-/**
- * @brief Set health agent for security_perception_bridge heartbeats
- * @param agent Health agent (can be NULL to disable)
- */
-static void security_perception_bridge_set_health_agent(nimcp_health_agent_t* agent) {
-    g_security_perception_bridge_health_agent = agent;
+nimcp_error_t security_perception_bridge_mesh_register(mesh_participant_registry_t* registry) {
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_security_perception_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    mesh_participant_interface_t iface;
+    mesh_participant_interface_init(&iface);
+    strncpy(iface.module_name, "security_perception_bridge", MESH_MAX_NAME_LEN - 1);
+    iface.type = MESH_PARTICIPANT_MODULE;
+    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
+    mesh_participant_config_t config;
+    mesh_participant_config_init(&config);
+    config.module_name = "security_perception_bridge";
+    config.type = MESH_PARTICIPANT_MODULE;
+    config.home_channel = iface.home_channel;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_perception_bridge_mesh_id);
+    if (err == NIMCP_SUCCESS) g_security_perception_bridge_mesh_registry = registry;
+    return err;
 }
 
-/** @brief Send heartbeat from security_perception_bridge module */
-static inline void security_perception_bridge_heartbeat(const char* operation, float progress) {
-    if (g_security_perception_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_security_perception_bridge_health_agent, operation, progress);
+void security_perception_bridge_mesh_unregister(void) {
+    if (g_security_perception_bridge_mesh_registry && g_security_perception_bridge_mesh_id != 0) {
+        mesh_participant_unregister(g_security_perception_bridge_mesh_registry, g_security_perception_bridge_mesh_id);
+        g_security_perception_bridge_mesh_id = 0;
+        g_security_perception_bridge_mesh_registry = NULL;
     }
 }
 
@@ -219,7 +228,7 @@ int sec_percept_default_config(sec_percept_config_t* config) {
     /* Guard clause: validate input */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Set default thresholds */
@@ -361,7 +370,7 @@ int sec_percept_start(security_perception_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -388,7 +397,7 @@ int sec_percept_stop(security_perception_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -422,11 +431,11 @@ int sec_percept_connect_bbb(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bbb) {
         NIMCP_LOGGING_ERROR("NULL BBB pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -444,11 +453,11 @@ int sec_percept_connect_anomaly_detector(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!detector) {
         NIMCP_LOGGING_ERROR("NULL anomaly detector pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -466,11 +475,11 @@ int sec_percept_connect_immune(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!immune) {
         NIMCP_LOGGING_ERROR("NULL immune system pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -488,11 +497,11 @@ int sec_percept_connect_visual_cortex(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!cortex) {
         NIMCP_LOGGING_ERROR("NULL visual cortex pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -510,11 +519,11 @@ int sec_percept_connect_audio_cortex(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!cortex) {
         NIMCP_LOGGING_ERROR("NULL audio cortex pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -538,7 +547,7 @@ int sec_percept_analyze_visual(
     /* Guard clauses */
     if (!bridge || !features || !result || feature_dim == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     uint64_t start_time = get_time_us();
@@ -642,7 +651,7 @@ int sec_percept_analyze_audio(
     /* Guard clauses */
     if (!bridge || !features || !result || feature_dim == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     uint64_t start_time = get_time_us();
@@ -738,7 +747,7 @@ int sec_percept_analyze_multimodal(
     /* Guard clauses */
     if (!bridge || !visual_features || !audio_features || !result) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     uint64_t start_time = get_time_us();
@@ -825,7 +834,7 @@ int sec_percept_check_cross_modal(
     /* Guard clauses */
     if (!bridge || !visual_features || !audio_features || !check) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(check, 0, sizeof(cross_modal_check_t));
@@ -867,7 +876,7 @@ int sec_percept_quarantine_input(
     /* Guard clauses */
     if (!bridge || !threat || !features || !quarantine_id) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -892,7 +901,7 @@ int sec_percept_quarantine_input(
     entry->features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!entry->features) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     memcpy(entry->features, features, feature_dim * sizeof(float));
     entry->threat = *threat;
@@ -922,7 +931,7 @@ int sec_percept_get_quarantined(
     /* Guard clauses */
     if (!bridge || !input) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Linear search (could optimize with hash table) */
@@ -943,7 +952,7 @@ int sec_percept_release_quarantine(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1003,7 +1012,7 @@ int sec_percept_learn_signature(
     /* Guard clauses */
     if (!bridge || !threat || !features) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_online_learning) {
@@ -1016,7 +1025,7 @@ int sec_percept_learn_signature(
     if (bridge->signature_count >= bridge->signature_capacity) {
         NIMCP_LOGGING_WARN("Signature database full");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     /* Create signature */
@@ -1052,7 +1061,7 @@ int sec_percept_match_signature(
 ) {
     /* Guard clauses */
     if (!bridge || !features || !signature_id || !match_score) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Extract signature from input */
@@ -1138,12 +1147,12 @@ int sec_percept_escalate_to_immune(
     /* Guard clauses */
     if (!bridge || !threat || !antigen_id) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->immune) {
         NIMCP_LOGGING_WARN("Immune system not connected");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Present threat as antigen to immune system */
@@ -1166,7 +1175,7 @@ int sec_percept_boost_security_salience(
     /* Guard clauses */
     if (!bridge || !threat) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Clamp boost */
@@ -1195,7 +1204,7 @@ int sec_percept_get_stats(
 ) {
     if (!bridge || !stats) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     *stats = bridge->stats;
@@ -1250,7 +1259,7 @@ int sec_percept_connect_bio_async(security_perception_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Failed to connect to bio-async router");
-    return -1;
+    return NIMCP_ERROR_INVALID_STATE;
 }
 
 int sec_percept_disconnect_bio_async(security_perception_bridge_t* bridge) {
@@ -1302,7 +1311,7 @@ int sec_percept_send_threat_alert(
     }
 
     NIMCP_LOGGING_WARN("Failed to send threat alert: %d", result);
-    return -1;
+    return NIMCP_ERROR_OPERATION_FAILED;
 }
 
 /* ============================================================================
