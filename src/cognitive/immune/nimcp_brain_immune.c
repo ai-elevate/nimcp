@@ -699,7 +699,14 @@ int brain_immune_stop(brain_immune_system_t* system) {
  * @brief Connect to BBB security
  */
 int brain_immune_connect_bbb(brain_immune_system_t* system, bbb_system_t bbb_system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bbb: system is NULL");
+        return -1;
+    }
+    if (!bbb_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bbb: bbb_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_connect_bbb", 0.0f);

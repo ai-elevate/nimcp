@@ -967,9 +967,16 @@ nimcp_error_t nimcp_rate_limiter_unblock_client(
     bucket->state = CLIENT_STATE_NORMAL;
     bucket->penalty_level = 0;
 
+    // Reset token bucket to give client a fresh start after being unblocked
+    bucket->tokens = (float)limiter->config.burst_size;
+    bucket->last_refill_time_ms = get_time_ms();
+    bucket->stats.current_rate = (float)limiter->config.requests_per_second;
+    bucket->consecutive_good = 0;
+    bucket->stats.violations = 0;
+
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
 
-    LOG_MODULE_INFO("rate_limiter", "Client %s unblocked", client_id);
+    LOG_MODULE_INFO("rate_limiter", "Client %s unblocked with fresh token bucket", client_id);
     return NIMCP_SUCCESS;
 }
 

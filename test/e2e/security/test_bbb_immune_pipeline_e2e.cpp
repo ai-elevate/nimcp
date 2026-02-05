@@ -60,7 +60,7 @@ TEST_F(BBBImmunePipelineE2E, ThreatTriggersImmuneResponse) {
     bbb_threat_report_t report = bbb_report_threat(
         bbb_, BBB_THREAT_BUFFER_OVERFLOW, BBB_SEVERITY_CRITICAL,
         "Buffer overflow detected", nullptr, malicious, sizeof(malicious));
-    EXPECT_NE(report.report_id, 0u);
+    EXPECT_NE(report.timestamp, 0u);  // Use timestamp as unique identifier
     uint32_t antigen_id = 0;
     int rc = brain_immune_present_bbb_threat(
         immune_, BBB_THREAT_BUFFER_OVERFLOW, BBB_SEVERITY_CRITICAL,
@@ -78,11 +78,12 @@ TEST_F(BBBImmunePipelineE2E, ThreatTriggersImmuneResponse) {
     brain_immune_stats_t stats;
     memset(&stats, 0, sizeof(stats));
     brain_immune_get_stats(immune_, &stats);
-    EXPECT_GT(stats.total_antigens, 0u);
+    EXPECT_GT(stats.antigens_processed, 0u);
 }
 
 TEST_F(BBBImmunePipelineE2E, OversizedString_BBBRejects) {
-    std::string huge(8192, 65);
+    // Default max_string_length is 64KB (65536), so use a larger string
+    std::string huge(70000, 'A');
     bbb_validation_result_t vr;
     memset(&vr, 0, sizeof(vr));
     EXPECT_FALSE(bbb_validate_string(bbb_, huge.c_str(), &vr));
@@ -91,7 +92,7 @@ TEST_F(BBBImmunePipelineE2E, OversizedString_BBBRejects) {
 
 TEST_F(BBBImmunePipelineE2E, ExceptionRoutedToImmune) {
     nimcp_exception_t* ex = nimcp_exception_create(
-        NIMCP_ERROR_BBB_REJECTED, NIMCP_EXCEPTION_SEVERITY_HIGH,
+        NIMCP_ERROR_BBB_REJECTED, EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__, "BBB rejected malicious input");
     ASSERT_NE(ex, nullptr);
     nimcp_immune_response_t response;
@@ -129,7 +130,7 @@ TEST_F(BBBImmunePipelineE2E, MultipleThreatsCumulative) {
     brain_immune_stats_t stats;
     memset(&stats, 0, sizeof(stats));
     brain_immune_get_stats(immune_, &stats);
-    EXPECT_GE(stats.total_antigens, 5u);
+    EXPECT_GE(stats.antigens_processed, 5u);
 }
 
 TEST_F(BBBImmunePipelineE2E, HelpersIntegrateWithBBB) {

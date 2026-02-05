@@ -109,6 +109,9 @@ void bbb_helpers_shutdown(void)
     nimcp_mutex_unlock(&g_bbb_mutex);
     nimcp_mutex_destroy(&g_bbb_mutex);
 
+    // Reset once flag to allow reinitialization after shutdown
+    g_bbb_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+
     LOG_INFO("BBB helpers shutdown");
 }
 
