@@ -16,7 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(hippocampus_adapter)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hippocampus_adapter)
 
 #define HIPP_MAX_PATTERNS 1000
 #define HIPP_PATTERN_SIZE 256

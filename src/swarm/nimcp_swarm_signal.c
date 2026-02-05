@@ -72,7 +72,9 @@ typedef struct {
 /* Global simulation queues (one per node) */
 static sim_queue_t* g_sim_queues[SIM_MAX_NODES] = {0};
 static nimcp_mutex_t g_sim_lock;
-static bool g_sim_initialized = false;
+
+/* Thread-safe one-time initialization using pthread_once pattern */
+static nimcp_once_t g_sim_once = NIMCP_ONCE_INIT;
 
 /**
  * @brief Signal adapter structure
@@ -128,14 +130,23 @@ static uint16_t calculate_crc16(const uint8_t* data, uint32_t len) {
 }
 
 /**
- * @brief Initialize simulation subsystem
+ * @brief One-time initialization routine for simulation subsystem
+ *
+ * Called exactly once via nimcp_once() to prevent race conditions.
+ */
+static void sim_init_once(void) {
+    nimcp_mutex_init(&g_sim_lock, NULL);
+    memset(g_sim_queues, 0, sizeof(g_sim_queues));
+}
+
+/**
+ * @brief Initialize simulation subsystem (thread-safe)
+ *
+ * Uses pthread_once pattern via nimcp_once() to ensure exactly one
+ * thread initializes the subsystem, preventing TOCTOU race conditions.
  */
 static void sim_init(void) {
-    if (!g_sim_initialized) {
-        nimcp_mutex_init(&g_sim_lock, NULL);
-        memset(g_sim_queues, 0, sizeof(g_sim_queues));
-        g_sim_initialized = true;
-    }
+    nimcp_once(&g_sim_once, sim_init_once);
 }
 
 /**

@@ -15,11 +15,58 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/fault_tolerance/nimcp_recovery.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_api_client)
+
+//=============================================================================
+// Circuit Breaker for External API Protection
+//=============================================================================
+
+/**
+ * @brief Global circuit breaker for external API calls
+ *
+ * WHAT: Circuit breaker to prevent cascading failures from external API issues
+ * WHY:  Cloud APIs can be unreliable; stop hammering them when they're down
+ * HOW:  Track consecutive failures, open circuit after threshold, test periodically
+ */
+static circuit_breaker_t* g_api_circuit_breaker = NULL;
+
+/* Circuit breaker configuration constants */
+#define API_CB_FAILURE_THRESHOLD    5      /**< Failures before opening circuit */
+#define API_CB_TIMEOUT_MS           30000  /**< 30 seconds before testing recovery */
+
+/**
+ * @brief Initialize the API circuit breaker
+ *
+ * @return 0 on success, -1 on failure
+ */
+static int init_api_circuit_breaker(void) {
+    if (g_api_circuit_breaker != NULL) {
+        return 0;  /* Already initialized */
+    }
+
+    g_api_circuit_breaker = circuit_breaker_create(
+        API_CB_FAILURE_THRESHOLD,
+        API_CB_TIMEOUT_MS
+    );
+
+    return g_api_circuit_breaker != NULL ? 0 : -1;
+}
+
+/**
+ * @brief Cleanup the API circuit breaker
+ */
+static void cleanup_api_circuit_breaker(void) {
+    if (g_api_circuit_breaker != NULL) {
+        circuit_breaker_destroy(g_api_circuit_breaker);
+        g_api_circuit_breaker = NULL;
+    }
+}
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
@@ -82,6 +129,9 @@ void creative_api_client_config_defaults(creative_api_client_config_t* config)
 creative_api_client_t* creative_api_client_create(
     const creative_api_client_config_t* config)
 {
+    /* Initialize circuit breaker on first client creation */
+    init_api_circuit_breaker();
+
     creative_api_client_t* client = nimcp_calloc(1, sizeof(creative_api_client_t));
     if (!client) return NULL;
 
@@ -234,6 +284,15 @@ int api_generate_image(creative_api_client_t* client,
 
     memset(response, 0, sizeof(api_image_response_t));
 
+    /* Circuit breaker check - prevent calls when API is known to be failing */
+    if (g_api_circuit_breaker && !circuit_breaker_allow_operation(g_api_circuit_breaker)) {
+        response->status = API_STATUS_SERVER_ERROR;
+        strncpy(response->error_message, "Circuit breaker open - API unavailable",
+                sizeof(response->error_message) - 1);
+        response->retry_after_ms = API_CB_TIMEOUT_MS;
+        return -1;
+    }
+
     /* Check rate limit */
     if (!check_rate_limit(client)) {
         response->status = API_STATUS_RATE_LIMITED;
@@ -304,11 +363,20 @@ int api_generate_image(creative_api_client_t* client,
     record_request(client);
 
     if (rc != 0 || !http_response) {
+        /* Record failure in circuit breaker */
+        if (g_api_circuit_breaker) {
+            circuit_breaker_record_failure(g_api_circuit_breaker);
+        }
         response->status = API_STATUS_NETWORK_ERROR;
         strncpy(response->error_message, "Network request failed",
                 sizeof(response->error_message) - 1);
         client->failed_requests++;
         return -1;
+    }
+
+    /* Record success in circuit breaker */
+    if (g_api_circuit_breaker) {
+        circuit_breaker_record_success(g_api_circuit_breaker);
     }
 
     /* Parse response (placeholder - would parse JSON) */
@@ -431,6 +499,14 @@ int api_generate_text(creative_api_client_t* client,
 
     memset(response, 0, sizeof(api_text_response_t));
 
+    /* Circuit breaker check - prevent calls when API is known to be failing */
+    if (g_api_circuit_breaker && !circuit_breaker_allow_operation(g_api_circuit_breaker)) {
+        response->status = API_STATUS_SERVER_ERROR;
+        strncpy(response->error_message, "Circuit breaker open - API unavailable",
+                sizeof(response->error_message) - 1);
+        return -1;
+    }
+
     /* Check rate limit */
     if (!check_rate_limit(client)) {
         response->status = API_STATUS_RATE_LIMITED;
@@ -491,9 +567,18 @@ int api_generate_text(creative_api_client_t* client,
     record_request(client);
 
     if (rc != 0 || !http_response) {
+        /* Record failure in circuit breaker */
+        if (g_api_circuit_breaker) {
+            circuit_breaker_record_failure(g_api_circuit_breaker);
+        }
         response->status = API_STATUS_NETWORK_ERROR;
         client->failed_requests++;
         return -1;
+    }
+
+    /* Record success in circuit breaker */
+    if (g_api_circuit_breaker) {
+        circuit_breaker_record_success(g_api_circuit_breaker);
     }
 
     /* Parse response (placeholder) */

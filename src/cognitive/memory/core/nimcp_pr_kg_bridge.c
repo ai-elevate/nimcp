@@ -1666,7 +1666,12 @@ prime_signature_t* pr_kg_signature_from_node(
             sig->hash = strtoull(kg_node->metadata[i].value, NULL, 16);
         }
         if (strcmp(kg_node->metadata[i].key, "sig_factors") == 0) {
-            sig->num_factors = (uint32_t)atoi(kg_node->metadata[i].value);
+            // P1-2 fix: Use strtol instead of atoi for safe conversion
+            char* endptr;
+            long val = strtol(kg_node->metadata[i].value, &endptr, 10);
+            if (endptr != kg_node->metadata[i].value && val >= 0 && val <= UINT32_MAX) {
+                sig->num_factors = (uint32_t)val;
+            }
         }
     }
 

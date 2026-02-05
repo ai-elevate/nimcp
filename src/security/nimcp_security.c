@@ -1958,7 +1958,7 @@ void nimcp_encryption_destroy(nimcp_encryption_context_t* ctx)
      *       key cannot be recovered from heap. Defense-in-depth against
      *       memory disclosure vulnerabilities.
      */
-    memset(ctx->key, 0, NIMCP_SECURITY_KEY_SIZE);
+    nimcp_secure_zero(ctx->key, NIMCP_SECURITY_KEY_SIZE);
     ctx->initialized = false;
 
     nimcp_free(ctx);

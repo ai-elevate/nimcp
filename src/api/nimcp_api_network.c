@@ -105,6 +105,13 @@ nimcp_status_t nimcp_network_forward(
     NIMCP_CHECK_THROW(inputs, NIMCP_ERROR_NULL_ARG, "Inputs array is NULL in network_forward");
     NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL in network_forward");
 
+    // BBB validation: validate input buffer
+    if (!bbb_validate_buffer_access(inputs, 0, num_inputs * sizeof(float),
+                                    num_inputs * sizeof(float), "nimcp_network_forward")) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for inputs buffer");
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+
     // Call internal network API
     bool success = neural_network_forward(network->internal_network,
                                          inputs, num_inputs,

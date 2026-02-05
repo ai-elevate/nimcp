@@ -1723,8 +1723,8 @@ nimcp_error_t nimcp_phase_sync_add_future(
     float omega = center_freq * 2.0F * (float)M_PI / 1000.0F;  /* rad/ms */
     float spread = g_bio_async.config.phase_config.frequency_spread;
 
-    /* Add small random variation (simple LCG for now) */
-    static uint32_t seed = 12345;
+    /* Add small random variation (simple LCG with thread-local seed for thread safety) */
+    static __thread uint32_t seed = 12345;
     seed = seed * 1103515245 + 12345;
     float rand_01 = (float)(seed & 0x7FFFFFFF) / (float)0x7FFFFFFF;
     float freq_variation = (rand_01 - 0.5F) * 2.0F * spread;

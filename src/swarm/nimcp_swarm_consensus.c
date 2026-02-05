@@ -47,24 +47,30 @@
 
 #define LOG_MODULE "swarm_consensus"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_atomic.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_consensus)
 
 /* Maximum drone ID for vote tracking (to limit memory footprint) */
 #define MAX_TRACKED_DRONE_ID 1024
 
-static bool g_bbb_registered = false;
+/* Thread-safe BBB registration using atomic compare-exchange */
+static nimcp_atomic_bool_t g_bbb_registered = {0};
 static uint32_t g_vote_counts_by_drone[MAX_TRACKED_DRONE_ID] = {0};  // Track votes per drone
 static nimcp_mutex_t g_vote_tracking_mutex = NIMCP_MUTEX_INITIALIZER;  // Protect vote tracking
 
 /**
- * @brief Initialize BBB security for consensus
+ * @brief Initialize BBB security for consensus (thread-safe)
+ *
+ * Uses atomic compare-exchange to ensure exactly one thread
+ * performs the registration, preventing TOCTOU race conditions.
  */
 static void consensus_init_bbb(void)
 {
-    if (!g_bbb_registered) {
+    bool expected = false;
+    if (nimcp_atomic_compare_exchange_bool(&g_bbb_registered, &expected, true,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
         bbb_register_module("swarm_consensus", BBB_MODULE_TYPE_SWARM);
-        g_bbb_registered = true;
         bbb_audit_log(BBB_AUDIT_INFO, "swarm_consensus", "init", "Module registered with BBB");
     }
 }

@@ -46,53 +46,51 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(consolidation)
-
-/* Alias: tests reference systems_consolidation_set_health_agent */
-void systems_consolidation_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+// Use unique prefix to avoid conflict with cognitive/consolidation/nimcp_consolidation.c
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(systems_consolidation)
 
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
 
-static mesh_participant_id_t g_consolidation_mesh_id = 0;
-static mesh_participant_registry_t* g_consolidation_mesh_registry = NULL;
+static mesh_participant_id_t g_systems_consolidation_mesh_id = 0;
+static mesh_participant_registry_t* g_systems_consolidation_mesh_registry = NULL;
 
-static nimcp_error_t consolidation_mesh_register(mesh_participant_registry_t* registry) {
+static nimcp_error_t systems_consolidation_mesh_register(mesh_participant_registry_t* registry) {
     if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_consolidation_mesh_id != 0) return NIMCP_SUCCESS;
+    if (g_systems_consolidation_mesh_id != 0) return NIMCP_SUCCESS;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "consolidation", MESH_MAX_NAME_LEN - 1);
+    strncpy(iface.module_name, "systems_consolidation", MESH_MAX_NAME_LEN - 1);
     iface.type = MESH_PARTICIPANT_MODULE;
     iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
     mesh_participant_config_t config;
     mesh_participant_config_init(&config);
-    config.module_name = "consolidation";
+    config.module_name = "systems_consolidation";
     config.type = MESH_PARTICIPANT_MODULE;
     config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_consolidation_mesh_id);
-    if (err == NIMCP_SUCCESS) g_consolidation_mesh_registry = registry;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_systems_consolidation_mesh_id);
+    if (err == NIMCP_SUCCESS) g_systems_consolidation_mesh_registry = registry;
     return err;
 }
 
-static void consolidation_mesh_unregister(void) {
-    if (g_consolidation_mesh_registry && g_consolidation_mesh_id != 0) {
-        mesh_participant_unregister(g_consolidation_mesh_registry, g_consolidation_mesh_id);
-        g_consolidation_mesh_id = 0;
-        g_consolidation_mesh_registry = NULL;
+static void systems_consolidation_mesh_unregister(void) {
+    if (g_systems_consolidation_mesh_registry && g_systems_consolidation_mesh_id != 0) {
+        mesh_participant_unregister(g_systems_consolidation_mesh_registry, g_systems_consolidation_mesh_id);
+        g_systems_consolidation_mesh_id = 0;
+        g_systems_consolidation_mesh_registry = NULL;
     }
 }
 
 
-/** @brief Send heartbeat from consolidation module (instance-level) */
-static inline void consolidation_heartbeat_instance(
+/** @brief Send heartbeat from systems_consolidation module (instance-level) */
+static inline void systems_systems_consolidation_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_consolidation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_consolidation_health_agent, operation, progress);
+    if (g_systems_consolidation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_systems_consolidation_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_consolidation_health_agent) {
+    if (instance_agent && instance_agent != g_systems_consolidation_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -141,7 +139,7 @@ static int systems_consolidation_wiring_handler_callback(
     for (uint32_t i = 0; i < message_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && message_count > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(i + 1) / (float)message_count);
         }
 
@@ -366,7 +364,7 @@ static bool cortical_node_add_neighbor(
 systems_consolidation_system_t* systems_consolidation_create(void)
 {
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     LOG_INFO("Creating systems consolidation system");
@@ -490,7 +488,7 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
 
     // Unregister from bio-router
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     if (system->bio_async_enabled && system->bio_ctx) {
@@ -505,7 +503,7 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
         for (uint32_t i = 0; i < system->node_count; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && system->node_count > 256) {
-                consolidation_heartbeat("consolidatio_loop",
+                systems_consolidation_heartbeat("consolidatio_loop",
                                  (float)(i + 1) / (float)system->node_count);
             }
 
@@ -543,13 +541,13 @@ void systems_consolidation_reset(systems_consolidation_system_t* system)
 
     // WHAT: Free all cortical nodes
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     for (uint32_t i = 0; i < system->node_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && system->node_count > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(i + 1) / (float)system->node_count);
         }
 
@@ -582,7 +580,7 @@ bool systems_consolidation_schedule_replay(
 
     // WHAT: Check queue capacity
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     if (system->replay_queue_size >= system->replay_queue_capacity) {
@@ -618,7 +616,7 @@ uint32_t systems_consolidation_execute_replays(
     }
 
     /* Phase 8: Send heartbeat at start of replay execution */
-    consolidation_heartbeat("consolidation_replays", 0.0f);
+    systems_consolidation_heartbeat("consolidation_replays", 0.0f);
 
     // WHAT: Determine replay rate based on sleep state
     // WHY: SWS has highest replay rate (Born & Wilhelm, 2012)
@@ -646,7 +644,7 @@ uint32_t systems_consolidation_execute_replays(
     for (uint32_t i = 0; i < replays_to_execute && i < system->replay_queue_size; i++) {
         /* Phase 8: Send progress heartbeat for long replay sequences */
         if (replays_to_execute > 0) {
-            consolidation_heartbeat("consolidation_replays", (float)i / (float)replays_to_execute);
+            systems_consolidation_heartbeat("consolidation_replays", (float)i / (float)replays_to_execute);
         }
         replay_event_t* event = &system->replay_queue[i];
 
@@ -672,7 +670,7 @@ uint32_t systems_consolidation_execute_replays(
     for (uint32_t read_idx = 0; read_idx < system->replay_queue_size; read_idx++) {
         /* Phase 8: Loop progress heartbeat */
         if ((read_idx & 0xFF) == 0 && system->replay_queue_size > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(read_idx + 1) / (float)system->replay_queue_size);
         }
 
@@ -705,7 +703,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
     // WHY: During testing, we may not have a full engram system
     // TODO: Make required once integration phase is complete
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     bool have_engram_system = (system->engram_system != NULL);
@@ -723,7 +721,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && SEMANTIC_DIM > 256) {
-                consolidation_heartbeat("consolidatio_loop",
+                systems_consolidation_heartbeat("consolidatio_loop",
                                  (float)(i + 1) / (float)SEMANTIC_DIM);
             }
 
@@ -734,7 +732,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && SEMANTIC_DIM > 256) {
-                consolidation_heartbeat("consolidatio_loop",
+                systems_consolidation_heartbeat("consolidatio_loop",
                                  (float)(i + 1) / (float)SEMANTIC_DIM);
             }
 
@@ -747,7 +745,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
     for (uint32_t i = 0; i < system->node_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && system->node_count > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(i + 1) / (float)system->node_count);
         }
 
@@ -834,7 +832,7 @@ void systems_consolidation_update(
     }
 
     /* Phase 8: Send heartbeat at start of consolidation update */
-    consolidation_heartbeat("consolidation_update", 0.0f);
+    systems_consolidation_heartbeat("consolidation_update", 0.0f);
 
     // Process pending bio-async messages
     if (system->bio_async_enabled && system->bio_ctx) {
@@ -855,7 +853,7 @@ void systems_consolidation_update(
     for (uint32_t i = 0; i < system->node_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && system->node_count > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(i + 1) / (float)system->node_count);
         }
 
@@ -913,13 +911,13 @@ cortical_memory_node_t* systems_consolidation_get_node(
 
     // WHAT: Linear search for node
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     for (uint32_t i = 0; i < system->node_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && system->node_count > 256) {
-            consolidation_heartbeat("consolidatio_loop",
+            systems_consolidation_heartbeat("consolidatio_loop",
                              (float)(i + 1) / (float)system->node_count);
         }
 
@@ -946,7 +944,7 @@ uint32_t systems_consolidation_find_similar(
     }
 
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
     // WHAT: Compute similarities for all nodes
     uint32_t results_found = 0;
@@ -972,7 +970,7 @@ uint32_t systems_consolidation_find_similar(
         for (uint32_t j = 0; j < results_found; j++) {
             /* Phase 8: Loop progress heartbeat */
             if ((j & 0xFF) == 0 && results_found > 256) {
-                consolidation_heartbeat("consolidatio_loop",
+                systems_consolidation_heartbeat("consolidatio_loop",
                                  (float)(j + 1) / (float)results_found);
             }
 
@@ -1018,7 +1016,7 @@ void systems_consolidation_get_statistics(
 
     // WHAT: Return statistics
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     if (total_nodes_out) *total_nodes_out = system->node_count;
@@ -1043,7 +1041,7 @@ void systems_consolidation_set_engram_system(
 
     // WHAT: Store non-owning pointer
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     system->engram_system = engram_system;
@@ -1060,7 +1058,7 @@ void systems_consolidation_set_sleep_system(
 
     // WHAT: Store opaque pointer
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     system->sleep_system = sleep_system;
@@ -1080,7 +1078,7 @@ int systems_consolidation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+    systems_consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "Systems_Consolidation_Module");
@@ -1088,7 +1086,7 @@ int systems_consolidation_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                consolidation_heartbeat("consolidatio_loop",
+                systems_consolidation_heartbeat("consolidatio_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 
@@ -1116,7 +1114,7 @@ int systems_consolidation_query_self_knowledge(kg_reader_t* kg) {
 void systems_consolidation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
         (void)agent;
-        g_consolidation_health_agent = agent;
+        g_systems_consolidation_health_agent = agent;
     }
 }
 
@@ -1130,7 +1128,7 @@ int systems_consolidation_training_begin(void* instance) {
                               "systems_consolidation_training_begin: NULL argument");
         return -1;
     }
-    consolidation_heartbeat_instance(NULL, "systems_consolidation_training_begin", 0.0f);
+    systems_consolidation_heartbeat_instance(NULL, "systems_consolidation_training_begin", 0.0f);
     return 0;
 }
 
@@ -1140,7 +1138,7 @@ int systems_consolidation_training_end(void* instance) {
                               "systems_consolidation_training_end: NULL argument");
         return -1;
     }
-    consolidation_heartbeat_instance(NULL, "systems_consolidation_training_end", 1.0f);
+    systems_consolidation_heartbeat_instance(NULL, "systems_consolidation_training_end", 1.0f);
     return 0;
 }
 
@@ -1152,6 +1150,6 @@ int systems_consolidation_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    consolidation_heartbeat_instance(NULL, "systems_consolidation_training_step", progress);
+    systems_consolidation_heartbeat_instance(NULL, "systems_consolidation_training_step", progress);
     return 0;
 }

@@ -43,7 +43,7 @@
 //=============================================================================
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread.h"
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(cortical_column)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_column)
 
 
 // Logging macros

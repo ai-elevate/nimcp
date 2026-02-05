@@ -132,7 +132,17 @@ static nimcp_drone_commitment_t* add_commitment(
 ) {
     /* Expand array if needed */
     if (quorum->commitment_count >= quorum->commitment_capacity) {
+        /* Check for overflow before doubling capacity */
+        if (quorum->commitment_capacity > UINT32_MAX / 2) {
+            LOG_ERROR("Commitment capacity overflow");
+            return NULL;
+        }
         uint32_t new_capacity = quorum->commitment_capacity * 2;
+        /* Check for allocation size overflow */
+        if (new_capacity > SIZE_MAX / sizeof(nimcp_drone_commitment_t)) {
+            LOG_ERROR("Commitment array size overflow");
+            return NULL;
+        }
         nimcp_drone_commitment_t* new_array = (nimcp_drone_commitment_t*)nimcp_realloc(
             quorum->commitments,
             new_capacity * sizeof(nimcp_drone_commitment_t)
@@ -210,7 +220,17 @@ static bool add_decision(
 ) {
     /* Expand array if needed */
     if (quorum->decision_count >= quorum->decision_capacity) {
+        /* Check for overflow before doubling capacity */
+        if (quorum->decision_capacity > UINT32_MAX / 2) {
+            LOG_ERROR("Decision capacity overflow");
+            return false;
+        }
         uint32_t new_capacity = quorum->decision_capacity * 2;
+        /* Check for allocation size overflow */
+        if (new_capacity > SIZE_MAX / sizeof(nimcp_quorum_decision_t)) {
+            LOG_ERROR("Decision array size overflow");
+            return false;
+        }
         nimcp_quorum_decision_t* new_array = (nimcp_quorum_decision_t*)nimcp_realloc(
             quorum->decisions,
             new_capacity * sizeof(nimcp_quorum_decision_t)

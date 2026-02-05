@@ -243,10 +243,12 @@ static bool detect_network_capabilities(hardware_capabilities_t* caps)
     uint32_t mpi_world_size = 0;
 
     // Check OpenMPI environment
+    // P1-2 fix: Use strtol instead of atoi for safe conversion
     env_world_size = getenv("OMPI_COMM_WORLD_SIZE");
     if (env_world_size) {
-        int size = atoi(env_world_size);
-        if (size > 0) {
+        char* endptr;
+        long size = strtol(env_world_size, &endptr, 10);
+        if (endptr != env_world_size && size > 0 && size <= UINT32_MAX) {
             mpi_world_size = (uint32_t)size;
             LOG_DEBUG("Detected OpenMPI environment: world_size=%u", mpi_world_size);
         }
@@ -256,8 +258,9 @@ static bool detect_network_capabilities(hardware_capabilities_t* caps)
     if (mpi_world_size == 0) {
         env_world_size = getenv("PMI_SIZE");
         if (env_world_size) {
-            int size = atoi(env_world_size);
-            if (size > 0) {
+            char* endptr;
+            long size = strtol(env_world_size, &endptr, 10);
+            if (endptr != env_world_size && size > 0 && size <= UINT32_MAX) {
                 mpi_world_size = (uint32_t)size;
                 LOG_DEBUG("Detected MPICH/PMI environment: world_size=%u", mpi_world_size);
             }
@@ -268,8 +271,9 @@ static bool detect_network_capabilities(hardware_capabilities_t* caps)
     if (mpi_world_size == 0) {
         env_world_size = getenv("SLURM_NTASKS");
         if (env_world_size) {
-            int size = atoi(env_world_size);
-            if (size > 0) {
+            char* endptr;
+            long size = strtol(env_world_size, &endptr, 10);
+            if (endptr != env_world_size && size > 0 && size <= UINT32_MAX) {
                 mpi_world_size = (uint32_t)size;
                 LOG_DEBUG("Detected SLURM environment: ntasks=%u", mpi_world_size);
             }

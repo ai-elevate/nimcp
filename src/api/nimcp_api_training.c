@@ -46,6 +46,7 @@ extern void set_error(const char* fmt, ...);
 #include "core/neuralnet/nimcp_neuralnet_backprop.h"
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -99,10 +100,16 @@ static struct {
     training_pipeline_state_t state;
 } g_training_states[MAX_TRAINING_STATES] = {0};
 
+// Mutex to protect training states array (thread safety)
+static nimcp_mutex_t g_training_states_mutex = NIMCP_MUTEX_INITIALIZER;
+
 static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
+    nimcp_mutex_lock(&g_training_states_mutex);
+
     // Find existing state
     for (int i = 0; i < MAX_TRAINING_STATES; i++) {
         if (g_training_states[i].brain == brain) {
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return &g_training_states[i].state;
         }
     }
@@ -111,13 +118,16 @@ static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
         if (g_training_states[i].brain == NULL) {
             g_training_states[i].brain = brain;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return &g_training_states[i].state;
         }
     }
+    nimcp_mutex_unlock(&g_training_states_mutex);
     return NULL;  // No space
 }
 
 static void clear_training_state(nimcp_brain_t brain) {
+    nimcp_mutex_lock(&g_training_states_mutex);
     for (int i = 0; i < MAX_TRAINING_STATES; i++) {
         if (g_training_states[i].brain == brain) {
             // Destroy callback manager if present
@@ -132,9 +142,11 @@ static void clear_training_state(nimcp_brain_t brain) {
             }
             g_training_states[i].brain = NULL;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return;
         }
     }
+    nimcp_mutex_unlock(&g_training_states_mutex);
 }
 
 /**
@@ -363,6 +375,18 @@ nimcp_status_t nimcp_brain_train_step(
     NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in train_step");
     NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_ARG, "Targets array is NULL in train_step");
 
+    // BBB validation: validate input data buffers
+    if (!bbb_validate_buffer_access(features, 0, num_features * sizeof(float),
+                                    num_features * sizeof(float), "nimcp_brain_train_step")) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for features buffer");
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    if (!bbb_validate_buffer_access(targets, 0, num_targets * sizeof(float),
+                                    num_targets * sizeof(float), "nimcp_brain_train_step")) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for targets buffer");
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+
     brain_t internal = brain->internal_brain;
     NIMCP_CHECK_THROW(internal, NIMCP_ERROR_NULL_ARG, "Internal brain is NULL in train_step");
 
@@ -560,6 +584,18 @@ nimcp_status_t nimcp_brain_train_batch(
     NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in train_batch");
     NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_ARG, "Targets array is NULL in train_batch");
     NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID, "Batch size cannot be zero");
+
+    // BBB validation: validate input data buffers for batch
+    size_t features_size = (size_t)batch_size * num_features * sizeof(float);
+    size_t targets_size = (size_t)batch_size * num_targets * sizeof(float);
+    if (!bbb_validate_buffer_access(features, 0, features_size, features_size, "nimcp_brain_train_batch")) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for batch features buffer");
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    if (!bbb_validate_buffer_access(targets, 0, targets_size, targets_size, "nimcp_brain_train_batch")) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for batch targets buffer");
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
 
     // Train on each example and average results
     float total_loss = 0.0f;
@@ -799,10 +835,11 @@ nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain) {
     return NIMCP_OK;
 }
 
-// Track callback wrappers for cleanup
+// Track callback wrappers for cleanup (thread-safe)
 #define MAX_CALLBACK_WRAPPERS 256
 static callback_wrapper_t* g_callback_wrappers[MAX_CALLBACK_WRAPPERS] = {0};
 static uint32_t g_next_wrapper_id = 0;
+static nimcp_mutex_t g_callback_wrappers_mutex = NIMCP_MUTEX_INITIALIZER;
 
 uint32_t nimcp_brain_register_callback(
     nimcp_brain_t brain,
@@ -846,13 +883,15 @@ uint32_t nimcp_brain_register_callback(
     wrapper->public_callback = callback;
     wrapper->user_data = user_data;
 
-    // Store wrapper for cleanup
+    // Store wrapper for cleanup (thread-safe)
+    nimcp_mutex_lock(&g_callback_wrappers_mutex);
     uint32_t wrapper_idx = g_next_wrapper_id % MAX_CALLBACK_WRAPPERS;
     if (g_callback_wrappers[wrapper_idx]) {
         nimcp_free(g_callback_wrappers[wrapper_idx]);
     }
     g_callback_wrappers[wrapper_idx] = wrapper;
     g_next_wrapper_id++;
+    nimcp_mutex_unlock(&g_callback_wrappers_mutex);
 
     // Map public event type to internal event type
     tcb_event_type_t internal_event;

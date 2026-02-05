@@ -20,7 +20,7 @@
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(combinatorial_harm)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(directives_comb_harm)
 
 /* Local mutex helper macros */
 #define nimcp_mutex_create() combinatorial_mutex_create()

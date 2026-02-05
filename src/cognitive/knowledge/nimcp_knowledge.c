@@ -236,9 +236,11 @@ static int compare_confidence(const char* key1, const char* key2)
     }
 
     // Key format is "confidence_index" (e.g., "0.300000_00123")
-    // atof stops at underscore, giving us the confidence value
-    float conf1 = atof(key1);
-    float conf2 = atof(key2);
+    // P1-2 fix: Use strtof instead of atof for safe conversion
+    // strtof stops at underscore, giving us the confidence value
+    char* endptr;
+    float conf1 = strtof(key1, &endptr);
+    float conf2 = strtof(key2, &endptr);
 
     if (conf1 < conf2) return -1;
     if (conf1 > conf2) return 1;

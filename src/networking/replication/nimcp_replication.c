@@ -48,6 +48,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_path_traversal.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
@@ -390,9 +391,21 @@ static bool filesystem_store_brain(void* context, const char* brain_name, const 
     char brain_path[512];
     snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
 
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(brain_path)) {
+        set_replication_error("Path validation failed: %s", brain_path);
+        return false;
+    }
+
     // Write to temporary file first (atomic operation)
     char tmp_path[512];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", brain_path);
+
+    // P1-3 fix: Path traversal validation for temp path
+    if (!nimcp_path_is_safe(tmp_path)) {
+        set_replication_error("Temp path validation failed: %s", tmp_path);
+        return false;
+    }
 
     FILE* f = fopen(tmp_path, "wb");
     if (!f) {
@@ -445,6 +458,12 @@ static bool filesystem_retrieve_brain(void* context, const char* brain_name, voi
     // Create brain file path
     char brain_path[512];
     snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(brain_path)) {
+        set_replication_error("Path validation failed: %s", brain_path);
+        return false;
+    }
 
     // Open file
     FILE* f = fopen(brain_path, "rb");
@@ -586,6 +605,11 @@ static bool filesystem_heartbeat(void* context, const char* node_id)
     char heartbeat_path[512];
     snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
              node_id);
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(heartbeat_path)) {
+        return false;
+    }
 
     // Touch file (create or update timestamp)
     FILE* f = fopen(heartbeat_path, "w");

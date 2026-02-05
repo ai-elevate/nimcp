@@ -61,6 +61,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp_crypto)
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "security/nimcp_constant_time.h"
 #include "async/nimcp_bio_async.h"
 #include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
@@ -1002,7 +1003,7 @@ hkdf_cleanup:
     LOG_WARN("nlp_crypto_derive_session_key: Using insecure hash");
 
     // Simple hash: XOR all input bytes
-    memset(session_key, 0, NLP_CRYPTO_KEY_SIZE);
+    nimcp_secure_zero(session_key, NLP_CRYPTO_KEY_SIZE);
 
     for (size_t i = 0; i < secret_len; i++) {
         session_key[i % NLP_CRYPTO_KEY_SIZE] ^= shared_secret[i];

@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -93,17 +96,22 @@ static inline void collective_memory_heartbeat_instance(
 /** Growth factor when resizing arrays */
 #define ARRAY_GROWTH_FACTOR         2
 
-/** Random seed for mutation operations */
-static uint32_t g_random_seed = 12345;
+/** Random seed for mutation operations (thread-local for thread safety) */
+static __thread uint32_t g_random_seed = 0;
+static __thread bool g_random_seed_initialized = false;
 
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
 
 /**
- * @brief Simple pseudo-random number generator
+ * @brief Simple pseudo-random number generator (thread-safe)
  */
 static float random_float(void) {
+    if (!g_random_seed_initialized) {
+        g_random_seed = (uint32_t)time(NULL) ^ (uint32_t)((uintptr_t)pthread_self() & 0xFFFFFFFF);
+        g_random_seed_initialized = true;
+    }
     g_random_seed = g_random_seed * 1103515245 + 12345;
     return (float)(g_random_seed & 0x7FFFFFFF) / (float)0x7FFFFFFF;
 }

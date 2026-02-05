@@ -41,7 +41,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(capability)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(capability_control)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

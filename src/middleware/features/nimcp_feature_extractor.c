@@ -36,7 +36,7 @@
 #define LOG_MODULE_ID 0x051A
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(feature_extractor)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_extractor)
 
 //=============================================================================
 // Internal Structures

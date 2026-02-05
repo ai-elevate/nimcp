@@ -33,7 +33,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(emotional_tagging)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotional_tagging)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

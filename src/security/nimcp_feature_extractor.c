@@ -40,7 +40,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_extractor)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_feature_extractor)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

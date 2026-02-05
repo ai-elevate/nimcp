@@ -25,7 +25,7 @@
  *===========================================================================*/
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_tracking)
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -534,7 +534,7 @@ int dragonfly_tracker_update(
     float dt
 ) {
     /* Phase 8: Send heartbeat at start of tracking update */
-    dragonfly_heartbeat("tracker_update", 0.0f);
+    dragonfly_tracking_heartbeat("tracker_update", 0.0f);
 
     if (!tracker) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_update: tracker is NULL");

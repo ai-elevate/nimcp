@@ -40,49 +40,50 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotional_tagging)
+// Use unique prefix to avoid conflict with cognitive/nimcp_emotional_tagging.c
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ft_emotional_tagging)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
 
-static mesh_participant_id_t g_emotional_tagging_mesh_id = 0;
-static mesh_participant_registry_t* g_emotional_tagging_mesh_registry = NULL;
+static mesh_participant_id_t g_ft_emotional_tagging_mesh_id = 0;
+static mesh_participant_registry_t* g_ft_emotional_tagging_mesh_registry = NULL;
 
-nimcp_error_t emotional_tagging_mesh_register(mesh_participant_registry_t* registry) {
+nimcp_error_t ft_emotional_tagging_mesh_register(mesh_participant_registry_t* registry) {
     if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_emotional_tagging_mesh_id != 0) return NIMCP_SUCCESS;
+    if (g_ft_emotional_tagging_mesh_id != 0) return NIMCP_SUCCESS;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "emotional_tagging", MESH_MAX_NAME_LEN - 1);
+    strncpy(iface.module_name, "ft_emotional_tagging", MESH_MAX_NAME_LEN - 1);
     iface.type = MESH_PARTICIPANT_MODULE;
     iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
     mesh_participant_config_t config;
     mesh_participant_config_init(&config);
-    config.module_name = "emotional_tagging";
+    config.module_name = "ft_emotional_tagging";
     config.type = MESH_PARTICIPANT_MODULE;
     config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_emotional_tagging_mesh_id);
-    if (err == NIMCP_SUCCESS) g_emotional_tagging_mesh_registry = registry;
+    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_ft_emotional_tagging_mesh_id);
+    if (err == NIMCP_SUCCESS) g_ft_emotional_tagging_mesh_registry = registry;
     return err;
 }
 
-void emotional_tagging_mesh_unregister(void) {
-    if (g_emotional_tagging_mesh_registry && g_emotional_tagging_mesh_id != 0) {
-        mesh_participant_unregister(g_emotional_tagging_mesh_registry, g_emotional_tagging_mesh_id);
-        g_emotional_tagging_mesh_id = 0;
-        g_emotional_tagging_mesh_registry = NULL;
+void ft_emotional_tagging_mesh_unregister(void) {
+    if (g_ft_emotional_tagging_mesh_registry && g_ft_emotional_tagging_mesh_id != 0) {
+        mesh_participant_unregister(g_ft_emotional_tagging_mesh_registry, g_ft_emotional_tagging_mesh_id);
+        g_ft_emotional_tagging_mesh_id = 0;
+        g_ft_emotional_tagging_mesh_registry = NULL;
     }
 }
 
 
-/** @brief Send heartbeat from emotional_tagging module (instance-level) */
-static inline void emotional_tagging_heartbeat_instance(
+/** @brief Send heartbeat from ft_emotional_tagging module (instance-level) */
+static inline void ft_emotional_tagging_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_emotional_tagging_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_emotional_tagging_health_agent, operation, progress);
+    if (g_ft_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_ft_emotional_tagging_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_emotional_tagging_health_agent) {
+    if (instance_agent && instance_agent != g_ft_emotional_tagging_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -430,7 +431,7 @@ static void update_statistics(
 
 nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_tagger_cre", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_tagger_cre", 0.0f);
 
 
     LOG_DEBUG("Creating module");
@@ -477,7 +478,7 @@ return tagger;
 
 void nimcp_emotional_tagger_destroy(nimcp_emotional_tagger_t* tagger) {
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_tagger_des", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_tagger_des", 0.0f);
 
 
     LOG_DEBUG("Destroying module");
@@ -515,7 +516,7 @@ bool nimcp_emotional_tagger_reset(nimcp_emotional_tagger_t* tagger) {
      * WHY:  Start fresh tracking
      * HOW:  Zero out stats structure (thread-safe) */
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_tagger_res", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_tagger_res", 0.0f);
 
 
     nimcp_mutex_lock(&tagger->mutex);
@@ -558,7 +559,7 @@ bool nimcp_emotional_tagger_compute_tag(
      * WHY:  Valence and arousal form the base of emotional space
      * HOW:  Call helper functions that analyze episode context */
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_tagger_com", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_tagger_com", 0.0f);
 
 
     output->valence = compute_valence(episode);
@@ -605,7 +606,7 @@ float nimcp_emotional_memory_boost(const nimcp_emotional_tag_t* emotion) {
      * WHY:  Arousal is primary driver of memory consolidation
      * HOW:  Linear mapping from arousal to boost range */
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_memory_boo", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_memory_boo", 0.0f);
 
 
     float boost = BASE_MEMORY_BOOST;
@@ -661,7 +662,7 @@ float nimcp_emotional_priority(const nimcp_emotional_tag_t* emotion) {
      * WHY:  Arousal gates attention and working memory access
      * HOW:  Direct mapping */
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_priority", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_priority", 0.0f);
 
 
     float priority = emotion->arousal;
@@ -694,7 +695,7 @@ bool nimcp_emotional_tagger_get_stats(
      * WHY:  Statistics may be updated concurrently
      * HOW:  Mutex-protected memcpy */
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_emotional_tagger_get", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_emotional_tagger_get", 0.0f);
 
 
     nimcp_mutex_lock((nimcp_mutex_t*)&tagger->mutex);
@@ -712,7 +713,7 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    emotional_tagging_heartbeat("emotional_ta_query_self_knowledge", 0.0f);
+    ft_emotional_tagging_heartbeat("emotional_ta_query_self_knowledge", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_Tagging");
@@ -720,7 +721,7 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                emotional_tagging_heartbeat("emotional_ta_loop",
+                ft_emotional_tagging_heartbeat("emotional_ta_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 
@@ -733,7 +734,7 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < connections->count; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && connections->count > 256) {
-                emotional_tagging_heartbeat("emotional_ta_loop",
+                ft_emotional_tagging_heartbeat("emotional_ta_loop",
                                  (float)(i + 1) / (float)connections->count);
             }
 
@@ -749,7 +750,7 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < incoming->count; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && incoming->count > 256) {
-                emotional_tagging_heartbeat("emotional_ta_loop",
+                ft_emotional_tagging_heartbeat("emotional_ta_loop",
                                  (float)(i + 1) / (float)incoming->count);
             }
 
@@ -766,10 +767,10 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
 /* ============================================================================
  * Phase 8: Instance-level health agent setter
  * ============================================================================ */
-void emotional_tagging_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+void ft_emotional_tagging_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
         (void)instance;  /* No struct-level health_agent; use global */
-        g_emotional_tagging_health_agent = agent;
+        g_ft_emotional_tagging_health_agent = agent;
     }
 }
 
@@ -783,7 +784,7 @@ int emotional_tagging_training_begin(nimcp_emotional_tagger_t* instance) {
         return -1;
     }
     struct nimcp_emotional_tagger* ctx = (struct nimcp_emotional_tagger*)instance;
-    emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_begin", 0.0f);
+    ft_emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_begin", 0.0f);
     memset(&ctx->stats, 0, sizeof(ctx->stats));
     NIMCP_LOGGING_INFO("%s training begin: counters reset", "emotional_tagging");
     return 0;
@@ -798,7 +799,7 @@ int emotional_tagging_training_step(nimcp_emotional_tagger_t* instance, float pr
     struct nimcp_emotional_tagger* ctx = (struct nimcp_emotional_tagger*)instance;
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_step", progress);
+    ft_emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_step", progress);
     /* Increment tagging stats during training step */
     ctx->stats.total_tags++;
     return 0;
@@ -811,7 +812,7 @@ int emotional_tagging_training_end(nimcp_emotional_tagger_t* instance) {
         return -1;
     }
     struct nimcp_emotional_tagger* ctx = (struct nimcp_emotional_tagger*)instance;
-    emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_end", 1.0f);
+    ft_emotional_tagging_heartbeat_instance(NULL, "emotional_ta_training_end", 1.0f);
     NIMCP_LOGGING_INFO("%s training end: total_tags=%lu", "emotional_tagging",
                        (unsigned long)ctx->stats.total_tags);
     return 0;

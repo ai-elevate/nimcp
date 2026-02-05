@@ -88,6 +88,7 @@ static void network_detect_init_impl(void);
  */
 static bool detect_mpi_environment(network_capabilities_t* caps)
 {
+    // P1-2 fix: Helper to safely parse environment variables using strtol
     // Open MPI environment variables
     if (getenv("OMPI_COMM_WORLD_SIZE") != NULL) {
         caps->mpi_impl = MPI_IMPL_OPENMPI;
@@ -95,9 +96,27 @@ static bool detect_mpi_environment(network_capabilities_t* caps)
         const char* rank_str = getenv("OMPI_COMM_WORLD_RANK");
         const char* local_rank_str = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
 
-        if (size_str) caps->num_procs = (uint32_t)atoi(size_str);
-        if (rank_str) caps->world_rank = atoi(rank_str);
-        if (local_rank_str) caps->local_rank = atoi(local_rank_str);
+        if (size_str) {
+            char* endptr;
+            long val = strtol(size_str, &endptr, 10);
+            if (endptr != size_str && val > 0 && val <= UINT32_MAX) {
+                caps->num_procs = (uint32_t)val;
+            }
+        }
+        if (rank_str) {
+            char* endptr;
+            long val = strtol(rank_str, &endptr, 10);
+            if (endptr != rank_str && val >= 0 && val <= INT32_MAX) {
+                caps->world_rank = (int)val;
+            }
+        }
+        if (local_rank_str) {
+            char* endptr;
+            long val = strtol(local_rank_str, &endptr, 10);
+            if (endptr != local_rank_str && val >= 0 && val <= INT32_MAX) {
+                caps->local_rank = (int)val;
+            }
+        }
 
         LOG_DEBUG("Detected Open MPI environment: procs=%u, rank=%d",
                   caps->num_procs, caps->world_rank);
@@ -110,8 +129,20 @@ static bool detect_mpi_environment(network_capabilities_t* caps)
         const char* size_str = getenv("PMI_SIZE");
         const char* rank_str = getenv("PMI_RANK");
 
-        if (size_str) caps->num_procs = (uint32_t)atoi(size_str);
-        if (rank_str) caps->world_rank = atoi(rank_str);
+        if (size_str) {
+            char* endptr;
+            long val = strtol(size_str, &endptr, 10);
+            if (endptr != size_str && val > 0 && val <= UINT32_MAX) {
+                caps->num_procs = (uint32_t)val;
+            }
+        }
+        if (rank_str) {
+            char* endptr;
+            long val = strtol(rank_str, &endptr, 10);
+            if (endptr != rank_str && val >= 0 && val <= INT32_MAX) {
+                caps->world_rank = (int)val;
+            }
+        }
 
         LOG_DEBUG("Detected MPICH environment: procs=%u, rank=%d",
                   caps->num_procs, caps->world_rank);
@@ -131,9 +162,27 @@ static bool detect_mpi_environment(network_capabilities_t* caps)
         const char* procid_str = getenv("SLURM_PROCID");
         const char* nnodes_str = getenv("SLURM_NNODES");
 
-        if (ntasks_str) caps->num_procs = (uint32_t)atoi(ntasks_str);
-        if (procid_str) caps->world_rank = atoi(procid_str);
-        if (nnodes_str) caps->num_nodes = (uint32_t)atoi(nnodes_str);
+        if (ntasks_str) {
+            char* endptr;
+            long val = strtol(ntasks_str, &endptr, 10);
+            if (endptr != ntasks_str && val > 0 && val <= UINT32_MAX) {
+                caps->num_procs = (uint32_t)val;
+            }
+        }
+        if (procid_str) {
+            char* endptr;
+            long val = strtol(procid_str, &endptr, 10);
+            if (endptr != procid_str && val >= 0 && val <= INT32_MAX) {
+                caps->world_rank = (int)val;
+            }
+        }
+        if (nnodes_str) {
+            char* endptr;
+            long val = strtol(nnodes_str, &endptr, 10);
+            if (endptr != nnodes_str && val > 0 && val <= UINT32_MAX) {
+                caps->num_nodes = (uint32_t)val;
+            }
+        }
 
         LOG_DEBUG("Detected SLURM environment: procs=%u, nodes=%u, rank=%d",
                   caps->num_procs, caps->num_nodes, caps->world_rank);

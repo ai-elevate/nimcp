@@ -129,6 +129,9 @@ typedef int32_t nimcp_error_t;
 #ifndef NIMCP_ERROR_QUEUE_FULL
 #define NIMCP_ERROR_QUEUE_FULL          2009 /**< Queue is full */
 #endif
+#ifndef NIMCP_ERROR_OVERFLOW
+#define NIMCP_ERROR_OVERFLOW            2010 /**< Integer overflow detected */
+#endif
 
 //=============================================================================
 // Mesh Network Errors (2100-2199)

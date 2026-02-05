@@ -44,7 +44,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(language_production_bridge)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_production_bridge)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

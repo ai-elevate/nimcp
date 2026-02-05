@@ -20,6 +20,7 @@
 #include <regex.h>
 #include <time.h>
 #include <math.h>
+#include <errno.h>
 
 /* ============================================================================
  * Logging Configuration
@@ -381,7 +382,11 @@ static bool evaluate_condition_module(const kg_meta_module_t* meta,
         }
 
         case KG_SEARCH_OP_GREATER_THAN: {
-            double threshold = atof(cond->value);
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            char* endptr;
+            errno = 0;
+            double threshold = strtod(cond->value, &endptr);
+            if (endptr == cond->value || errno == ERANGE) threshold = 0.0;
             if (float_val > threshold || (double)int_val > threshold) {
                 *relevance_contribution = 0.6f;
                 return true;
@@ -390,7 +395,11 @@ static bool evaluate_condition_module(const kg_meta_module_t* meta,
         }
 
         case KG_SEARCH_OP_LESS_THAN: {
-            double threshold = atof(cond->value);
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            char* endptr;
+            errno = 0;
+            double threshold = strtod(cond->value, &endptr);
+            if (endptr == cond->value || errno == ERANGE) threshold = 0.0;
             if (float_val < threshold || (double)int_val < threshold) {
                 *relevance_contribution = 0.6f;
                 return true;
@@ -399,8 +408,15 @@ static bool evaluate_condition_module(const kg_meta_module_t* meta,
         }
 
         case KG_SEARCH_OP_BETWEEN: {
-            double low = atof(cond->value);
-            double high = atof(cond->value2);
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            char* endptr_low;
+            char* endptr_high;
+            errno = 0;
+            double low = strtod(cond->value, &endptr_low);
+            if (endptr_low == cond->value || errno == ERANGE) low = 0.0;
+            errno = 0;
+            double high = strtod(cond->value2, &endptr_high);
+            if (endptr_high == cond->value2 || errno == ERANGE) high = 0.0;
             double val = (float_val != 0.0f) ? float_val : (double)int_val;
             if (val >= low && val <= high) {
                 *relevance_contribution = 0.7f;
@@ -563,7 +579,19 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
 
     /* Check capacity */
     if (idx->module_count >= idx->module_capacity) {
+        /* Check for overflow before doubling capacity */
+        if (idx->module_capacity > UINT32_MAX / 2) {
+            SEARCH_LOG_ERROR("Module capacity overflow");
+            nimcp_platform_mutex_unlock(idx->mutex);
+            return -1;
+        }
         uint32_t new_capacity = idx->module_capacity * 2;
+        /* Check for allocation size overflow */
+        if (new_capacity > SIZE_MAX / sizeof(indexed_module_t)) {
+            SEARCH_LOG_ERROR("Module array size overflow");
+            nimcp_platform_mutex_unlock(idx->mutex);
+            return -1;
+        }
         indexed_module_t* new_modules = nimcp_realloc(
             idx->modules, new_capacity * sizeof(indexed_module_t)
         );

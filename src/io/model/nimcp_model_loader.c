@@ -32,6 +32,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_path_traversal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -776,6 +777,16 @@ nimcp_model_result_t nimcp_model_validate_file(const char* filepath,
         return NIMCP_MODEL_ERROR_INVALID_PARAM;
     }
 
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(filepath)) {
+        set_error("Path validation failed: %s", filepath);
+        validation->result = NIMCP_MODEL_ERROR_INVALID_PARAM;
+        snprintf(validation->error_message, sizeof(validation->error_message),
+                "Path validation failed: %s", filepath);
+        LOG_ERROR(LOG_MODULE, "Path traversal attack detected: %s", filepath);
+        return NIMCP_MODEL_ERROR_INVALID_PARAM;
+    }
+
     // Check file exists
     if (access(filepath, F_OK) != 0) {
         set_error("File not found: %s", filepath);
@@ -931,6 +942,13 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
 
     if (result != NIMCP_MODEL_SUCCESS && !opts.allow_newer_version) {
         return result;
+    }
+
+    // P1-3 fix: Path traversal validation (redundant check for defense-in-depth)
+    if (!nimcp_path_is_safe(filepath)) {
+        set_error("Path validation failed: %s", filepath);
+        LOG_ERROR(LOG_MODULE, "Path traversal attack detected: %s", filepath);
+        return NIMCP_MODEL_ERROR_INVALID_PARAM;
     }
 
     // Open file
@@ -1316,6 +1334,13 @@ nimcp_model_result_t nimcp_model_save(const nimcp_loaded_model_t* model,
 
     if (!model || !filepath) {
         set_error("NULL parameter");
+        return NIMCP_MODEL_ERROR_INVALID_PARAM;
+    }
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(filepath)) {
+        set_error("Path validation failed: %s", filepath);
+        LOG_ERROR(LOG_MODULE, "Path traversal attack detected in save: %s", filepath);
         return NIMCP_MODEL_ERROR_INVALID_PARAM;
     }
 

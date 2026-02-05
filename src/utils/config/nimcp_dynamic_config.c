@@ -42,6 +42,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
@@ -338,10 +339,24 @@ static bool parse_config_file(const char* path) {
             entry->value.bool_val = (strcmp(value, "true") == 0);
         } else if (strchr(value, '.') != NULL) {
             entry->type = CONFIG_TYPE_FLOAT;
-            entry->value.float_val = atof(value);
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            char* endptr;
+            errno = 0;
+            entry->value.float_val = strtod(value, &endptr);
+            if (endptr == value || errno == ERANGE) {
+                entry->value.float_val = 0.0;
+                LOG_MODULE_ERROR("config", "Failed to parse float value for key: %s", key);
+            }
         } else if (value[0] == '-' || isdigit((unsigned char)value[0])) {
             entry->type = CONFIG_TYPE_INT;
-            entry->value.int_val = atoll(value);
+            // P1-2 fix: Use strtoll instead of atoll for safe conversion
+            char* endptr;
+            errno = 0;
+            entry->value.int_val = strtoll(value, &endptr, 10);
+            if (endptr == value || errno == ERANGE) {
+                entry->value.int_val = 0;
+                LOG_MODULE_ERROR("config", "Failed to parse int value for key: %s", key);
+            }
         } else {
             // String value - expand environment variables
             char expanded[1024];

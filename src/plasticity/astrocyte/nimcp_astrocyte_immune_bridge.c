@@ -24,7 +24,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_immune_bridge)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(plasticity_astrocyte_immune)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(astrocyte_immune_bridge)

@@ -110,8 +110,17 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
         return false;
     }
 
+    // Check for overflow before doubling capacity
+    if (serializer->capacity > SIZE_MAX / 2) {
+        serializer->has_error = true;
+        return false;
+    }
     size_t new_capacity = serializer->capacity * 2;
     while (new_capacity < required) {
+        if (new_capacity > SIZE_MAX / 2) {
+            serializer->has_error = true;
+            return false;
+        }
         new_capacity *= 2;
     }
 

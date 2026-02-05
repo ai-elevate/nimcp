@@ -17,6 +17,10 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <time.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -2527,15 +2531,22 @@ float nimcp_stats_information_bottleneck(
 // Bootstrap Methods
 //=============================================================================
 
-// Simple LCG random for bootstrap sampling
-static uint32_t bootstrap_rand_state = 12345;
+// Simple LCG random for bootstrap sampling (thread-local for thread safety)
+static __thread uint32_t bootstrap_rand_state = 0;
+static __thread bool bootstrap_rand_initialized = false;
+
 static uint32_t bootstrap_rand(void) {
+    if (!bootstrap_rand_initialized) {
+        bootstrap_rand_state = (uint32_t)time(NULL) ^ (uint32_t)((uintptr_t)pthread_self() & 0xFFFFFFFF);
+        bootstrap_rand_initialized = true;
+    }
     bootstrap_rand_state = bootstrap_rand_state * 1103515245 + 12345;
     return (bootstrap_rand_state >> 16) & 0x7FFF;
 }
 
 static void bootstrap_seed(uint32_t seed) {
     bootstrap_rand_state = seed;
+    bootstrap_rand_initialized = true;
 }
 
 // Helper: compute Pearson correlation coefficient (inline to avoid circular dep)

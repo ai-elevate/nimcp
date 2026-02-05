@@ -680,17 +680,13 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         base_seed = (uint32_t)time(NULL);
     }
 
-    /* Initialize mutex */
-    pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    /* Initialize mutex - use NIMCP mutex abstraction (P0-6 fix) */
+    mutex_attr_t attr = {.type = MUTEX_TYPE_RECURSIVE};
     if (nimcp_mutex_init(&bridge->base.mutex, &attr) != 0) {
-        pthread_mutexattr_destroy(&attr);
         nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to initialize mutex");
         return NULL;
     }
-    pthread_mutexattr_destroy(&attr);
     bridge->mutex_initialized = true;
 
     /* Initialize per-target generators */

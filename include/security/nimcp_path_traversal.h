@@ -367,6 +367,22 @@ NIMCP_EXPORT void nimcp_path_print_result(const nimcp_path_validation_result_t* 
  */
 NIMCP_EXPORT void nimcp_path_print_stats(const nimcp_path_validator_stats_t* stats);
 
+//=============================================================================
+// Convenience Functions
+//=============================================================================
+
+/**
+ * @brief Quick path validation without managing validator instance
+ *
+ * WHAT: Validate a path for traversal attacks using a thread-local validator
+ * WHY:  Simplify common use case of one-off path validation before file access
+ * HOW:  Uses a lazily-initialized thread-local validator with default config
+ *
+ * @param path Path to validate
+ * @return true if path is safe, false if threat detected
+ */
+NIMCP_EXPORT bool nimcp_path_is_safe(const char* path);
+
 #ifdef __cplusplus
 }
 #endif

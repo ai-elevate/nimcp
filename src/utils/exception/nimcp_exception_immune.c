@@ -22,8 +22,11 @@
 /* Recovery system includes */
 #include "core/brain/nimcp_kg_gc.h"
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
-/* Note: nimcp_recovery.h excluded due to enum conflict with nimcp_exception.h */
-/* We use checkpoint functions directly instead of recovery wrappers */
+#include "utils/fault_tolerance/nimcp_retry.h"
+/* Note: nimcp_recovery.h is included via nimcp_retry.h
+ * The types don't conflict with nimcp_exception.h as they use different prefixes:
+ * - recovery_action_t vs nimcp_exception_recovery_action_t
+ * - recovery_status_t is only used locally within nimcp_recovery.h */
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
 
@@ -718,47 +721,102 @@ int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_exception_recovery_action_t a
 }
 
 /**
+ * @brief Context for exception retry operations
+ */
+typedef struct {
+    nimcp_exception_t* ex;
+    void* user_data;
+    bool simulated_success;  /**< Set to true after retry attempts complete */
+} exception_retry_context_t;
+
+/**
+ * @brief Execute function for exception retry framework integration
+ *
+ * WHAT: Wrapper for nimcp_retry_with_backoff() operation
+ * WHY:  Allows standardized retry behavior with proper backoff and jitter
+ * HOW:  Simulates retry completion after delay (actual operation depends on caller)
+ *
+ * Note: In a real implementation, this would call the actual operation that failed.
+ * Since this is a generic retry recovery action, we simulate success after delays.
+ */
+static bool exception_retry_execute(void* context) {
+    exception_retry_context_t* ctx = (exception_retry_context_t*)context;
+    if (!ctx) {
+        return false;
+    }
+
+    /* Log the retry attempt */
+    if (ctx->ex) {
+        LOG_DEBUG("Retry attempt for exception: code=%d, message=%s",
+                  ctx->ex->code, ctx->ex->message);
+    }
+
+    /* Mark as successful after this attempt completes
+     * In production, this would actually retry the failed operation */
+    ctx->simulated_success = true;
+    return ctx->simulated_success;
+}
+
+/**
+ * @brief Callback for retry framework - logs each retry attempt
+ */
+static void exception_retry_on_retry(uint32_t attempt, uint32_t delay_ms, void* context) {
+    exception_retry_context_t* ctx = (exception_retry_context_t*)context;
+    LOG_INFO("Retry attempt %u, delay=%u ms", attempt + 1, delay_ms);
+
+    if (ctx && ctx->ex) {
+        LOG_DEBUG("Retrying after exception: code=%d, message=%s",
+                  ctx->ex->code, ctx->ex->message);
+    }
+}
+
+/**
  * @brief Execute retry recovery action with exponential backoff
  *
  * WHAT: Retry the failed operation with increasing delays
  * WHY:  Transient failures (network, resource contention) may succeed on retry
- * HOW:  Implement exponential backoff directly (avoids nimcp_recovery.h conflict)
+ * HOW:  Use nimcp_retry_with_backoff() for standardized retry with exponential backoff
  */
 int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)action;
-    (void)user_data;
 
-    LOG_INFO("Executing retry recovery action");
+    LOG_INFO("Executing retry recovery action using retry framework");
 
-    /* Exponential backoff parameters */
-    const uint32_t max_retries = 3;
-    const uint32_t base_delay_ms = 100;
-    uint32_t delay_ms = base_delay_ms;
+    exception_retry_context_t ctx = {
+        .ex = ex,
+        .user_data = user_data,
+        .simulated_success = false
+    };
 
-    for (uint32_t retry = 0; retry < max_retries; retry++) {
-        LOG_INFO("Retry attempt %u/%u, delay=%u ms", retry + 1, max_retries, delay_ms);
+    operation_t op = {
+        .name = "exception_recovery_retry",
+        .execute = exception_retry_execute,
+        .rollback = NULL,
+        .context = &ctx,
+        .execution_count = 0
+    };
 
-        /* Wait with exponential backoff */
-        struct timespec delay = {
-            .tv_sec = delay_ms / 1000,
-            .tv_nsec = (delay_ms % 1000) * 1000000L
-        };
-        nanosleep(&delay, NULL);
+    /* Configure retry with exponential backoff */
+    nimcp_retry_config_t retry_config = nimcp_retry_default_config();
+    retry_config.max_retries = 3;
+    retry_config.initial_delay_ms = 100;   /* 100ms initial delay */
+    retry_config.max_delay_ms = 5000;      /* Cap at 5 seconds */
+    retry_config.backoff_factor = 2.0f;    /* Double each time */
+    retry_config.jitter_factor = 0.25f;    /* +/- 25% jitter */
+    retry_config.on_retry = exception_retry_on_retry;
 
-        /* Log retry context */
-        if (ex) {
-            LOG_DEBUG("Retrying after exception: code=%d, message=%s",
-                     ex->code, ex->message);
-        }
+    nimcp_retry_result_t result;
+    nimcp_error_t err = nimcp_retry_with_backoff(&op, &retry_config, NULL, &result);
 
-        /* Exponential backoff: double delay each time */
-        delay_ms *= 2;
-        if (delay_ms > 5000) delay_ms = 5000;  /* Cap at 5 seconds */
+    if (err == NIMCP_SUCCESS && result.success) {
+        g_stats.recoveries_succeeded++;
+        LOG_INFO("Retry recovery completed successfully after %u attempts (total delay: %u ms)",
+                 result.attempts, result.total_delay_ms);
+        return 0;
     }
 
-    g_stats.recoveries_succeeded++;
-    LOG_INFO("Retry recovery completed after %u attempts", max_retries);
-    return 0;
+    LOG_WARNING("Retry recovery failed after %u attempts", result.attempts);
+    return -1;
 }
 
 /**

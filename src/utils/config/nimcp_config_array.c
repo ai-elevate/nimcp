@@ -28,6 +28,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
@@ -861,7 +862,14 @@ config_array_t* config_parse_float_array(const char* str) {
     char* token = strtok(start, ",");
     while (token) {
         token = trim_and_unquote(token);
-        double val = atof(token);
+        // P1-2 fix: Use strtod instead of atof for safe conversion
+        char* endptr;
+        errno = 0;
+        double val = strtod(token, &endptr);
+        if (endptr == token || errno == ERANGE) {
+            LOG_WARN("config_parse_float_array: invalid float value '%s'", token);
+            val = 0.0;
+        }
         if (!config_array_append_float(arr, val)) {
             LOG_ERROR("config_parse_float_array: failed to append value");
             config_array_destroy(arr);

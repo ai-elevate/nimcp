@@ -38,12 +38,15 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vesicle_packaging)
 /**
  * @brief Generate uniform random number [0, 1]
  *
- * WHAT: Simple LCG random number generator
+ * WHAT: Simple LCG random number generator (thread-safe)
  * WHY:  Need fast random for binomial vesicle release
- * HOW:  Linear congruential generator
+ * HOW:  Linear congruential generator with thread-local seed
+ *
+ * Thread safety: Uses __thread storage to prevent race conditions
+ * when multiple threads call this function concurrently.
  */
 static inline float random_uniform(void) {
-    static uint32_t seed = 123456789;
+    static __thread uint32_t seed = 123456789;
     seed = (NIMCP_LCG_MULTIPLIER * seed + NIMCP_LCG_INCREMENT) & 0x7fffffff;
     return (float)seed / (float)0x7fffffff;
 }

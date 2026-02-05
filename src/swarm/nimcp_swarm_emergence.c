@@ -28,16 +28,23 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_emergence)
 
-static bool g_bbb_registered = false;
+#include "utils/thread/nimcp_atomic.h"
+
+/* Thread-safe BBB registration using atomic compare-exchange */
+static nimcp_atomic_bool_t g_bbb_registered = {0};
 
 /**
- * @brief Initialize BBB security for emergence
+ * @brief Initialize BBB security for emergence (thread-safe)
+ *
+ * Uses atomic compare-exchange to ensure exactly one thread
+ * performs the registration, preventing TOCTOU race conditions.
  */
 static void emergence_init_bbb(void)
 {
-    if (!g_bbb_registered) {
+    bool expected = false;
+    if (nimcp_atomic_compare_exchange_bool(&g_bbb_registered, &expected, true,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
         bbb_register_module("swarm_emergence", BBB_MODULE_TYPE_SWARM);
-        g_bbb_registered = true;
         bbb_audit_log(BBB_AUDIT_INFO, "swarm_emergence", "init", "Module registered with BBB");
     }
 }

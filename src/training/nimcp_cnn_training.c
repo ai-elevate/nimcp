@@ -26,6 +26,10 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <time.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -2594,7 +2598,12 @@ nimcp_error_t cnn_augment_batch(nimcp_tensor_t* batch,
     uint32_t batch_size = shape.dims[0];
     size_t sample_size = shape.numel / batch_size;
 
-    static uint32_t aug_seed = 12345;
+    static __thread uint32_t aug_seed = 0;
+    static __thread bool aug_seed_initialized = false;
+    if (!aug_seed_initialized) {
+        aug_seed = (uint32_t)time(NULL) ^ (uint32_t)((uintptr_t)pthread_self() & 0xFFFFFFFF);
+        aug_seed_initialized = true;
+    }
 
     for (uint32_t b = 0; b < batch_size; b++) {
         float* sample = &data[b * sample_size];

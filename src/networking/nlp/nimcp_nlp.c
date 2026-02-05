@@ -44,7 +44,7 @@
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(nlp)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp)
 
 //=============================================================================
 // Module Registration

@@ -340,8 +340,20 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
 
     // Check capacity
     if (engine->boid_count >= engine->boid_capacity) {
+        // Check for overflow before doubling capacity
+        if (engine->boid_capacity > UINT32_MAX / 2) {
+            LOG_ERROR("Boid capacity overflow");
+            nimcp_platform_mutex_unlock(engine->mutex);
+            return 0;
+        }
         // Reallocate
         uint32_t new_capacity = engine->boid_capacity * 2;
+        // Check for allocation size overflow
+        if (new_capacity > SIZE_MAX / sizeof(nimcp_boid_t)) {
+            LOG_ERROR("Boid array size overflow");
+            nimcp_platform_mutex_unlock(engine->mutex);
+            return 0;
+        }
         nimcp_boid_t *new_boids = (nimcp_boid_t *)nimcp_realloc(engine->boids,
                                                           new_capacity * sizeof(nimcp_boid_t));
         if (!new_boids) {

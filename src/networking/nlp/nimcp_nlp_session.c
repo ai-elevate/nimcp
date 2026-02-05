@@ -68,6 +68,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "security/nimcp_constant_time.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -477,7 +478,7 @@ int nlp_session_init(nlp_peer_t* peer) {
 
     // Initialize session state
     peer->session_state = NLP_SESSION_DISCONNECTED;
-    memset(peer->session_key, 0, NLP_KEY_SIZE);
+    nimcp_secure_zero(peer->session_key, NLP_KEY_SIZE);
 
     // Initialize sequence numbers with cryptographically secure random start
     // WHY: Predictable sequence numbers enable TCP-style sequence prediction attacks

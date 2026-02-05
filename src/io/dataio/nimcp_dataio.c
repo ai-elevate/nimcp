@@ -26,6 +26,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dataio)
 #include "nimcp.h"  // For nimcp_brain_learn_example, nimcp_status_t
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_path_traversal.h"
 #include "utils/rng/nimcp_rand.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
@@ -204,6 +205,12 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
         return false;
     }
 
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(config->location)) {
+        dataio_set_error("Path validation failed: %s", config->location);
+        return false;
+    }
+
     // Allocate context
     csv_context_t* csv_ctx = nimcp_calloc(1, sizeof(csv_context_t));
     if (!csv_ctx) {
@@ -312,7 +319,14 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
         strncpy(token_copy, token, sizeof(token_copy) - 1);
         token_copy[sizeof(token_copy) - 1] = '\0';
 
-        features[i] = atof(token);
+        // P1-2 fix: Use strtod instead of atof for safe conversion
+        char* endptr;
+        errno = 0;
+        features[i] = (float)strtod(token, &endptr);
+        if (endptr == token || errno == ERANGE) {
+            fprintf(stderr, "[DataIO] Failed to convert token to float at index %u: '%s'\n", i, token_copy);
+            features[i] = 0.0f;
+        }
 
         // Validate parsed float value
         if (!nimcp_validate_float_field(&features[i], sizeof(float))) {
@@ -357,7 +371,17 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
     // Read batch_size rows (or remaining rows)
     uint32_t batch_size = 1000;  // Default batch size
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
+    if (!batch->features) {
+        dataio_set_error("Failed to allocate features array");
+        return false;
+    }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
+    if (!batch->labels) {
+        nimcp_free(batch->features);
+        batch->features = NULL;
+        dataio_set_error("Failed to allocate labels array");
+        return false;
+    }
     batch->num_samples = 0;
 
     char line[4096];
@@ -381,7 +405,19 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         // free immediately and DON'T increment. Next allocation overwrites.
         uint32_t num_features = csv_ctx->num_features;  // Get from context (configured at initialization)
         batch->features[batch->num_samples] = nimcp_calloc(num_features, sizeof(float));
+        if (!batch->features[batch->num_samples]) {
+            // Memory allocation failed - end batch early
+            batch->end_of_dataset = true;
+            break;
+        }
         batch->labels[batch->num_samples] = nimcp_calloc(64, sizeof(char));
+        if (!batch->labels[batch->num_samples]) {
+            // Memory allocation failed - free features and end batch early
+            nimcp_free(batch->features[batch->num_samples]);
+            batch->features[batch->num_samples] = NULL;
+            batch->end_of_dataset = true;
+            break;
+        }
 
         // Parse line using configured delimiter
         if (!csv_parse_line(line, csv_ctx->delimiter, num_features, 1, batch->features[batch->num_samples],
@@ -478,9 +514,126 @@ typedef struct {
 } postgres_context_t;
 
 /**
+ * WHAT: Validate SQL query for safety
+ * WHY:  Prevent SQL injection attacks by validating query structure
+ * HOW:  Check for dangerous patterns and ensure only SELECT queries are allowed
+ *
+ * @param query The SQL query to validate
+ * @return true if query appears safe, false otherwise
+ *
+ * SECURITY: This function implements defense-in-depth for SQL injection prevention:
+ * 1. Only SELECT queries are allowed (no INSERT, UPDATE, DELETE, DROP, etc.)
+ * 2. No command chaining (;) to prevent multiple statement execution
+ * 3. No comment injection (-- or /* patterns)
+ * 4. No UNION attacks (prevents data extraction from other tables)
+ */
+#ifdef HAVE_LIBPQ
+static bool postgres_validate_query(const char* query) {
+    if (!query || !*query) {
+        return false;
+    }
+
+    /* Skip leading whitespace */
+    while (*query == ' ' || *query == '\t' || *query == '\n' || *query == '\r') {
+        query++;
+    }
+
+    /* Query must start with SELECT (case-insensitive) */
+    if (strncasecmp(query, "SELECT", 6) != 0) {
+        dataio_set_error("Only SELECT queries are allowed for data loading");
+        return false;
+    }
+
+    /* Check for dangerous patterns */
+    const char* dangerous_patterns[] = {
+        ";",        /* Command chaining - prevents multiple statements */
+        "--",       /* SQL comment - prevents comment injection */
+        "/*",       /* Block comment - prevents comment injection */
+        "UNION",    /* UNION attacks - prevents data extraction */
+        "INSERT",   /* Data modification */
+        "UPDATE",   /* Data modification */
+        "DELETE",   /* Data modification */
+        "DROP",     /* Schema modification */
+        "TRUNCATE", /* Data destruction */
+        "ALTER",    /* Schema modification */
+        "CREATE",   /* Schema modification */
+        "GRANT",    /* Permission modification */
+        "REVOKE",   /* Permission modification */
+        "EXEC",     /* Stored procedure execution */
+        "EXECUTE",  /* Stored procedure execution */
+        "xp_",      /* Extended procedures (SQL Server) */
+        "sp_",      /* System procedures */
+        NULL
+    };
+
+    /* Convert query to uppercase for pattern matching */
+    size_t qlen = strlen(query);
+    char* upper_query = nimcp_malloc(qlen + 1);
+    if (!upper_query) {
+        dataio_set_error("Failed to allocate memory for query validation");
+        return false;
+    }
+
+    for (size_t i = 0; i <= qlen; i++) {
+        char c = query[i];
+        upper_query[i] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c;
+    }
+
+    /* Check for dangerous patterns */
+    for (int i = 0; dangerous_patterns[i]; i++) {
+        /* For semicolon, check anywhere in query */
+        if (dangerous_patterns[i][0] == ';') {
+            if (strchr(upper_query, ';') != NULL) {
+                nimcp_free(upper_query);
+                dataio_set_error("Multiple SQL statements not allowed (semicolon found)");
+                return false;
+            }
+        }
+        /* For comment patterns, check anywhere */
+        else if (dangerous_patterns[i][0] == '-' || dangerous_patterns[i][0] == '/') {
+            if (strstr(upper_query, dangerous_patterns[i]) != NULL) {
+                nimcp_free(upper_query);
+                dataio_set_error("SQL comments not allowed in query");
+                return false;
+            }
+        }
+        /* For SQL keywords, check as whole words (not within other words) */
+        else {
+            const char* found = strstr(upper_query, dangerous_patterns[i]);
+            while (found) {
+                /* Check if this is a whole word match */
+                size_t plen = strlen(dangerous_patterns[i]);
+                bool word_start = (found == upper_query) ||
+                    (*(found - 1) == ' ' || *(found - 1) == '\t' ||
+                     *(found - 1) == '\n' || *(found - 1) == '(' ||
+                     *(found - 1) == ')' || *(found - 1) == ',');
+                bool word_end = (found[plen] == '\0' || found[plen] == ' ' ||
+                    found[plen] == '\t' || found[plen] == '\n' ||
+                    found[plen] == '(' || found[plen] == ')' ||
+                    found[plen] == ',');
+
+                if (word_start && word_end) {
+                    nimcp_free(upper_query);
+                    dataio_set_error("Dangerous SQL keyword '%s' not allowed", dangerous_patterns[i]);
+                    return false;
+                }
+                found = strstr(found + 1, dangerous_patterns[i]);
+            }
+        }
+    }
+
+    nimcp_free(upper_query);
+    return true;
+}
+#endif
+
+/**
  * WHAT: Initialize PostgreSQL data source
  * WHY: Connect to database, execute query
- * HOW: Use libpq to connect and execute query
+ * HOW: Use libpq to connect and execute validated query
+ *
+ * SECURITY: Query is validated before execution to prevent SQL injection.
+ *           Only SELECT queries without dangerous patterns are allowed.
  */
 static bool postgres_initialize(void** context, const dataset_config_t* config)
 {
@@ -509,6 +662,15 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
     strncpy(pg_ctx->connection_string, config->location, conn_len);
     pg_ctx->connection_string[conn_len] = '\0';
     strncpy(pg_ctx->query, separator + 1, sizeof(pg_ctx->query) - 1);
+    pg_ctx->query[sizeof(pg_ctx->query) - 1] = '\0';  /* Ensure null termination */
+
+    /* SECURITY: Validate query before execution to prevent SQL injection */
+    if (!postgres_validate_query(pg_ctx->query)) {
+        /* Error message already set by postgres_validate_query */
+        nimcp_free(pg_ctx);
+        return false;
+    }
+
     pg_ctx->num_feature_columns = config->num_feature_columns;
     pg_ctx->num_label_columns = config->num_label_columns;
     pg_ctx->batch_size = config->batch_size > 0 ? config->batch_size : 1000;
@@ -519,7 +681,21 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
         nimcp_free(pg_ctx);
         return false;
     }
-    pg_ctx->result = PQexec(pg_ctx->db_conn, pg_ctx->query);
+
+    /* Execute query using prepared statement for additional safety */
+    const char* stmt_name = "nimcp_data_query";
+    PGresult* prepare_result = PQprepare(pg_ctx->db_conn, stmt_name, pg_ctx->query, 0, NULL);
+    if (PQresultStatus(prepare_result) != PGRES_COMMAND_OK) {
+        dataio_set_error("PostgreSQL prepare failed: %s", PQerrorMessage(pg_ctx->db_conn));
+        PQclear(prepare_result);
+        PQfinish(pg_ctx->db_conn);
+        nimcp_free(pg_ctx);
+        return false;
+    }
+    PQclear(prepare_result);
+
+    /* Execute the prepared statement */
+    pg_ctx->result = PQexecPrepared(pg_ctx->db_conn, stmt_name, 0, NULL, NULL, NULL, 0);
     if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) {
         dataio_set_error("PostgreSQL query failed: %s", PQerrorMessage(pg_ctx->db_conn));
         PQclear(pg_ctx->result);
@@ -565,14 +741,36 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
     uint32_t remaining = pg_ctx->total_rows - pg_ctx->current_row;
     uint32_t batch_size = (remaining < pg_ctx->batch_size) ? remaining : pg_ctx->batch_size;
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
+    if (!batch->features) {
+        dataio_set_error("Failed to allocate features array");
+        return false;
+    }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
+    if (!batch->labels) {
+        nimcp_free(batch->features);
+        batch->features = NULL;
+        dataio_set_error("Failed to allocate labels array");
+        return false;
+    }
     batch->num_samples = 0;
     for (uint32_t i = 0; i < batch_size; i++) {
         uint32_t row_idx = pg_ctx->current_row + i;
         batch->features[batch->num_samples] = nimcp_calloc(pg_ctx->num_feature_columns, sizeof(float));
+        if (!batch->features[batch->num_samples]) {
+            batch->end_of_dataset = true;
+            break;
+        }
         for (uint32_t col = 0; col < pg_ctx->num_feature_columns; col++) {
             char* value = PQgetvalue(pg_ctx->result, row_idx, col);
-            batch->features[batch->num_samples][col] = PQgetisnull(pg_ctx->result, row_idx, col) ? 0.0f : (float)atof(value);
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            if (PQgetisnull(pg_ctx->result, row_idx, col)) {
+                batch->features[batch->num_samples][col] = 0.0f;
+            } else {
+                char* endptr;
+                errno = 0;
+                double dval = strtod(value, &endptr);
+                batch->features[batch->num_samples][col] = (endptr == value || errno == ERANGE) ? 0.0f : (float)dval;
+            }
         }
         uint32_t label_col = pg_ctx->num_feature_columns;
         char* label_value = PQgetvalue(pg_ctx->result, row_idx, label_col);
@@ -595,7 +793,10 @@ static bool postgres_reset(void* context)
     if (!context) return false;
     postgres_context_t* pg_ctx = (postgres_context_t*)context;
     if (pg_ctx->result) PQclear(pg_ctx->result);
-    pg_ctx->result = PQexec(pg_ctx->db_conn, pg_ctx->query);
+    /* SECURITY: Use prepared statement (created during initialize) instead of PQexec
+     * to ensure the query was validated and prevent SQL injection.
+     * The prepared statement "nimcp_data_query" was created in postgres_initialize(). */
+    pg_ctx->result = PQexecPrepared(pg_ctx->db_conn, "nimcp_data_query", 0, NULL, NULL, NULL, 0);
     if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) return false;
     pg_ctx->total_rows = (uint32_t)PQntuples(pg_ctx->result);
     pg_ctx->current_row = 0;
@@ -645,6 +846,11 @@ static bool json_initialize(void** context, const dataset_config_t* config)
 {
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid JSON configuration");
+        return false;
+    }
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(config->location)) {
+        dataio_set_error("Path validation failed: %s", config->location);
         return false;
     }
     json_context_t* json_ctx = nimcp_calloc(1, sizeof(json_context_t));
@@ -717,12 +923,26 @@ static bool json_next_batch(void* context, data_batch_t* batch)
     int remaining = json_ctx->total_items - json_ctx->current_item;
     uint32_t batch_size = (remaining < (int)json_ctx->batch_size) ? (uint32_t)remaining : json_ctx->batch_size;
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
+    if (!batch->features) {
+        dataio_set_error("Failed to allocate features array");
+        return false;
+    }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
+    if (!batch->labels) {
+        nimcp_free(batch->features);
+        batch->features = NULL;
+        dataio_set_error("Failed to allocate labels array");
+        return false;
+    }
     batch->num_samples = 0;
     for (uint32_t i = 0; i < batch_size; i++) {
         cJSON* item = cJSON_GetArrayItem(json_ctx->root, json_ctx->current_item + i);
         if (!item) continue;
         batch->features[batch->num_samples] = nimcp_calloc(json_ctx->num_features, sizeof(float));
+        if (!batch->features[batch->num_samples]) {
+            batch->end_of_dataset = true;
+            break;
+        }
         cJSON* features_array = cJSON_GetObjectItem(item, "features");
         if (features_array && cJSON_IsArray(features_array)) {
             int feature_count = cJSON_GetArraySize(features_array);
@@ -901,19 +1121,39 @@ static bool sqlite_next_batch(void* context, data_batch_t* batch)
     if (!context || !batch) return false;
     sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
     batch->features = nimcp_calloc(sqlite_ctx->batch_size, sizeof(float*));
+    if (!batch->features) {
+        dataio_set_error("Failed to allocate features array");
+        return false;
+    }
     batch->labels = nimcp_calloc(sqlite_ctx->batch_size, sizeof(char*));
+    if (!batch->labels) {
+        nimcp_free(batch->features);
+        batch->features = NULL;
+        dataio_set_error("Failed to allocate labels array");
+        return false;
+    }
     batch->num_samples = 0;
     for (uint32_t i = 0; i < sqlite_ctx->batch_size; i++) {
         int rc = sqlite3_step(sqlite_ctx->stmt);
         if (rc == SQLITE_DONE) { batch->end_of_dataset = true; break; }
         if (rc != SQLITE_ROW) break;
         batch->features[batch->num_samples] = nimcp_calloc(sqlite_ctx->num_feature_columns, sizeof(float));
+        if (!batch->features[batch->num_samples]) {
+            batch->end_of_dataset = true;
+            break;
+        }
         for (uint32_t col = 0; col < sqlite_ctx->num_feature_columns; col++) {
             batch->features[batch->num_samples][col] = (float)sqlite3_column_double(sqlite_ctx->stmt, col);
         }
         uint32_t label_col = sqlite_ctx->num_feature_columns;
         const char* label_text = (const char*)sqlite3_column_text(sqlite_ctx->stmt, label_col);
         batch->labels[batch->num_samples] = nimcp_strdup(label_text ? label_text : "");
+        if (!batch->labels[batch->num_samples]) {
+            nimcp_free(batch->features[batch->num_samples]);
+            batch->features[batch->num_samples] = NULL;
+            batch->end_of_dataset = true;
+            break;
+        }
         batch->num_samples++;
         sqlite_ctx->total_rows++;
     }
@@ -1000,9 +1240,20 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
     stream_sample_t* sample = nimcp_calloc(1, sizeof(stream_sample_t));
     if (!sample) { nimcp_mutex_unlock(&ctx->queue_lock); return false; }
     sample->features = nimcp_calloc(num_features, sizeof(float));
+    if (!sample->features) {
+        nimcp_free(sample);
+        nimcp_mutex_unlock(&ctx->queue_lock);
+        return false;
+    }
     memcpy(sample->features, features, num_features * sizeof(float));
     sample->num_features = num_features;
     sample->label = nimcp_strdup(label ? label : "");
+    if (!sample->label) {
+        nimcp_free(sample->features);
+        nimcp_free(sample);
+        nimcp_mutex_unlock(&ctx->queue_lock);
+        return false;
+    }
     sample->next = NULL;
     if (ctx->queue_tail) ctx->queue_tail->next = sample;
     else ctx->queue_head = sample;
@@ -1809,6 +2060,12 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
         return false;
     }
 
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(output_file)) {
+        dataio_set_error("Path validation failed: %s", output_file);
+        return false;
+    }
+
     // Open output file
     FILE* out = fopen(output_file, "w");
     if (!out) {
@@ -1954,6 +2211,12 @@ bool dataset_save_csv(float** features, char** labels, uint32_t num_samples, uin
 {
     if (!features || !labels || !filepath) {
         dataio_set_error("Invalid parameters");
+        return false;
+    }
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(filepath)) {
+        dataio_set_error("Path validation failed: %s", filepath);
         return false;
     }
 

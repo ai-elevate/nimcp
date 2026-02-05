@@ -180,7 +180,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_contextual_language.c    # Contextual language adaptation
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_language_production_bridge.c  # Language production bridge API
+    # DISABLED: Duplicate of broca version - causes multiple definition of language_production_bridge_set_health_agent
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_language_production_bridge.c  # Language production bridge API
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions_immune_bridge.c  # Brain regions-immune integration
 
     # Neural substrate - Computational infrastructure layer
@@ -525,7 +526,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_network_builder.c
 
     # NLP Integration - NIMCP 2.7 (combines synapses + attention + neuromodulation)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
+    # DISABLED: Duplicate of networking/nlp version - causes multiple definition of nlp_set_health_agent
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_spike_nlp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_multimodal_nlp_bridge.c
 
@@ -2709,7 +2711,8 @@ set(NIMCP_CORE_SOURCES
 
     # Module adapters - Memory layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/memory/nimcp_pr_memory_adapter.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/memory/nimcp_hippocampus_adapter.c
+    # DISABLED: Duplicate of core/brain/regions/hippocampus version - causes multiple definition of hippocampus_adapter_set_health_agent
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/memory/nimcp_hippocampus_adapter.c
 
     # Module adapters - Executive layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/executive/nimcp_basal_ganglia_adapter.c

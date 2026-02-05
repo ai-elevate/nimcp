@@ -21,6 +21,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/containers/nimcp_min_heap.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -71,8 +72,8 @@ static inline nimcp_result_t nimcp_hash_table_remove(hash_table_t *table, const 
  * Note: min_heap uses uint32_t vertex_id + float priority, we adapt for replay
  * ============================================================================ */
 
-/* Replay entry index counter for heap vertex_id */
-static uint32_t _replay_entry_counter = 0;
+/* Replay entry index counter for heap vertex_id - atomic for thread safety (P0-4 fix) */
+static nimcp_atomic_uint32_t _replay_entry_counter = {0};
 
 /* Simple array to map heap vertex_id back to replay entry pointers */
 #define MAX_REPLAY_ENTRIES 4096
@@ -81,7 +82,8 @@ static void* _replay_entry_map[MAX_REPLAY_ENTRIES];
 static inline nimcp_result_t nimcp_replay_heap_insert(nimcp_min_heap_t *heap, void *entry) {
     if (!heap || !entry) return NIMCP_INVALID_PARAM;
 
-    uint32_t idx = _replay_entry_counter++ % MAX_REPLAY_ENTRIES;
+    /* Atomic fetch-and-add for thread-safe counter increment (P0-4 fix) */
+    uint32_t idx = nimcp_atomic_fetch_add_u32(&_replay_entry_counter, 1, NIMCP_MEMORY_ORDER_RELAXED) % MAX_REPLAY_ENTRIES;
     _replay_entry_map[idx] = entry;
 
     /* Use negative priority so higher priority = lower value (min-heap) */
@@ -3255,13 +3257,17 @@ static void destroy_memory_entry(NimcpMemoryEntry *entry)
     nimcp_free(entry);
 }
 
+/* Atomic counter for generate_memory_id - thread-safe ID generation (P0-5 fix) */
+static nimcp_atomic_uint64_t _memory_id_counter = {0};
+
 static void generate_memory_id(char *buffer, size_t buffer_size)
 {
-    static uint64_t counter = 0;
     uint64_t timestamp = nimcp_time_get_us();
+    /* Atomic fetch-and-add for thread-safe counter increment (P0-5 fix) */
+    uint64_t counter = nimcp_atomic_fetch_add_u64(&_memory_id_counter, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
     snprintf(buffer, buffer_size, "MEM_%016lX_%08lX",
-             (unsigned long)timestamp, (unsigned long)counter++);
+             (unsigned long)timestamp, (unsigned long)counter);
 }
 
 static float calculate_decay_modifier(

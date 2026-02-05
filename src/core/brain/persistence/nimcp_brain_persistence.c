@@ -27,6 +27,7 @@
 #include "async/nimcp_bio_async.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_path_traversal.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "async/nimcp_bio_router.h"
@@ -347,6 +348,11 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     char meta_path[512];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(meta_path)) {
+        return false;
+    }
+
     FILE* meta_file = fopen(meta_path, "wb");
     if (!meta_file) {
         return false;
@@ -487,6 +493,12 @@ bool brain_save(brain_t brain, const char* filepath)
     if (!filepath) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save: filepath is NULL");
         set_error("Invalid parameters to brain_save");
+        return false;
+    }
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(filepath)) {
+        set_error("Path validation failed: %s", filepath);
         return false;
     }
 
@@ -650,6 +662,11 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
 {
     char meta_path[512];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(meta_path)) {
+        return false;
+    }
 
     FILE* meta_file = fopen(meta_path, "rb");
     if (!meta_file)
@@ -945,6 +962,12 @@ brain_t brain_load(const char* filepath)
     // Guard: Validate filepath
     if (!filepath) {
         set_error("Null filepath provided to brain_load");
+        return NULL;
+    }
+
+    // P1-3 fix: Path traversal validation
+    if (!nimcp_path_is_safe(filepath)) {
+        set_error("Path validation failed: %s", filepath);
         return NULL;
     }
 
@@ -1384,9 +1407,15 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
             } else if (strcmp(key, "timestamp") == 0) {
                 info->timestamp = (uint64_t)strtol(value, NULL, 10);
             } else if (strcmp(key, "compressed") == 0) {
-                info->is_compressed = (atoi(value) != 0);
+                // P1-2 fix: Use strtol instead of atoi for safe conversion
+                char* endptr;
+                long val = strtol(value, &endptr, 10);
+                info->is_compressed = (endptr != value && val != 0);
             } else if (strcmp(key, "encrypted") == 0) {
-                info->is_encrypted = (atoi(value) != 0);
+                // P1-2 fix: Use strtol instead of atoi for safe conversion
+                char* endptr;
+                long val = strtol(value, &endptr, 10);
+                info->is_encrypted = (endptr != value && val != 0);
             }
         }
 

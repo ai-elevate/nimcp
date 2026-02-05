@@ -821,3 +821,49 @@ void nimcp_path_print_stats(const nimcp_path_validator_stats_t* stats)
     printf("  Normalization Bypasses: %lu\n", (unsigned long)stats->normalization_bypasses);
     printf("  Windows Patterns: %lu\n", (unsigned long)stats->windows_patterns);
 }
+
+//=============================================================================
+// Convenience Functions
+//=============================================================================
+
+/**
+ * Thread-local validator for quick path validation
+ */
+static __thread nimcp_path_validator_t tl_quick_validator = NULL;
+static __thread bool tl_validator_initialized = false;
+
+/**
+ * @brief Get or create thread-local validator for quick validations
+ */
+static nimcp_path_validator_t get_quick_validator(void)
+{
+    if (!tl_validator_initialized) {
+        tl_quick_validator = nimcp_path_validator_create(NULL);
+        tl_validator_initialized = true;
+    }
+    return tl_quick_validator;
+}
+
+bool nimcp_path_is_safe(const char* path)
+{
+    /* Guard: NULL path is not safe */
+    if (!path) {
+        LOG_WARN(LOG_MODULE, "nimcp_path_is_safe: NULL path");
+        return false;
+    }
+
+    /* Get thread-local validator */
+    nimcp_path_validator_t validator = get_quick_validator();
+    if (!validator) {
+        /* If validator creation failed, be conservative and reject */
+        LOG_ERROR(LOG_MODULE, "nimcp_path_is_safe: Failed to create validator");
+        return false;
+    }
+
+    /* Validate path */
+    nimcp_path_validation_result_t result;
+    nimcp_path_error_t err = nimcp_path_validate(validator, path,
+                                                  NIMCP_PATH_CONTEXT_FILE, &result);
+
+    return (err == NIMCP_PATH_SUCCESS && result.valid);
+}

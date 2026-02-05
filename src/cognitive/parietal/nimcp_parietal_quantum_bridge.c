@@ -23,7 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(parietal_quantum_bridge)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cog_parietal_quantum)
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
@@ -59,13 +59,13 @@ static void parietal_quantum_bridge_mesh_unregister(void) {
 
 
 /** @brief Send heartbeat from parietal_quantum_bridge module (instance-level) */
-static inline void parietal_quantum_bridge_heartbeat_instance(
+static inline void cog_parietal_quantum_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
-    if (g_parietal_quantum_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parietal_quantum_bridge_health_agent, operation, progress);
+    if (g_cog_parietal_quantum_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cog_parietal_quantum_health_agent, operation, progress);
     }
-    if (instance_agent && instance_agent != g_parietal_quantum_bridge_health_agent) {
+    if (instance_agent && instance_agent != g_cog_parietal_quantum_health_agent) {
         nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
@@ -105,7 +105,7 @@ static void set_error(const char* msg) {
 
 parietal_quantum_config_t parietal_quantum_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_def", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_def", 0.0f);
 
 
     parietal_quantum_config_t config = {0};
@@ -132,7 +132,7 @@ parietal_quantum_bridge_t* parietal_quantum_bridge_create(
     const parietal_quantum_config_t* config
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_create", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_create", 0.0f);
 
 
     parietal_quantum_bridge_t* bridge = nimcp_malloc(sizeof(parietal_quantum_bridge_t));
@@ -158,7 +158,7 @@ parietal_quantum_bridge_t* parietal_quantum_bridge_create(
 
 void parietal_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_destroy", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_destroy", 0.0f);
 
 
     if (bridge) {
@@ -176,7 +176,7 @@ int parietal_quantum_set_enabled(parietal_quantum_bridge_t* bridge, bool enabled
 
     }
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
 
 
     bridge->base.bridge_active = enabled;
@@ -185,7 +185,7 @@ int parietal_quantum_set_enabled(parietal_quantum_bridge_t* bridge, bool enabled
 
 bool parietal_quantum_is_available(const parietal_quantum_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_is_", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_is_", 0.0f);
 
 
     return bridge && bridge->base.bridge_active;
@@ -201,7 +201,7 @@ int parietal_quantum_optimize(
     parietal_opt_result_t* result
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_opt", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_opt", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -222,7 +222,7 @@ int parietal_quantum_solve_qubo(
     float* energy
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_sol", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_sol", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -241,7 +241,7 @@ int parietal_quantum_maxcut(
     float* cut_value
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_max", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_max", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, partition, sizeof(*partition));
 
@@ -255,7 +255,7 @@ int parietal_quantum_maxcut(
 
 void parietal_quantum_free_opt_result(parietal_opt_result_t* result) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
 
 
     if (result) {
@@ -275,7 +275,7 @@ int parietal_quantum_solve_linear(
     parietal_linear_result_t* result
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_sol", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_sol", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -295,7 +295,7 @@ int parietal_quantum_eigenvalues(
     float* eigenvalues
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_eig", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_eig", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, eigenvalues, sizeof(*eigenvalues));
 
@@ -308,7 +308,7 @@ int parietal_quantum_eigenvalues(
 
 void parietal_quantum_free_linear_result(parietal_linear_result_t* result) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
 
 
     if (result) {
@@ -327,7 +327,7 @@ int parietal_quantum_vqe(
     parietal_vqe_result_t* result
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_vqe", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_vqe", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -346,7 +346,7 @@ int parietal_quantum_time_evolution(
     float* final_state
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_tim", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_tim", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, initial_state, sizeof(*initial_state));
 
@@ -359,7 +359,7 @@ int parietal_quantum_time_evolution(
 
 void parietal_quantum_free_vqe_result(parietal_vqe_result_t* result) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
 
 
     if (result) {
@@ -381,7 +381,7 @@ int parietal_quantum_walk(
     parietal_walk_result_t* result
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_wal", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_wal", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -400,7 +400,7 @@ int parietal_quantum_walk_search(
     parietal_walk_result_t* result
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_wal", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_wal", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(*result));
 
@@ -413,7 +413,7 @@ int parietal_quantum_walk_search(
 
 void parietal_quantum_free_walk_result(parietal_walk_result_t* result) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_fre", 0.0f);
 
 
     if (result) {
@@ -437,7 +437,7 @@ int parietal_quantum_topology_opt(
     float* density
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_top", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_top", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, domain, sizeof(*domain));
 
@@ -448,7 +448,7 @@ int parietal_quantum_topology_opt(
         for (uint32_t i = 0; i < total; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && total > 256) {
-                parietal_quantum_bridge_heartbeat("parietal_qua_loop",
+                cog_parietal_quantum_heartbeat("parietal_qua_loop",
                                  (float)(i + 1) / (float)total);
             }
 
@@ -466,7 +466,7 @@ int parietal_quantum_circuit_opt(
     void* ctx
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_cir", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_cir", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, component_values, sizeof(*component_values));
 
@@ -483,7 +483,7 @@ int parietal_quantum_control_opt(
     void* ctx
 ) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_con", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_con", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, params, sizeof(*params));
 
@@ -504,7 +504,7 @@ int parietal_quantum_set_inflammation(parietal_quantum_bridge_t* bridge, float l
 
     }
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
 
 
     bridge->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
@@ -520,7 +520,7 @@ int parietal_quantum_set_fatigue(parietal_quantum_bridge_t* bridge, float level)
 
     }
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_set", 0.0f);
 
 
     bridge->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
@@ -538,7 +538,7 @@ int parietal_quantum_get_stats(
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_get", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_get", 0.0f);
 
     BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
@@ -547,7 +547,7 @@ int parietal_quantum_get_stats(
 
 void parietal_quantum_reset_stats(parietal_quantum_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_parietal_quantum_res", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_res", 0.0f);
 
 
     if (bridge) {
@@ -566,7 +566,7 @@ const char* parietal_quantum_get_last_error(void) {
 int parietal_quantum_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
     /* Phase 8: Heartbeat at operation start */
-    parietal_quantum_bridge_heartbeat("parietal_qua_query_self_knowledge", 0.0f);
+    cog_parietal_quantum_heartbeat("parietal_qua_query_self_knowledge", 0.0f);
 
 
     const kg_entity_t* self = kg_reader_get_entity(kg, "Parietal_Quantum_Bridge");
@@ -574,7 +574,7 @@ int parietal_quantum_bridge_query_self_knowledge(kg_reader_t* kg) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                parietal_quantum_bridge_heartbeat("parietal_qua_loop",
+                cog_parietal_quantum_heartbeat("parietal_qua_loop",
                                  (float)(i + 1) / (float)self->num_observations);
             }
 
@@ -610,7 +610,7 @@ int parietal_quantum_bridge_training_begin(parietal_quantum_bridge_t* bridge) {
                               "parietal_quantum_bridge_training_begin: NULL argument");
         return -1;
     }
-    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_begin", 0.0f);
+    cog_parietal_quantum_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -620,7 +620,7 @@ int parietal_quantum_bridge_training_end(parietal_quantum_bridge_t* bridge) {
                               "parietal_quantum_bridge_training_end: NULL argument");
         return -1;
     }
-    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_end", 1.0f);
+    cog_parietal_quantum_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -634,7 +634,7 @@ int parietal_quantum_bridge_training_step(parietal_quantum_bridge_t* bridge, flo
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "parietal_quantum_bridge_training_step");
     BRIDGE_LGSS_GATE(bridge, "parietal_quantum_bridge_training_step");
-    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_step", progress);
+    cog_parietal_quantum_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_step", progress);
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);

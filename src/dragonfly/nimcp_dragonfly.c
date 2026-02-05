@@ -19,7 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(dragonfly)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly)
 
 //=============================================================================
 // Internal Structures

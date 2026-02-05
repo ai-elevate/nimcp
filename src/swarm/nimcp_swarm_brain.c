@@ -173,10 +173,13 @@ static uint64_t get_time_ms(void) {
 }
 
 /**
- * @brief Simple random number generator (0-max)
+ * @brief Simple random number generator (0-max) - thread-safe
+ *
+ * Uses thread-local storage for the seed to prevent race conditions
+ * when multiple threads call this function concurrently.
  */
 static uint32_t simple_rand(uint32_t max) {
-    static uint32_t seed = 12345;
+    static __thread uint32_t seed = 12345;
     seed = (1103515245 * seed + 12345) & 0x7fffffff;
     return seed % (max + 1);
 }

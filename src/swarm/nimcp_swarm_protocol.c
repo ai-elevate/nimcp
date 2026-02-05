@@ -19,22 +19,33 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_protocol)
 
+#include "utils/thread/nimcp_atomic.h"
+
 //=============================================================================
 // Protocol Statistics (Thread-safe with atomic operations)
 //=============================================================================
 
 static swarm_protocol_stats_t g_protocol_stats = {0};
-static bool g_bbb_registered = false;
+
+/* Thread-safe BBB registration using atomic compare-exchange */
+static nimcp_atomic_bool_t g_bbb_registered = {0};
 
 //=============================================================================
-// BBB Security Initialization
+// BBB Security Initialization (Thread-safe)
 //=============================================================================
 
+/**
+ * @brief Initialize BBB security for protocol (thread-safe)
+ *
+ * Uses atomic compare-exchange to ensure exactly one thread
+ * performs the registration, preventing TOCTOU race conditions.
+ */
 static void swarm_protocol_init_bbb(void)
 {
-    if (!g_bbb_registered) {
+    bool expected = false;
+    if (nimcp_atomic_compare_exchange_bool(&g_bbb_registered, &expected, true,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
         bbb_register_module("swarm_protocol", BBB_MODULE_TYPE_SWARM);
-        g_bbb_registered = true;
         bbb_audit_log(BBB_AUDIT_INFO, "swarm_protocol", "init", "Module registered with BBB");
     }
 }

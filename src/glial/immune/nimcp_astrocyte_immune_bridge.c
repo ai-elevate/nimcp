@@ -20,7 +20,7 @@
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_STATIC(astrocyte_immune_bridge)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_immune_bridge)
 
 /* ============================================================================
  * Internal Helpers

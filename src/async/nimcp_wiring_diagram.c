@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
@@ -981,21 +983,140 @@ bool wiring_diagram_get_auto_persist(const wiring_diagram_t* wd) {
  * HOW:  Query system resources (stub implementation)
  */
 /**
- * @brief Helper to check if a command exists and returns 0
+ * @brief Validate command name contains only safe characters
+ *
+ * WHAT: Check command name for potentially dangerous characters
+ * WHY:  Prevent command injection attacks
+ * HOW:  Only allow alphanumeric, hyphen, underscore, and dot
  */
-static bool check_command_exists(const char* cmd) {
-    char buf[256];
-    snprintf(buf, sizeof(buf), "which %s > /dev/null 2>&1", cmd);
-    return (system(buf) == 0);
+static bool is_safe_command_name(const char* cmd) {
+    if (!cmd || !*cmd) return false;
+    for (const char* p = cmd; *p; p++) {
+        char c = *p;
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.')) {
+            return false;  /* Invalid character in command name */
+        }
+    }
+    return true;
 }
 
 /**
- * @brief Helper to run a command and check if it succeeds
+ * @brief Helper to check if a command exists in standard paths
+ *
+ * WHAT: Check if executable exists in common binary directories
+ * WHY:  Safe alternative to system("which ...") which is vulnerable to injection
+ * HOW:  Use access() to check for executable in /usr/bin, /bin, /usr/local/bin
+ */
+static bool check_command_exists(const char* cmd) {
+    /* Validate command name - prevent injection */
+    if (!is_safe_command_name(cmd)) {
+        return false;
+    }
+
+    /* Check common paths using access() - no shell invocation */
+    static const char* paths[] = {
+        "/usr/bin/",
+        "/bin/",
+        "/usr/local/bin/",
+        "/sbin/",
+        "/usr/sbin/",
+        NULL
+    };
+
+    char full_path[512];
+    for (int i = 0; paths[i]; i++) {
+        int ret = snprintf(full_path, sizeof(full_path), "%s%s", paths[i], cmd);
+        if (ret < 0 || (size_t)ret >= sizeof(full_path)) {
+            continue;  /* Path too long, skip */
+        }
+        if (access(full_path, X_OK) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @brief Helper to run a command safely and check if it succeeds
+ *
+ * WHAT: Execute a command without using system() to prevent injection
+ * WHY:  system() is vulnerable to command injection attacks
+ * HOW:  Use fork()/execve() with explicit argument parsing
+ *
+ * @note This function only supports a predefined set of safe commands
+ *       used for hardware detection. General command execution is not supported.
  */
 static bool run_command_success(const char* cmd) {
-    char buf[512];
-    snprintf(buf, sizeof(buf), "%s > /dev/null 2>&1", cmd);
-    return (system(buf) == 0);
+    if (!cmd || !*cmd) return false;
+
+    /* Define allowed commands for hardware detection */
+    typedef struct {
+        const char* pattern;
+        const char* argv[8];
+    } allowed_cmd_t;
+
+    static const allowed_cmd_t allowed_commands[] = {
+        { "nvidia-smi", { "/usr/bin/nvidia-smi", NULL } },
+        { "rocm-smi", { "/usr/bin/rocm-smi", NULL } },
+        { "rocminfo", { "/usr/bin/rocminfo", NULL } },
+        { "sycl-ls", { "/usr/bin/sycl-ls", NULL } },
+        { "clinfo", { "/usr/bin/clinfo", NULL } },
+        { "python3 -c 'import nxsdk'", { "/usr/bin/python3", "-c", "import nxsdk", NULL } },
+        { "python3 -c 'import lava'", { "/usr/bin/python3", "-c", "import lava", NULL } },
+        { "python3 -c 'import spynnaker'", { "/usr/bin/python3", "-c", "import spynnaker", NULL } },
+        { "python3 -c 'import akida'", { "/usr/bin/python3", "-c", "import akida", NULL } },
+        { NULL, { NULL } }
+    };
+
+    /* Find matching allowed command */
+    const allowed_cmd_t* match = NULL;
+    for (int i = 0; allowed_commands[i].pattern; i++) {
+        /* Check if cmd starts with the pattern (ignoring trailing redirects) */
+        size_t plen = strlen(allowed_commands[i].pattern);
+        if (strncmp(cmd, allowed_commands[i].pattern, plen) == 0) {
+            /* Verify rest is just whitespace and/or redirects */
+            const char* rest = cmd + plen;
+            while (*rest == ' ' || *rest == '\t') rest++;
+            if (*rest == '\0' || strncmp(rest, "2>/dev/null", 11) == 0 ||
+                strncmp(rest, "> /dev/null", 11) == 0) {
+                match = &allowed_commands[i];
+                break;
+            }
+        }
+    }
+
+    if (!match) {
+        /* Command not in allowlist - reject for security */
+        return false;
+    }
+
+    /* Fork and exec safely */
+    pid_t pid = fork();
+    if (pid < 0) {
+        return false;  /* Fork failed */
+    }
+
+    if (pid == 0) {
+        /* Child process */
+        /* Redirect stdout and stderr to /dev/null */
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) {
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+        }
+
+        /* Execute with explicit arguments - no shell interpretation */
+        execv(match->argv[0], (char* const*)match->argv);
+        _exit(127);  /* exec failed */
+    }
+
+    /* Parent process - wait for child */
+    int status;
+    waitpid(pid, &status, 0);
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
 /**

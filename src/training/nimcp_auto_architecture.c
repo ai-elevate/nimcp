@@ -29,10 +29,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <errno.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(auto_architecture)
@@ -1334,7 +1334,15 @@ static int read_json_number(FILE* fp, double* value) {
         return 0;
     }
     buf[i] = '\0';
-    *value = atof(buf);
+    // P1-2 fix: Use strtod instead of atof for safe conversion
+    char* endptr;
+    errno = 0;
+    double dval = strtod(buf, &endptr);
+    if (endptr == buf || errno == ERANGE) {
+        *value = 0.0;
+        return 0;
+    }
+    *value = dval;
     return 1;
 }
 

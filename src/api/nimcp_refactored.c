@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "API"
@@ -85,7 +86,8 @@ struct nimcp_brain_snapshot_handle {
 //=============================================================================
 
 static char g_last_error[256] = "No error";
-static bool g_initialized = false;
+static nimcp_atomic_bool_t g_initialized = {0};       // Thread-safe initialized flag
+static nimcp_atomic_bool_t g_init_in_progress = {0};  // Guard against concurrent init
 
 //=============================================================================
 // Error Handling (shared with extracted modules)
@@ -121,9 +123,24 @@ int nimcp_version_int(void) {
 nimcp_status_t nimcp_init(void) {
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
 
-    if (g_initialized) {
+    // Thread-safe check if already initialized
+    if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_DEBUG("NIMCP already initialized, skipping");
         return NIMCP_OK;
+    }
+
+    // Use compare-exchange for thread-safe initialization guard
+    bool expected = false;
+    if (!nimcp_atomic_compare_exchange_bool(&g_init_in_progress, &expected, true, NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        // Another thread is initializing - spin until done
+        while (nimcp_atomic_load_bool(&g_init_in_progress, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+            // Busy-wait (could use usleep for less CPU)
+        }
+        // Check if initialization succeeded
+        if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+            return NIMCP_OK;
+        }
+        return NIMCP_ERROR;
     }
 
     // Initialize memory tracking (unified memory management)
@@ -156,7 +173,8 @@ nimcp_status_t nimcp_init(void) {
     LOG_DEBUG("Initializing COW cache system");
     nimcp_cache_init();
 
-    g_initialized = true;
+    nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    nimcp_atomic_store_bool(&g_init_in_progress, false, NIMCP_MEMORY_ORDER_RELEASE);
     set_error("No error");
     LOG_INFO("NIMCP library initialized successfully");
     return NIMCP_OK;
@@ -165,7 +183,7 @@ nimcp_status_t nimcp_init(void) {
 void nimcp_shutdown(void) {
     LOG_INFO("Shutting down NIMCP library");
 
-    if (!g_initialized) {
+    if (!nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_DEBUG("NIMCP not initialized, nothing to shutdown");
         return;
     }
@@ -186,7 +204,7 @@ void nimcp_shutdown(void) {
     LOG_DEBUG("Cleaning up memory tracking");
     nimcp_memory_cleanup();
 
-    g_initialized = false;
+    nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("NIMCP library shutdown complete");
 }
 

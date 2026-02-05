@@ -15,6 +15,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_retry.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -351,6 +352,82 @@ static bool try_cpu_fallback(mesh_gpu_channel_t channel, mesh_gpu_transaction_t*
     return false;
 }
 
+/* ============================================================================
+ * Retry Framework Integration
+ * ============================================================================ */
+
+/**
+ * @brief Context for GPU recovery retry operations
+ */
+typedef struct {
+    mesh_gpu_channel_t channel;
+    mesh_gpu_transaction_t* tx;
+} gpu_recovery_context_t;
+
+/**
+ * @brief Execute function for GPU recovery retry
+ *
+ * WHAT: Wrapper function for nimcp_retry_with_backoff() framework
+ * WHY:  Allows retry mechanism to attempt CPU fallback with proper backoff
+ * HOW:  Calls try_cpu_fallback() with channel and transaction context
+ */
+static bool gpu_recovery_execute(void* context) {
+    gpu_recovery_context_t* ctx = (gpu_recovery_context_t*)context;
+    if (!ctx || !ctx->channel || !ctx->tx) {
+        return false;
+    }
+    return try_cpu_fallback(ctx->channel, ctx->tx);
+}
+
+/**
+ * @brief Attempt GPU transaction recovery using retry framework
+ *
+ * WHAT: Retry CPU fallback with exponential backoff
+ * WHY:  Replace ad-hoc retry loop with standardized retry mechanism
+ * HOW:  Use nimcp_retry_with_backoff() with configurable parameters
+ *
+ * @param channel GPU channel instance
+ * @param tx Transaction to recover
+ * @return true if recovery succeeded, false otherwise
+ */
+static bool attempt_gpu_recovery_with_retry(mesh_gpu_channel_t channel, mesh_gpu_transaction_t* tx) {
+    if (!channel || !tx) {
+        return false;
+    }
+
+    gpu_recovery_context_t ctx = {
+        .channel = channel,
+        .tx = tx
+    };
+
+    operation_t op = {
+        .name = "gpu_recovery_fallback",
+        .execute = gpu_recovery_execute,
+        .rollback = NULL,  /* No rollback needed for fallback */
+        .context = &ctx,
+        .execution_count = 0
+    };
+
+    nimcp_retry_config_t retry_config = nimcp_retry_default_config();
+    retry_config.max_retries = channel->config.max_retries > 0 ? channel->config.max_retries : 3;
+    retry_config.initial_delay_ms = 10;   /* Start with 10ms */
+    retry_config.max_delay_ms = 1000;     /* Cap at 1 second */
+    retry_config.backoff_factor = 2.0f;   /* Double each time */
+    retry_config.jitter_factor = 0.25f;   /* +/- 25% jitter */
+
+    nimcp_retry_result_t result;
+    nimcp_error_t err = nimcp_retry_with_backoff(&op, &retry_config, NULL, &result);
+
+    /* Update channel statistics */
+    channel->stats.recovery_attempts += result.attempts;
+    if (err == NIMCP_SUCCESS && result.success) {
+        channel->stats.recovery_successes++;
+        return true;
+    }
+
+    return false;
+}
+
 static nimcp_error_t process_transaction_gpu(mesh_gpu_channel_t channel,
                                              gpu_coordinator_t* coord,
                                              mesh_gpu_transaction_t* tx) {
@@ -459,22 +536,8 @@ static nimcp_error_t process_batch(mesh_gpu_channel_t channel, mesh_gpu_batch_t*
         nimcp_error_t err = process_transaction_gpu(channel, coord, tx);
 
         if (err != NIMCP_SUCCESS) {
-            /* Try recovery */
-            uint32_t retries = 0;
-            bool recovered = false;
-
-            while (retries < channel->config.max_retries && !recovered) {
-                channel->stats.recovery_attempts++;
-
-                /* Try CPU fallback */
-                if (try_cpu_fallback(channel, tx)) {
-                    recovered = true;
-                    channel->stats.recovery_successes++;
-                    break;
-                }
-
-                retries++;
-            }
+            /* Try recovery using retry framework with exponential backoff */
+            bool recovered = attempt_gpu_recovery_with_retry(channel, tx);
 
             if (!recovered) {
                 coord->failures++;
@@ -886,7 +949,15 @@ nimcp_error_t mesh_gpu_channel_register_fallback(
 
     /* Resize if needed */
     if (channel->fallback_count >= channel->fallback_capacity) {
+        /* Check for overflow before doubling capacity */
+        if (channel->fallback_capacity > SIZE_MAX / 2) {
+            return NIMCP_ERROR_BUFFER_OVERFLOW;
+        }
         size_t new_cap = channel->fallback_capacity * 2;
+        /* Check for allocation size overflow */
+        if (new_cap > SIZE_MAX / sizeof(cpu_fallback_entry_t)) {
+            return NIMCP_ERROR_BUFFER_OVERFLOW;
+        }
         cpu_fallback_entry_t* new_arr = (cpu_fallback_entry_t*)nimcp_realloc(
             channel->fallbacks, new_cap * sizeof(cpu_fallback_entry_t));
         if (!new_arr) return NIMCP_ERROR_NO_MEMORY;

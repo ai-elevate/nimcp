@@ -22,6 +22,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -457,9 +458,23 @@ static nimcp_ast_node_t* parse_primary(parser_state_t* state) {
         advance(state);
     } else if (match(state, TOKEN_NUMBER)) {
         if (strchr(state->current_token.value, '.')) {
-            node = nimcp_ast_create_literal_float(atof(state->current_token.value));
+            // P1-2 fix: Use strtod instead of atof for safe conversion
+            char* endptr;
+            errno = 0;
+            double val = strtod(state->current_token.value, &endptr);
+            if (endptr == state->current_token.value || errno == ERANGE) {
+                val = 0.0;
+            }
+            node = nimcp_ast_create_literal_float(val);
         } else {
-            node = nimcp_ast_create_literal_int(atoll(state->current_token.value));
+            // P1-2 fix: Use strtoll instead of atoll with error checking
+            char* endptr;
+            errno = 0;
+            long long val = strtoll(state->current_token.value, &endptr, 10);
+            if (endptr == state->current_token.value || errno == ERANGE) {
+                val = 0;
+            }
+            node = nimcp_ast_create_literal_int(val);
         }
         advance(state);
     } else if (match(state, TOKEN_TRUE)) {
