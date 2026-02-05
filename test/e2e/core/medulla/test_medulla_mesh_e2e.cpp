@@ -43,6 +43,15 @@ extern "C" {
 
 static constexpr size_t MESH_TEST_ITERATIONS = 100;
 static constexpr uint32_t MOCK_MEDULLA_MAGIC = 0xDEAD0001;
+static constexpr uint32_t MOCK_RECEIVER_MAGIC = 0xDEAD0002;
+
+// Simple mock receiver for modules that don't need full implementation
+typedef struct mock_mesh_receiver {
+    uint32_t magic;
+    char name[64];
+} mock_mesh_receiver_t;
+
+#define mock_mesh_receiver_t_MAGIC MOCK_RECEIVER_MAGIC
 
 //=============================================================================
 // Mock Medulla Module for Mesh Registration
@@ -312,14 +321,26 @@ TEST_F(MedullaMeshE2ETest, MeshEmergencyBroadcast) {
         {"immune_system", MESH_ADAPTER_CATEGORY_SECURITY}
     };
 
-    for (const auto& receiver : receivers) {
+    // Allocate proper mock receivers (must have magic as first field)
+    mock_mesh_receiver_t* mock_receivers[4];
+    for (size_t i = 0; i < 4; i++) {
+        mock_receivers[i] = static_cast<mock_mesh_receiver_t*>(
+            nimcp_calloc(1, sizeof(mock_mesh_receiver_t)));
+        if (mock_receivers[i]) {
+            mock_receivers[i]->magic = MOCK_RECEIVER_MAGIC;
+            strncpy(mock_receivers[i]->name, receivers[i].name, sizeof(mock_receivers[i]->name) - 1);
+        }
+    }
+
+    for (size_t i = 0; i < 4; i++) {
+        if (!mock_receivers[i]) continue;
         mesh_module_descriptor_t desc;
         memset(&desc, 0, sizeof(desc));
-        desc.module_name = receiver.name;
-        desc.category = receiver.category;
-        desc.module_instance = (void*)0x1234;  // Dummy pointer
-        desc.module_size = 64;
-        desc.module_magic = 0xDEAD0002;
+        desc.module_name = receivers[i].name;
+        desc.category = receivers[i].category;
+        desc.module_instance = mock_receivers[i];
+        desc.module_size = sizeof(mock_mesh_receiver_t);
+        desc.module_magic = MOCK_RECEIVER_MAGIC;
         desc.endorser_role = ENDORSER_ROLE_OPTIONAL;
 
         mesh_bootstrap_register_module(bootstrap_, &desc);
@@ -375,6 +396,13 @@ TEST_F(MedullaMeshE2ETest, MeshEmergencyBroadcast) {
     // Verify broadcast metrics
     EXPECT_GE(mock_medulla_->emergency_broadcasts, 1u);
     EXPECT_GE(mock_medulla_->transactions_processed, (size_t)4);
+
+    // Cleanup mock receivers
+    for (size_t i = 0; i < 4; i++) {
+        if (mock_receivers[i]) {
+            nimcp_free(mock_receivers[i]);
+        }
+    }
 }
 
 //=============================================================================

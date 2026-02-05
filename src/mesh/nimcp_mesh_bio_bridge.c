@@ -546,6 +546,17 @@ nimcp_error_t mesh_bio_bridge_route_bio_message(
     const void* bio_msg,
     size_t msg_size
 ) {
+    if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Check if connected to a router */
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bio_bridge: not connected to router");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     mesh_transaction_t* tx = NULL;
     nimcp_error_t err = mesh_bio_bridge_translate_to_mesh(
         bridge, bio_msg, msg_size, &tx);

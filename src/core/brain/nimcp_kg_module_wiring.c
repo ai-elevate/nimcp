@@ -17,16 +17,8 @@
 #include <time.h>
 #include <stdio.h>
 
-/* Use standard memory functions for standalone compilation */
-#ifndef nimcp_malloc
-#define nimcp_malloc(size) nimcp_malloc(size)
-#endif
-#ifndef nimcp_calloc
-#define nimcp_calloc(count, size) nimcp_calloc(count, size)
-#endif
-#ifndef nimcp_free
-#define nimcp_free(ptr) nimcp_free(ptr)
-#endif
+/* Always include memory header for nimcp_malloc/calloc/free declarations */
+#include "utils/memory/nimcp_memory.h"
 
 /* Conditional logging support */
 #ifdef NIMCP_LOGGING_ENABLED
@@ -35,7 +27,6 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
-#include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
