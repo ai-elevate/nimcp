@@ -44,6 +44,10 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_executive)
+
+/* Alias: tests reference executive_set_health_agent (shorter name) */
+void executive_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

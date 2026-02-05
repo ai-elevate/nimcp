@@ -419,6 +419,36 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_kg_wiring.c            # Retrosplenial KG wiring
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_security.c             # Retrosplenial security bridge
 
+    # Wernicke's Area - Language comprehension, phonological/semantic processing (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c            # Wernicke KG wiring
+
+    # Temporal Lobe - Auditory processing, object/face recognition, memory encoding (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c            # Temporal KG wiring
+
+    # Insula - Interoception, emotion-cognition integration, pain processing (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c               # Insula KG wiring
+
+    # Cingulate Cortex - Conflict monitoring, error detection, reward processing (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c         # Cingulate KG wiring
+
+    # Cerebellum - Motor learning, coordination, timing control (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c       # Cerebellum KG wiring
+
+    # Hypothalamus - Homeostasis, circadian rhythm, HPA stress response (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c   # Hypothalamus KG wiring
+
+    # VTA - Reward prediction, motivation, reinforcement learning (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c                     # VTA KG wiring
+
+    # Habenula - Reward evaluation, punishment signaling, mood regulation (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c           # Habenula KG wiring
+
+    # Locus Coeruleus - Noradrenergic arousal, attention modulation, stress (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c          # Locus Coeruleus KG wiring
+
+    # Entorhinal Cortex - Grid cells, spatial mapping, memory gateway (KG wiring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c       # Entorhinal KG wiring
+
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge

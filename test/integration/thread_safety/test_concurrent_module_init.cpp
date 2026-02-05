@@ -35,7 +35,7 @@ TEST_F(ConcurrentModuleInitTest, OncePatternSingleInit) {
     std::vector<std::thread> threads;
     for (int i = 0; i < NUM_THREADS; i++) {
         threads.emplace_back([&, i]() {
-            while (\!go.load()) {}
+            while (!go.load()) {}
             results[i] = nimcp_once(&g_test_once, test_module_init);
         });
     }
@@ -66,7 +66,7 @@ TEST_F(ConcurrentModuleInitTest, MutexProtectedGlobalsUnderContention) {
         threads.emplace_back([&]() {
             for (int j = 0; j < OPS; j++) {
                 nimcp_result_t r = nimcp_mutex_lock(&mutex);
-                if (r \!= NIMCP_SUCCESS) { errors.fetch_add(1); continue; }
+                if (r != NIMCP_SUCCESS) { errors.fetch_add(1); continue; }
                 shared_state++;
                 nimcp_mutex_unlock(&mutex);
             }
@@ -99,7 +99,7 @@ TEST_F(ConcurrentModuleInitTest, MemorySubsystemConcurrent) {
         threads.emplace_back([&]() {
             for (int j = 0; j < ALLOCS; j++) {
                 void* p = nimcp_malloc(32 + j);
-                if (\!p) { failures.fetch_add(1); continue; }
+                if (!p) { failures.fetch_add(1); continue; }
                 memset(p, 0xFF, 32 + j);
                 nimcp_free(p);
             }
@@ -124,7 +124,7 @@ TEST_F(ConcurrentModuleInitTest, ResourceLocksUnderContention) {
         threads.emplace_back([&]() {
             for (int j = 0; j < OPS; j++) {
                 nimcp_mutex_t* lock = NULL;
-                if (nimcp_get_resource_lock("global_res", &lock) \!= NIMCP_SUCCESS) {
+                if (nimcp_get_resource_lock("global_res", &lock) != NIMCP_SUCCESS) {
                     errors.fetch_add(1); continue;
                 }
                 nimcp_mutex_lock(lock);

@@ -87,12 +87,12 @@
 //
 // 2. DOUBLE-FREE
 //    HOW: Search tracking list before free, error if not found
-//    WHEN: On every nimcp_free() call
+//    WHEN: On every free() call
 //    OUTPUT: "Double-free detected at %p"
 //
 // 3. BUFFER OVERFLOW
 //    HOW: Check canary guards on free
-//    WHEN: On every nimcp_free() call
+//    WHEN: On every free() call
 //    OUTPUT: "Buffer overflow detected at %p"
 //
 // 4. ALLOCATION PATTERNS
@@ -150,8 +150,8 @@
 //   nimcp_memory_enable_debug_output(false);
 //
 //   // 2. Use instead of malloc/free throughout code
-//   void* ptr = nimcp_malloc(100);
-//   nimcp_free(ptr);
+//   void* ptr = malloc(100);
+//   free(ptr);
 //
 //   // 3. Check for issues periodically
 //   nimcp_memory_dump_allocations();    // See current allocations
@@ -968,7 +968,7 @@ static void update_memory_patterns(size_t size, bool is_alloc, uint64_t lifetime
     // New pattern (only create on allocation)
     if (is_alloc) {
         // DESIGN NOTE: We intentionally use raw malloc() here for internal
-        // tracking structures. Using nimcp_malloc() would cause infinite
+        // tracking structures. Using malloc() would cause infinite
         // recursion: nimcp_malloc -> track_allocation -> update_memory_patterns
         // -> nimcp_malloc -> ...
         //
@@ -1540,11 +1540,11 @@ void* nimcp_realloc(void* ptr, size_t new_size)
 
     // Special case: realloc(NULL, size) == malloc(size)
     if (!ptr)
-        return nimcp_malloc(new_size);
+        return malloc(new_size);
 
     // Special case: realloc(ptr, 0) - should free (implementation-defined in C11)
     if (new_size == 0) {
-        nimcp_free(ptr);
+        free(ptr);
         return NULL;
     }
 
@@ -1640,7 +1640,7 @@ char* nimcp_strdup(const char* str)
     }
 
     size_t len = strlen(str) + 1;  // Include null terminator
-    char* new_str = (char*) nimcp_malloc(len);
+    char* new_str = (char*) malloc(len);
     if (!new_str) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_str is NULL");

@@ -346,7 +346,7 @@ static nimcp_error_t s_register_bio_async(nimcp_ct_context_t ctx)
 
 nimcp_ct_context_t nimcp_ct_create(void)
 {
-    nimcp_ct_context_t ctx = (nimcp_ct_context_t)nimcp_calloc(1, sizeof(struct nimcp_ct_context));
+    nimcp_ct_context_t ctx = (nimcp_ct_context_t)calloc(1, sizeof(struct nimcp_ct_context));
     if (!ctx) {
         LOG_ERROR("Failed to allocate constant-time context");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -393,7 +393,7 @@ void nimcp_ct_destroy(nimcp_ct_context_t ctx)
         g_default_ctx = NULL;
     }
 
-    nimcp_free(ctx);
+    free(ctx);
 
     LOG_INFO("Constant-time context destroyed");
 }
@@ -719,12 +719,12 @@ bool nimcp_ct_verify_timing(const char* operation_name, size_t num_trials,
 
     // Allocate test buffers
     size_t test_size = 256;
-    uint8_t* buf_zeros = (uint8_t*)nimcp_calloc(test_size, 1);
-    uint8_t* buf_random = (uint8_t*)nimcp_calloc(test_size, 1);
+    uint8_t* buf_zeros = (uint8_t*)calloc(test_size, 1);
+    uint8_t* buf_random = (uint8_t*)calloc(test_size, 1);
 
     if (!buf_zeros || !buf_random) {
-        nimcp_free(buf_zeros);
-        nimcp_free(buf_random);
+        free(buf_zeros);
+        free(buf_random);
         return false;
     }
 
@@ -773,8 +773,8 @@ bool nimcp_ct_verify_timing(const char* operation_name, size_t num_trials,
              avg_zeros, avg_random, diff_percent);
 
     // Clean up
-    nimcp_free(buf_zeros);
-    nimcp_free(buf_random);
+    free(buf_zeros);
+    free(buf_random);
 
     // Check if within threshold
     bool is_constant_time = (diff_percent <= threshold_percent);
@@ -859,18 +859,18 @@ nimcp_result_t nimcp_secure_wipe(void* ptr, size_t len)
 
     // Pass 3: Write cryptographically secure random data
     // Allocate temporary buffer for secure random bytes
-    uint8_t* random_buf = (uint8_t*)nimcp_calloc(len, 1);
+    uint8_t* random_buf = (uint8_t*)calloc(len, 1);
     if (random_buf && s_secure_random_bytes(random_buf, len)) {
         for (size_t i = 0; i < len; i++) {
             p[i] = random_buf[i];
         }
-        nimcp_free(random_buf);
+        free(random_buf);
     } else {
         // Fallback: XOR pattern if secure random unavailable
         // This is less ideal but still provides some entropy through the pattern
         LOG_WARN("Secure random unavailable for wipe, using XOR pattern");
         if (random_buf) {
-            nimcp_free(random_buf);
+            free(random_buf);
         }
         for (size_t i = 0; i < len; i++) {
             p[i] = (uint8_t)((i * 0x5A) ^ 0xC3 ^ ((i >> 8) & 0xFF));

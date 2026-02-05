@@ -749,11 +749,11 @@ TEST_F(GeniusProfilesTest, StateNameInvalid) {
 //=============================================================================
 
 TEST_F(GeniusProfilesTest, HeartbeatSucceeds) {
-    ASSERT_EQ(genius_profiles_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
+    ASSERT_EQ(genius_profiles_bridge_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
 }
 
 TEST_F(GeniusProfilesTest, HeartbeatNull) {
-    EXPECT_EQ(genius_profiles_heartbeat(nullptr), GENIUS_ERROR_NULL_POINTER);
+    EXPECT_EQ(genius_profiles_bridge_heartbeat(nullptr), GENIUS_ERROR_NULL_POINTER);
 }
 
 TEST_F(GeniusProfilesTest, HealthAgentStartStop) {

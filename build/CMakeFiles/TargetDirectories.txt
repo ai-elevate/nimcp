@@ -334,9 +334,15 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_tensor_networks_test_mps.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_tensor_networks_test_mps_compression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_api_consistency.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_exception_immune.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_health_agent_atomic.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_kdtree.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_memory_safety.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_mutex_safety.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_overflow_checks.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_overflow_protection.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_queue_utils.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_recovery.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_string_safety.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_thread_utils.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_utils_btree.dir

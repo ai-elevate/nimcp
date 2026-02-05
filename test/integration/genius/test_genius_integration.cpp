@@ -412,7 +412,7 @@ TEST_F(GeniusIntegrationTest, HealthAgentLifecycle) {
 
     // Send heartbeats
     for (int i = 0; i < 5; i++) {
-        ASSERT_EQ(genius_profiles_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
+        ASSERT_EQ(genius_profiles_bridge_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
@@ -424,11 +424,11 @@ TEST_F(GeniusIntegrationTest, HealthAgentWithActiveProfile) {
     genius_profiles_start_health_agent(bridge);
 
     // Heartbeat should reflect profile health
-    ASSERT_EQ(genius_profiles_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
+    ASSERT_EQ(genius_profiles_bridge_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
 
     // Degrade and check heartbeat still works
     genius_profiles_apply_immune_modulation(bridge, 0.8f, 0.8f);
-    ASSERT_EQ(genius_profiles_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
+    ASSERT_EQ(genius_profiles_bridge_heartbeat(bridge), GENIUS_ERROR_SUCCESS);
 
     genius_profiles_stop_health_agent(bridge);
 }

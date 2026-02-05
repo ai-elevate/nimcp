@@ -46,7 +46,7 @@ TEST_F(CallbackWrapperMutexTest, MutexProtectsGlobalArray) {
     for (int i = 0; i < NUM_THREADS; i++) {
         threads.emplace_back([&]() {
             for (int j = 0; j < OPS; j++) {
-                if (nimcp_mutex_lock(&mutex) \!= NIMCP_SUCCESS) {
+                if (nimcp_mutex_lock(&mutex) != NIMCP_SUCCESS) {
                     errors.fetch_add(1);
                     continue;
                 }
@@ -80,7 +80,7 @@ TEST_F(CallbackWrapperMutexTest, SimulateCallbackRegistrationRace) {
         threads.emplace_back([&]() {
             for (int j = 0; j < REGISTRATIONS; j++) {
                 void* wrapper = nimcp_malloc(64);
-                if (\!wrapper) { alloc_failures.fetch_add(1); continue; }
+                if (!wrapper) { alloc_failures.fetch_add(1); continue; }
                 memset(wrapper, 0xAB, 64);
 
                 nimcp_mutex_lock(&mtx);

@@ -34,6 +34,10 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surprise_self_model)
+
+/* Alias: tests reference surprise_self_model_bridge_set_health_agent_global */
+void surprise_self_model_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

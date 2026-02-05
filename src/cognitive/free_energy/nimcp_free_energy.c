@@ -20,6 +20,10 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(free_energy_instance)
+
+/* Alias: tests reference free_energy_set_health_agent (without _instance suffix) */
+void free_energy_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

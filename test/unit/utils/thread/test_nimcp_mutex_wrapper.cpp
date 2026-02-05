@@ -188,7 +188,7 @@ TEST_F(MutexWrapperTest, RWLockConcurrentReaders) {
             nimcp_rwlock_rdlock(&rw);
             int c = active.fetch_add(1) + 1;
             int p = peak.load();
-            while (c > p && \!peak.compare_exchange_weak(p, c)) {}
+            while (c > p && !peak.compare_exchange_weak(p, c)) {}
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             active.fetch_sub(1);
             nimcp_rwlock_unlock(&rw);
@@ -207,7 +207,7 @@ TEST_F(MutexWrapperTest, CondVarSignal) {
     bool ready = false;
     std::thread c([&]() {
         nimcp_mutex_lock(&mtx);
-        while (\!ready) nimcp_cond_wait(&cv, &mtx);
+        while (!ready) nimcp_cond_wait(&cv, &mtx);
         nimcp_mutex_unlock(&mtx);
     });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

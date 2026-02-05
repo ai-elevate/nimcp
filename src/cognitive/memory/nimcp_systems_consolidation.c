@@ -47,6 +47,10 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_STATIC(consolidation)
+
+/* Alias: tests reference systems_consolidation_set_health_agent */
+void systems_consolidation_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

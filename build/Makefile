@@ -3812,6 +3812,32 @@ unit_utils_test_api_consistency/fast:
 .PHONY : unit_utils_test_api_consistency/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_test_exception_immune
+
+# Build rule for target.
+unit_utils_test_exception_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_exception_immune
+.PHONY : unit_utils_test_exception_immune
+
+# fast build rule for target.
+unit_utils_test_exception_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_exception_immune.dir/build.make test/CMakeFiles/unit_utils_test_exception_immune.dir/build
+.PHONY : unit_utils_test_exception_immune/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_test_health_agent_atomic
+
+# Build rule for target.
+unit_utils_test_health_agent_atomic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_health_agent_atomic
+.PHONY : unit_utils_test_health_agent_atomic
+
+# fast build rule for target.
+unit_utils_test_health_agent_atomic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_health_agent_atomic.dir/build.make test/CMakeFiles/unit_utils_test_health_agent_atomic.dir/build
+.PHONY : unit_utils_test_health_agent_atomic/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_test_kdtree
 
 # Build rule for target.
@@ -3823,6 +3849,32 @@ unit_utils_test_kdtree: cmake_check_build_system
 unit_utils_test_kdtree/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_kdtree.dir/build.make test/CMakeFiles/unit_utils_test_kdtree.dir/build
 .PHONY : unit_utils_test_kdtree/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_test_memory_safety
+
+# Build rule for target.
+unit_utils_test_memory_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_memory_safety
+.PHONY : unit_utils_test_memory_safety
+
+# fast build rule for target.
+unit_utils_test_memory_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_memory_safety.dir/build.make test/CMakeFiles/unit_utils_test_memory_safety.dir/build
+.PHONY : unit_utils_test_memory_safety/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_test_mutex_safety
+
+# Build rule for target.
+unit_utils_test_mutex_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_mutex_safety
+.PHONY : unit_utils_test_mutex_safety
+
+# fast build rule for target.
+unit_utils_test_mutex_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_mutex_safety.dir/build.make test/CMakeFiles/unit_utils_test_mutex_safety.dir/build
+.PHONY : unit_utils_test_mutex_safety/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_test_overflow_checks
@@ -3838,6 +3890,19 @@ unit_utils_test_overflow_checks/fast:
 .PHONY : unit_utils_test_overflow_checks/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_test_overflow_protection
+
+# Build rule for target.
+unit_utils_test_overflow_protection: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_overflow_protection
+.PHONY : unit_utils_test_overflow_protection
+
+# fast build rule for target.
+unit_utils_test_overflow_protection/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_overflow_protection.dir/build.make test/CMakeFiles/unit_utils_test_overflow_protection.dir/build
+.PHONY : unit_utils_test_overflow_protection/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_test_queue_utils
 
 # Build rule for target.
@@ -3849,6 +3914,19 @@ unit_utils_test_queue_utils: cmake_check_build_system
 unit_utils_test_queue_utils/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_queue_utils.dir/build.make test/CMakeFiles/unit_utils_test_queue_utils.dir/build
 .PHONY : unit_utils_test_queue_utils/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_test_recovery
+
+# Build rule for target.
+unit_utils_test_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_recovery
+.PHONY : unit_utils_test_recovery
+
+# fast build rule for target.
+unit_utils_test_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_recovery.dir/build.make test/CMakeFiles/unit_utils_test_recovery.dir/build
+.PHONY : unit_utils_test_recovery/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_test_string_safety
@@ -41185,9 +41263,15 @@ help:
 	@echo "... unit_utils_tensor_test_tensor_errors"
 	@echo "... unit_utils_ternary_test_ternary_core"
 	@echo "... unit_utils_test_api_consistency"
+	@echo "... unit_utils_test_exception_immune"
+	@echo "... unit_utils_test_health_agent_atomic"
 	@echo "... unit_utils_test_kdtree"
+	@echo "... unit_utils_test_memory_safety"
+	@echo "... unit_utils_test_mutex_safety"
 	@echo "... unit_utils_test_overflow_checks"
+	@echo "... unit_utils_test_overflow_protection"
 	@echo "... unit_utils_test_queue_utils"
+	@echo "... unit_utils_test_recovery"
 	@echo "... unit_utils_test_string_safety"
 	@echo "... unit_utils_test_thread_utils"
 	@echo "... unit_utils_test_utils_btree"

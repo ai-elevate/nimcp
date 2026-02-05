@@ -21137,6 +21137,30 @@ __/core/brain/regions/broca/nimcp_syntax_processor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_syntax_processor.c.s
 .PHONY : __/core/brain/regions/broca/nimcp_syntax_processor.c.s
 
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.o: __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.o
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.o
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.o
+
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.i: __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.i
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.i
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.i
+
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.s: __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.s
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.s
+.PHONY : __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.c.s
+
 __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.o: __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.c.o
 .PHONY : __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.o
 
@@ -21184,6 +21208,30 @@ __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.s: __/core/brai
 __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.c.s
+
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.o: __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.o
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.o
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.o
+
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.i: __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.i
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.i
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.i
+
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.s: __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.s
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.s
+.PHONY : __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.c.s
 
 __/core/brain/regions/cingulate/nimcp_cingulate_adapter.o: __/core/brain/regions/cingulate/nimcp_cingulate_adapter.c.o
 .PHONY : __/core/brain/regions/cingulate/nimcp_cingulate_adapter.o
@@ -21377,6 +21425,30 @@ __/core/brain/regions/claustrum/nimcp_claustrum.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/claustrum/nimcp_claustrum.c.s
 .PHONY : __/core/brain/regions/claustrum/nimcp_claustrum.c.s
 
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.o: __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.o
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.o
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.o
+
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.i: __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.i
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.i
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.i
+
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.s: __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.s
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.s
+.PHONY : __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c.s
+
 __/core/brain/regions/entorhinal/nimcp_entorhinal.o: __/core/brain/regions/entorhinal/nimcp_entorhinal.c.o
 .PHONY : __/core/brain/regions/entorhinal/nimcp_entorhinal.o
 
@@ -21544,6 +21616,30 @@ __/core/brain/regions/gustatory/nimcp_gustatory.s: __/core/brain/regions/gustato
 __/core/brain/regions/gustatory/nimcp_gustatory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/gustatory/nimcp_gustatory.c.s
 .PHONY : __/core/brain/regions/gustatory/nimcp_gustatory.c.s
+
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.o: __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.o
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.o
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.o
+
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.i: __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.i
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.i
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.i
+
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.s: __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.s
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.s
+.PHONY : __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.c.s
 
 __/core/brain/regions/habenula/nimcp_habenula.o: __/core/brain/regions/habenula/nimcp_habenula.c.o
 .PHONY : __/core/brain/regions/habenula/nimcp_habenula.o
@@ -21760,6 +21856,30 @@ __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.s: __/core/br
 __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c.s
+
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.o: __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.o
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.o
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.o
+
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.i: __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.i
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.i
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.i
+
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.s: __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.s
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.s
+.PHONY : __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.c.s
 
 __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.o: __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.c.o
 .PHONY : __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.o
@@ -22793,6 +22913,30 @@ __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.c.s
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.c.s
 
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.o: __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.o
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.o
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.o
+
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.i: __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.i
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.i
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.i
+
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.s: __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.s
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.s
+.PHONY : __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.c.s
+
 __/core/brain/regions/insula/nimcp_insula_adapter.o: __/core/brain/regions/insula/nimcp_insula_adapter.c.o
 .PHONY : __/core/brain/regions/insula/nimcp_insula_adapter.o
 
@@ -22840,6 +22984,30 @@ __/core/brain/regions/insula/nimcp_insula_quantum_bridge.s: __/core/brain/region
 __/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s
+
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.o: __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.o
+
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.i: __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.i
+
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.s: __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.c.s
 
 __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o: __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.o
 .PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o
@@ -24713,6 +24881,30 @@ __/core/brain/regions/somatosensory/nimcp_somatosensory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/somatosensory/nimcp_somatosensory.c.s
 .PHONY : __/core/brain/regions/somatosensory/nimcp_somatosensory.c.s
 
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.o: __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.o
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.o
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.o
+
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.i: __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.i
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.i
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.i
+
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.s: __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.s
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.s
+.PHONY : __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.c.s
+
 __/core/brain/regions/temporal/nimcp_temporal_adapter.o: __/core/brain/regions/temporal/nimcp_temporal_adapter.c.o
 .PHONY : __/core/brain/regions/temporal/nimcp_temporal_adapter.o
 
@@ -24808,6 +25000,30 @@ __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.s: __/core/brain/r
 __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
 .PHONY : __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
+
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.o: __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.o
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.o
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.o
+
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.i: __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.i
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.i
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.i
+
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.s: __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.s
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.s
+.PHONY : __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.c.s
 
 __/core/brain/regions/vta/nimcp_dopamine_release.o: __/core/brain/regions/vta/nimcp_dopamine_release.c.o
 .PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.o
@@ -25000,6 +25216,30 @@ __/core/brain/regions/vta/nimcp_vta_snn_bridge.s: __/core/brain/regions/vta/nimc
 __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s
 .PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s
+
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.o: __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.o
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.o
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.o
+
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.i: __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.i
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.i
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.i
+
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.s: __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.s
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.s
+.PHONY : __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.c.s
 
 __/core/brain/regions/wernicke/nimcp_lexical_access.o: __/core/brain/regions/wernicke/nimcp_lexical_access.c.o
 .PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.o
@@ -52738,12 +52978,18 @@ help:
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.o"
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.i"
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.s"
+	@echo "... __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.o"
+	@echo "... __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.i"
+	@echo "... __/core/brain/regions/cerebellum/bridges/nimcp_cerebellum_kg_wiring.s"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.o"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.i"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.s"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.o"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.i"
 	@echo "... __/core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.s"
+	@echo "... __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.o"
+	@echo "... __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.i"
+	@echo "... __/core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.s"
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_adapter.o"
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_adapter.i"
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_adapter.s"
@@ -52768,6 +53014,9 @@ help:
 	@echo "... __/core/brain/regions/claustrum/nimcp_claustrum.o"
 	@echo "... __/core/brain/regions/claustrum/nimcp_claustrum.i"
 	@echo "... __/core/brain/regions/claustrum/nimcp_claustrum.s"
+	@echo "... __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.o"
+	@echo "... __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.i"
+	@echo "... __/core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.s"
 	@echo "... __/core/brain/regions/entorhinal/nimcp_entorhinal.o"
 	@echo "... __/core/brain/regions/entorhinal/nimcp_entorhinal.i"
 	@echo "... __/core/brain/regions/entorhinal/nimcp_entorhinal.s"
@@ -52789,6 +53038,9 @@ help:
 	@echo "... __/core/brain/regions/gustatory/nimcp_gustatory.o"
 	@echo "... __/core/brain/regions/gustatory/nimcp_gustatory.i"
 	@echo "... __/core/brain/regions/gustatory/nimcp_gustatory.s"
+	@echo "... __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.o"
+	@echo "... __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.i"
+	@echo "... __/core/brain/regions/habenula/bridges/nimcp_habenula_kg_wiring.s"
 	@echo "... __/core/brain/regions/habenula/nimcp_habenula.o"
 	@echo "... __/core/brain/regions/habenula/nimcp_habenula.i"
 	@echo "... __/core/brain/regions/habenula/nimcp_habenula.s"
@@ -52816,6 +53068,9 @@ help:
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.o"
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.i"
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.s"
+	@echo "... __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.o"
+	@echo "... __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.i"
+	@echo "... __/core/brain/regions/hypothalamus/bridges/nimcp_hypothalamus_kg_wiring.s"
 	@echo "... __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.s"
@@ -52945,12 +53200,18 @@ help:
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.s"
+	@echo "... __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.o"
+	@echo "... __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.i"
+	@echo "... __/core/brain/regions/insula/bridges/nimcp_insula_kg_wiring.s"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_adapter.o"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_adapter.i"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_adapter.s"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.o"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.i"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/bridges/nimcp_lc_kg_wiring.s"
 	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o"
 	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.i"
 	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.s"
@@ -53185,6 +53446,9 @@ help:
 	@echo "... __/core/brain/regions/somatosensory/nimcp_somatosensory.o"
 	@echo "... __/core/brain/regions/somatosensory/nimcp_somatosensory.i"
 	@echo "... __/core/brain/regions/somatosensory/nimcp_somatosensory.s"
+	@echo "... __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.o"
+	@echo "... __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.i"
+	@echo "... __/core/brain/regions/temporal/bridges/nimcp_temporal_kg_wiring.s"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.o"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.i"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.s"
@@ -53197,6 +53461,9 @@ help:
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.o"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.i"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.s"
+	@echo "... __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.o"
+	@echo "... __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.i"
+	@echo "... __/core/brain/regions/vta/bridges/nimcp_vta_kg_wiring.s"
 	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.o"
 	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.i"
 	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.s"
@@ -53221,6 +53488,9 @@ help:
 	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.o"
 	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.i"
 	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.o"
+	@echo "... __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.i"
+	@echo "... __/core/brain/regions/wernicke/bridges/nimcp_wernicke_kg_wiring.s"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.o"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.i"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.s"

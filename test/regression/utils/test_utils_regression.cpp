@@ -49,27 +49,60 @@
     // Note: nimcp_error_codes.h conflicts with nimcp_common.h
     #ifndef NIMCP_ERROR_UNKNOWN
     #define NIMCP_ERROR_UNKNOWN             1000
+    #endif
+    #ifndef NIMCP_ERROR_NOT_IMPLEMENTED_ALT
     #define NIMCP_ERROR_NOT_IMPLEMENTED_ALT 1001
+    #endif
+    #ifndef NIMCP_ERROR_INVALID_PARAMETER
     #define NIMCP_ERROR_INVALID_PARAMETER   1002
+    #endif
+    #ifndef NIMCP_ERROR_NULL_POINTER_ALT
     #define NIMCP_ERROR_NULL_POINTER_ALT    1003
+    #endif
+    #ifndef NIMCP_ERROR_NO_MEMORY_ALT
     #define NIMCP_ERROR_NO_MEMORY_ALT       2000
+    #endif
+    #ifndef NIMCP_ERROR_BUFFER_TOO_SMALL_ALT
     #define NIMCP_ERROR_BUFFER_TOO_SMALL_ALT 2001
+    #endif
+    #ifndef NIMCP_ERROR_BUFFER_OVERFLOW_ALT
     #define NIMCP_ERROR_BUFFER_OVERFLOW_ALT  2002
+    #endif
+    #ifndef NIMCP_ERROR_BRAIN_CREATION
     #define NIMCP_ERROR_BRAIN_CREATION      3000
+    #endif
+    #ifndef NIMCP_ERROR_BRAIN_INVALID
     #define NIMCP_ERROR_BRAIN_INVALID       3001
+    #endif
+    #ifndef NIMCP_ERROR_FILE_NOT_FOUND
     #define NIMCP_ERROR_FILE_NOT_FOUND      4000
+    #endif
+    #ifndef NIMCP_ERROR_FILE_READ
     #define NIMCP_ERROR_FILE_READ           4001
+    #endif
+    #ifndef NIMCP_ERROR_CONFIG_INVALID
     #define NIMCP_ERROR_CONFIG_INVALID      5000
+    #endif
+    #ifndef NIMCP_ERROR_CONFIG_PARSE
     #define NIMCP_ERROR_CONFIG_PARSE        5001
+    #endif
+    #ifndef NIMCP_ERROR_THREAD_CREATE
     #define NIMCP_ERROR_THREAD_CREATE       6000
+    #endif
+    #ifndef NIMCP_ERROR_MUTEX_LOCK
     #define NIMCP_ERROR_MUTEX_LOCK          6002
+    #endif
+    #ifndef NIMCP_ERROR_SIGNAL_RECEIVED
     #define NIMCP_ERROR_SIGNAL_RECEIVED     7000
+    #endif
+    #ifndef NIMCP_ERROR_SIGSEGV
     #define NIMCP_ERROR_SIGSEGV             7001
+    #endif
+    #ifndef NIMCP_ERROR_TIMEOUT_ALT
     #define NIMCP_ERROR_TIMEOUT_ALT         1010
+    #endif
 
-    // Error helper functions (simplified declarations)
-    const char* nimcp_error_to_string_alt(int code);
-    const char* nimcp_error_get_category_name_alt(int code);
+    // Error helper functions (local implementations for testing)
     static inline bool nimcp_error_is_success_local(int code) {
         return (code >= 0 && code < 1000);
     }
@@ -79,7 +112,6 @@
     static inline int nimcp_error_get_category_local(int code) {
         return (code / 1000);
     }
-    #endif
 
 //=============================================================================
 // Test Fixture

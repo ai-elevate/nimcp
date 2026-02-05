@@ -203,7 +203,7 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
 
     // Allocate free list
     // Use raw calloc to avoid circular dependency with nimcp_* wrappers
-    pool->free_list = nimcp_calloc(num_pages, sizeof(void*));
+    pool->free_list = calloc(num_pages, sizeof(void*));
     if (!pool->free_list) {
         LOG_DEBUG("Entering if");
         munmap(pool->base, total_size);
@@ -220,7 +220,7 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
 
     // Initialize mutex
     if (nimcp_platform_mutex_init(&pool->mutex, false) != 0) {
-        nimcp_free(pool->free_list);
+        free(pool->free_list);
         munmap(pool->base, total_size);
         pool->base = NULL;
         return false;
@@ -239,7 +239,7 @@ static void page_pool_destroy(page_pool_t* pool) {
 
     nimcp_platform_mutex_destroy(&pool->mutex);
     LOG_DEBUG("Memory deallocation");
-    nimcp_free(pool->free_list);
+    free(pool->free_list);
 
     if (pool->base) {
         LOG_DEBUG("Entering if");
@@ -389,7 +389,7 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
     unified_mem_config_t cfg = config ? *config : unified_mem_default_config();
 
     // Allocate manager
-    unified_mem_manager_t manager = nimcp_calloc(1, sizeof(struct unified_mem_manager_struct));
+    unified_mem_manager_t manager = calloc(1, sizeof(struct unified_mem_manager_struct));
     if (!manager) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
@@ -403,7 +403,7 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
 
     // Initialize mutex
     if (nimcp_platform_mutex_init(&manager->mutex, false) != 0) {
-        nimcp_free(manager);
+        free(manager);
         return NULL;
     }
 
@@ -456,7 +456,7 @@ NIMCP_EXPORT void unified_mem_destroy(unified_mem_manager_t manager) {
 
     // Invalidate and free
     manager->magic = 0;
-    nimcp_free(manager);
+    free(manager);
 }
 
 NIMCP_EXPORT bool unified_mem_get_stats(
@@ -516,7 +516,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
     uint64_t start_time = manager->config.enable_tracking ? get_time_ns() : 0;
 
     // Allocate handle structure
-    unified_mem_handle_t handle = nimcp_calloc(1, sizeof(struct unified_mem_handle_struct));
+    unified_mem_handle_t handle = calloc(1, sizeof(struct unified_mem_handle_struct));
     if (!handle) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
@@ -619,7 +619,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
             if (!success) {
                 LOG_DEBUG("Entering if");
                 LOG_DEBUG("Memory allocation requested");
-                handle->impl.direct.data = nimcp_malloc(request->size);
+                handle->impl.direct.data = malloc(request->size);
                 if (handle->impl.direct.data) {
                     LOG_DEBUG("Entering if");
                     handle->impl.direct.from_pool = false;
@@ -641,7 +641,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
         case UNIFIED_STRATEGY_AUTO:  // Fallback
         default: {
             // Direct malloc allocation
-            handle->impl.direct.data = nimcp_malloc(request->size);
+            handle->impl.direct.data = malloc(request->size);
             if (handle->impl.direct.data) {
                 LOG_DEBUG("Entering if");
                 handle->impl.direct.from_pool = false;
@@ -682,7 +682,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
             manager->stats.total_alloc_time_ns += get_time_ns() - start_time;
         }
     } else {
-        nimcp_free(handle);
+        free(handle);
         handle = NULL;
     }
 
@@ -698,7 +698,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
     if (!manager || manager->magic != UNIFIED_MANAGER_MAGIC) return NULL;
 
     // Allocate new handle
-    unified_mem_handle_t clone = nimcp_calloc(1, sizeof(struct unified_mem_handle_struct));
+    unified_mem_handle_t clone = calloc(1, sizeof(struct unified_mem_handle_struct));
     if (!clone) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
@@ -745,7 +745,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
         case UNIFIED_STRATEGY_POOL_DIRECT:
         case UNIFIED_STRATEGY_MALLOC_DIRECT: {
             // Direct allocation - must copy
-            clone->impl.direct.data = nimcp_malloc(handle->size);
+            clone->impl.direct.data = malloc(handle->size);
             if (clone->impl.direct.data) {
                 LOG_DEBUG("Entering if");
                 memcpy(clone->impl.direct.data, handle->impl.direct.data, handle->size);
@@ -773,7 +773,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
             manager->stats.total_memory_bytes += handle->size;
         }
     } else {
-        nimcp_free(clone);
+        free(clone);
         clone = NULL;
     }
 
@@ -851,7 +851,7 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
                     page_pool_release(&manager->page_pool, handle->impl.direct.data);
                 } else {
                     LOG_DEBUG("Memory deallocation");
-                    nimcp_free(handle->impl.direct.data);
+                    free(handle->impl.direct.data);
                 }
             }
             break;
@@ -862,7 +862,7 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
             if (handle->impl.direct.data) {
                 LOG_DEBUG("Entering if");
                 LOG_DEBUG("Memory deallocation");
-                nimcp_free(handle->impl.direct.data);
+                free(handle->impl.direct.data);
             }
             break;
         }
@@ -870,7 +870,7 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
 
     handle->magic = 0;
     handle->state = UNIFIED_STATE_INVALID;
-    nimcp_free(handle);
+    free(handle);
 }
 
 NIMCP_EXPORT const void* unified_mem_read(unified_mem_handle_t handle) {
@@ -1011,7 +1011,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
     if (!handle || handle->magic != UNIFIED_HANDLE_MAGIC) return NULL;
     if (handle->state == UNIFIED_STATE_INVALID) return NULL;
 
-    unified_mem_snapshot_t snap = nimcp_calloc(1, sizeof(struct unified_mem_snapshot_struct));
+    unified_mem_snapshot_t snap = calloc(1, sizeof(struct unified_mem_snapshot_struct));
     if (!snap) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
@@ -1035,7 +1035,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
             if (current_data) {
                 LOG_DEBUG("Entering if");
                 LOG_DEBUG("Memory allocation requested");
-                snap->data_copy = nimcp_malloc(handle->size);
+                snap->data_copy = malloc(handle->size);
                 if (snap->data_copy) {
                     LOG_DEBUG("Entering if");
                     memcpy(snap->data_copy, current_data, handle->size);
@@ -1057,7 +1057,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
         case UNIFIED_STRATEGY_POOL_DIRECT:
         case UNIFIED_STRATEGY_MALLOC_DIRECT: {
             // Full copy for direct allocations
-            snap->data_copy = nimcp_malloc(handle->size);
+            snap->data_copy = malloc(handle->size);
             if (snap->data_copy) {
                 LOG_DEBUG("Entering if");
                 memcpy(snap->data_copy, handle->impl.direct.data, handle->size);
@@ -1075,9 +1075,9 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
         if (snap->data_copy) {
             LOG_DEBUG("Entering if");
             LOG_DEBUG("Memory deallocation");
-            nimcp_free(snap->data_copy);
+            free(snap->data_copy);
         }
-        nimcp_free(snap);
+        free(snap);
         snap = NULL;
     }
 
@@ -1131,7 +1131,7 @@ NIMCP_EXPORT void unified_mem_snapshot_destroy(unified_mem_snapshot_t snapshot) 
     if (snapshot->data_copy) {
         LOG_DEBUG("Entering if");
         LOG_DEBUG("Memory deallocation");
-        nimcp_free(snapshot->data_copy);
+        free(snapshot->data_copy);
     }
 
     // Free page CoW snapshot if applicable
@@ -1141,7 +1141,7 @@ NIMCP_EXPORT void unified_mem_snapshot_destroy(unified_mem_snapshot_t snapshot) 
     }
 
     snapshot->magic = 0;
-    nimcp_free(snapshot);
+    free(snapshot);
 }
 
 NIMCP_EXPORT size_t unified_mem_snapshot_get_delta_bytes(

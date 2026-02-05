@@ -60,7 +60,7 @@ TEST_F(ThreadLocalErrorTest, ConcurrentErrorsDoNotCorrupt) {
     std::vector<std::thread> threads;
     for (int i = 0; i < NUM_THREADS; i++) {
         threads.emplace_back([&, i]() {
-            while (\!go.load()) {}
+            while (!go.load()) {}
             for (int j = 0; j < ITERATIONS; j++) {
                 // Trigger error setting
                 nimcp_brain_destroy(NULL);

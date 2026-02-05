@@ -22,6 +22,9 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(msg_router)
 
+/* Alias: tests reference nimcp_msg_router_set_health_agent (with nimcp_ prefix) */
+void nimcp_msg_router_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+
 /*=============================================================================
  * Internal Structures
  *===========================================================================*/
