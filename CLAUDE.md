@@ -22,6 +22,32 @@
 | Error Codes | [06-error-codes.md](docs/claude/06-error-codes.md) |
 | Common Issues | [07-common-issues.md](docs/claude/07-common-issues.md) |
 
+## Trigger-Action Rules
+
+### Routing Table
+| Trigger | Action |
+|---------|--------|
+| Code change in src/ | Run `make nimcp -j4` to verify build |
+| New test file created | Run the specific test to verify it passes |
+| Bug report or error | Use systematic debugging: reproduce → isolate → fix → verify |
+| Memory/learning worth preserving | Write to MEMORY.md BEFORE responding |
+| Complex multi-file change | Create task list with TaskCreate |
+| Unclear requirements | Use AskUserQuestion, don't assume |
+| Session ending or context getting long | Update journal.md with handoff notes |
+
+### Enforcement Rules
+1. **Write-Before-Speak**: If something is worth remembering, write it to a file BEFORE saying "I'll remember" or "noted"
+2. **No Empty Promises**: Never say "I'll keep that in mind" without an actual file write in the same response
+3. **Verify Before Commit**: Always run `make nimcp -j4` before any git commit
+4. **Test What You Write**: New test files must be built and run before committing
+5. **Immediate Memory Updates**: Don't defer MEMORY.md updates - do them in the moment
+
+### Self-Check Before Every Response
+Ask yourself:
+- Did the user share something that should be persisted? → Write it now
+- Am I about to make a promise to remember? → Write first, then respond
+- Is this a pattern/lesson that will help future sessions? → Update MEMORY.md
+
 ## Module Documentation
 
 | Module | File |
