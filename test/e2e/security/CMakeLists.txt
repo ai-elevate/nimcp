@@ -267,3 +267,39 @@ set_tests_properties(e2e_security_test_bbb_immune_pipeline PROPERTIES
     LABELS "e2e;security;bbb;immune;pipeline"
     TIMEOUT 300
 )
+
+# ============================================================================
+# BBB Full Workflow E2E Tests (P1-P3 Remediation)
+# ============================================================================
+# WHAT: Complete Blood-Brain Barrier workflow tests
+# WHY:  Verify full validation, threat detection, statistics, and enable/disable cycles
+
+add_executable(e2e_security_test_bbb_e2e
+    test_bbb_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_include_directories(e2e_security_test_bbb_e2e PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/security
+    ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/include/utils/error
+    ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_link_libraries(e2e_security_test_bbb_e2e
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_compile_features(e2e_security_test_bbb_e2e PRIVATE cxx_std_17)
+add_test(NAME e2e_security_test_bbb_e2e
+         COMMAND e2e_security_test_bbb_e2e)
+set_tests_properties(e2e_security_test_bbb_e2e PROPERTIES
+    LABELS "e2e;security;bbb;validation;threat_detection"
+    TIMEOUT 600
+)
+
+message(STATUS "Added P1-P3 Remediation Security E2E tests:")
+message(STATUS "  - e2e_security_test_bbb_e2e (BBB Full Workflow)")

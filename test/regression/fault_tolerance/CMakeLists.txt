@@ -812,4 +812,54 @@ gtest_discover_tests(regression_heartbeat_B25nb_memory_core_nonbridge
         TIMEOUT 180
 )
 
+# P1-P3 Recovery (Circuit Breaker) Regression Tests
+add_executable(regression_fault_tolerance_test_recovery_regression
+    test_recovery_regression.cpp
+)
+target_link_libraries(regression_fault_tolerance_test_recovery_regression
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+        m
+)
+target_include_directories(regression_fault_tolerance_test_recovery_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_features(regression_fault_tolerance_test_recovery_regression PRIVATE cxx_std_17)
+target_compile_definitions(regression_fault_tolerance_test_recovery_regression PRIVATE NIMCP_TESTING)
+gtest_discover_tests(regression_fault_tolerance_test_recovery_regression
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;recovery;p1_p3"
+        TIMEOUT 180
+)
+
+# P1-P3 Graceful Degradation Regression Tests
+add_executable(regression_fault_tolerance_test_graceful_degradation_regression
+    test_graceful_degradation_regression.cpp
+)
+target_link_libraries(regression_fault_tolerance_test_graceful_degradation_regression
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+        m
+)
+target_include_directories(regression_fault_tolerance_test_graceful_degradation_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_features(regression_fault_tolerance_test_graceful_degradation_regression PRIVATE cxx_std_17)
+target_compile_definitions(regression_fault_tolerance_test_graceful_degradation_regression PRIVATE NIMCP_TESTING)
+gtest_discover_tests(regression_fault_tolerance_test_graceful_degradation_regression
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;graceful_degradation;p1_p3"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

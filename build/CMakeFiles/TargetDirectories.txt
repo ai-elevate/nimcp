@@ -501,6 +501,8 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_quantum_test_quantum_walk_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_tensor_networks_test_mps_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_buffer_overflow_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_memory_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_mutex_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_utils_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_oscillations_sleep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_kg_message_index.dir
@@ -861,6 +863,8 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_memory_core_nonbridge_B25nb_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_agent_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_recovery_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_graceful_degradation_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1101,6 +1105,7 @@
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_mesh_security.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_bbb_immune_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_bbb_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/rebuild_cache.dir
@@ -1127,6 +1132,14 @@
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/e2e_utils_test_memory_health_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_middleware_integration.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_spike_features.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_population_coding.dir
@@ -3418,6 +3431,8 @@
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B25_memory_core_bridges.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B26_emotion_cluster_bridges.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B25nb_memory_core_nonbridge.dir
+/home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_recovery_regression.dir
+/home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_graceful_degradation_regression.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3502,6 +3517,7 @@
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/unit_brain_test_state_manager.dir
+/home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/unit_brain_test_kg_wiring_modules.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/rebuild_cache.dir
@@ -3544,6 +3560,7 @@
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_layer_pools_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_unified_memory_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_memory_api_regression.dir
+/home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_p1p3_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/rebuild_cache.dir
@@ -3561,6 +3578,7 @@
 /home/bbrelin/nimcp/build/test/unit/constants/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_thread_sync_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_pool_regression.dir
+/home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_p1p3_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/utils/thread/CMakeFiles/rebuild_cache.dir

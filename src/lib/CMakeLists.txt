@@ -1849,6 +1849,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_observability.c        # MTTR/MTBF metrics and tracing
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_chaos_engineering.c             # Controlled fault injection
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_predictive_analysis.c           # Time-series anomaly detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_retry.c                         # Retry with exponential backoff (P1-P3 remediation)
 
     # GPU Health Monitoring (Phase 7: Section 26 - GPU Health & Resilience)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/gpu/nimcp_gpu_health.c                               # GPU health monitor and resilience

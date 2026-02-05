@@ -292,3 +292,61 @@ set_tests_properties(e2e_fault_tolerance_test_health_agent_e2e PROPERTIES
     LABELS "e2e"
     TIMEOUT 600
 )
+
+# ============================================================================
+# P1-P3 Remediation E2E Tests
+# ============================================================================
+
+# Recovery E2E Tests (Circuit Breaker + Retry Framework Integration)
+add_executable(e2e_fault_tolerance_test_recovery_e2e
+    test_recovery_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_fault_tolerance_test_recovery_e2e
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(e2e_fault_tolerance_test_recovery_e2e
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_compile_features(e2e_fault_tolerance_test_recovery_e2e PRIVATE cxx_std_17)
+add_test(NAME e2e_fault_tolerance_test_recovery_e2e
+         COMMAND e2e_fault_tolerance_test_recovery_e2e)
+set_tests_properties(e2e_fault_tolerance_test_recovery_e2e PROPERTIES
+    LABELS "e2e;fault_tolerance;recovery;circuit_breaker;retry"
+    TIMEOUT 600
+)
+
+# Graceful Degradation E2E Tests (Tier Transitions + Feature Shedding + Load Shedding)
+add_executable(e2e_fault_tolerance_test_graceful_degradation_e2e
+    test_graceful_degradation_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_fault_tolerance_test_graceful_degradation_e2e
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(e2e_fault_tolerance_test_graceful_degradation_e2e
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_compile_features(e2e_fault_tolerance_test_graceful_degradation_e2e PRIVATE cxx_std_17)
+add_test(NAME e2e_fault_tolerance_test_graceful_degradation_e2e
+         COMMAND e2e_fault_tolerance_test_graceful_degradation_e2e)
+set_tests_properties(e2e_fault_tolerance_test_graceful_degradation_e2e PROPERTIES
+    LABELS "e2e;fault_tolerance;graceful_degradation;tier;load_shedding"
+    TIMEOUT 600
+)
+
+message(STATUS "Added P1-P3 Remediation E2E tests:")
+message(STATUS "  - e2e_fault_tolerance_test_recovery_e2e (Circuit Breaker + Retry)")
+message(STATUS "  - e2e_fault_tolerance_test_graceful_degradation_e2e (Graceful Degradation)")

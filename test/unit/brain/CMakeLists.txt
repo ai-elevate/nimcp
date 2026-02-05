@@ -73,3 +73,37 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_state_manager.cpp")
 
     message(STATUS "  Added Unit test: unit_brain_test_state_manager")
 endif()
+
+# KG Wiring Modules Tests (10 brain regions)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_kg_wiring_modules.cpp")
+    add_executable(unit_brain_test_kg_wiring_modules
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_kg_wiring_modules.cpp
+    )
+
+    target_link_libraries(unit_brain_test_kg_wiring_modules
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_brain_test_kg_wiring_modules
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/core/brain
+    )
+
+    target_compile_features(unit_brain_test_kg_wiring_modules PRIVATE cxx_std_17)
+    target_compile_definitions(unit_brain_test_kg_wiring_modules PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_brain_test_kg_wiring_modules
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;brain;kg_wiring_modules"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_brain_test_kg_wiring_modules")
+endif()

@@ -5983,6 +5983,32 @@ regression_utils_test_buffer_overflow_regression/fast:
 .PHONY : regression_utils_test_buffer_overflow_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_utils_test_memory_regression
+
+# Build rule for target.
+regression_utils_test_memory_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_test_memory_regression
+.PHONY : regression_utils_test_memory_regression
+
+# fast build rule for target.
+regression_utils_test_memory_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_test_memory_regression.dir/build.make test/CMakeFiles/regression_utils_test_memory_regression.dir/build
+.PHONY : regression_utils_test_memory_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_test_mutex_regression
+
+# Build rule for target.
+regression_utils_test_mutex_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_test_mutex_regression
+.PHONY : regression_utils_test_mutex_regression
+
+# fast build rule for target.
+regression_utils_test_mutex_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_test_mutex_regression.dir/build.make test/CMakeFiles/regression_utils_test_mutex_regression.dir/build
+.PHONY : regression_utils_test_mutex_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_test_utils_regression
 
 # Build rule for target.
@@ -9480,6 +9506,32 @@ e2e_fault_tolerance_test_health_agent_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_health_agent_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_recovery_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_recovery_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_recovery_e2e
+.PHONY : e2e_fault_tolerance_test_recovery_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_recovery_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_recovery_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_recovery_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_recovery_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_graceful_degradation_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_graceful_degradation_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_graceful_degradation_e2e
+.PHONY : e2e_fault_tolerance_test_graceful_degradation_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_graceful_degradation_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_graceful_degradation_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_graceful_degradation_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_graceful_degradation_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -10507,6 +10559,19 @@ e2e_security_test_bbb_immune_pipeline/fast:
 .PHONY : e2e_security_test_bbb_immune_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_security_test_bbb_e2e
+
+# Build rule for target.
+e2e_security_test_bbb_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_security_test_bbb_e2e
+.PHONY : e2e_security_test_bbb_e2e
+
+# fast build rule for target.
+e2e_security_test_bbb_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/security/CMakeFiles/e2e_security_test_bbb_e2e.dir/build.make test/e2e/security/CMakeFiles/e2e_security_test_bbb_e2e.dir/build
+.PHONY : e2e_security_test_bbb_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_kg_wiring
 
 # Build rule for target.
@@ -10570,6 +10635,19 @@ test_genius_e2e: cmake_check_build_system
 test_genius_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/genius/CMakeFiles/test_genius_e2e.dir/build.make test/e2e/genius/CMakeFiles/test_genius_e2e.dir/build
 .PHONY : test_genius_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_utils_test_memory_health_e2e
+
+# Build rule for target.
+e2e_utils_test_memory_health_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_utils_test_memory_health_e2e
+.PHONY : e2e_utils_test_memory_health_e2e
+
+# fast build rule for target.
+e2e_utils_test_memory_health_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/utils/CMakeFiles/e2e_utils_test_memory_health_e2e.dir/build.make test/e2e/utils/CMakeFiles/e2e_utils_test_memory_health_e2e.dir/build
+.PHONY : e2e_utils_test_memory_health_e2e/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -23065,6 +23143,32 @@ regression_heartbeat_B25nb_memory_core_nonbridge/fast:
 .PHONY : regression_heartbeat_B25nb_memory_core_nonbridge/fast
 
 #=============================================================================
+# Target rules for targets named regression_fault_tolerance_test_recovery_regression
+
+# Build rule for target.
+regression_fault_tolerance_test_recovery_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_fault_tolerance_test_recovery_regression
+.PHONY : regression_fault_tolerance_test_recovery_regression
+
+# fast build rule for target.
+regression_fault_tolerance_test_recovery_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_recovery_regression.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_recovery_regression.dir/build
+.PHONY : regression_fault_tolerance_test_recovery_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_fault_tolerance_test_graceful_degradation_regression
+
+# Build rule for target.
+regression_fault_tolerance_test_graceful_degradation_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_fault_tolerance_test_graceful_degradation_regression
+.PHONY : regression_fault_tolerance_test_graceful_degradation_regression
+
+# fast build rule for target.
+regression_fault_tolerance_test_graceful_degradation_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_graceful_degradation_regression.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance_test_graceful_degradation_regression.dir/build
+.PHONY : regression_fault_tolerance_test_graceful_degradation_regression/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -23611,6 +23715,19 @@ unit_brain_test_state_manager/fast:
 .PHONY : unit_brain_test_state_manager/fast
 
 #=============================================================================
+# Target rules for targets named unit_brain_test_kg_wiring_modules
+
+# Build rule for target.
+unit_brain_test_kg_wiring_modules: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_kg_wiring_modules
+.PHONY : unit_brain_test_kg_wiring_modules
+
+# fast build rule for target.
+unit_brain_test_kg_wiring_modules/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_kg_wiring_modules.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_kg_wiring_modules.dir/build
+.PHONY : unit_brain_test_kg_wiring_modules/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
 
 # Build rule for target.
@@ -23884,6 +24001,19 @@ regression_utils_memory_test_memory_api_regression/fast:
 .PHONY : regression_utils_memory_test_memory_api_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_utils_memory_test_p1p3_regression
+
+# Build rule for target.
+regression_utils_memory_test_p1p3_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_memory_test_p1p3_regression
+.PHONY : regression_utils_memory_test_p1p3_regression
+
+# fast build rule for target.
+regression_utils_memory_test_p1p3_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_p1p3_regression.dir/build.make test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_p1p3_regression.dir/build
+.PHONY : regression_utils_memory_test_p1p3_regression/fast
+
+#=============================================================================
 # Target rules for targets named unit_constants_test
 
 # Build rule for target.
@@ -23921,6 +24051,19 @@ regression_utils_thread_test_mutex_pool_regression: cmake_check_build_system
 regression_utils_thread_test_mutex_pool_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_pool_regression.dir/build.make test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_pool_regression.dir/build
 .PHONY : regression_utils_thread_test_mutex_pool_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_thread_test_mutex_p1p3_regression
+
+# Build rule for target.
+regression_utils_thread_test_mutex_p1p3_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_thread_test_mutex_p1p3_regression
+.PHONY : regression_utils_thread_test_mutex_p1p3_regression
+
+# fast build rule for target.
+regression_utils_thread_test_mutex_p1p3_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_p1p3_regression.dir/build.make test/regression/utils/thread/CMakeFiles/regression_utils_thread_test_mutex_p1p3_regression.dir/build
+.PHONY : regression_utils_thread_test_mutex_p1p3_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_containers_test_darray
@@ -38461,6 +38604,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_exception_resilience_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_stress_e2e"
 	@echo "... e2e_fault_tolerance_test_fault_tolerance_exception_e2e"
+	@echo "... e2e_fault_tolerance_test_graceful_degradation_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_connection_e2e"
@@ -38497,6 +38641,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
 	@echo "... e2e_fault_tolerance_test_predictive_personality_selfawareness_bridges_B24_e2e"
+	@echo "... e2e_fault_tolerance_test_recovery_e2e"
 	@echo "... e2e_fault_tolerance_test_resilience_stress"
 	@echo "... e2e_fault_tolerance_test_self_repair_bio_async_e2e"
 	@echo "... e2e_fault_tolerance_test_state_checkpoint_recovery_e2e"
@@ -38534,6 +38679,7 @@ help:
 	@echo "... e2e_security_pipeline"
 	@echo "... e2e_security_recovery"
 	@echo "... e2e_security_stack"
+	@echo "... e2e_security_test_bbb_e2e"
 	@echo "... e2e_security_test_bbb_immune_pipeline"
 	@echo "... e2e_snn_bridge_exception"
 	@echo "... e2e_statistics_test_information_theory_e2e"
@@ -38727,6 +38873,7 @@ help:
 	@echo "... e2e_test_wellbeing_snn_plasticity_pipeline"
 	@echo "... e2e_test_wernicke_pipeline"
 	@echo "... e2e_test_wiring_diagram_pipeline"
+	@echo "... e2e_utils_test_memory_health_e2e"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
@@ -39470,6 +39617,8 @@ help:
 	@echo "... regression_exception_test_signal_exception_regression"
 	@echo "... regression_exception_typed_regression"
 	@echo "... regression_fault_tolerance"
+	@echo "... regression_fault_tolerance_test_graceful_degradation_regression"
+	@echo "... regression_fault_tolerance_test_recovery_regression"
 	@echo "... regression_fep_bridges"
 	@echo "... regression_financial_cognitive_integration_c"
 	@echo "... regression_fuzzy_logic"
@@ -39750,6 +39899,7 @@ help:
 	@echo "... regression_utils_memory_test_brain_pools_regression"
 	@echo "... regression_utils_memory_test_layer_pools_regression"
 	@echo "... regression_utils_memory_test_memory_api_regression"
+	@echo "... regression_utils_memory_test_p1p3_regression"
 	@echo "... regression_utils_memory_test_unified_memory_regression"
 	@echo "... regression_utils_platform_test_platform_tier_regression"
 	@echo "... regression_utils_quantum_test_quantum_walk_regression"
@@ -39757,7 +39907,10 @@ help:
 	@echo "... regression_utils_tensor_networks_test_mps_regression"
 	@echo "... regression_utils_tensor_test_tensor_performance"
 	@echo "... regression_utils_test_buffer_overflow_regression"
+	@echo "... regression_utils_test_memory_regression"
+	@echo "... regression_utils_test_mutex_regression"
 	@echo "... regression_utils_test_utils_regression"
+	@echo "... regression_utils_thread_test_mutex_p1p3_regression"
 	@echo "... regression_utils_thread_test_mutex_pool_regression"
 	@echo "... regression_utils_thread_test_thread_sync_regression"
 	@echo "... regression_wernicke_backward_compat"
@@ -40090,6 +40243,7 @@ help:
 	@echo "... unit_brain_regions_kg_wiring_pfc"
 	@echo "... unit_brain_spike_features"
 	@echo "... unit_brain_test_kg_module_wiring"
+	@echo "... unit_brain_test_kg_wiring_modules"
 	@echo "... unit_brain_test_state_manager"
 	@echo "... unit_chemistry_exception_handling"
 	@echo "... unit_chemistry_gasotransmitters_test_nitric_oxide"

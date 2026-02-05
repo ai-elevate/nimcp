@@ -3024,6 +3024,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/genius/CMakeLists.txt)
     add_subdirectory(genius)
 endif()
 
+# Include Utils E2E test subdirectory (Memory + Health Agent)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
+    message(STATUS "Adding Utils E2E tests...")
+    add_subdirectory(utils)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
