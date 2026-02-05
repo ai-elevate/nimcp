@@ -14329,6 +14329,58 @@ unit_cognitive_test_symbolic_logic_integration/fast:
 .PHONY : unit_cognitive_test_symbolic_logic_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_creative
+
+# Build rule for target.
+unit_cognitive_test_creative: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_creative
+.PHONY : unit_cognitive_test_creative
+
+# fast build rule for target.
+unit_cognitive_test_creative/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_creative.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_creative.dir/build
+.PHONY : unit_cognitive_test_creative/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_self_awareness_feedback
+
+# Build rule for target.
+unit_cognitive_test_self_awareness_feedback: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_self_awareness_feedback
+.PHONY : unit_cognitive_test_self_awareness_feedback
+
+# fast build rule for target.
+unit_cognitive_test_self_awareness_feedback/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_self_awareness_feedback.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_self_awareness_feedback.dir/build
+.PHONY : unit_cognitive_test_self_awareness_feedback/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_shadow_emotions
+
+# Build rule for target.
+unit_cognitive_test_shadow_emotions: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_shadow_emotions
+.PHONY : unit_cognitive_test_shadow_emotions
+
+# fast build rule for target.
+unit_cognitive_test_shadow_emotions/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_shadow_emotions.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_shadow_emotions.dir/build
+.PHONY : unit_cognitive_test_shadow_emotions/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_remorse_regret
+
+# Build rule for target.
+unit_cognitive_test_remorse_regret: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_remorse_regret
+.PHONY : unit_cognitive_test_remorse_regret
+
+# fast build rule for target.
+unit_cognitive_test_remorse_regret/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_remorse_regret.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_remorse_regret.dir/build
+.PHONY : unit_cognitive_test_remorse_regret/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -40417,6 +40469,7 @@ help:
 	@echo "... unit_cognitive_test_collective_hub_bridge"
 	@echo "... unit_cognitive_test_collective_phi"
 	@echo "... unit_cognitive_test_consolidation"
+	@echo "... unit_cognitive_test_creative"
 	@echo "... unit_cognitive_test_curiosity_enhanced"
 	@echo "... unit_cognitive_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_test_curiosity_immune"
@@ -40472,11 +40525,14 @@ help:
 	@echo "... unit_cognitive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
+	@echo "... unit_cognitive_test_remorse_regret"
 	@echo "... unit_cognitive_test_salience_attention_bridge"
 	@echo "... unit_cognitive_test_salience_attention_fep_bridge"
 	@echo "... unit_cognitive_test_security_cognitive_hub_bridge"
 	@echo "... unit_cognitive_test_self_awareness_extended"
+	@echo "... unit_cognitive_test_self_awareness_feedback"
 	@echo "... unit_cognitive_test_self_introspection_bridge"
+	@echo "... unit_cognitive_test_shadow_emotions"
 	@echo "... unit_cognitive_test_shared_intentionality"
 	@echo "... unit_cognitive_test_social"
 	@echo "... unit_cognitive_test_symbolic_logic_integration"

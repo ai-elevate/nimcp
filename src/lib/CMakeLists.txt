@@ -526,8 +526,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_network_builder.c
 
     # NLP Integration - NIMCP 2.7 (combines synapses + attention + neuromodulation)
-    # DISABLED: Duplicate of networking/nlp version - causes multiple definition of nlp_set_health_agent
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
+    # Note: networking/nlp version uses networking_nlp prefix to avoid conflict
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_spike_nlp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_multimodal_nlp_bridge.c
 

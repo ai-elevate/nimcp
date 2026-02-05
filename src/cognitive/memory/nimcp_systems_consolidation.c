@@ -84,7 +84,7 @@ static void systems_consolidation_mesh_unregister(void) {
 
 
 /** @brief Send heartbeat from systems_consolidation module (instance-level) */
-static inline void systems_systems_consolidation_heartbeat_instance(
+static inline void systems_consolidation_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
 {
     if (g_systems_consolidation_health_agent) {

@@ -26513,30 +26513,6 @@ __/core/brain_regions/nimcp_contextual_language.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_contextual_language.c.s
 .PHONY : __/core/brain_regions/nimcp_contextual_language.c.s
 
-__/core/brain_regions/nimcp_language_production_bridge.o: __/core/brain_regions/nimcp_language_production_bridge.c.o
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.o
-
-# target to build an object file
-__/core/brain_regions/nimcp_language_production_bridge.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_language_production_bridge.c.o
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.c.o
-
-__/core/brain_regions/nimcp_language_production_bridge.i: __/core/brain_regions/nimcp_language_production_bridge.c.i
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.i
-
-# target to preprocess a source file
-__/core/brain_regions/nimcp_language_production_bridge.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_language_production_bridge.c.i
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.c.i
-
-__/core/brain_regions/nimcp_language_production_bridge.s: __/core/brain_regions/nimcp_language_production_bridge.c.s
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.s
-
-# target to generate assembly for a file
-__/core/brain_regions/nimcp_language_production_bridge.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_language_production_bridge.c.s
-.PHONY : __/core/brain_regions/nimcp_language_production_bridge.c.s
-
 __/core/brain_regions/nimcp_predictive_regions_fep_bridge.o: __/core/brain_regions/nimcp_predictive_regions_fep_bridge.c.o
 .PHONY : __/core/brain_regions/nimcp_predictive_regions_fep_bridge.o
 
@@ -32512,30 +32488,6 @@ __/integration/adapters/executive/nimcp_pfc_adapter.s: __/integration/adapters/e
 __/integration/adapters/executive/nimcp_pfc_adapter.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_pfc_adapter.c.s
 .PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.c.s
-
-__/integration/adapters/memory/nimcp_hippocampus_adapter.o: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.o
-
-# target to build an object file
-__/integration/adapters/memory/nimcp_hippocampus_adapter.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
-
-__/integration/adapters/memory/nimcp_hippocampus_adapter.i: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.i
-
-# target to preprocess a source file
-__/integration/adapters/memory/nimcp_hippocampus_adapter.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
-
-__/integration/adapters/memory/nimcp_hippocampus_adapter.s: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.s
-
-# target to generate assembly for a file
-__/integration/adapters/memory/nimcp_hippocampus_adapter.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
-.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
 
 __/integration/adapters/memory/nimcp_pr_memory_adapter.o: __/integration/adapters/memory/nimcp_pr_memory_adapter.c.o
 .PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.o
@@ -53674,9 +53626,6 @@ help:
 	@echo "... __/core/brain_regions/nimcp_contextual_language.o"
 	@echo "... __/core/brain_regions/nimcp_contextual_language.i"
 	@echo "... __/core/brain_regions/nimcp_contextual_language.s"
-	@echo "... __/core/brain_regions/nimcp_language_production_bridge.o"
-	@echo "... __/core/brain_regions/nimcp_language_production_bridge.i"
-	@echo "... __/core/brain_regions/nimcp_language_production_bridge.s"
 	@echo "... __/core/brain_regions/nimcp_predictive_regions_fep_bridge.o"
 	@echo "... __/core/brain_regions/nimcp_predictive_regions_fep_bridge.i"
 	@echo "... __/core/brain_regions/nimcp_predictive_regions_fep_bridge.s"
@@ -54424,9 +54373,6 @@ help:
 	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.o"
 	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.i"
 	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.s"
-	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.o"
-	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.i"
-	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.s"
 	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.o"
 	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.i"
 	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.s"

@@ -1954,3 +1954,151 @@ add_subdirectory(predictive)
 # ============================================================================
 
 add_subdirectory(inner_dialogue)
+
+# ============================================================================
+# Creative Cortex Tests
+# ============================================================================
+# WHAT: Unit tests for Creative Cortex module (art appreciation and generation)
+# WHY:  Validate orchestrator lifecycle, style embeddings, modality helpers
+# HOW:  Test create/destroy, config, embeddings, modality classification
+# ============================================================================
+
+add_executable(unit_cognitive_test_creative
+    test_creative.cpp
+)
+
+target_link_libraries(unit_cognitive_test_creative
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_creative
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_creative PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_creative
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;creative"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Self-Awareness Feedback Tests
+# ============================================================================
+# WHAT: Unit tests for Self-Awareness Feedback System
+# WHY:  Validate feedback loop management, policies, transfers, analysis
+# HOW:  Test init/cleanup, policy functions, transfer operations, health
+# ============================================================================
+
+add_executable(unit_cognitive_test_self_awareness_feedback
+    test_self_awareness_feedback.cpp
+)
+
+target_link_libraries(unit_cognitive_test_self_awareness_feedback
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_self_awareness_feedback
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_self_awareness_feedback PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_self_awareness_feedback
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;self_awareness;feedback"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Shadow Emotions Tests
+# ============================================================================
+# WHAT: Unit tests for Shadow Emotions module (Dark Triad detection)
+# WHY:  Validate emotion tracking, self-correction, intervention system
+# HOW:  Test create/destroy, emotion experience, queries, interventions
+# ============================================================================
+
+add_executable(unit_cognitive_test_shadow_emotions
+    test_shadow_emotions.cpp
+)
+
+target_link_libraries(unit_cognitive_test_shadow_emotions
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_shadow_emotions
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_shadow_emotions PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_shadow_emotions
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;shadow;emotions"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Remorse and Regret Tests
+# ============================================================================
+# WHAT: Unit tests for Remorse and Regret system (evaluative negative emotions)
+# WHY:  Validate event processing, emotional dynamics, atonement, forgiveness
+# HOW:  Test create/destroy, events, counterfactual, update, queries
+# ============================================================================
+
+add_executable(unit_cognitive_test_remorse_regret
+    test_remorse_regret.cpp
+)
+
+target_link_libraries(unit_cognitive_test_remorse_regret
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_remorse_regret
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_remorse_regret PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_remorse_regret
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;remorse;regret"
+        TIMEOUT 120
+)

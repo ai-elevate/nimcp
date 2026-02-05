@@ -44,7 +44,7 @@
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp)
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(networking_nlp)
 
 //=============================================================================
 // Module Registration
@@ -63,7 +63,7 @@ static nimcp_once_t g_nlp_once = NIMCP_ONCE_INIT;
 //=============================================================================
 
 static void* nlp_recv_thread(void* arg);
-static void* nlp_heartbeat_thread(void* arg);
+static void* networking_nlp_heartbeat_thread(void* arg);
 static void* nlp_stealth_thread(void* arg);
 static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
                                const struct sockaddr_in* from);
@@ -700,7 +700,7 @@ int nlp_node_start(nlp_node_t node) {
     }
 
     // Start heartbeat thread
-    if (nimcp_thread_create(&node->heartbeat_thread, nlp_heartbeat_thread, node, NULL) != NIMCP_SUCCESS) {
+    if (nimcp_thread_create(&node->heartbeat_thread, networking_nlp_heartbeat_thread, node, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to create heartbeat thread");
         nimcp_mutex_lock(&node->state_mutex);
         node->running = false;
@@ -1886,7 +1886,7 @@ static void* nlp_recv_thread(void* arg) {
     return NULL;
 }
 
-static void* nlp_heartbeat_thread(void* arg) {
+static void* networking_nlp_heartbeat_thread(void* arg) {
     nlp_node_t node = (nlp_node_t)arg;
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Heartbeat thread started");
