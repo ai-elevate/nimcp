@@ -460,8 +460,8 @@ bool nimcp_gpu_reptile_step(
 __global__ void kernel_compute_prototypes(
     float* __restrict__ prototypes,
     const float* __restrict__ embeddings,
-    const int* __restrict__ labels,
-    const int* __restrict__ class_counts,
+    const float* __restrict__ labels,
+    const float* __restrict__ class_counts,
     int n_classes,
     int embedding_dim,
     int n_samples,
@@ -477,7 +477,7 @@ __global__ void kernel_compute_prototypes(
     int count = 0;
 
     for (int s = 0; s < n_samples; s++) {
-        if (labels[s] == class_idx) {
+        if ((int)labels[s] == class_idx) {
             sum += embeddings[s * embedding_dim + dim_idx];
             count++;
         }
@@ -543,7 +543,7 @@ bool nimcp_gpu_protonet_compute_prototypes(
     kernel_compute_prototypes<<<grid, block>>>(
         (float*)state->prototypes->data,
         (const float*)support_embeddings->data,
-        (const int*)support_labels->data,
+        (const float*)support_labels->data,
         NULL,  // class_counts computed inline
         state->n_classes,
         state->embedding_dim,
@@ -680,7 +680,7 @@ bool nimcp_gpu_protonet_classify(
 __global__ void kernel_cross_entropy_loss(
     float* __restrict__ loss_sum,
     const float* __restrict__ logits,
-    const int* __restrict__ labels,
+    const float* __restrict__ labels,
     int n_queries,
     int n_classes)
 {
@@ -690,7 +690,7 @@ __global__ void kernel_cross_entropy_loss(
     float local_loss = 0.0f;
 
     if (idx < n_queries) {
-        int label = labels[idx];
+        int label = (int)labels[idx];
         float prob = logits[idx * n_classes + label];
         local_loss = -logf(prob + 1e-8f);
     }
@@ -736,7 +736,7 @@ bool nimcp_gpu_protonet_loss(
     kernel_cross_entropy_loss<<<GRID_SIZE(n_queries), BLOCK_SIZE>>>(
         d_loss_sum,
         (const float*)state->logits->data,
-        (const int*)query_labels->data,
+        (const float*)query_labels->data,
         n_queries,
         state->n_classes);
 
@@ -1172,10 +1172,10 @@ bool nimcp_gpu_few_shot_accuracy(
 
     // Copy to CPU for argmax and comparison
     float* h_pred = (float*)malloc(predictions->numel * sizeof(float));
-    int* h_labels = (int*)malloc(n * sizeof(int));
+    float* h_labels = (float*)malloc(n * sizeof(float));
 
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_pred, predictions->data, predictions->numel * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_labels, labels->data, n * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_labels, labels->data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     int correct = 0;
     for (int i = 0; i < n; i++) {
@@ -1187,7 +1187,7 @@ bool nimcp_gpu_few_shot_accuracy(
                 pred_class = c;
             }
         }
-        if (pred_class == h_labels[i]) correct++;
+        if (pred_class == (int)h_labels[i]) correct++;
     }
 
     *accuracy_out = (float)correct / n;

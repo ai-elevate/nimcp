@@ -2872,10 +2872,10 @@ __global__ void kernel_kg_normalize_embeddings(
 __global__ void kernel_subgraph_embedding_match(
     const float* pattern_embeddings,
     const float* graph_embeddings,
-    const int* adjacency_csr_rows,
-    const int* adjacency_csr_cols,
-    const int* pattern_adj_rows,
-    const int* pattern_adj_cols,
+    const float* adjacency_csr_rows,
+    const float* adjacency_csr_cols,
+    const float* pattern_adj_rows,
+    const float* pattern_adj_cols,
     float* match_scores,
     int* match_mappings,
     int pattern_size,
@@ -2912,11 +2912,11 @@ __global__ void kernel_subgraph_embedding_match(
  * @brief Guided BFS step with embedding similarity to target
  */
 __global__ void kernel_guided_bfs_step(
-    const int* frontier,
+    const float* frontier,
     int* next_frontier,
     int* next_frontier_count,
-    const int* csr_rows,
-    const int* csr_cols,
+    const float* csr_rows,
+    const float* csr_cols,
     const float* target_embedding,
     const float* entity_embeddings,
     float* path_scores,
@@ -2929,14 +2929,14 @@ __global__ void kernel_guided_bfs_step(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= frontier_size) return;
 
-    int node = frontier[idx];
+    int node = (int)frontier[idx];
     if (node < 0 || node >= num_entities) return;
 
-    int row_start = csr_rows[node];
-    int row_end = csr_rows[node + 1];
+    int row_start = (int)csr_rows[node];
+    int row_end = (int)csr_rows[node + 1];
 
     for (int e = row_start; e < row_end; e++) {
-        int neighbor = csr_cols[e];
+        int neighbor = (int)csr_cols[e];
         if (neighbor < 0 || neighbor >= num_entities) continue;
 
         // Try to visit

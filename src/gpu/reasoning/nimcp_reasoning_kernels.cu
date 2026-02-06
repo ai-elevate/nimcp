@@ -128,10 +128,10 @@ __device__ float fuzzy_or(float a, float b, float type)
 __global__ void kernel_logic_evaluate(
     float* __restrict__ results,
     const float* __restrict__ variables,
-    const int* __restrict__ operators,
-    const int* __restrict__ operand1,
-    const int* __restrict__ operand2,
-    const int* __restrict__ output_idx,
+    const float* __restrict__ operators,    // Stored as float, converted to int
+    const float* __restrict__ operand1,     // Stored as float, converted to int
+    const float* __restrict__ operand2,     // Stored as float, converted to int
+    const float* __restrict__ output_idx,   // Stored as float, converted to int
     float and_type,
     float or_type,
     size_t n_clauses)
@@ -139,10 +139,11 @@ __global__ void kernel_logic_evaluate(
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n_clauses) return;
 
-    int op = operators[idx];
-    int op1 = operand1[idx];
-    int op2 = operand2[idx];
-    int out = output_idx[idx];
+    // Convert float-stored indices to integers
+    int op = (int)operators[idx];
+    int op1 = (int)operand1[idx];
+    int op2 = (int)operand2[idx];
+    int out = (int)output_idx[idx];
 
     float val1 = variables[op1];
     float val2 = (op != NIMCP_LOGIC_NOT) ? variables[op2] : 0.0f;
@@ -198,10 +199,10 @@ bool nimcp_gpu_logic_evaluate(
     kernel_logic_evaluate<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)results->data,
         (const float*)formula->variables->data,
-        (const int*)formula->operators->data,
-        (const int*)formula->operand1->data,
-        (const int*)formula->operand2->data,
-        (const int*)formula->output_idx->data,
+        (const float*)formula->operators->data,
+        (const float*)formula->operand1->data,
+        (const float*)formula->operand2->data,
+        (const float*)formula->output_idx->data,
         params->fuzzy_and_type,
         params->fuzzy_or_type,
         n);
@@ -216,10 +217,10 @@ bool nimcp_gpu_logic_evaluate(
 __global__ void kernel_logic_propagate(
     float* __restrict__ variables,
     const float* __restrict__ old_variables,
-    const int* __restrict__ operators,
-    const int* __restrict__ operand1,
-    const int* __restrict__ operand2,
-    const int* __restrict__ output_idx,
+    const float* __restrict__ operators,    // Stored as float, converted to int
+    const float* __restrict__ operand1,     // Stored as float, converted to int
+    const float* __restrict__ operand2,     // Stored as float, converted to int
+    const float* __restrict__ output_idx,   // Stored as float, converted to int
     float and_type,
     float or_type,
     size_t n_clauses)
@@ -227,10 +228,11 @@ __global__ void kernel_logic_propagate(
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n_clauses) return;
 
-    int op = operators[idx];
-    int op1 = operand1[idx];
-    int op2 = operand2[idx];
-    int out = output_idx[idx];
+    // Convert float-stored indices to integers
+    int op = (int)operators[idx];
+    int op1 = (int)operand1[idx];
+    int op2 = (int)operand2[idx];
+    int out = (int)output_idx[idx];
 
     float val1 = old_variables[op1];
     float val2 = (op != NIMCP_LOGIC_NOT) ? old_variables[op2] : 0.0f;
@@ -278,10 +280,10 @@ bool nimcp_gpu_logic_propagate(
         kernel_logic_propagate<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (float*)formula->variables->data,
             (const float*)formula->variables->data,
-            (const int*)formula->operators->data,
-            (const int*)formula->operand1->data,
-            (const int*)formula->operand2->data,
-            (const int*)formula->output_idx->data,
+            (const float*)formula->operators->data,
+            (const float*)formula->operand1->data,
+            (const float*)formula->operand2->data,
+            (const float*)formula->output_idx->data,
             params->fuzzy_and_type,
             params->fuzzy_or_type,
             n);

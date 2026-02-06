@@ -11,6 +11,7 @@
 
 #include "utils/fuzzy/nimcp_fuzzy_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>

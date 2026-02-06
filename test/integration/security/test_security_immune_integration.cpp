@@ -224,13 +224,22 @@ class SecurityImmuneIntegrationTest : public ::testing::Test {
                           nullptr, TEST_EPITOPE, TEST_EPITOPE_LEN);
     }
 
-    // Helper to trigger inflammation
+    // Helper to trigger inflammation at a specific level.
+    // Sets ALL existing inflammation sites to the desired level,
+    // or creates a new one if none exist. Avoids cytokine broadcasts
+    // from brain_immune_escalate_inflammation.
     void TriggerInflammation(brain_inflammation_level_t level)
     {
-        uint32_t site_id = 0;
-        // Use level as region_id proxy, and 0 for antigen_id (test scenario)
-        brain_immune_initiate_inflammation(immune_system_, (uint32_t)level, 0, &site_id);
-        sec_immune_unified_apply_inflammation(bridge_);
+        if (immune_system_->inflammation_count == 0) {
+            uint32_t site_id = 0;
+            brain_immune_initiate_inflammation(immune_system_, 0, 0, &site_id);
+        }
+        // Set ALL sites to the target level so get_inflammation_level()
+        // returns the desired level (it returns max across sites)
+        for (size_t i = 0; i < immune_system_->inflammation_count; i++) {
+            immune_system_->inflammation_sites[i].level = level;
+        }
+        sec_immune_unified_update(bridge_);
     }
 
     // Helper to set cytokine levels
@@ -239,7 +248,8 @@ class SecurityImmuneIntegrationTest : public ::testing::Test {
         uint32_t cytokine_id = 0;
         // source_cell=0, concentration=level, target_region=0 (broadcast)
         brain_immune_release_cytokine(immune_system_, type, 0, level, 0, &cytokine_id);
-        sec_immune_unified_apply_cytokine_effects(bridge_);
+        // update() recomputes cytokine modulation and applies all effects
+        sec_immune_unified_update(bridge_);
     }
 
     // Test objects

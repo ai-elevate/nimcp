@@ -2085,8 +2085,10 @@ int brain_immune_release_cytokine(
     bio_module_context_t bio_ctx = system->bio_context;
 
     /* Set delivered flag BEFORE unlock to prevent race condition */
-    /* (checking target_region == 0 means broadcast) */
-    if (bio_ctx && target_region == 0) {
+    /* Broadcast cytokines (target_region == 0) are always delivered locally.
+     * Bio-async context handles remote delivery but local effects apply
+     * regardless. */
+    if (target_region == 0) {
         cytokine->delivered = true;
     }
 

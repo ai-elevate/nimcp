@@ -1227,14 +1227,16 @@ static void compute_node_hash(nimcp_fsc_node_t* node) {
     if (node->type == NIMCP_FSC_NODE_LEAF && node->protected_data) {
         // Hash the actual data
         simple_hash(node->protected_data, node->data_size, node->hash);
-    } else if (node->num_children > 0) {
+    } else if (node->num_children > 0 && node->children) {
         // Hash is combination of children hashes
         uint8_t combined[NIMCP_FSC_HASH_SIZE * 16];  // Up to 16 children
         size_t combined_size = 0;
 
         for (uint32_t i = 0; i < node->num_children && i < 16; i++) {
-            memcpy(combined + combined_size, node->children[i]->hash, NIMCP_FSC_HASH_SIZE);
-            combined_size += NIMCP_FSC_HASH_SIZE;
+            if (node->children[i]) {
+                memcpy(combined + combined_size, node->children[i]->hash, NIMCP_FSC_HASH_SIZE);
+                combined_size += NIMCP_FSC_HASH_SIZE;
+            }
         }
 
         simple_hash(combined, combined_size, node->hash);
